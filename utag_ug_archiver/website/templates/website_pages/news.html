@@ -1,0 +1,58 @@
+{% extends "base/base.html" %}
+{% load static %}
+{% block title %}News Detail{% endblock %}
+
+{% block content %}
+<!-- Page Title Area Start -->
+<section class="page-title-area bg-image ptb--80" data-bg-image="{% static 'website/assets/img/bg/balme.png' %}">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="page-title">News</h1>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Page Title Area End -->
+
+
+<!-- Main Content Wrapper Start -->
+<div class="main-content-wrapper">
+    <div class="inner-content-area mb--25 mt--10">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="project-filters mb--50">
+                        <button data-filter="*" class="is-checked">All</button>
+                        <!--<button data-filter=".filter-cash-flow">Cash Flow</button>
+                        <button data-filter=".filter-debts">Debts</button>
+                        <button data-filter=".filter-invoicing">Invoicing</button>
+                        <button data-filter=".filter-services">Services</button> -->
+                    </div>
+                </div>
+            </div>
+            <div class="row project-wrapper">
+                {% for news in all_news %}
+                <div class="col-lg-4 col-md-6 project-item-wrap filter-services mb--25">
+                    <div class="project-item directional">
+                        <figure class="project-item__thumbnail">
+                            <img src="{{news.get_featured_image_url}}" alt="Project">
+                            <div class="project-item__overlay directional-hover">
+                                <a href="{% url 'website:news_detail' news_id=news.id %}"><i class="fa fa-link"></i></a>
+                            </div>
+                        </figure>
+                        <div class="project-item__info">
+                            <h3 class="project-item__title"><a href="{% url 'website:news_detail' news_id=news.id %}">{{news.title}}</a></h3>
+                            <span class="project-item__categoris">
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Main Content Wrapper End -->
+{% endblock %}

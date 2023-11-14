@@ -1,0 +1,63 @@
+<!doctype html>
+<html class="no-js" lang="zxx">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>UG-UTAG - {% block title %}{% endblock title %}</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Favicons -->
+    <link rel="shortcut icon" href="{% static 'dashboard/assets/images/utag_ug.png' %}" type="image/x-icon">
+    <link rel="apple-touch-icon" href="{% static 'dashboard/assets/images/utag_ug.png' %}">
+
+    <!-- ************************* CSS Files ************************* -->
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'website/assets/css/bootstrap.css' %}">
+
+    <!-- Vendor CSS -->
+    <link rel="stylesheet" href="{% static 'website/assets/css/vendor.css' %}">
+
+    <!-- Revoulation CSS -->
+    <link rel="stylesheet" href="{% static 'website/assets/css/revoulation.css' %}">
+
+    <!-- style css -->
+    <link id="main-style" rel="stylesheet" href="{% static 'website/assets/css/main.css' %}">
+
+    <!-- Style customizer (Remove these two lines please) -->
+    <link rel="stylesheet" href="{% static 'website/assets/css/style-customizer.css' %}">
+
+    {% comment %} <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"> {% endcomment %}
+
+</head>
+
+<body>
+
+    <!-- Main Wrapper Start -->
+    <div class="wrapper" style="margin: 0 2% 0 2%">
+        {% include "includes/header.html" %}
+        
+        {% block content %}
+        {% endblock content %}
+
+        {% include "includes/footer.html" %}
+
+        <!-- Global Overlay Start -->
+        <div class="fp-global-overlay"></div>
+        <!-- Global Overlay End -->
+
+        <!-- Global Overlay Start -->
+        <a class="scroll-to-top" href=""><i class="fa fa-angle-up"></i></a>
+        <!-- Global Overlay End -->
+
+        {% include "includes/search_popup.html" %}
+
+    </div>
+    <!-- Main Wrapper End -->
+
+    {% include "includes/scripts.html" %}
+
+</body>
+
+</html>

@@ -1,0 +1,69 @@
+<!-- Modal for Add -->
+{% load static %}
+{% for member in members %}
+<div
+  class="modal fade bs-example-modal-lg"
+  id="memberModal_{{member.id}}"
+  tabindex="-1"
+  aria-labelledby="memberModal_{{member.id}}"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="memberModal_{{member.id}}Label">
+          {{member.get_short_name}}'s Detail
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <img src="{% if member.profile_pic %} {{member.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="{{member.first_name}}" class="rounded-circle p-1 bg-primary" width="110">
+                    <div class="mt-3">
+                        <h4>{{member.get_full_name}}</h4>
+                        <p class="mb-1">{% if member.is_superuser or member.is_member %} Admin {% elif member.is_secretary %} Secretary {% else %} Member{% endif %}  </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="">
+            <p>
+              <strong>Title:</strong>
+              <span id="member-name">{{member.title}}</span>
+            </p>
+            <p>
+              <strong>First Name:</strong>
+              <span id="member-name">{{member.first_name}}</span>
+            </p>
+            {% if member.other_name %}
+            <p>
+              <strong>Other Name:</strong>
+              <span id="member-name">{{member.other_name}}</span>
+            </p>
+            {% endif %}
+            <p>
+                <strong>Last Name:</strong>
+                <span id="member-name">{{member.last_name}}</span>
+              </p>
+            <p>
+              <strong>Email:</strong>
+              <span id="member-email">{{member.email}}</span>
+            </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}

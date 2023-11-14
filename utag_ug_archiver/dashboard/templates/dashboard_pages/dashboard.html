@@ -1,0 +1,379 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+{% block title %}
+    {% if user.is_authenticated %}
+        {% if user.is_admin or user.is_superuser %}
+            Admin
+        {% elif user.is_secretary %}
+            Secretary
+        {% else %}
+            Member
+        {% endif %}
+    {% endif %}
+{% endblock title %}
+{% block content %}
+<div class="page-content">
+    <div class="container-fluid">
+
+        <!-- start page title -->
+        <div class="page-title-box">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="page-title">Dashboard</h6>
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item active">Welcome to UG-UTAG
+                            {% if user.is_authenticated %}
+                            {% if user.is_admin or user.is_superuser %}
+                                Admin
+
+                            {% elif user.is_secretary %}
+                                Secretary
+                            {% else %}
+                                Member
+                            {% endif %}
+                    {% endif %}
+                            Dashboard</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        <!-- end page title -->
+
+        <div class="row">
+            <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-4">
+                                <img src="{% static 'dashboard/assets/images/services-icon/01.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50">Internal Files</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_internal_documents > 0 %}
+                                {{total_internal_documents}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-4">
+                                <img src="{% static 'dashboard/assets/images/services-icon/02.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50">External Files</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_external_documents > 0 %}
+                                {{total_external_documents}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-4">
+                                <img src="{% static 'dashboard/assets/images/services-icon/03.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50"> Executives</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_executives > 0 %}
+                                {{total_executives}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if request.user.is_superuser or request.user.is_admin %}
+            <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-4">
+                                <img src="{% static 'dashboard/assets/images/services-icon/04.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50"> Admins</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_admins > 0 %}
+                                {{total_admins}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% elif request.user.is_secretary %}
+            <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-2">
+                                <img src="{% static 'dashboard/assets/images/services-icon/04.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50"> Secretaries</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_secretaries > 0 %}
+                                {{total_secretaries}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+             <div class="col-xl-3 col-md-6">
+                <div class="card mini-stat bg-primary text-white">
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="float-start mini-stat-img me-2">
+                                <img src="{% static 'dashboard/assets/images/services-icon/04.png' %}" alt="">
+                            </div>
+                            <h5 class="font-size-14 text-uppercase text-white-50"> Members</h5>
+                            <h4 class="fw-medium font-size-20">
+                                {% if total_members > 0 %}
+                                {{total_members}}
+                                {% else %}
+                                0
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <!-- end row -->
+
+        <div class="row">
+            <div class="col-xl-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Events</h4>
+                        <ol class="activity-feed">
+                            {% for event in published_events %}
+                            <li class="feed-item">
+                                <div class="feed-item-list">
+                                    <span class="date">{{ event.date|date:"M" }} {{ event.date|date:"j" }}</span>
+                                    <span class="activity-text">{{event.title}}</span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        <div class="text-center">
+                            <a href="{% url 'dashboard:events' %}" class="btn btn-primary">View All</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-6">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <div class="py-4">
+                                    <i class="ion ion-ios-checkmark-circle-outline display-4 text-success"></i>
+
+                                    <h5 class="text-primary mt-4">Order Successful</h5>
+                                    <p class="text-muted">Thanks you so much for your order.</p>
+                                    <div class="mt-4">
+                                        <a href="" class="btn btn-primary btn-sm">Chack Status</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-primary">
+                            <div class="card-body">
+                                <div class="text-center text-white py-4">
+                                    <h5 class="mb-4 text-white-50 font-size-14">Top Product Sale</h5>
+                                    <h1>1452</h1>
+                                    <p class="font-size-14 pt-1">Computer</p>
+                                    <p class="text-white-50 mb-0">At solmen va esser necessi far uniform myth... <a href="#" class="text-white">View more</a></p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h4 class="card-title mb-4">Announcements</h4>
+                                <p class="text-muted mb-3 pb-4">"The leadership of UTAG-UG will hold a a virtual meeting on this Tuesday, All executive officers and executive committee members are expected to join. Thank You."</p>
+                                <div class="float-end mt-2">
+                                    <a href="#" class="text-primary">
+                                            <i class="mdi mdi-arrow-right h5"></i>
+                                        </a>
+                                </div>
+                                <h6 class="mb-0"><img src="{% static 'dashboard/assets/images/users/profile.png' %}" alt="" class="avatar-sm rounded-circle me-2"> Cynthia Asare</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- end row -->
+
+        <div class="row">
+            <div class="col-xl-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Recently Added Documents</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-centered table-nowrap mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">(#)</th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">By</th>
+                                        <th scope="col" colspan="2">Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for document in recent_added_documents %}
+                                    <tr>
+                                        <th scope="row">{{forloop.counter}}</th>
+                                        <td>
+                                            {{document.title}}
+                                        </td>
+                                        <td>{{document.date |date:'m/d/y'}}</td>
+                                        <td>{{document.uploaded_by.get_short_name}}</td>
+                                        <td>
+                                            {% if document.category == 'external' %}
+                                            <span class="badge bg-success">External</span>
+                                            {% else %}
+                                            <span class="badge bg-primary">Internal</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <a href="#" class="btn btn-secondary btn-sm"><i class="mdi mdi-eye"></i></a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Chat</h4>
+                        <div class="chat-conversation">
+                            <ul class="conversation-list" data-simplebar style="max-height: 367px;">
+                                <li class="clearfix">
+                                    <div class="chat-avatar">
+                                        <img src="{% static 'dashboard/assets/images/users/profile.png' %}" class="avatar-xs rounded-circle" alt="male">
+                                        <span class="time">10:00</span>
+                                    </div>
+                                    <div class="conversation-text">
+                                        <div class="ctext-wrap">
+                                            <span class="user-name">John Deo</span>
+                                            <p>
+                                                Hello!
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="clearfix odd">
+                                    <div class="chat-avatar">
+                                        <img src="{% static 'dashboard/assets/images/users/profile.png' %}" class="avatar-xs rounded-circle" alt="Female">
+                                        <span class="time">10:01</span>
+                                    </div>
+                                    <div class="conversation-text">
+                                        <div class="ctext-wrap">
+                                            <span class="user-name">Smith</span>
+                                            <p>
+                                                Hi, How are you? What about our next meeting?
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="clearfix">
+                                    <div class="chat-avatar">
+                                        <img src="{% static 'dashboard/assets/images/users/profile.png' %}" class="avatar-xs rounded-circle" alt="male">
+                                        <span class="time">10:04</span>
+                                    </div>
+                                    <div class="conversation-text">
+                                        <div class="ctext-wrap">
+                                            <span class="user-name">John Deo</span>
+                                            <p>
+                                                Yeah everything is fine
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="clearfix odd">
+                                    <div class="chat-avatar">
+                                        <img src="{% static 'dashboard/assets/images/users/profile.png' %}" class="avatar-xs rounded-circle" alt="male">
+                                        <span class="time">10:05</span>
+                                    </div>
+                                    <div class="conversation-text">
+                                        <div class="ctext-wrap">
+                                            <span class="user-name">Smith</span>
+                                            <p>
+                                                Wow that's great
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="clearfix odd">
+                                    <div class="chat-avatar">
+                                        <img src="{% static 'dashboard/assets/images/users/profile.png' %}" class="avatar-xs rounded-circle" alt="male">
+                                        <span class="time">10:08</span>
+                                    </div>
+                                    <div class="conversation-text">
+                                        <div class="ctext-wrap">
+                                            <span class="user-name mb-2">Smith</span>
+
+                                            <img src="{% static 'dashboard/assets/images/small/img-1.jpg' %}" alt="" height="48" class="rounded me-2">
+                                            <img src="{% static 'dashboard/assets/images/small/img-2.jpg' %}" alt="" height="48" class="rounded">
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="row">
+                                <div class="col-sm-9 col-8 chat-inputbar">
+                                    <input type="text" class="form-control chat-input" placeholder="Enter your text">
+                                </div>
+                                <div class="col-sm-3 col-4 chat-send">
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-success">Send</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- end row -->
+    </div>
+    <!-- container-fluid -->
+</div>
+{% endblock content %}

@@ -1,0 +1,249 @@
+{% load static %}
+<!-- Header Start -->
+<header class="header">
+    <div class="header__inner fixed-header">
+        <div class="header__middle">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="header__middle-inner">
+                            <div class="header__middle-left">
+                                <div class="logo">
+                                    <a href="{% url 'website:index' %}" class="logo--normal">
+                                        <img src="{% static 'website/assets/img/logo/utag_ug.png' %}" alt="Logo" height="70">
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="header__middle-right d-none d-lg-block">
+                                <ul class="social social-round text-end">
+                                    <li><a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm">Login</a></li>
+                                </ul>
+                            </div>
+                            <div class="header__toolbar-wrap d-block d-lg-none">
+                                <div class="header__toolbar">
+                                    <a href="#searchForm" class="toolbar-btn">
+                                        <i class="fa fa-search"></i>
+                                    </a>
+                                    <a href="#offcanvasMenu" class="toolbar-btn menu-btn">
+                                        <div class="hamburger-icon">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="header__bottom  bg-gradient d-none d-lg-block">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="header__middle-middle">
+                            <nav class="main-navigation">
+                                <ul class="mainmenu">
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:index' %}" class="mainmenu__link">
+                                            <span data-hover="Home" class="mm-text">Home</span>
+                                        </a>
+                                    </li>
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:about_us' %}" class="mainmenu__link">
+                                            <span data-hover="About Us" class="mm-text">About Us</span>
+                                        </a>
+                                    </li>
+                                    <li class="mainmenu__item menu-item-has-children">
+                                        <a href="#" class="mainmenu__link">
+                                            <span data-hover="Leadership" class="mm-text">Leadership</span>
+                                        </a>
+                                        <ul class="sub-menu">
+                                            <li>
+                                                <a href="{% url 'website:executive_officers' %}">
+                                                    <span data-hover="Executive Officers" class="mm-text">Executive Officers</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{% url 'website:executive_committee_members' %}">
+                                                    <span data-hover="Executive Committee Members" class="mm-text">Executive Committee Members</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:news' %}" class="mainmenu__link">
+                                            <span data-hover="News" class="mm-text">News</span>
+                                        </a>
+                                    </li>
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:events' %}" class="mainmenu__link">
+                                            <span data-hover="Events" class="mm-text">Events</span>
+                                        </a>
+                                    </li>
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:contact_us' %}" class="mainmenu__link">
+                                            <span data-hover="Contact Us" class="mm-text">Contact Us</span>
+                                        </a>
+                                    </li>
+
+
+                                    <li class="mainmenu__item menu-item-has-children">
+                                        <a href="#" class="mainmenu__link">
+                                            <span data-hover="Help" class="mm-text">Help</span>
+                                        </a>
+                                        <ul class="sub-menu">
+                                            <li>
+                                                <a href="#" onclick="showAlert()">
+                                                    <span data-hover="FAQs" class="mm-text">FAQs</span>
+                                                  </a>
+                                                  
+                                                  <script>
+                                                  function showAlert() {
+                                                    alert("This feature is under development");
+                                                  }
+                                                  </script>
+                                            </li>
+                                            <li>
+                                                <a href="#" onclick="showAlert()">
+                                                    <span data-hover="Privacy &amp; Policy" class="mm-text">Privacy &amp; Policy</span>
+                                                  </a>
+                                                  
+                                                  <script>
+                                                  function showAlert() {
+                                                    alert("This feature is under development");
+                                                  }
+                                                  </script>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </nav>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="offcanvas-menu-wrapper" id="offcanvasMenu">
+        <div class="offcanvas-menu-inner">
+            <a href="" class="btn-close">
+                <i class="pe-7s-close"></i>
+            </a>
+            <nav class="offcanvas-navigation">
+                <ul class="offcanvas-menu">
+                    <li class="active">
+                        <a href="{% url 'website:index' %}">
+                            <span data-hover="Home" class="mm-text">Home</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:about_us' %}">
+                            <span data-hover="About Us" class="mm-text">About Us</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:contact_us' %}">
+                            <span data-hover="Contact Us" class="mm-text">Contact Us</span>
+                        </a>
+                    </li>
+                    <li class="menu-item-has-children">
+                        <a href="#">
+                            <span data-hover="Leadership" class="mm-text">Leadership</span>
+                        </a>
+                        <ul class="sub-menu">
+                            <li>
+                                <a href="{% url 'website:executive_officers' %}">
+                                    <span data-hover="Executive Officers" class="mm-text">Executive Officers</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{% url 'website:executive_committee_members' %}">
+                                    <span data-hover="Executive Committee Members" class="mm-text">Executive Committee Members</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:news' %}">
+                            <span data-hover="News" class="mm-text">News</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:events' %}">
+                            <span data-hover="Pages" class="mm-text">Events</span>
+                        </a>
+                    </li>
+                    <li class="menu-item-has-children">
+                        <a href="#">
+                            <span data-hover="Help" class="mm-text">Help</span>
+                        </a>
+                        <ul class="sub-menu">
+                            <li>
+                                <a href="our-services.html">
+                                    <span data-hover="fAQs" class="mm-text">FAQs</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="our-services-02.html">
+                                    <span data-hover="Privacy & Policy" class="mm-text">Privacy & Policy</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="{% url 'accounts:login' %}">
+                            <span data-hover="Pages" class="mm-text">Login</span>
+                        </a>
+                    </li>
+                </ul>
+                <div class="site-info vertical">
+                    <div class="site-info__item">
+                        <i class="pe-7s-call"></i>
+                        <div class="site-info__content">
+                            <span class="site-info__title">+233 (0) 24 427 7275</span>
+                            <span class="site-info__text"><a href="mailto:info@example.com">utagoffice@ug.edu.gh</a></span>
+                        </div>
+                    </div>
+                    <div class="site-info__item">
+                        <i class="pe-7s-map-marker"></i>
+                        <div class="site-info__content">
+                            <span class="site-info__title">University of Ghana</span>
+                            <span class="site-info__text">Legon - Accra, GPS Ghana</span>
+                        </div>
+                    </div>
+                    <div class="site-info__item">
+                        <i class="pe-7s-clock"></i>
+                        <div class="site-info__content">
+                            <span class="site-info__title">7:30 AM - 7:30 PM</span>
+                            <span class="site-info__text">Monday to Friday</span>
+                        </div>
+                    </div>
+                </div>
+                <ul class="social social-round white-color">
+                    <li class="social__item">
+                        <a href="https://www.facebook.com" class="social__link" target="_blank" rel="noopener">
+                            <i class="social__icon fa fa-facebook"></i>
+                        </a>
+                    </li>
+                    <li class="social__item">
+                        <a href="https://www.plus.google.com" class="social__link" target="_blank" rel="noopener">
+                            <i class="social__icon fa fa-google-plus"></i>
+                        </a>
+                    </li>
+                    <li class="social__item">
+                        <a href="https://www.twitter.com" class="social__link" target="_blank" rel="noopener">
+                            <i class="social__icon fa fa-twitter"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+<!-- Header End -->

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+{% load static %}
+<head>
+
+    <meta charset="utf-8">
+    <title>Dashboard - {% block title %}{% endblock  %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="Premium Multipurpose Admin & Dashboard Template" name="description">
+    <meta content="Themesbrand" name="author">
+    <!-- App favicon -->
+    <link rel="shortcut icon" href="{% static 'dashboard/assets/images/utag_ug.png' %}">
+
+    <link href="{% static 'dashboard/assets/libs/chartist/chartist.min.css' %}" rel="stylesheet">
+
+    <!-- Bootstrap Css -->
+    <link href="{% static 'dashboard/assets/css/bootstrap.min.css' %}" id="bootstrap-style" rel="stylesheet" type="text/css">
+    <!-- Icons Css -->
+    <link href="{% static 'dashboard/assets/css/icons.min.css' %}" rel="stylesheet" type="text/css">
+    <!-- App Css-->
+    <link href="{% static 'dashboard/assets/css/app.min.css' %}" id="app-style" rel="stylesheet" type="text/css">
+
+    {% block my_styles %}{% endblock my_styles %}
+
+</head>
+
+<body data-sidebar="dark">
+
+    <!-- Begin page -->
+    <div id="layout-wrapper">        
+        {% include "includes/dash_header.html" %}
+        {% include "includes/dash_sidebar.html" %}
+
+        <!-- ============================================================== -->
+        <!-- Start right Content here -->
+        <!-- ============================================================== -->
+        <div class="main-content">
+            {% block content %}{% endblock content %}
+            {% include "includes/dash_footer.html" %}
+        </div>
+        <!-- end main content-->
+
+    </div>
+    <!-- END layout-wrapper -->
+
+
+
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/metismenu/metisMenu.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/simplebar/simplebar.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/node-waves/waves.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/js/app.js' %}"></script>
+
+    {% block my_scripts %}{% endblock my_scripts %}
+
+</body>
+
+</html>
