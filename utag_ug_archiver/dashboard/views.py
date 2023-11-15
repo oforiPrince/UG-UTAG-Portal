@@ -1,3 +1,4 @@
+from datetime import datetime
 import random
 import string
 
@@ -11,7 +12,7 @@ from django.http import HttpResponseRedirect
 
 
 from accounts.models import User
-from dashboard.models import Executive, Event, News, Document
+from dashboard.models import Executive, Event, News, Document, ExecutivePosition
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order, process_bulk_admins, process_bulk_members
 
@@ -73,8 +74,8 @@ class AdminCreateUpdateView(View):
         else:
             password = request.POST.get('password1')
             self.password = password
-        admin_exists = User.objects.filter(email=email).exists()
-        if admin_exists:
+        member_exists = User.objects.filter(email=email).exists()
+        if member_exists:
             messages.error(request, 'Admin already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         else:
@@ -117,8 +118,8 @@ class MemberCreateUpdateView(View):
         else:
             password = request.POST.get('password1')
             self.password = password
-        admin_exists = User.objects.filter(email=email).exists()
-        if admin_exists:
+        member_exists = User.objects.filter(email=email).exists()
+        if member_exists:
             messages.error(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         else:
@@ -195,10 +196,85 @@ class ExecutiveOfficersView(View):
         executive_officers = Executive.objects.filter(position__name__in=officers_position_order, is_executive_officer=True)
         # Sort the executive_officers based on the custom order
         executive_officers = sorted(executive_officers, key=officers_custom_order)
+        
+        #Get all members
+        members = User.objects.filter(is_member=True)
         context = {
-            'executive_officers' : executive_officers
+            'executive_officers' : executive_officers,
+            'members' : members,
         }
         return render(request, self.template_name, context)
+
+class NewOfficerCreateView(View):
+    password = ""
+    def post(self, request):
+        title = request.POST.get('title')
+        first_name = request.POST.get('first_name')
+        other_name = request.POST.get('other_name')
+        last_name = request.POST.get('last_name')
+        gender = request.POST.get('gender')
+        email = request.POST.get('email')
+        
+        #fields for executive
+        position = request.POST.get('position')
+        fb_username = request.POST.get('fb_username')
+        twitter_username = request.POST.get('twitter_username')
+        linkedin_username = request.POST.get('linkedin_username')
+        date_appointed = request.POST.get('date_appointed')
+        if request.POST.get('password_choice') == 'auto':
+            password_length = 10
+            self.password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+        else:
+            password = request.POST.get('password1')
+            self.password = password
+        member_exists = User.objects.filter(email=email).exists()
+        if member_exists:
+            messages.error(request, 'Member already exists!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        else:
+            #Check if date appointed is valid
+            if date_appointed == "":
+                messages.error(request, 'Date appointed is required!')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            #Check if appointed member is already an executive
+            executive_exists = Executive.objects.filter(member__email=email).exists()
+            if executive_exists:
+                messages.error(request, 'Member already exists in the executive!')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            #Create member
+            member = User.objects.create(
+                title = title,
+                first_name = first_name,
+                other_name = other_name,
+                last_name = last_name,
+                gender = gender,
+                email = email,
+                password = make_password(self.password),
+                is_member = True,
+            )
+            member.save()
+            #TODO = Send email to admin with password
+            
+            #Add member to executive
+            # Convert date string to datetime object
+            input_date = datetime.strptime(date_appointed, "%d %b, %Y")
+
+            # Format the date as YYYY-MM-DD
+            formatted_appointed_date = input_date.strftime("%Y-%m-%d")
+            position = ExecutivePosition.objects.get(name=position)
+            executive = Executive.objects.create(
+                member = member,
+                position = position,
+                fb_username = fb_username,
+                twitter_username = twitter_username,
+                linkedin_username = linkedin_username,
+                is_executive_officer = True,
+                date_appointed = formatted_appointed_date,
+            )
+            executive.save()
+            
+            messages.success(request, 'Executive Officer created successfully!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 class OfficerDeleteView(View):
     @method_decorator(MustLogin)

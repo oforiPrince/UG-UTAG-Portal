@@ -72,9 +72,7 @@ class NewsDetailView(View):
     
     def get(self, request, *args, **kwargs):
         news_id = kwargs.get('news_id')
-        print(news_id)
         news = News.objects.get(id=news_id)
-        print(news)
         context = {
             'news' : news
         }
@@ -93,7 +91,7 @@ class ExecutiveOfficersView(View):
             'executives': executives,
         }
         return render(request, self.template_name, context)
-    
+        
 class ExecutiveCommitteeMembersView(View):
     template_name = 'website_pages/executive_committee_members.html'
     

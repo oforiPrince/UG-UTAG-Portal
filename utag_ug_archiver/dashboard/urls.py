@@ -12,6 +12,7 @@ urlpatterns = [
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/create_update',views.MemberCreateUpdateView.as_view(), name='create_update_member'),
     path('executives/officers',views.ExecutiveOfficersView.as_view(), name='officers'),
+    path('executives/officers/create',views.NewOfficerCreateView.as_view(), name='create_new_officer'),
     path('account_management/officers/delete/<int:officer_id>',views.OfficerDeleteView.as_view(), name='delete_officer'),
     path('executives/committee_members',views.ExecutiveCommitteeMembersView.as_view(), name='committee_members'),
     path('account_management/committee_members/delete/<int:c_member_id>',views.CommitteeMemberDeleteView.as_view(), name='delete_committee_member'),

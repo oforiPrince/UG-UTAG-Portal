@@ -2,6 +2,7 @@
 {% load static %}
 {% block title %}Executive Officers{% endblock title %}
 {% block content %}
+
 <div class="page-content">
     <div class="container-fluid">
 
@@ -57,9 +58,9 @@
                                             <i class="mdi mdi-plus me-1"></i> Add
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-end" aria-labelledby="addDropdown">
-                                            <a class="dropdown-item" href="#">Existing Member</a>
-                                            <a class="dropdown-item" href="#">New</a>
-                                        </div>
+                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#existingMemberModal">Existing Member</a>
+                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newMemberModal">New</a>
+                                          </div>
                                     </div>
                                 </div>
                                 <!-- <div class="float-end d-none d-md-block mx-2">
@@ -152,9 +153,14 @@
     </div>
     <!-- container-fluid -->
     {% include "includes/modals/officer_details.html" %}
+    {% include "includes/modals/add_existing_member_o.html" %}
+    {% include "includes/modals/add_new_member.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}
+<!-- <link href="{% static 'dashboard/assets/libs/select2/css/select2.min.css' %}" rel="stylesheet" type="text/css"> -->
+<link href="{% static 'dashboard/assets/libs/bootstrap-datepicker/css/bootstrap-datepicker.min.css' %}" rel="stylesheet">
+
  <!-- DataTables -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
  <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
@@ -177,4 +183,10 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script src="{% static 'dashboard/assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js' %}"></script>
+    <!-- <script src="{% static 'dashboard/assets/libs/select2/js/select2.min.js' %}"></script> -->
+    <!-- <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script> -->
+    <!-- <script src="{% static 'dashboard/assets/js/pages/form-advanced.init.js' %}"></script> -->
+
 {% endblock my_scripts %}
