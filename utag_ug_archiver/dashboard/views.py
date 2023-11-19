@@ -59,7 +59,7 @@ class AdminListView(View):
         }
         return render(request, self.template_name, context)
     
-class AdminCreateUpdateView(View):
+class AdminCreateView(View):
     password = ""
     def post(self, request):
         title = request.POST.get('title')
@@ -95,6 +95,36 @@ class AdminCreateUpdateView(View):
             messages.success(request, 'Admin created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
+class AdminUpdateView(View):
+    def post(self,request):
+        admin_id = request.POST.get('admin_id')
+        title = request.POST.get('title')
+        first_name = request.POST.get('first_name')
+        other_name = request.POST.get('other_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        
+        admin = User.objects.get(id=admin_id)
+        if admin.email != email:
+            admin.email = email
+        if admin.first_name != first_name:
+            admin.first_name = first_name
+            
+        if admin.other_name != other_name:
+            admin.other_name = other_name
+            
+        if admin.last_name != last_name:
+            admin.last_name = last_name
+            
+        if admin.title != title:
+            admin.title = title
+            
+        admin.save()
+        messages.success(request, 'Admin updated successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        
+        
 class AdminDeleteView(View):
     def get(self, request, *args, **kwargs):
         admin_id = kwargs.get('admin_id')
@@ -103,7 +133,7 @@ class AdminDeleteView(View):
         messages.success(request, 'Admin deleted successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class MemberCreateUpdateView(View):
+class MemberCreateView(View):
     password = ""
     def post(self, request):
         title = request.POST.get('title')
@@ -138,6 +168,34 @@ class MemberCreateUpdateView(View):
             
             messages.success(request, 'Member created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class MemberUpdateView(View):
+    def post(self,request):
+        admin_id = request.POST.get('admin_id')
+        title = request.POST.get('title')
+        first_name = request.POST.get('first_name')
+        other_name = request.POST.get('other_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        
+        admin = User.objects.get(id=admin_id)
+        if admin.email != email:
+            admin.email = email
+        if admin.first_name != first_name:
+            admin.first_name = first_name
+            
+        if admin.other_name != other_name:
+            admin.other_name = other_name
+            
+        if admin.last_name != last_name:
+            admin.last_name = last_name
+            
+        if admin.title != title:
+            admin.title = title
+            
+        admin.save()
+        messages.success(request, 'Admin updated successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
 class MemberDeleteView(View):
     def get(self, request, *args, **kwargs):
@@ -505,3 +563,8 @@ class ChangeProfilePicView(View):
             user.save()
             messages.info(request, "Profile Picture Updated Successfully")
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class TryPageView(View):
+    template_name = 'dashboard_pages/try.html'
+    def get(self, request):
+        return render(request, self.template_name)

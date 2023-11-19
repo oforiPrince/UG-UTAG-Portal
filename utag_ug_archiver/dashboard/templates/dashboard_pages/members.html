@@ -91,7 +91,7 @@
                                         <a href="#" class="btn btn-success btn-sm">
                                             <i class="mdi mdi-pen"></i>
                                         </a>
-                                        <a href="{% url 'dashboard:delete_member' member_id=member.id %}" class="btn btn-danger btn-sm">
+                                        <a href="{% url 'dashboard:delete_member' member_id=member.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this member?');">
                                             <i class="mdi mdi-delete"></i>
                                         </a>
                                     </td>
