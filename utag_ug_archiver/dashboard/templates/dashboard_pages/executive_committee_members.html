@@ -57,8 +57,8 @@
                                             <i class="mdi mdi-plus me-1"></i> Add
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-end" aria-labelledby="addDropdown">
-                                            <a class="dropdown-item" href="#">Existing Member</a>
-                                            <a class="dropdown-item" href="#">New</a>
+                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#existingMemberModal">Existing Member</a>
+                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newMemberModal">New</a>
                                         </div>
                                     </div>
                                 </div>
@@ -150,6 +150,8 @@
     </div>
     <!-- container-fluid -->
     {% include "includes/modals/c_member_details.html" %}
+    {% include "includes/modals/add_new_c_member.html" %}
+    {% include "includes/modals/add_existing_member_c.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}

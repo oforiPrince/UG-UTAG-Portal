@@ -3,7 +3,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="newMemberModalLabel">New Executive Officer Modal</h5>
+        <h5 class="modal-title" id="newMemberModalLabel">New Executive Committee Member Modal</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -13,7 +13,7 @@
           method="POST">
           {% csrf_token %}
           <div class="row mb-3">
-            <small style="color: burlywood;">For Creating Membership account for the new officer</small>
+            <small style="color: burlywood;">For Creating Membership account for the new Executive Committee Member</small>
         </div>
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
@@ -177,10 +177,7 @@
             <div>
               <select id="id_title" class="form-control" required name="position">
                 <option value="" selected disabled>Select a title</option>
-                <option value="President">President</option>
-                <option value="Vice President">Vice President</option>
-                <option value="Secretary">Secretary</option>
-                <option value="Treasurer">Treasurer</option>
+                <option value="Committee Member" selected>Committee Member</option>
               </select>
             </div>
           </div>
