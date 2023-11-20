@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 
+from accounts.models import User
+
 class Event(models.Model):
     image = models.ImageField(upload_to='event_images/')
     title = models.CharField(max_length=100)
@@ -10,7 +12,7 @@ class Event(models.Model):
     time = models.TimeField()
     is_published = models.BooleanField(default=False)
     is_past_due = models.BooleanField(default=False)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -25,7 +27,7 @@ class News(models.Model):
     featured_image = models.ImageField(upload_to='news_images/')
     title = models.CharField(max_length=100)
     content = models.TextField()
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='author')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
     tags = models.CharField(max_length=100, blank=True, null=True)
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -41,7 +43,7 @@ class Announcement(models.Model):
     title = models.CharField(max_length=100)
     content = models.TextField()
     is_published = models.BooleanField(default=False)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -66,7 +68,7 @@ class ExecutivePosition(models.Model):
 
 class Executive(models.Model):
     image = models.ImageField(upload_to='executive_images/', blank=True, null=True)
-    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='member')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='member')
     position = models.ForeignKey(ExecutivePosition, on_delete=models.CASCADE)
     fb_username = models.CharField(max_length=100, blank=True, null=True)
     twitter_username = models.CharField(max_length=100, blank=True, null=True)
@@ -100,7 +102,7 @@ class Document(models.Model):
         ('archived', 'Archived'),
         ('draft', 'Draft'),
     )
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     files = models.ManyToManyField(File)
     title = models.CharField(max_length=100)
