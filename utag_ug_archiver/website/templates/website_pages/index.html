@@ -133,7 +133,7 @@
                         <div class="item">
                             <div class="project-item-2">
                                 <figure class="project-item__thumbnail">
-                                    <img src="{% static 'website/assets/img/project/project1-285x200.jpg' %}" alt="Project">
+                                    <img src="{{news.get_featured_image_url}}" alt="Project">
                                 </figure>
                                 <div class="project-item__info">
                                     <h3 class="project-item__title"><a href="{% url 'website:news_detail' news_id=news.id %}">{{news.title}}</a></h3>
@@ -223,7 +223,7 @@
                                 <div class="team-member team-member-style-2">
                                     <div class="team-member__inner">
                                         <figure class="team-member__thumbnail">
-                                            <a href="#"><img src="{% static 'website/assets/img/team/ourteam31.png' %}" alt="Team Member"></a>
+                                            <a href="#"><img src="{% if executive.image %} {{executive.image.url}}  {% else %} {% static 'website/assets/img/team/ourteam31.png' %} {% endif %}" alt="Team Member"></a>
                                         </figure>
                                         <div class="team-member__info">
                                             <div class="team-member__content">
