@@ -4564,10 +4564,11 @@ textarea,
 
 .project-item-2 .project-item__title a {
     overflow: hidden;
-    height: 50px;
-    line-height: 50px;
+    height: 55px;
+    line-height: 25px;
     padding: 0 25px 0 20px;
     color: #212121;
+    align-content: center;
 }
 
 .project-item-2 .project-item__title a:after {
@@ -6921,7 +6922,7 @@ button,
 .testimonial-style-4 .testimonial__author--role,
 .product-widget__title,
 .scroll-to-top {
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .header__top,

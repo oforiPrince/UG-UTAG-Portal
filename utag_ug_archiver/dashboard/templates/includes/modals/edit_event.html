@@ -1,0 +1,169 @@
+{% for event in events %}
+<div
+  class="modal fade bs-example-modal-lg"
+  id="editEventModal_{{ event.id }}"
+  tabindex="-1"
+  aria-labelledby="editEventModal_{{ event.id }}Label"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editEventModal_{{ event.id }}Label">Edit Event</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form
+          class="custom-validation"
+          action="{% url 'dashboard:update_event' %}"
+          method="POST"
+        >
+          {% csrf_token %}
+          <input type="hidden" name="event_id" value="{{ event.id }}" />
+          <!-- Existing image -->
+          <div class="mb-3">
+            <label class="form-label">Current Event Image:</label>
+            {% if event.image %}
+            <div class="mt-2 d-flex justify-content-center">
+                <img src="{{ event.get_image_url }}" alt="{{ event.title }}" class="img-fluid" style="max-width: 100%; max-height: 200px;" />
+            </div>
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
+          </div>
+          <!-- Upload new image -->
+          <div class="mb-3">
+            <label class="form-label" for="image">Upload New Event Image</label>
+            <div>
+              <input
+                type="file"
+                class="form-control"
+                accept="image/*"
+                name="image"
+                id="imageInput_{{ event.id }}" 
+                onchange="previewImage(event, 'imagePreview_{{ event.id }}')"
+              />
+              <div class="mt-2 d-flex justify-content-center" id="imagePreview_{{ event.id }}" class="mt-2"></div> <!-- Image preview container -->
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="title">Event Title</label>
+            <div>
+              <input
+                type="text"
+                class="form-control"
+                required
+                name="title"
+                placeholder="Enter event title"
+                value="{{ event.title }}"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="description">Event Description</label>
+            <div>
+              <textarea
+                class="form-control"
+                required
+                name="description"
+                rows="3"
+                placeholder="Enter event description"
+              >{{ event.description }}</textarea>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="venue">Event Venue</label>
+            <div>
+              <input
+                type="text"
+                class="form-control"
+                required
+                name="venue"
+                placeholder="Enter event venue"
+                value="{{ event.venue }}"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="date">Event Date</label>
+            <div>
+              <input
+                type="date"
+                class="form-control"
+                required
+                name="date"
+                value="{{ event.date }}"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="time">Event Time</label>
+            <div>
+              <input
+                type="time"
+                class="form-control"
+                required
+                name="time"
+                value="{{ event.time }}"
+              />
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="isPublished_{{ event.id }}"
+              name="is_published"
+              {% if event.is_published %}checked{% endif %}
+            >
+            <label class="form-check-label" for="isPublished_{{ event.id }}">
+              Is Published
+              <small class="text-success">
+                Check this box if you want to publish the event and make it visible to the public.
+              </small>
+            </label>
+          </div>
+
+          <div class="mb-0">
+            <div>
+              <button
+                type="submit"
+                class="btn btn-primary waves-effect waves-light me-1"
+              >
+                Submit
+              </button>
+              <button type="reset" class="btn btn-secondary waves-effect">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- JavaScript for image preview -->
+<script>
+    function previewImage(event, previewId) {
+        var input = event.target;
+        var preview = document.getElementById(previewId);
+    
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+    
+            reader.onload = function (e) {
+                preview.innerHTML = '<img src="' + e.target.result + '" class="img-fluid" style="max-width: 100%; max-height: 200px;" />';
+            };
+    
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.innerHTML = '';
+        }
+    }
+    </script>
+{% endfor %}

@@ -4,6 +4,7 @@ app_name = 'dashboard'
 
 urlpatterns =[
     path('',views.DashboardView.as_view(), name='dashboard'),
+    path('try',views.TryView.as_view(), name='try'),
 ]
 
 #For account management
@@ -16,7 +17,7 @@ urlpatterns += [
     path('account_management/members/upload',views.UploadMemberData.as_view(), name='upload_members'),
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
-    path('account_management/members/create_',views.MemberCreateView.as_view(), name='create_member'),
+    path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
     path('account_management/members/update/',views.MemberUpdateView.as_view(), name='update_member'),
 ]
 #For executive management
@@ -33,13 +34,16 @@ urlpatterns += [
 urlpatterns += [
     path('events',views.EventsView.as_view(), name='events'),
     path('events/create',views.EventCreateView.as_view(), name='create_event'),
-    path('events/update/<int:event_id>',views.EventUpdateView.as_view(), name='update_event'),
+    path('events/update/',views.EventUpdateView.as_view(), name='update_event'),
     path('events/delete/<int:event_id>',views.EventDeleteView.as_view(), name='delete_event'),
 ]
 
 #For news management
 urlpatterns += [
     path('news',views.NewsView.as_view(), name='news'),
+    path('news/create',views.NewsCreateView.as_view(), name='create_news'),
+    path('news/update/',views.NewsUpdateView.as_view(), name='update_news'),
+    path('news/delete/<int:news_id>',views.NewsDeleteView.as_view(), name='delete_news'),
 ]
 
 #For Document management

@@ -1,0 +1,132 @@
+{% for news in newss %}
+<div
+  class="modal fade bs-example-modal-lg"
+  id="editNewsModal_{{ news.id }}"
+  tabindex="-1"
+  aria-labelledby="editNewsModal_{{ news.id }}Label"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editNewsModal_{{ news.id }}Label">Edit News</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <form
+          class="custom-validation"
+          action="{% url 'dashboard:update_news' %}"
+          method="POST"
+        >
+          {% csrf_token %}
+          <input type="hidden" name="news_id" value="{{ news.id }}" />
+          <!-- Existing image -->
+          <div class="mb-3">
+            <label class="form-label">Current News Image:</label>
+            {% if news.featured_image %}
+            <div class="mt-2 d-flex justify-content-center">
+                <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" class="img-fluid" style="max-width: 100%; max-height: 200px;" />
+            </div>
+            {% else %}
+                <p>No image available</p>
+            {% endif %}
+          </div>
+          <!-- Upload new image -->
+          <div class="mb-3">
+            <label class="form-label" for="image">Upload New News Image</label>
+            <div>
+              <input
+                type="file"
+                class="form-control"
+                accept="image/*"
+                name="featured_image"
+                id="imageInput_{{ news.id }}" 
+                onchange="previewImage(news, 'imagePreview_{{ news.id }}')"
+              />
+              <div class="mt-2 d-flex justify-content-center" id="imagePreview_{{ news.id }}" class="mt-2"></div> <!-- Image preview container -->
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="title">News Title</label>
+            <div>
+              <input
+                type="text"
+                class="form-control"
+                required
+                name="title"
+                placeholder="Enter news title"
+                value="{{ news.title }}"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="content">News Description</label>
+            <div>
+              <textarea
+                class="form-control"
+                required
+                name="content"
+                rows="3"
+                placeholder="Enter news content"
+              >{{ news.content }}</textarea>
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="isPublished_{{ news.id }}"
+              name="is_published"
+              {% if news.is_published %}checked{% endif %}
+            >
+            <label class="form-check-label" for="isPublished_{{ news.id }}">
+              Is Published
+              <small class="text-success">
+                Check this box if you want to publish the news and make it visible to the public.
+              </small>
+            </label>
+          </div>
+
+          <div class="mb-0">
+            <div>
+              <button
+                type="submit"
+                class="btn btn-primary waves-effect waves-light me-1"
+              >
+                Submit
+              </button>
+              <button type="reset" class="btn btn-secondary waves-effect">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- JavaScript for image preview -->
+<script>
+    function previewImage(news, previewId) {
+        var input = news.target;
+        var preview = document.getElementById(previewId);
+    
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+    
+            reader.onload = function (e) {
+                preview.innerHTML = '<img src="' + e.target.result + '" class="img-fluid" style="max-width: 100%; max-height: 200px;" />';
+            };
+    
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.innerHTML = '';
+        }
+    }
+    </script>
+{% endfor %}

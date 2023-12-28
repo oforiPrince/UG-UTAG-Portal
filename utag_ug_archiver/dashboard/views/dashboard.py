@@ -41,3 +41,10 @@ class DashboardView(View):
             'recent_added_documents' : recent_added_documents
         }
         return render(request, self.template_name, context)
+    
+class TryView(View):
+    template_name = 'dashboard_pages/file_upload.html'
+    
+    @method_decorator(MustLogin)
+    def get(self,request):
+        return render(request, self.template_name)

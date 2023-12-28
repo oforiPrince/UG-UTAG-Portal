@@ -29,21 +29,27 @@ class EventCreateView(View):
     
     @method_decorator(MustLogin)
     def post(self, request):
+        user = request.user
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        description = request.POST.get('description')
         date = request.POST.get('date')
         time = request.POST.get('time')
         venue = request.POST.get('venue')
         is_published = request.POST.get('is_published')
-        featured_image = request.FILES.get('featured_image')
+        image = request.FILES.get('image')
+        if is_published == 'on':
+            is_published = True
+        else:
+            is_published = False
         event = Event.objects.create(
+            created_by = user,
             title = title,
-            content = content,
+            description = description,
             date = date,
             time = time,
             venue = venue,
             is_published = is_published,
-            featured_image = featured_image
+            image = image
         )
         event.save()
         messages.info(request, "Event Created Successfully")
@@ -63,17 +69,17 @@ class EventUpdateView(View):
         event_id = kwargs.get('event_id')
         event = Event.objects.get(pk=event_id)
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        description = request.POST.get('description')
         date = request.POST.get('date')
         time = request.POST.get('time')
         venue = request.POST.get('venue')
         is_published = request.POST.get('is_published')
-        featured_image = request.FILES.get('featured_image')
-        if featured_image:
-            event.featured_image = featured_image
+        image = request.FILES.get('image')
+        if image:
+            event.image = image
             event.save()
         event.title = title
-        event.content = content
+        event.description = description
         event.date = date
         event.time = time
         event.venue = venue
@@ -90,3 +96,4 @@ class EventDeleteView(View):
         event.delete()
         messages.success(request, 'Event deleted successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
