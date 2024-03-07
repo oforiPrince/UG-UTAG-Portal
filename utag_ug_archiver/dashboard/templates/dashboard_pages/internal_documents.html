@@ -7,7 +7,6 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          {% include "includes/alerts.html" %}
           <div class="row align-items-center">
             <div class="col-md-8">
               <h4 class="card-title">Internal Documents</h4>
@@ -15,9 +14,9 @@
             {% if user.is_admin or user.is_superuser or user.is_secretary %}
             <div class="col-md-4">
               <div class="float-end d-none d-md-block">
-                <a href="{% url 'dashboard:add_internal_document' %}" class="btn btn-primary">
-                  <i class="mdi mdi-plus-circle me-1"></i> Add
-                </a>
+                <button id="openModalButton" class="btn btn-primary" type="button">
+                  <i class="mdi mdi-plus me-1"></i> Add
+                </button>
               </div>
             </div>
             {% endif %}
@@ -81,6 +80,7 @@
       </div>
     </div>
   </div>
+  {% include 'includes/modals/add_internal_files.html' %}
 </div>
 {% endblock content %}
 {% block my_styles %}
@@ -106,4 +106,14 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script>
+      $(document).ready(function() {
+        // When the "Add" button is clicked
+        $("#openModalButton").click(function() {
+          // Show the modal
+          $("#addDocumentModal").modal("show");
+        });
+      });
+    </script>
 {% endblock my_scripts %}

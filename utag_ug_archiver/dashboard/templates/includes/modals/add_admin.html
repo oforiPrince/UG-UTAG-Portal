@@ -25,9 +25,9 @@
         >
           {% csrf_token %}
           <div class="mb-3">
-            <label class="form-label" for="id_title">Title</label>
+            <label class="form-label" for="title">Title</label>
             <div>
-              <select id="id_title" class="form-control" required name="title">
+              <select id="title" class="form-control" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
                 <option value="Dr.">Dr.</option>
@@ -38,11 +38,11 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="id_first_name">First Name</label>
+            <label class="form-label" for="first_name">First Name</label>
             <div>
               <input
                 type="text"
-                id="id_first_name"
+                id="first_name"
                 class="form-control"
                 required
                 name="first_name"
@@ -51,11 +51,11 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="id_other_name">Other Name</label>
+            <label class="form-label" for="other_name">Other Name</label>
             <div>
               <input
                 type="text"
-                id="id_other_name"
+                id="other_name"
                 class="form-control"
                 name="other_name"
                 placeholder="Enter your other name"
@@ -63,11 +63,11 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="id_last_name">Last Name</label>
+            <label class="form-label" for="last_name">Last Name</label>
             <div>
               <input
                 type="text"
-                id="id_last_name"
+                id="last_name"
                 class="form-control"
                 required
                 name="last_name"
@@ -105,11 +105,11 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="id_email">Email</label>
+            <label class="form-label" for="email">Email</label>
             <div>
               <input
                 type="email"
-                id="id_email"
+                id="email"
                 class="form-control"
                 required
                 name="email"
@@ -149,11 +149,11 @@
             </div>
           </div>
           <div class="mb-3" id="password_fields" style="display: none">
-            <label class="form-label" for="id_password1">New Password</label>
+            <label class="form-label" for="password1">New Password</label>
             <div>
               <input
                 type="password"
-                id="id_password1"
+                id="password1"
                 class="form-control"
                 name="password1"
                 placeholder="New Password"
@@ -161,15 +161,15 @@
             </div>
           </div>
           <div class="mb-3" id="password_fields_confirm" style="display: none">
-            <label class="form-label" for="id_password2"
+            <label class="form-label" for="password2"
               >Confirm Password</label
             >
             <div>
               <input
                 type="password"
-                id="id_password2"
+                id="password2"
                 class="form-control"
-                data-parsley-equalto="#id_password1"
+                data-parsley-equalto="#password1"
                 name="password2"
                 placeholder="Confirm Password"
               />
@@ -209,16 +209,16 @@
       if (this.value === "auto") {
         passwordFields.style.display = "none";
         passwordFieldsConfirm.style.display = "none";
-        document.getElementById("id_password1").removeAttribute("required");
-        document.getElementById("id_password2").removeAttribute("required");
+        document.getElementById("password1").removeAttribute("required");
+        document.getElementById("password2").removeAttribute("required");
       } else {
         passwordFields.style.display = "block";
         passwordFieldsConfirm.style.display = "block";
         document
-          .getElementById("id_password1")
+          .getElementById("password1")
           .setAttribute("required", "required");
         document
-          .getElementById("id_password2")
+          .getElementById("password2")
           .setAttribute("required", "required");
       }
     }

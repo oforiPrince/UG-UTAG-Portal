@@ -108,6 +108,7 @@ class Document(models.Model):
     title = models.CharField(max_length=100)
     sender = models.CharField(max_length=100)
     receiver = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
     date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='approved')
     created_at = models.DateTimeField(auto_now_add=True)

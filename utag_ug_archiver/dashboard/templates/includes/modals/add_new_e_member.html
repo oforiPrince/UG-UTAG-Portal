@@ -186,6 +186,16 @@
               {% csrf_token %}
               <!-- Officer Details Fields -->
               <div class="mb-3">
+                <label class="form-label" for="id_title">Position</label>
+                <select id="id_title" class="form-control" required name="position">
+                  <option value="" selected disabled>Select a title</option>
+                  <option value="President">President</option>
+                  <option value="Vice President">Vice President</option>
+                  <option value="Secretary">Secretary</option>
+                  <option value="Treasurer">Treasurer</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
                 <div class="input-group has-validation">
                     <span class="input-group-text" id="inputGroupPrepend">@</span>

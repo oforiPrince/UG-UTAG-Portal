@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 
-from dashboard.models import Document
+from dashboard.models import Document, File
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -43,12 +43,50 @@ class AddInternalDocumentView(View):
     def post(self, request):
         #Get the form data
         title = request.POST.get('title')
+        sender = request.POST.get('sender')
+        receiver = request.POST.get('receiver')
+        date = request.POST.get('date')
         description = request.POST.get('description')
-        file = request.FILES.get('file')
+        files = request.FILES.getlist('file')
         category = 'internal'
         #Create the document
-        document = Document.objects.create(title=title, description=description, file=file, category=category)
+        document = Document.objects.create(title=title, description=description, category=category, sender=sender, receiver=receiver, uploaded_by=request.user, date=date)
+        # Create the file
+        for file in files:
+            file = File.objects.create(file=file)
+            file.save()
+            document.files.add(file)
+
         #Save the document
         document.save()
         messages.success(request, 'Document added successfully')
-        return redirect('internal_documents')
+        return redirect('dashboard:internal_documents')
+    
+class AddExternalDocumentView(View):
+    template_name = 'dashboard_pages/add_external_files.html'
+    @method_decorator(MustLogin)
+    def get(self, request):
+        return render(request, self.template_name)
+    
+    @method_decorator(MustLogin)
+    def post(self, request):
+        #Get the form data
+        title = request.POST.get('title')
+        sender = request.POST.get('sender')
+        receiver = request.POST.get('receiver')
+        date = request.POST.get('date')
+        description = request.POST.get('description')
+        files = request.FILES.getlist('file')
+        category = 'external'
+        #Create the document
+        document = Document.objects.create(title=title, description=description, category=category, sender=sender, receiver=receiver, uploaded_by=request.user, date=date)
+        # Create the file
+        for file in files:
+            file = File.objects.create(file=file)
+            file.save()
+            document.files.add(file)
+
+        #Save the document
+        document.save()
+        messages.success(request, 'Document added successfully')
+        return redirect('dashboard:external_documents')

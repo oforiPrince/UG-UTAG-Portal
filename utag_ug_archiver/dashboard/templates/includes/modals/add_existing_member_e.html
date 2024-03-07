@@ -1,0 +1,66 @@
+<!-- Existing Member Modal -->
+<div class="modal fade bs-example-modal-lg" id="existingMemberModal" tabindex="-1" aria-labelledby="existingMemberModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="existingMemberModalLabel">Existing Member Modal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Select a member</label>
+          <select class="form-control select2" name="member_email" required>
+            <optgroup label="List of Member">
+              {% for member in members %}
+                <option value="{{member.email}}">{{member.get_full_name}}</option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <hr class="mt-4 mb-4">
+        <div class="mb-3">
+          <label class="form-label" for="id_title">Position</label>
+          <select id="id_title" class="form-control" required name="position">
+            <option value="" selected disabled>Select a title</option>
+            <option value="President">President</option>
+            <option value="Vice President">Vice President</option>
+            <option value="Secretary">Secretary</option>
+            <option value="Treasurer">Treasurer</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
+          <div class="input-group has-validation">
+            <span class="input-group-text" id="inputGroupPrepend">@</span>
+            <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username" />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
+          <div class="input-group has-validation">
+            <span class="input-group-text" id="inputGroupPrepend">@</span>
+            <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username" />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
+          <div class="input-group has-validation">
+            <span class="input-group-text" id="inputGroupPrepend">@</span>
+            <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username" />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Date Appointed</label>
+          <div class="input-group" id="datepicker2">
+            <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container="#datepicker2" data-provide="datepicker" data-date-autoclose="true" name="date_appointed" />
+            <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>

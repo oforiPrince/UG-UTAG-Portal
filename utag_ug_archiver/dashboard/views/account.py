@@ -1,6 +1,9 @@
 from datetime import datetime
 import random
 import string
+from django.conf import settings
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
 
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import redirect, render
@@ -63,7 +66,20 @@ class AdminCreateView(View):
                 is_admin = True,
             )
             admin.save()
-            #TODO = Send email to admin with password
+            
+            # Send email to admin with password
+            email_subject = 'Account Created'
+            from_email = settings.EMAIL_HOST_USER
+            to = email
+            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [to]
+            )
+            email.content_subtype = "html"
+            email.send()
             
             messages.success(request, 'Admin created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
@@ -137,7 +153,20 @@ class MemberCreateView(View):
                 is_member = True,
             )
             admin.save()
-            #TODO = Send email to admin with password
+            
+            # Send email to admin with password
+            email_subject = 'Account Created'
+            from_email = settings.EMAIL_HOST_USER
+            to = email
+            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [to]
+            )
+            email.content_subtype = "html"
+            email.send()
             
             messages.success(request, 'Member created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
