@@ -48,7 +48,7 @@
             </div>
             <div class="row">
                 <!-- Defend and promote academic freedom -->
-                <div class="col-md-4 text-center mb-sm--40">
+                <div class="col-md-4 col-sm-4 text-center mb-sm--40">
                     <div class="icon icon-rounded icon-big icon-hover-2">
                         <i class="pe-7s-notebook bg--primary"></i>
                     </div>
@@ -56,7 +56,7 @@
                     <p class="max-w-sm-70 max-w-xs-95 mx-auto">We are committed to defending and promoting academic freedom, ensuring that scholars can pursue research, teaching, and other academic activities without undue external interference.</p>
                 </div>
                 <!-- Promote and advance the standards, ideals, usefulness, and welfare of the teaching and research profession -->
-                <div class="col-md-4 text-center mb-sm--40">
+                <div class="col-md-4 col-sm-4 text-center mb-sm--40">
                     <div class="icon icon-rounded icon-big icon-hover-2">
                         <i class="pe-7s-cup bg--primary"></i>
                     </div>
@@ -64,7 +64,7 @@
                     <p class="max-w-sm-70 max-w-xs-95 mx-auto">We are committed to advancing teaching and research excellence. We strive to enhance standards, and researchers to create a brighter future through education.</p>
                 </div>
                 <!-- Advocate and communicate the needs and concerns of its membership -->
-                <div class="col-md-4 text-center">
+                <div class="col-md-4 col-sm-4 text-center">
                     <div class="icon icon-rounded icon-big icon-hover-2">
                         <i class="pe-7s-users bg--primary"></i>
                     </div>
@@ -148,7 +148,32 @@
     </section>
     {% endif %}
     <!-- Projects Area End -->
-
+    <!-- Advert -->
+    <section class="projects-area mb--100">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+                        <div class="carousel-inner">
+                            <div class="carousel-inner">
+                                <div class="carousel-item active">
+                                    <a href="https://www.example.com" target="_blank">
+                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 1">
+                                    </a>
+                                </div>
+                                <div class="carousel-item">
+                                    <a href="https://www.example.com" target="_blank">
+                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 2">
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Advert -->
     <!-- Mini Blog Area Start -->
     {% if published_events.count > 0 %}
     <section class="mini-blog-area mb--100 mb-sm--50">
@@ -216,10 +241,10 @@
             </div>
             <div class="container">
                 <div class="row mb--10 mb-md--60">
-                    <div class="col-lg-12 order-lg-2">
+                    <div class="col-12 order-lg-2">
                         <div class="row">
                             {% for executive in executives %}
-                            <div class="col-lg-3 col-sm-6 mb--50">
+                            <div class="col-lg-3 col-sm-6 col-md-6 mb--50">
                                 <div class="team-member team-member-style-2">
                                     <div class="team-member__inner">
                                         <figure class="team-member__thumbnail">
@@ -265,6 +290,33 @@
         </section>
     </div>
     {% endif %}
+
+    <!-- Advert -->
+    <section class="projects-area mb--100">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+                        <div class="carousel-inner">
+                            <div class="carousel-inner">
+                                <div class="carousel-item active">
+                                    <a href="https://www.example.com" target="_blank">
+                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 1">
+                                    </a>
+                                </div>
+                                <div class="carousel-item">
+                                    <a href="https://www.example.com" target="_blank">
+                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 2">
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Advert -->
     
 </div>
 <!-- Main Content Wrapper End -->
