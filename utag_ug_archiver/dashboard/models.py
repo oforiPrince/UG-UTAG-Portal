@@ -40,8 +40,14 @@ class News(models.Model):
         return self.title
     
 class Announcement(models.Model):
+    TARGET_GROUP_CHOICES = (
+        ('ALL', 'All'),
+        ('MEMBERS', 'Members'),
+        ('EXECUTIVES', 'Executives'),
+    )
     title = models.CharField(max_length=100)
     content = models.TextField()
+    target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='ALL')
     is_published = models.BooleanField(default=False)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
