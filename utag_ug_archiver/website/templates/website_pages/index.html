@@ -149,6 +149,7 @@
     {% endif %}
     <!-- Projects Area End -->
     <!-- Advert -->
+    {% if active_ads %}
     <section class="projects-area mb--100">
         <div class="container">
             <div class="row">
@@ -156,16 +157,15 @@
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
-                                <div class="carousel-item active">
-                                    <a href="https://www.example.com" target="_blank">
-                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 1">
+                                
+                                {% for ad in active_ads %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ad.target_url}}" target="_blank">
+                                        <img src="{{ad.get_image_url}}" class="d-block w-100" alt="{{ad.advertiser.company_name}}">
                                     </a>
                                 </div>
-                                <div class="carousel-item">
-                                    <a href="https://www.example.com" target="_blank">
-                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 2">
-                                    </a>
-                                </div>
+                                {% endfor %}
+                                    
                             </div>
                         </div>
                     </div>
@@ -173,6 +173,8 @@
             </div>
         </div>
     </section>
+    {% endif %}
+        
     <!-- Advert -->
     <!-- Mini Blog Area Start -->
     {% if published_events.count > 0 %}
@@ -291,7 +293,7 @@
     </div>
     {% endif %}
 
-    <!-- Advert -->
+    {% if active_ads %}
     <section class="projects-area mb--100">
         <div class="container">
             <div class="row">
@@ -299,16 +301,13 @@
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
-                                <div class="carousel-item active">
-                                    <a href="https://www.example.com" target="_blank">
-                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 1">
+                                {% for ad in active_ads %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ad.target_url}}" target="_blank">
+                                        <img src="{{ad.get_image_url}}" class="d-block w-100" alt="{{ad.advertiser.company_name}}">
                                     </a>
                                 </div>
-                                <div class="carousel-item">
-                                    <a href="https://www.example.com" target="_blank">
-                                        <img src="{% static 'website/assets/img/bg/home01_b2.jpg' %}" class="d-block w-100" alt="Advertisement 2">
-                                    </a>
-                                </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -316,7 +315,7 @@
             </div>
         </div>
     </section>
-    <!-- Advert -->
+    {% endif %}         
     
 </div>
 <!-- Main Content Wrapper End -->

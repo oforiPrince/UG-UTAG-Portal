@@ -1,6 +1,8 @@
+from datetime import date
 from django.shortcuts import render
 from django.views import View
 from dashboard.models import Event, News, Executive
+from adverts.models import Advertisement
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 
@@ -16,10 +18,15 @@ class IndexView(View):
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
+        
+        # Advertisement
+        active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today())
+        print(active_ads)
         context = {
             'published_events': published_events,
             'published_news': published_news,
             'executives': executives,
+            'active_ads': active_ads,
         }
         return render(request, self.template_name, context)
     
