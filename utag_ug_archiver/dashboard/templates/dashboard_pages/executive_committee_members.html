@@ -92,36 +92,36 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for executive_committee_member in executive_committee_members %}
+                                    {% for executive in executive_committee_members %}
                                     <tr>
                                         <td>{{forloop.counter}}</td>
-                                        <td>{{executive_committee_member.member.get_full_name}}</td>
-                                        <td>{{executive_committee_member.member.email}}</td>
-                                        <td>{{executive_committee_member.member.gender}}</td>
-                                        <td>{{executive_committee_member.position}}</td>
-                                        <td>{{executive_committee_member.date_appointed}}</td>
+                                        <td>{{executive.member.get_full_name}}</td>
+                                        <td>{{executive.member.email}}</td>
+                                        <td>{{executive.member.gender}}</td>
+                                        <td>{{executive.position}}</td>
+                                        <td>{{executive.date_appointed}}</td>
                                         <td>
-                                            {% if executive_committee_member.date_ended %}
-                                            {{executive_committee_member.date_ended}}
+                                            {% if executive.date_ended %}
+                                            {{executive.date_ended}}
                                             {% else %}
                                             ...
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if executive_committee_member.is_active %}
+                                            {% if executive.is_active %}
                                             <span class="badge bg-warning">Current</span>
                                         {% else %}
                                         <span class="badge bg-danger">Past</span>
                                         {% endif %}
                                     </td>
                                         <td>
-                                            <a href="#" class="btn btn-primary btn-sm view-c_member-details" data-bs-toggle="modal" data-bs-target="#c_memberModal_{{executive_committee_member.id}}">
+                                            <a href="#" class="btn btn-primary btn-sm view-c_member-details" data-bs-toggle="modal" data-bs-target="#c_memberModal_{{executive.id}}">
                                                 <i class="mdi mdi-eye"></i>
                                             </a>                                                                                
-                                            <a href="#" class="btn btn-success btn-sm">
+                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
                                                 <i class="mdi mdi-pen"></i>
                                             </a>
-                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_committee_member' c_member_id=executive_committee_member.id %}')" class="btn btn-danger btn-sm">
+                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_committee_member' c_member_id=executive.id %}')" class="btn btn-danger btn-sm">
                                                 <i class="mdi mdi-delete"></i>
                                               </a>
                                               
@@ -152,9 +152,13 @@
     {% include "includes/modals/c_member_details.html" %}
     {% include "includes/modals/add_new_c_member.html" %}
     {% include "includes/modals/add_existing_member_c.html" %}
+    {% include "includes/modals/edit_c_member.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}
+<link href="{% static 'dashboard/assets/libs/select2/css/select2.min.css' %}" rel="stylesheet" type="text/css">
+<link href="{% static 'dashboard/assets/libs/bootstrap-datepicker/css/bootstrap-datepicker.min.css' %}" rel="stylesheet">
+
  <!-- DataTables -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
  <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
@@ -177,4 +181,10 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script src="{% static 'dashboard/assets/libs/bootstrap-datepicker/js/bootstrap-datepicker.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/select2/js/select2.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/js/pages/form-advanced.init.js' %}"></script>
+
 {% endblock my_scripts %}

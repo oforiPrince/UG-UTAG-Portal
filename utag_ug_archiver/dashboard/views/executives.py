@@ -88,10 +88,10 @@ class NewOfficerCreateView(View):
             
             #Add member to executive
             # Convert date string to datetime object
-            input_date = datetime.strptime(date_appointed, "%d %b, %Y")
+            input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
 
             # Format the date as YYYY-MM-DD
-            formatted_appointed_date = input_date.strftime("%Y-%m-%d")
+            formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
             position = ExecutivePosition.objects.get(name=position)
             executive = Executive.objects.create(
                 member = member,
@@ -106,6 +106,88 @@ class NewOfficerCreateView(View):
             
             messages.success(request, 'Executive Officer created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class ExistingExecutiveOfficerCreateView(View):
+    def post(self, request):
+        member_id = request.POST.get('member_id')
+        position = request.POST.get('position')
+        fb_username = request.POST.get('fb_username')
+        twitter_username = request.POST.get('twitter_username')
+        linkedin_username = request.POST.get('linkedin_username')
+        date_appointed = request.POST.get('date_appointed')
+        member = User.objects.get(id=member_id)
+        executive_exists = Executive.objects.filter(member__id=member_id).exists()
+        if executive_exists:
+            messages.error(request, 'Member already exists in the executive!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        #Check if date appointed is valid
+        if date_appointed == "":
+            messages.error(request, 'Date appointed is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        #Add member to executive
+        # Convert date string to datetime object
+        input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
+        
+        # Format the date as YYYY-MM-DD
+        formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
+        position = ExecutivePosition.objects.get(name=position)
+        executive = Executive.objects.create(
+            member = member,
+            position = position,
+            fb_username = fb_username,
+            twitter_username = twitter_username,
+            linkedin_username = linkedin_username,
+            is_executive_officer = True,
+            date_appointed = formatted_appointed_date,
+        )
+        executive.save()
+        
+        messages.success(request, 'Executive Officer created successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class UpdateExecutiveOfficerView(View):
+    def post(self, request):
+        executive_id = request.POST.get('executive_id')
+        position = request.POST.get('position')
+        fb_username = request.POST.get('fb_username')
+        twitter_username = request.POST.get('twitter_username')
+        linkedin_username = request.POST.get('linkedin_username')
+        date_appointed = request.POST.get('date_appointed')
+        date_ended = request.POST.get('date_ended')
+        executive = Executive.objects.get(id=executive_id)
+        active = request.POST.get('active')
+        #Check if date appointed is valid
+        if date_appointed == "":
+            messages.error(request, 'Date appointed is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        
+        # Update the executive
+        # Convert date string to datetime object
+        input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
+        input_date_ended = datetime.strptime(date_ended, "%d %b, %Y") if date_ended != "" else None
+        
+        
+        # Format the date as YYYY-MM-DD
+        formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
+        formatted_date_ended = input_date_ended.strftime("%Y-%m-%d") if date_ended != "" else None
+        position = ExecutivePosition.objects.get(name=position)
+        executive.position = position
+        executive.fb_username = fb_username
+        executive.twitter_username = twitter_username
+        executive.linkedin_username = linkedin_username
+        executive.date_appointed = formatted_appointed_date
+        executive.date_ended = formatted_date_ended if date_ended != "" else None
+        if active == 'on':
+            executive.is_active = True
+        else:
+            executive.is_active = False
+        executive.save()
+        
+        messages.success(request, 'Executive Officer updated successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 class OfficerDeleteView(View):
     @method_decorator(MustLogin)
@@ -121,13 +203,15 @@ class ExecutiveCommitteeMembersView(View):
     template_name = 'dashboard_pages/executive_committee_members.html'
     @method_decorator(MustLogin)
     def get(self, request):
+        members = User.objects.filter(is_member=True)
         # Get all executives
         executive_committee_members = Executive.objects.filter(position__name__in=officers_position_order+committee_members_position_order, is_active=True)
         print(executive_committee_members)
         # Sort the executives based on the custom order
         executive_committee_members = sorted(executive_committee_members, key=members_custom_order)
         context = {
-            'executive_committee_members' : executive_committee_members
+            'executive_committee_members' : executive_committee_members,
+            'members' : members,
         }
         return render(request, self.template_name, context)
     
@@ -183,10 +267,10 @@ class NewCommitteeMemberCreateView(View):
             
             #Add member to executive
             # Convert date string to datetime object
-            input_date = datetime.strptime(date_appointed, "%d %b, %Y")
+            input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
 
             # Format the date as YYYY-MM-DD
-            formatted_appointed_date = input_date.strftime("%Y-%m-%d")
+            formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
             position = ExecutivePosition.objects.get(name=position)
             executive_member = Executive.objects.create(
                 member = member,
@@ -201,6 +285,88 @@ class NewCommitteeMemberCreateView(View):
             
             messages.success(request, 'Executive Officer created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class ExecutiveCommitteeMemberCreateView(View):
+    def post(self, request):
+        member_id = request.POST.get('member_id')
+        position = request.POST.get('position')
+        fb_username = request.POST.get('fb_username')
+        twitter_username = request.POST.get('twitter_username')
+        linkedin_username = request.POST.get('linkedin_username')
+        date_appointed = request.POST.get('date_appointed')
+        member = User.objects.get(id=member_id)
+        executive_exists = Executive.objects.filter(member__id=member_id).exists()
+        if executive_exists:
+            messages.error(request, 'Member already exists in the executive!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        #Check if date appointed is valid
+        if date_appointed == "":
+            messages.error(request, 'Date appointed is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        #Add member to executive
+        # Convert date string to datetime object
+        input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
+        
+        # Format the date as YYYY-MM-DD
+        formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
+        position = ExecutivePosition.objects.get(name=position)
+        executive = Executive.objects.create(
+            member = member,
+            position = position,
+            fb_username = fb_username,
+            twitter_username = twitter_username,
+            linkedin_username = linkedin_username,
+            is_executive_officer = False,
+            date_appointed = formatted_appointed_date,
+        )
+        executive.save()
+        
+        messages.success(request, 'Executive Officer created successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+class CommitteeMemberUpdateView(View):
+    def post(self, request):
+        executive_id = request.POST.get('executive_id')
+        position = request.POST.get('position')
+        fb_username = request.POST.get('fb_username')
+        twitter_username = request.POST.get('twitter_username')
+        linkedin_username = request.POST.get('linkedin_username')
+        date_appointed = request.POST.get('date_appointed')
+        date_ended = request.POST.get('date_ended')
+        executive = Executive.objects.get(id=executive_id)
+        active = request.POST.get('active')
+        #Check if date appointed is valid
+        if date_appointed == "":
+            messages.error(request, 'Date appointed is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        
+        # Update the executive
+        # Convert date string to datetime object
+        input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
+        input_date_ended = datetime.strptime(date_ended, "%d %b, %Y") if date_ended != "" else None
+        
+        
+        # Format the date as YYYY-MM-DD
+        formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
+        formatted_date_ended = input_date_ended.strftime("%Y-%m-%d") if date_ended != "" else None
+        position = ExecutivePosition.objects.get(name=position)
+        executive.position = position
+        executive.fb_username = fb_username
+        executive.twitter_username = twitter_username
+        executive.linkedin_username = linkedin_username
+        executive.date_appointed = formatted_appointed_date
+        executive.date_ended = formatted_date_ended if date_ended != "" else None
+        if active == 'on':
+            executive.is_active = True
+        else:
+            executive.is_active = False
+        executive.save()
+        
+        messages.success(request, 'Executive Officer updated successfully!')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 class CommitteeMemberDeleteView(View):
     @method_decorator(MustLogin)

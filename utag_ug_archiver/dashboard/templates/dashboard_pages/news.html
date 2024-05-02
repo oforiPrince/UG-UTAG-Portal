@@ -3,15 +3,6 @@
 
 {% block title %}News{% endblock title %}
 
-{% block my_styles %}
- <!-- DataTables -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-
- <!-- Responsive datatable examples -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-{% endblock my_styles %}
-
 {% block content %}
 <div class="page-content">
   <div class="container-fluid">
@@ -97,10 +88,27 @@
 </div>
 {% endblock content %}
 
+{% block my_styles %}
+ <!-- DataTables -->
+ <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+ <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+
+ <!-- Responsive datatable examples -->
+ <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+{% endblock my_styles %}
 {% block my_scripts %}
-<script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
-<script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-<script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
-<script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></scriptHere's the continuation of the updated template:
+    <!-- Required datatable js -->
+    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+
+    <!-- Responsive examples -->
+    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+
+    <!-- Datatable init js -->
+    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+
+    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
+    
+    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
 {% endblock my_scripts %}

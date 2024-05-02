@@ -121,7 +121,7 @@
                                             <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}">
                                                 <i class="mdi mdi-eye"></i>
                                             </a>                                                                                
-                                            <a href="#" class="btn btn-success btn-sm">
+                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
                                                 <i class="mdi mdi-pen"></i>
                                             </a>
                                             <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm">
@@ -153,8 +153,9 @@
     </div>
     <!-- container-fluid -->
     {% include "includes/modals/officer_details.html" %}
-    {% include "includes/modals/add_existing_member_o.html" %}
+    {% include "includes/modals/add_existing_member_e.html" %}
     {% include "includes/modals/add_new_c_member.html" %}
+    {% include "includes/modals/edit_e_member.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}

@@ -92,6 +92,7 @@ class AdminUpdateView(View):
         other_name = request.POST.get('other_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
+        is_active = request.POST.get('is_active')
         
         admin = User.objects.get(id=admin_id)
         if admin.email != email:
