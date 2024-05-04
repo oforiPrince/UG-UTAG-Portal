@@ -32,6 +32,7 @@ class Advertisement(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    clicks = models.PositiveIntegerField(default=0)
     
     def __str__(self):
         return f"{self.advertiser.company_name} - {self.start_date} to {self.end_date}"

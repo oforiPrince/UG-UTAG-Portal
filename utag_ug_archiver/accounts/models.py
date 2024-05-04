@@ -25,6 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     is_admin = models.BooleanField(default=False)
     is_secretary = models.BooleanField(default=False)
+    is_executive = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)

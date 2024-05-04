@@ -40,6 +40,11 @@ class News(models.Model):
         return self.title
     
 class Announcement(models.Model):
+    STATUS_CHOICES = (
+        ('DRAFT', 'Draft'),
+        ('PUBLISHED', 'Published'),
+        ('ARCHIVED', 'Archived'),
+    )
     TARGET_GROUP_CHOICES = (
         ('ALL', 'All'),
         ('MEMBERS', 'Members'),
@@ -48,13 +53,21 @@ class Announcement(models.Model):
     title = models.CharField(max_length=100)
     content = models.TextField()
     target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='ALL')
-    is_published = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return self.title
+    
+class ReadAnnouncement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE)
+    date_read = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.announcement.title}"
 
 
 class ExecutivePosition(models.Model):

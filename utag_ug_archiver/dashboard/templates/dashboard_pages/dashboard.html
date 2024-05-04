@@ -162,6 +162,8 @@
         <!-- end row -->
 
         <div class="row">
+            
+            {% if published_events %}
             <div class="col-xl-6">
                 <div class="card">
                     <div class="card-body">
@@ -181,7 +183,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>  
+            {% endif %}
+            
+            {% if published_events %}
             <div class="col-xl-6">
                 <div class="card">
                     <div class="card-body">
@@ -202,61 +207,14 @@
                     </div>
                 </div>
             </div>
-
-            <!-- <div class="col-xl-6">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <div class="py-4">
-                                    <i class="ion ion-ios-checkmark-circle-outline display-4 text-success"></i>
-
-                                    <h5 class="text-primary mt-4">Order Successful</h5>
-                                    <p class="text-muted">Thanks you so much for your order.</p>
-                                    <div class="mt-4">
-                                        <a href="" class="btn btn-primary btn-sm">Chack Status</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card bg-primary">
-                            <div class="card-body">
-                                <div class="text-center text-white py-4">
-                                    <h5 class="mb-4 text-white-50 font-size-14">Top Product Sale</h5>
-                                    <h1>1452</h1>
-                                    <p class="font-size-14 pt-1">Computer</p>
-                                    <p class="text-white-50 mb-0">At solmen va esser necessi far uniform myth... <a href="#" class="text-white">View more</a></p>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <h4 class="card-title mb-4">Announcements</h4>
-                                <p class="text-muted mb-3 pb-4">"The leadership of UTAG-UG will hold a a virtual meeting on this Tuesday, All executive officers and executive committee members are expected to join. Thank You."</p>
-                                <div class="float-end mt-2">
-                                    <a href="#" class="text-primary">
-                                            <i class="mdi mdi-arrow-right h5"></i>
-                                        </a>
-                                </div>
-                                <h6 class="mb-0"><img src="{% static 'dashboard/assets/images/users/profile.png' %}" alt="" class="avatar-sm rounded-circle me-2"> Cynthia Asare</h6>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> -->
+            {% endif %}
         </div>
         <!-- end row -->
 
         <div class="row">
-            <div class="col-xl-8">
+            
+            {% if recent_added_documents and user.is_admin %}
+            <div class="col-xl-6">
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Recently Added Documents</h4>
@@ -300,7 +258,46 @@
                     </div>
                 </div>
             </div>
-            <div class="col-xl-4">
+                
+            {% endif %}
+            
+            {% if active_adverts and user.is_admin%}
+            <div class="col-xl-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Active Adverts</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-centered table-nowrap mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">(#)</th>
+                                        <th scope="col">Company Name</th>
+                                        <th scope="col">Start Date</th>
+                                        <th scope="col">End Date</th>
+                                        <th scope="col">Click Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ad in active_adverts %}
+                                    <tr>
+                                        <th scope="row">{{forloop.counter}}</th>
+                                        <td>
+                                            {{ad.advertiser.company_name}}
+                                        </td>
+                                        <td>{{ad.start_date |date:'m/d/y'}}</td>
+                                        <td>{{ad.end_date |date:'m/d/y'}}</td>
+                                        <td>{{ad.clicks}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+                
+            <!-- <div class="col-xl-4">
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Chat</h4>
@@ -390,7 +387,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
         </div>
         <!-- end row -->
     </div>

@@ -4,7 +4,6 @@ app_name = 'dashboard'
 
 urlpatterns =[
     path('',views.DashboardView.as_view(), name='dashboard'),
-    path('try',views.TryView.as_view(), name='try'),
 ]
 
 #For account management

@@ -78,34 +78,37 @@
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item noti-icon waves-effect" id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="mdi mdi-bell-outline"></i>
-                        <span class="badge bg-danger rounded-pill">3</span>
+                        <span class="badge bg-danger rounded-pill">{{announcement_count}}</span>
                     </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-notifications-dropdown">
                     <div class="p-3">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h5 class="m-0 font-size-16"> Notifications (258) </h5>
+                                <h5 class="m-0 font-size-16"> Notifications ({{announcement_count}}) </h5>
                             </div>
                         </div>
                     </div>
                     <div data-simplebar style="max-height: 230px;">
+                        <!-- item-->
+                        {% for announcement in new_announcements %}
                         <a href="" class="text-reset notification-item">
                             <div class="d-flex">
                                 <div class="flex-shrink-0 me-3">
                                     <div class="avatar-xs">
                                         <span class="avatar-title bg-success rounded-circle font-size-16">
-                                                <i class="mdi mdi-cart-outline"></i>
+                                                <i class="mdi mdi-bell-outline"></i>
                                             </span>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1">We have a meeting tomorrow</h6>
+                                    <h6 class="mb-1">{{announcement.title}}</h6>
                                     <div class="font-size-12 text-muted">
-                                        <p class="mb-1">Dummy text of the printing and typesetting industry.</p>
+                                        <p class="mb-1">{{announcement.content|truncatewords:10}}</p>
                                     </div>
                                 </div>
                             </div>
                         </a>
+                        {% endfor %}
                     </div>
                     <div class="p-2 border-top">
                         <div class="d-grid">
