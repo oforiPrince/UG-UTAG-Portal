@@ -67,6 +67,13 @@ urlpatterns += [
     # path('announcements/delete/<int:announcement_id>',views.AnnouncementDeleteView.as_view(), name='delete_announcement'),
 ]
 
+#For Adverts
+urlpatterns +={
+    path('adverts',views.AdvertsView.as_view(), name='adverts'),
+    path('plans',views.AdvertPlansView.as_view(), name='plans'),
+    path('companies',views.CompaniesView.as_view(), name='companies'),
+}
+
 #For User Profile management
 urlpatterns += [
     path('profile',views.ProfileView.as_view(), name='profile'),

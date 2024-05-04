@@ -1,7 +1,8 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Advertisements{% endblock title %}
+{% block title %}Companies{% endblock title %}
+
 
 {% block content %}
 <div class="page-content">
@@ -12,7 +13,7 @@
           <div class="card-body">
             <div class="row align-items-center">
               <div class="col-md-8">
-                <h4 class="card-title">Advertisements</h4>
+                <h4 class="card-title">Companies</h4>
               </div>
               {% if user.is_admin or user.is_superuser or user.is_secretary %}
               <div class="col-md-4">
@@ -29,38 +30,44 @@
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Image</th>
-                    <th>Company Name</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Created At</th>
+                    <th>Name</th>
+                    <th>Contact Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Created By</th>
+                    <th>Created at</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for ad in adverts %}
+                  {% for company in companies %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
+                    <td>{{ company.name }}</td>
+                    <td>{{ company.contact_name }}</td>
+                    <td>{{ company.email }}</td>
+                    <td>{{ company.phone_number }}</td>
+                    <td>{{ company.created_by }}</td>
+                    <td>{{ company.created_at|date:"d M Y" }}</td>
+                    {% if company.status == "active" %}
                     <td>
-                      <img src="{{ ad.get_image_url }}" alt="{{ad.advertiser.company_name}}" class="img-fluid" width="80" height="60">
+                      <span class="badge bg-success">Active</span>
                     </td>
-                    <td>{{ ad.advertiser.company_name }}</td>
-                    <td>{{ ad.start_date  }}</td>
-                    <td>{{ ad.end_date }}</td>
-                    <td>{{ ad.created_at|date:"d M Y" }}</td>
+                    {% else %}
                     <td>
-                      <span class="badge bg-{% if ad.status == 'Published' %}success{% elif ad.status == 'Draft' %}warning{% elif ad.status == 'Active' %}primary{% else %}danger{% endif %}">{{ ad.status }}</span>
+                      <span class="badge bg-warning">Inactive</span>
                     </td>
+                    {% endif %}
                     <td>
                       <a href="#" class="btn btn-primary btn-sm">
                         <i class="mdi mdi-eye"></i>
                       </a>
-                      {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisementsModal_{{ Advertisements.id }}">
+                      {% if user.is_admin or user.is_superuser%}
+                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editcompanyModal_{{ company.id }}">
                         <i class="mdi mdi-pen"></i>
                       </a>
-                      <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this Advertisements?');">
+                      <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this company?');">
                         <i class="mdi mdi-delete"></i>
                       </a>
                       {% endif %}
@@ -76,11 +83,6 @@
     </div>
   </div>
   
-  {% comment %}
-  
-{% include "includes/modals/add_advertisements.html" %}
-{% include "includes/modals/edit_advertisements.html" %}
-  {% endcomment %}
 </div>
 {% endblock content %}
 
