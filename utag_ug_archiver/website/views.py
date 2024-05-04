@@ -1,4 +1,5 @@
 from datetime import date
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 from dashboard.models import Event, News, Executive
@@ -111,3 +112,9 @@ class ExecutiveCommitteeMembersView(View):
             'executives': executives,
         }
         return render(request, self.template_name, context)
+    
+class AddClick(View):
+    def get(self, request, pk):
+        advert = Advertisement.objects.get(pk=pk)
+        advert.clicked()
+        return JsonResponse({'message': 'success'})

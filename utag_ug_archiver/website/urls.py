@@ -11,4 +11,5 @@ urlpatterns = [
     path('news/<int:news_id>/', views.NewsDetailView.as_view(), name='news_detail'),
     path('executive_officers/', views.ExecutiveOfficersView.as_view(), name='executive_officers'),
     path('executive_committee_members/', views.ExecutiveCommitteeMembersView.as_view(), name='executive_committee_members'),
+    path('add_click/<int:pk>/', views.AddClick.as_view(), name='add_click'),
 ]

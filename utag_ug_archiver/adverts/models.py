@@ -34,6 +34,10 @@ class Advertisement(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     clicks = models.PositiveIntegerField(default=0)
     
+    def clicked(self):
+        self.clicks += 1
+        self.save()
+    
     def __str__(self):
         return f"{self.advertiser.company_name} - {self.start_date} to {self.end_date}"
     

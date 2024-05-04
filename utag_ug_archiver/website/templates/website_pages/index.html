@@ -159,11 +159,11 @@
                             <div class="carousel-inner">
                                 
                                 {% for ad in active_ads %}
-                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
-                                    <a href="{{ad.target_url}}" target="_blank">
-                                        <img src="{{ad.get_image_url}}" class="d-block w-100" alt="{{ad.advertiser.company_name}}">
-                                    </a>
-                                </div>
+                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                        </a>
+                                    </div>
                                 {% endfor %}
                                     
                             </div>
@@ -301,13 +301,13 @@
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
-                                {% for ad in active_ads %}
+                            {% for ad in active_ads %}
                                 <div class="carousel-item {% if forloop.first %} active {% endif %}">
-                                    <a href="{{ad.target_url}}" target="_blank">
-                                        <img src="{{ad.get_image_url}}" class="d-block w-100" alt="{{ad.advertiser.company_name}}">
+                                    <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                        <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
                                     </a>
                                 </div>
-                                {% endfor %}
+                            {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -317,6 +317,8 @@
     </section>
     {% endif %}         
     
+    <!-- Custom JavaScript -->
+
 </div>
 <!-- Main Content Wrapper End -->
 {% endblock content %}

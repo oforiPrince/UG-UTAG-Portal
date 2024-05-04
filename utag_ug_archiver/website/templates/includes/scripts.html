@@ -28,3 +28,28 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.advertisement-link').on('click', function(event) {
+                event.preventDefault();  // Prevent the default link behavior
+    
+                // Extract advertisement ID from the data attribute
+                var adId = $(this).data('ad-id');
+                var $clickedAd = $(this);
+                // Make AJAX request to the AddClick endpoint
+                $.ajax({
+                    type: 'GET',
+                    url: '/add_click/' + adId + '/',  // Replace with your endpoint URL
+                    success: function(data) {
+                        var targetUrl = $clickedAd.attr('href');
+                        window.open(targetUrl, '_blank');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error adding click:', error);
+                    }
+                });
+            });
+        });
+    </script>
