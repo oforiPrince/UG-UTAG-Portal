@@ -16,9 +16,9 @@ class InternalDocumentsView(View):
     @method_decorator(MustLogin)
     def get(self, request):
         #Get all internal documents
-        internal_documents = Document.objects.filter(category='internal')
+        documents = Document.objects.filter(category='internal')
         context = {
-            'internal_documents' : internal_documents
+            'documents' : documents
         }
         return render(request, self.template_name, context)
     
@@ -27,9 +27,9 @@ class ExternalDocumentsView(View):
     @method_decorator(MustLogin)
     def get(self, request):
         #Get all external documents
-        external_documents = Document.objects.filter(category='external')
+        documents = Document.objects.filter(category='external')
         context = {
-            'external_documents' : external_documents
+            'documents' : documents
         }
         return render(request, self.template_name, context)
 
@@ -73,12 +73,7 @@ class DeleteFileView(View):
         except File.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'File not found'})
     
-class UpdateInternalDocumentView(View):
-    template_name = 'dashboard_pages/update_internal_files.html'
-    @method_decorator(MustLogin)
-    def get(self, request):
-        return render(request, self.template_name)
-    
+class UpdateFileView(View):    
     @method_decorator(MustLogin)
     def post(self, request):
         #Get the form data
@@ -109,7 +104,7 @@ class UpdateInternalDocumentView(View):
         #Save the document
         document.save()
         messages.success(request, 'Document updated successfully')
-        return redirect('dashboard:internal_documents')        
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))       
     
 class AddExternalDocumentView(View):
     template_name = 'dashboard_pages/add_external_files.html'

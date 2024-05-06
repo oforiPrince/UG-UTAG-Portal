@@ -42,7 +42,7 @@
 
 
                 <tbody>
-                  {% for document in internal_documents %}
+                  {% for document in documents %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ document.title }}</td>
@@ -79,8 +79,8 @@
     </div>
   </div>
   {% include 'includes/modals/add_internal_files.html' %}
-  {% include 'includes/modals/edit_internal_files.html' %}
-  {% include 'includes/modals/internal_file_details.html' %}
+  {% include 'includes/modals/edit_files.html' %}
+  {% include 'includes/modals/file_details.html' %}
 </div>
 {% endblock content %}
 {% block my_styles %}

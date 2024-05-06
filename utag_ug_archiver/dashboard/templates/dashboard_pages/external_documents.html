@@ -41,7 +41,7 @@
 
 
                 <tbody>
-                  {% for document in external_documents %}
+                  {% for document in documents %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ document.title }}</td>
@@ -56,14 +56,11 @@
                       <span class="badge bg-success">{{document.status}}</span>
                     </td>
                     <td>
-                      <a href="#" class="btn btn-primary btn-sm">
-                          <i class="mdi mdi-eye"></i>
-                      </a>
-                      <a href="#" class="btn btn-secondary btn-sm">
-                          <i class="mdi mdi-comment"></i>
+                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#documentDetailModal_{{ document.id }}">
+                        <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                      <a href="#" class="btn btn-success btn-sm">
+                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editDocumentModal_{{ document.id }}">
                           <i class="mdi mdi-pen"></i>
                       </a>
                       <a href="#" class="btn btn-danger btn-sm">
@@ -81,6 +78,8 @@
     </div>
   </div>
   {% include 'includes/modals/add_external_files.html' %}
+  {% include 'includes/modals/edit_files.html' %}
+  {% include 'includes/modals/file_details.html' %}
 </div>
 {% endblock content %}
 {% block my_styles %}
