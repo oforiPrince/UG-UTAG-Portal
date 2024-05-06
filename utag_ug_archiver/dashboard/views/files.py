@@ -47,7 +47,7 @@ class AddInternalDocumentView(View):
         receiver = request.POST.get('receiver')
         date = request.POST.get('date')
         description = request.POST.get('description')
-        files = request.FILES.getlist('file')
+        files = request.FILES.getlist('files')
         category = 'internal'
         #Create the document
         document = Document.objects.create(title=title, description=description, category=category, sender=sender, receiver=receiver, uploaded_by=request.user, date=date)
@@ -76,7 +76,7 @@ class AddExternalDocumentView(View):
         receiver = request.POST.get('receiver')
         date = request.POST.get('date')
         description = request.POST.get('description')
-        files = request.FILES.getlist('file')
+        files = request.FILES.getlist('files')
         category = 'external'
         #Create the document
         document = Document.objects.create(title=title, description=description, category=category, sender=sender, receiver=receiver, uploaded_by=request.user, date=date)

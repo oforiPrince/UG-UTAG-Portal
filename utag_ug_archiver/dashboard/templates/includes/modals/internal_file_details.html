@@ -1,0 +1,77 @@
+{% for document in internal_documents %}
+<!-- Modal for Document Detail -->
+<div class="modal fade" id="documentDetailModal_{{ document.id }}" tabindex="-1" role="dialog" aria-labelledby="documentDetailModal_{{ document.id }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ document.title }}</h5>
+                <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Uploaded By:</strong> {{ document.uploaded_by.get_full_name }}</p>
+                        <p><strong>Category:</strong> {{ document.get_category_display }}</p>
+                        <p><strong>Date:</strong> {{ document.date }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Sender:</strong> {{ document.sender }}</p>
+                        <p><strong>Receiver:</strong> {{ document.receiver }}</p>
+                        <p><strong>Status:</strong> {{ document.get_status_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-title">
+                                <h5>Title</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>{{ document.title }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-title">
+                                <h5>Description</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>{{ document.description }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    {% for file in document.files.all %}
+                    <div class="col-md-4 mb-2">
+                        <p><strong>File Name:</strong> {{ file.file.name }}</p>
+                        {% if file.file.name|lower|slice:'-4:' == ".png" or file.file.name|lower|slice:'-4:' == ".jpg" or file.file.name|lower|slice:'-5:' == ".jpeg" or file.file.name|lower|slice:'-4:' == ".gif" %}
+                            <div class="card" style="width: 18rem;">
+                                <img src="{{ file.file.url }}" class="card-img-top" alt="{{ file.file.name }}">
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning" role="alert">
+                                <i class="mdi mdi-alert"></i> No Preview Available
+                            </div>
+                        {% endif %}
+                        <!-- View button -->
+                        <a href="{{ file.file.url }}" class="btn btn-success" target="_blank">View</a>
+                        <a href="{{ file.file.url }}" class="btn btn-primary" download>Download</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                  </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
