@@ -82,25 +82,34 @@ class UpdateInternalDocumentView(View):
     @method_decorator(MustLogin)
     def post(self, request):
         #Get the form data
+        document_id = request.POST.get('document_id')
+        document = Document.objects.get(pk=document_id)
         title = request.POST.get('title')
         sender = request.POST.get('sender')
         receiver = request.POST.get('receiver')
         date = request.POST.get('date')
         description = request.POST.get('description')
         files = request.FILES.getlist('files')
-        category = 'internal'
-        #Create the document
-        document = Document.objects.create(title=title, description=description, category=category, sender=sender, receiver=receiver, uploaded_by=request.user, date=date)
+        
+        #Update the document
+        document.title = title
+        document.sender = sender
+        document.receiver = receiver
+        document.date = date if date else document.date
+        document.description = description
+        document.save()
+        
         # Create the file
-        for file in files:
-            file = File.objects.create(file=file)
-            file.save()
-            document.files.add(file)
-
+        if files:
+            for file in files:
+                file = File.objects.create(file=file)
+                file.save()
+                document.files.add(file)
+        
         #Save the document
         document.save()
-        messages.success(request, 'Document added successfully')
-        return redirect('dashboard:internal_documents')
+        messages.success(request, 'Document updated successfully')
+        return redirect('dashboard:internal_documents')        
     
 class AddExternalDocumentView(View):
     template_name = 'dashboard_pages/add_external_files.html'

@@ -11,6 +11,7 @@
             <div class="modal-body">
                 <form method="POST" action="{% url 'dashboard:update_internal_document' %}" enctype="multipart/form-data">
                     {% csrf_token %}
+                    <input type="hidden" name="document_id" value="{{ document.id }}">
                     <div class="form-group mt-5 mb-5">
                         <label for="title">Title</label>
                         <input type="text" class="form-control" id="title" name="title" value="{{ document.title }}" required>
@@ -24,8 +25,8 @@
                         <input type="text" class="form-control" id="receiver" name="receiver" value="{{ document.receiver }}" required>
                     </div>
                     <div class="form-group mb-2">
-                        <label for="date">Date</label>
-                        <input type="date" class="form-control" id="date" name="date" value="{{ document.date }}" required>
+                        <label for="date">Date: </label><span class="text-success"> {{ document.date }}</span>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ document.date }}">
                     </div>
                     {% if document.files.all %}
                     <p class="text-success">Existing Files</p>
@@ -57,7 +58,7 @@
 
                     <div class="form-group mb-2">
                         <label for="files">Files</label>
-                        <input type="file" class="form-control-file" id="files" name="files" multiple required>
+                        <input type="file" class="form-control-file" id="files" name="files" multiple>
                     </div>
                     <div class="form-group mb-2">
                         <label for="text_area">Description</label>
