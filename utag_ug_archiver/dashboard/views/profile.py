@@ -64,13 +64,8 @@ class ProfileView(View):
             
         messages.info(request, "Profile Updated Successfully")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-            
-    
-
-
 
 class ChangeProfilePicView(View):    
-    @method_decorator(MustLogin)
     @method_decorator(MustLogin)
     def get(self, request):
         return redirect('dashboard:profile')

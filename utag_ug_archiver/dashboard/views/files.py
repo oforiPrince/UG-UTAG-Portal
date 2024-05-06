@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect, JsonResponse
 
 
-from dashboard.models import Document, File
+from dashboard.models import Announcement, Document, File
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -17,6 +17,16 @@ class InternalDocumentsView(View):
     def get(self, request):
         #Get all internal documents
         documents = Document.objects.filter(category='internal')
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         context = {
             'documents' : documents
         }
@@ -28,6 +38,16 @@ class ExternalDocumentsView(View):
     def get(self, request):
         #Get all external documents
         documents = Document.objects.filter(category='external')
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         context = {
             'documents' : documents
         }

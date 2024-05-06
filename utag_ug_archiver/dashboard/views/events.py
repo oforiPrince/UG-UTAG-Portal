@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 
-from dashboard.models import Event
+from dashboard.models import Announcement, Event
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -17,16 +17,24 @@ class EventsView(View):
     def get(self, request):
         #Get all events
         events = Event.objects.all()
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         context = {
-            'events' : events
+            'events' : events,
+            'announcement_count' : announcement_count,
+            'new_announcements' : new_announcements
         }
         return render(request, self.template_name, context)
     
 class EventCreateView(View):
-    @method_decorator(MustLogin)
-    def get(self, request):
-        return render(request, self.template_name)
-    
     @method_decorator(MustLogin)
     def post(self, request):
         user = request.user
@@ -55,15 +63,7 @@ class EventCreateView(View):
         messages.info(request, "Event Created Successfully")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
-class EventUpdateView(View):
-    @method_decorator(MustLogin)
-    def get(self, request, pk):
-        event = Event.objects.get(pk=pk)
-        context = {
-            'event' : event
-        }
-        return render(request, self.template_name, context)
-    
+class EventUpdateView(View):   
     @method_decorator(MustLogin)
     def post(self, request, *args, **kwargs):
         event_id = kwargs.get('event_id')
