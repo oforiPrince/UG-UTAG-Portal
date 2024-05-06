@@ -1,4 +1,5 @@
-{% extends "base/dashboard_base.html" %} {% load static %} 
+{% extends "base/dashboard_base.html" %} 
+{% load static %} 
 {% block title %}Internal Documents{% endblock title %} 
 {% block content %}
 <div class="page-content">
@@ -14,9 +15,9 @@
             {% if user.is_admin or user.is_superuser or user.is_secretary %}
             <div class="col-md-4">
               <div class="float-end d-none d-md-block">
-                <button id="openModalButton" class="btn btn-primary" type="button">
+                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">
                   <i class="mdi mdi-plus me-1"></i> Add
-                </button>
+              </button>
               </div>
             </div>
             {% endif %}
@@ -60,7 +61,7 @@
                         <i class="mdi mdi-eye"></i>
                     </a>
                     {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                    <a href="#" class="btn btn-success btn-sm">
+                    <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editDocumentModal_{{ document.id }}">
                         <i class="mdi mdi-pen"></i>
                     </a>
                     <a href="#" class="btn btn-danger btn-sm">
@@ -78,6 +79,7 @@
     </div>
   </div>
   {% include 'includes/modals/add_internal_files.html' %}
+  {% include 'includes/modals/edit_internal_files.html' %}
   {% include 'includes/modals/internal_file_details.html' %}
 </div>
 {% endblock content %}
