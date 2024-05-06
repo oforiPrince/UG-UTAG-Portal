@@ -12,7 +12,7 @@ from django.http import HttpResponseRedirect
 
 
 from accounts.models import User
-from dashboard.models import Executive, ExecutivePosition
+from dashboard.models import Announcement, Executive, ExecutivePosition
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
 
@@ -30,9 +30,21 @@ class ExecutiveOfficersView(View):
         
         #Get all members
         members = User.objects.filter(is_member=True)
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         context = {
             'executive_officers' : executive_officers,
             'members' : members,
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count,
         }
         return render(request, self.template_name, context)
 
@@ -206,12 +218,23 @@ class ExecutiveCommitteeMembersView(View):
         members = User.objects.filter(is_member=True)
         # Get all executives
         executive_committee_members = Executive.objects.filter(position__name__in=officers_position_order+committee_members_position_order, is_active=True)
-        print(executive_committee_members)
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         # Sort the executives based on the custom order
         executive_committee_members = sorted(executive_committee_members, key=members_custom_order)
         context = {
             'executive_committee_members' : executive_committee_members,
             'members' : members,
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count,
         }
         return render(request, self.template_name, context)
     

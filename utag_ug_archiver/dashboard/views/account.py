@@ -15,7 +15,7 @@ from django.http import HttpResponseRedirect
 
 
 from accounts.models import User
-from dashboard.models import Document
+from dashboard.models import Announcement, Document
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members
 
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -27,11 +27,22 @@ class AdminListView(View):
         admins = User.objects.filter(is_admin = True).order_by('first_name')
         total_internal_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
-        # total_executives = 
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]# total_executives = 
         context = {
             'admins' : admins,
             'total_internal_documents' : total_external_documents,
-            'total_internal_documents' : total_internal_documents
+            'total_internal_documents' : total_internal_documents,
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count
         }
         return render(request, self.template_name, context)
     
@@ -243,7 +254,19 @@ class MemberListView(View):
     @method_decorator(MustLogin)
     def get(self, request):
         members = User.objects.filter(is_member = True).order_by('first_name')
+        announcement_count = 0
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         context = {
-            'members' : members
+            'members' : members,
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count
         }
         return render(request, self.template_name, context)
