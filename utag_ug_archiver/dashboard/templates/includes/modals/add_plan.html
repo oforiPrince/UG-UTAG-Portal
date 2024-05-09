@@ -12,7 +12,7 @@
                     ></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="#">
+                <form method="POST" action="{% url 'dashboard:create_plan' %}">
                     {% csrf_token %}
                     <div class="form-group mb-3">
                         <label for="name">Name</label>
@@ -22,20 +22,22 @@
                         <label for="price">Price</label>
                         <input type="number" class="form-control" id="price" name="price" step="0.01" required>
                     </div>
-                    <div class="form-group mb-3">
-                        <label for="duration_in_days">Duration (in days)</label>
-                        <input type="number" class="form-control" id="duration_in_days" name="duration_in_days" required>
+                    <div class="row mb-3">
+                        <div class="form-group col-md-6">
+                            <label for="duration_in_days">Duration (in days)</label>
+                            <input type="number" class="form-control" id="duration_in_days" name="duration_in_days" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="status">Status</label>
+                            <select class="form-control" id="announcement_status" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group mb-3">
                         <label for="description">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="status">Status</label>
-                        <select class="form-control" id="status" name="status" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">

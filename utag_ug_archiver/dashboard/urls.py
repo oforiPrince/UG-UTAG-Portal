@@ -72,7 +72,13 @@ urlpatterns += [
 urlpatterns +={
     path('adverts',views.AdvertsView.as_view(), name='adverts'),
     path('plans',views.AdvertPlansView.as_view(), name='plans'),
+    path('plans/create',views.AdvertPlanCreateView.as_view(), name='create_plan'),
+    path('plans/update/',views.AdvertPlanUpdateView.as_view(), name='update_plan'),
+    path('plans/delete/<int:plan_id>',views.AdvertPlanDeleteView.as_view(), name='delete_plan'),
     path('companies',views.CompaniesView.as_view(), name='companies'),
+    path('companies/create',views.CompanyCreateView.as_view(), name='create_company'),
+    path('companies/update/',views.CompanyUpdateView.as_view(), name='update_company'),
+    path('companies/delete/<int:company_id>',views.CompanyDeleteView.as_view(), name='delete_company'),
 }
 
 #For User Profile management

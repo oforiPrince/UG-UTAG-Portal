@@ -18,7 +18,7 @@
               {% if user.is_admin or user.is_superuser or user.is_secretary %}
               <div class="col-md-4">
                 <div class="float-end d-none d-md-block">
-                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addModal">
+                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createAdvertisingCompanyModal">
                     <i class="mdi mdi-plus-circle me-1"></i> Add
                   </button>
                 </div>
@@ -50,14 +50,14 @@
                     <td>{{ company.created_by }}</td>
                     <td>{{ company.created_at|date:"d M Y" }}</td>
                     <td>
-                      <a href="#" class="btn btn-primary btn-sm">
+                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertisingCompanyDetailsModal_{{ company.id }}">
                         <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser%}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editcompanyModal_{{ company.id }}">
+                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisingCompanyModal_{{ company.id }}">
                         <i class="mdi mdi-pen"></i>
                       </a>
-                      <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this company?');">
+                      <a href="{% url 'dashboard:delete_company' company.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this company?');">
                         <i class="mdi mdi-delete"></i>
                       </a>
                       {% endif %}
@@ -72,7 +72,9 @@
       </div>
     </div>
   </div>
-  
+  {% include 'includes/modals/add_company.html' %}
+  {% include 'includes/modals/edit_company.html' %}
+  {% include 'includes/modals/company_details.html' %}
 </div>
 {% endblock content %}
 

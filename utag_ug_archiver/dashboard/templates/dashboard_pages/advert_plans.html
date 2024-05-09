@@ -42,7 +42,7 @@
                   <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ plan.name }}</td>
-                    <td>{{ plan.price }}</td>
+                    <td>GHC {{ plan.price }}</td>
                     <td>{{ plan.duration_in_days }}</td>
                     <td>{{ plan.created_at|date:"d M Y" }}</td>
                     {% if plan.status == "active" %}
@@ -55,14 +55,14 @@
                     </td>
                     {% endif %}
                     <td class="text-center">
-                      <a href="#" class="btn btn-primary btn-sm">
+                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertPlanDetailsModal_{{ plan.id }}">
                         <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editplanModal_{{ plan.id }}">
+                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertPlanModal_{{ plan.id }}">
                         <i class="mdi mdi-pen"></i>
                       </a>
-                      <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this plan?');">
+                      <a href="{% url 'dashboard:delete_plan' plan.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this plan?');">
                         <i class="mdi mdi-delete"></i>
                       </a>
                       {% endif %}
@@ -78,6 +78,8 @@
     </div>
   </div>
   {% include 'includes/modals/add_plan.html' %}
+  {% include 'includes/modals/plan_details.html' %}
+  {% include 'includes/modals/edit_plan.html' %}
   
 </div>
 {% endblock content %}
