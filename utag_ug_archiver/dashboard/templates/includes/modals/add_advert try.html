@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- HTML -->
+<form id="imageUploadForm" enctype="multipart/form-data">
+    <input type="file" id="imageInput" accept="image/*" onchange="validateImage()">
+    <span id="errorMessage" style="color: red;"></span>
+</form>
+
+</body>
+<script>
+    // JavaScript
+function validateImage() {
+    var input = document.getElementById('imageInput');
+    var file = input.files[0];
+
+    // Check if a file is selected
+    if (file) {
+        // Create a new FileReader object
+        var reader = new FileReader();
+
+        // Set up the onload event handler
+        reader.onload = function(e) {
+            var img = new Image();
+            img.src = e.target.result;
+
+            // Check the dimensions of the image
+            img.onload = function() {
+                var width = this.width;
+                var height = this.height;
+
+                // Check if width and height meet the specified criteria
+                if (width === 1920 && height === 490) {
+                    // Image dimensions are valid, proceed with upload
+                    document.getElementById('errorMessage').textContent = '';
+                    document.getElementById('imageUploadForm').submit();
+                } else {
+                    // Image dimensions are not valid, display error message
+                    document.getElementById('errorMessage').textContent = 'Image dimensions must be ' + 1920 + 'x' + 490 + ' pixels.';
+                }
+            };
+        };
+
+        // Read the selected file as a data URL
+        reader.readAsDataURL(file);
+    }
+}
+
+</script>
+</html>

@@ -15,8 +15,12 @@ class AdvertsView(View):
     def get(self, request):
         #Get all adverts
         adverts = Advertisement.objects.all()
+        advertisers = Advertiser.objects.all()
+        active_plans = AdvertPlan.objects.filter(status='active')
         context = {
-            'adverts' : adverts
+            'adverts' : adverts,
+            'advertisers' : advertisers,
+            'plans' : active_plans
         }
         return render(request, self.template_name, context)
     
@@ -138,14 +142,16 @@ class CompanyCreateView(View):
     @method_decorator(MustLogin)
     def post(self, request):
         company_name = request.POST.get('company_name')
-        company_email = request.POST.get('company_email')
-        company_phone = request.POST.get('company_phone')
-        company_address = request.POST.get('company_address')
+        contact_name = request.POST.get('contact_name')
+        company_email = request.POST.get('email')
+        company_phone = request.POST.get('phone_number')
+        company_address = request.POST.get('address')
         company = Advertiser.objects.create(
             company_name = company_name,
-            company_email = company_email,
-            company_phone = company_phone,
-            company_address = company_address
+            contact_name = contact_name,
+            email = company_email,
+            phone_number = company_phone,
+            address = company_address
         )
         messages.success(request, 'Company added successfully')
         return redirect('dashboard:companies')
@@ -155,14 +161,16 @@ class CompanyUpdateView(View):
     def post(self, request):
         company_id = request.POST.get('company_id')
         company_name = request.POST.get('company_name')
-        company_email = request.POST.get('company_email')
-        company_phone = request.POST.get('company_phone')
-        company_address = request.POST.get('company_address')
+        contact_name = request.POST.get('contact_name')
+        company_email = request.POST.get('email')
+        company_phone = request.POST.get('phone_number')
+        company_address = request.POST.get('address')
         company = Advertiser.objects.get(id=company_id)
         company.company_name = company_name
-        company.company_email = company_email
-        company.company_phone = company_phone
-        company.company_address = company_address
+        company.contact_name = contact_name
+        company.email = company_email
+        company.phone_number = company_phone
+        company.address = company_address
         company.save()
         messages.success(request, 'Company updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))

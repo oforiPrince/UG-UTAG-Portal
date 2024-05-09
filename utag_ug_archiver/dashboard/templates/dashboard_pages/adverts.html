@@ -17,7 +17,7 @@
               {% if user.is_admin or user.is_superuser or user.is_secretary %}
               <div class="col-md-4">
                 <div class="float-end d-none d-md-block">
-                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addModal">
+                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createAdvertModal">
                     <i class="mdi mdi-plus-circle me-1"></i> Add
                   </button>
                 </div>
@@ -78,9 +78,9 @@
     </div>
   </div>
   
-  {% comment %}
   
-{% include "includes/modals/add_advertisements.html" %}
+  {% include "includes/modals/add_advert.html" %}
+  {% comment %}
 {% include "includes/modals/edit_advertisements.html" %}
   {% endcomment %}
 </div>
@@ -110,4 +110,60 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>    
+    <script>
+      // JavaScript for Dimension Validation and Image Preview
+        function validateImage() {
+          var input = document.getElementById('imageInput');
+          var file = input.files[0];
+
+          // Check if a file is selected
+          if (file) {
+              // Create a new FileReader object
+              var reader = new FileReader();
+
+              // Set up the onload event handler
+              reader.onload = function(e) {
+                  var img = new Image();
+                  img.src = e.target.result;
+
+                  // Check the dimensions of the image
+                  img.onload = function() {
+                      var width = this.width;
+                      var height = this.height;
+
+                      // Check if width and height match the required dimensions (1920x490)
+                      if (width === 1920 && height === 490) {
+                          // Image dimensions are valid, clear error message and show preview
+                          document.getElementById('errorMessage').textContent = '';
+                          document.getElementById('imagePreview').src = e.target.result;
+                          document.getElementById('imagePreviewContainer').style.display = 'block';
+                      } else {
+                          // Image dimensions are not valid, display error message and hide preview
+                          document.getElementById('errorMessage').textContent = 'Image must be exactly 1920x490 pixels.';
+                          document.getElementById('imagePreviewContainer').style.display = 'none';
+                          // Reset the input field to allow selecting a new file
+                          input.value = '';
+                      }
+                  };
+              };
+
+              // Read the selected file as a data URL
+              reader.readAsDataURL(file);
+          }
+        }
+
+        // JavaScript for Form Submission
+        document.getElementById('advertForm').addEventListener('submit', function(event) {
+          // Prevent the default form submission
+          event.preventDefault();
+
+          // Validate the image dimensions before submitting the form
+          validateImage();
+
+          // If there is no error message, submit the form
+          if (!document.getElementById('errorMessage').textContent) {
+              this.submit();
+          }
+        });
+    </script>
 {% endblock my_scripts %}
