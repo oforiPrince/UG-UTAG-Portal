@@ -149,7 +149,7 @@
     {% endif %}
     <!-- Projects Area End -->
     <!-- Advert -->
-    {% if active_ads %}
+    {% if top_active_ads %}
     <section class="projects-area mb--100">
         <div class="container">
             <div class="row">
@@ -158,7 +158,7 @@
                         <div class="carousel-inner">
                             <div class="carousel-inner">
                                 
-                                {% for ad in active_ads %}
+                                {% for ad in top_active_ads %}
                                     <div class="carousel-item {% if forloop.first %} active {% endif %}">
                                         <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
                                             <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
@@ -293,7 +293,7 @@
     </div>
     {% endif %}
 
-    {% if active_ads %}
+    {% if bottom_active_ads %}
     <section class="projects-area mb--100">
         <div class="container">
             <div class="row">
@@ -301,7 +301,7 @@
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
-                            {% for ad in active_ads %}
+                            {% for ad in bottom_active_ads %}
                                 <div class="carousel-item {% if forloop.first %} active {% endif %}">
                                     <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
                                         <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">

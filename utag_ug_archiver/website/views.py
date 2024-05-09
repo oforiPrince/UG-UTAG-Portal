@@ -21,13 +21,15 @@ class IndexView(View):
         executives = sorted(executives, key=officers_custom_order)
         
         # Advertisement
-        active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today())
-        print(active_ads)
+        top_active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today(),status='ACTIVE').order_by('-created_at')[:3]
+        print(top_active_ads)
+        bottom_active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today(),status='ACTIVE').order_by('-created_at')[3:]
         context = {
             'published_events': published_events,
             'published_news': published_news,
             'executives': executives,
-            'active_ads': active_ads,
+            'top_active_ads': top_active_ads,
+            'bottom_active_ads': bottom_active_ads,
         }
         return render(request, self.template_name, context)
     

@@ -63,9 +63,9 @@ urlpatterns += [
 #For Announcement management
 urlpatterns += [
     path('announcements',views.AnnouncementsView.as_view(), name='announcements'),
-    # path('announcements/create',views.AnnouncementCreateView.as_view(), name='create_announcement'),
-    # path('announcements/update/',views.AnnouncementUpdateView.as_view(), name='update_announcement'),
-    # path('announcements/delete/<int:announcement_id>',views.AnnouncementDeleteView.as_view(), name='delete_announcement'),
+    path('announcements/create',views.AnnouncementCreateView.as_view(), name='create_announcement'),
+    path('announcements/update/',views.AnnouncementUpdateView.as_view(), name='update_announcement'),
+    path('announcements/delete/<int:announcement_id>',views.AnnouncementDeleteView.as_view(), name='delete_announcement'),
 ]
 
 #For Adverts

@@ -179,7 +179,7 @@
                             {% endfor %}
                         </ol>
                         <div class="text-center">
-                            <a href="{% url 'dashboard:events' %}" class="btn btn-primary">View All</a>
+                            <a href="{% url 'dashboard:events' %}" class="btn btn-sm btn-primary">View All</a>
                         </div>
                     </div>
                 </div>
@@ -202,7 +202,7 @@
                             {% endfor %}
                         </ol>
                         <div class="text-center">
-                            <a href="{% url 'dashboard:events' %}" class="btn btn-primary">View All</a>
+                            <a href="{% url 'dashboard:events' %}" class="btn btn-sm btn-primary">View All</a>
                         </div>
                     </div>
                 </div>
@@ -245,16 +245,15 @@
                                             <span class="badge bg-primary">Internal</span>
                                             {% endif %}
                                         </td>
-                                        <td>
-                                            <div>
-                                                <a href="#" class="btn btn-secondary btn-sm"><i class="mdi mdi-eye"></i></a>
-                                            </div>
-                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                        
+                    </div>
+                    <div class="text-center mb-2">
+                        <a href="{% url 'dashboard:internal_documents' %}" class="btn btn-sm btn-primary">View All</a>
                     </div>
                 </div>
             </div>
@@ -292,6 +291,9 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                    <div class="text-center mb-2">
+                        <a href="{% url 'dashboard:adverts' %}" class="btn btn-sm btn-primary">View All</a>
                     </div>
                 </div>
             </div>

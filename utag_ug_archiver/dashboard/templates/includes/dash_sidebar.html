@@ -79,9 +79,9 @@
                         </a>
                     <ul class="sub-menu" aria-expanded="false">
                         <li><a href="{% url 'dashboard:plans' %}">Plans</a></li>
-                        <li><a href="{% url 'dashboard:adverts' %}">Adverts</a></li>
                         <li><a href="{% url 'dashboard:companies' %}">Companies</a>
-                        <li><a href="#">Payment</a>
+                        <li><a href="{% url 'dashboard:adverts' %}">Adverts</a></li>
+                        <!-- <li><a href="#">Payment</a> -->
                     </ul>
                 </li>
                 {% endif %}

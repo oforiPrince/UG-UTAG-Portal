@@ -31,6 +31,7 @@
                     <th>#</th>
                     <th>Image</th>
                     <th>Company Name</th>
+                    <th>Plan</th>
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Created At</th>
@@ -46,11 +47,12 @@
                       <img src="{{ ad.get_image_url }}" alt="{{ad.advertiser.company_name}}" class="img-fluid" width="80" height="60">
                     </td>
                     <td>{{ ad.advertiser.company_name }}</td>
+                    <td>{{ ad.plan.name }}</td>
                     <td>{{ ad.start_date  }}</td>
                     <td>{{ ad.end_date }}</td>
                     <td>{{ ad.created_at|date:"d M Y" }}</td>
                     <td>
-                      <span class="badge bg-{% if ad.status == 'Published' %}success{% elif ad.status == 'Draft' %}warning{% elif ad.status == 'Active' %}primary{% else %}danger{% endif %}">{{ ad.status }}</span>
+                      <span class="badge bg-{% if ad.status == 'PUBLISHED' %}success{% elif ad.status == 'DRAFT' %}warning{% elif ad.status == 'ACTIVE' %}primary{% else %}danger{% endif %}">{{ ad.status }}</span>
                     </td>
                     <td>
                       <a href="#" class="btn btn-primary btn-sm">

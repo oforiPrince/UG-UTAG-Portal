@@ -24,6 +24,7 @@ class Advertisement(models.Model):
         ('INACTIVE', 'Inactive'),
     )
     advertiser = models.ForeignKey(Advertiser, on_delete=models.CASCADE)
+    plan = models.ForeignKey('AdvertPlan', on_delete=models.SET_NULL, blank=True, null=True)
     image_url = models.URLField(blank=True, null=True)
     image = models.ImageField(upload_to=upload_to, blank=True, null=True)
     target_url = models.URLField()

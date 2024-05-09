@@ -1,0 +1,53 @@
+{% for announcement in announcements %}
+<div class="modal fade" id="editAnnouncementModal_{{ announcement.id }}" tabindex="-1" role="dialog" aria-labelledby="editAnnouncementModal_{{ announcement.id }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAnnouncementModal_{{ announcement.id }}Label">Edit Announcement</h5>
+                <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+            </div>
+            <div class="modal-body">
+                <form class="custom-validation" action="{% url 'dashboard:update_announcement' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_announcement_title">Title</label>
+                        <input type="text" id="edit_announcement_title" class="form-control" required name="title" value="{{ announcement.title }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_announcement_target_group">Target Group</label>
+                        <select id="edit_announcement_target_group" class="form-control" required name="target_group">
+                            <option value="ALL" {% if announcement.target_group == 'ALL' %} selected {% endif %}>All</option>
+                            <option value="MEMBERS" {% if announcement.target_group == 'MEMBERS' %} selected {% endif %}>Members</option>
+                            <option value="EXECUTIVES" {% if announcement.target_group == 'EXECUTIVES' %} selected {% endif %}>Executives</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_announcement_status">Status</label>
+                        <select id="edit_announcement_status" class="form-control" required name="status">
+                            <option value="DRAFT" {% if announcement.status == 'DRAFT' %} selected {% endif %}>Draft</option>
+                            <option value="PUBLISHED" {% if announcement.status == 'PUBLISHED' %} selected {% endif %}>Published</option>
+                            <option value="ARCHIVED" {% if announcement.status == 'ARCHIVED' %} selected {% endif %}>Archived</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_announcement_content">Content</label>
+                        <textarea id="edit_announcement_content" class="form-control" required name="content" rows="3">{{ announcement.content }}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Close
+                          </button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}

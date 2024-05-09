@@ -38,3 +38,46 @@ class AnnouncementsView(View):
             'new_announcements' : new_announcements
         }
         return render(request, self.template_name, context)
+    
+class AnnouncementCreateView(View):    
+    @method_decorator(MustLogin)
+    def post(self, request):
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        target_group = request.POST.get('target_group')
+        status = request.POST.get('status')
+        created_by = request.user
+        announcement = Announcement.objects.create(
+            title = title,
+            content = content,
+            target_group = target_group,
+            status = status,
+            created_by = created_by
+        )
+        messages.success(request, 'Announcement added successfully')
+        return redirect('dashboard:announcements')
+    
+class AnnouncementUpdateView(View):    
+    @method_decorator(MustLogin)
+    def post(self, request):
+        announcement_id = request.POST.get('announcement_id')
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        target_group = request.POST.get('target_group')
+        status = request.POST.get('status')
+        announcement = Announcement.objects.get(id=announcement_id)
+        announcement.title = title
+        announcement.content = content
+        announcement.target_group = target_group
+        announcement.status = status
+        announcement.save()
+        messages.success(request, 'Announcement updated successfully')
+        return redirect('dashboard:announcements')
+    
+class AnnouncementDeleteView(View):    
+    @method_decorator(MustLogin)
+    def get(self, request, announcement_id):
+        announcement = Announcement.objects.get(id=announcement_id)
+        announcement.delete()
+        messages.success(request, 'Announcement deleted successfully')
+        return redirect('dashboard:announcements')
