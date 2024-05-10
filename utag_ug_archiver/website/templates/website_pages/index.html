@@ -98,11 +98,49 @@
             </div>
         </div>
     </section>
+    <section class="about_us-area mb--95">
+        <div class="container-fluid p-0">
+            <div class="row g-0">
+                <div class="col-md-9">
+                    <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+                        <div class="carousel-inner">
+                            <div class="carousel-inner">
+                                {% for ad in top_active_ads %}
+                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 p-3">
+                    <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+                        <div class="carousel-inner">
+                            <div class="carousel-inner">
+                                
+                                {% for ad in bottom_active_ads %}
+                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                                    
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     <!-- About Us area End -->
 
     <!-- Projects Area Start -->
     {% if published_news %}
-    <section class="projects-area mb--100">
+    <section class="projects-area mb--95">
         <div class="container">
             <div class="row mb--45">
                 <div class="col-12 text-center">
@@ -150,10 +188,10 @@
     <!-- Projects Area End -->
     <!-- Advert -->
     {% if top_active_ads %}
-    <section class="projects-area mb--100">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
+    <section class="projects-area mb--95">
+        <div class="ontainer-fluid p-0">
+            <div class="row g-0">
+                <div class="col-md-12">
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
@@ -293,7 +331,7 @@
     </div>
     {% endif %}
 
-    {% if bottom_active_ads %}
+    <!-- {% if bottom_active_ads %}
     <section class="projects-area mb--100">
         <div class="container">
             <div class="row">
@@ -315,7 +353,7 @@
             </div>
         </div>
     </section>
-    {% endif %}         
+    {% endif %}          -->
     
     <!-- Custom JavaScript -->
 
