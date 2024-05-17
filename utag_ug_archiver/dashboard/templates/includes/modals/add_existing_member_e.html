@@ -7,8 +7,18 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form class="custom-validation" action="{% url 'dashboard:create_existing_officer' %}" method="POST">
+        <!-- Image Preview Container -->
+        <div class="d-flex justify-content-center mb-3">
+          <img id="imagePreview" src="#" alt="Image Preview" style="display: none;" />
+        </div>
+        <!-- Error Message Container -->
+        <div class="alert alert-danger" id="imageError" style="display: none;"></div>
+        <form class="custom-validation" action="{% url 'dashboard:create_existing_officer' %}" method="POST" enctype="multipart/form-data">
           {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_image" class="form-label">Upload Image</label>
+            <input class="form-control" type="file" id="id_image" name="image" accept="image/*" onchange="previewImage(event)">
+          </div>
           <div class="mb-3">
             <label class="form-label">Select a member</label>
             <select class="form-control select2" name="member_id" required>
@@ -68,9 +78,47 @@
     </div>
   </div>
 </div>
+<style>
+  #imagePreview {
+    display: block;
+    margin: 0 auto;
+    width: 285px;
+    height: 200px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background-color: #f8f9fa;
+  }
+
+  #imageError {
+    display: none;
+    margin-top: 10px;
+  }
+</style>
 <script>
-  // Your existing script for datepicker initialization (if needed)
-  document.addEventListener("DOMContentLoaded", function () {
-    $('#datepickerContainer').datepicker();
-  });
+  function previewImage(event) {
+    var file = event.target.files[0];
+    var reader = new FileReader();
+    var img = new Image();
+    var errorContainer = document.getElementById('imageError');
+    var previewContainer = document.getElementById('imagePreview');
+    var fileInput = document.getElementById('id_image');
+    reader.onload = function(e) {
+      img.src = e.target.result;
+      img.onload = function() {
+        if (img.width === 285 && img.height === 200) {
+          previewContainer.src = img.src;
+          previewContainer.style.display = 'block';
+          errorContainer.style.display = 'none';
+        } else {
+
+          previewContainer.style.display = 'none';
+          errorContainer.textContent = 'Image dimensions must be 285x200 pixels.';
+          errorContainer.style.display = 'block';
+          fileInput.value = '';
+        }
+      };
+    };
+    reader.readAsDataURL(file);
+  }
 </script>
