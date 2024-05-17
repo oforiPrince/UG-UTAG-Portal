@@ -49,23 +49,21 @@ class CompaniesView(View):
 class AdvertCreateView(View):    
     @method_decorator(MustLogin)
     def post(self, request):
-        title = request.POST.get('title')
-        content = request.POST.get('content')
+        image = request.FILES.get('image')
         start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        plan = request.POST.get('plan')
-        company = request.POST.get('company')
+        plan_id = request.POST.get('plan_id')
+        plan = AdvertPlan.objects.get(id=plan_id)
+        advertiser_id = request.POST.get('advertiser_id')
+        advertiser = Advertiser.objects.get(id=advertiser_id)
         status = request.POST.get('status')
-        created_by = request.user
+        target_url = request.POST.get('target_url')
         advert = Advertisement.objects.create(
-            title = title,
-            content = content,
+            image = image,
+            target_url =target_url,
             start_date = start_date,
-            end_date = end_date,
             plan = plan,
-            company = company,
+            advertiser = advertiser,
             status = status,
-            created_by = created_by
         )
         messages.success(request, 'Advert added successfully')
         return redirect('dashboard:adverts')
@@ -74,24 +72,28 @@ class AdvertUpdateView(View):
     @method_decorator(MustLogin)
     def post(self, request):
         advert_id = request.POST.get('advert_id')
-        title = request.POST.get('title')
-        content = request.POST.get('content')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
         plan = request.POST.get('plan')
-        company = request.POST.get('company')
+        advertiser = request.POST.get('advertiser')
         status = request.POST.get('status')
         advert = Advertisement.objects.get(id=advert_id)
-        advert.title = title
-        advert.content = content
         advert.start_date = start_date
         advert.end_date = end_date
         advert.plan = plan
-        advert.company = company
+        advert.advertiser = advertiser
         advert.status = status
         advert.save()
         messages.success(request, 'Advert updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+class AdvertDeleteView(View):
+    @method_decorator(MustLogin)
+    def get(self, request, advert_id):
+        advert = Advertisement.objects.get(id=advert_id)
+        advert.delete()
+        messages.success(request, 'Advert deleted successfully')
+        return redirect('dashboard:adverts')
     
 class AdvertPlanCreateView(View):    
     @method_decorator(MustLogin)
@@ -141,17 +143,17 @@ class AdvertPlanDeleteView(View):
 class CompanyCreateView(View):    
     @method_decorator(MustLogin)
     def post(self, request):
-        company_name = request.POST.get('company_name')
+        advertiser_name = request.POST.get('advertiser_name')
         contact_name = request.POST.get('contact_name')
-        company_email = request.POST.get('email')
-        company_phone = request.POST.get('phone_number')
-        company_address = request.POST.get('address')
-        company = Advertiser.objects.create(
-            company_name = company_name,
+        advertiser_email = request.POST.get('email')
+        advertiser_phone = request.POST.get('phone_number')
+        advertiser_address = request.POST.get('address')
+        advertiser = Advertiser.objects.create(
+            advertiser_name = advertiser_name,
             contact_name = contact_name,
-            email = company_email,
-            phone_number = company_phone,
-            address = company_address
+            email = advertiser_email,
+            phone_number = advertiser_phone,
+            address = advertiser_address
         )
         messages.success(request, 'Company added successfully')
         return redirect('dashboard:companies')
@@ -159,26 +161,26 @@ class CompanyCreateView(View):
 class CompanyUpdateView(View):
     @method_decorator(MustLogin)
     def post(self, request):
-        company_id = request.POST.get('company_id')
-        company_name = request.POST.get('company_name')
+        advertiser_id = request.POST.get('advertiser_id')
+        advertiser_name = request.POST.get('advertiser_name')
         contact_name = request.POST.get('contact_name')
-        company_email = request.POST.get('email')
-        company_phone = request.POST.get('phone_number')
-        company_address = request.POST.get('address')
-        company = Advertiser.objects.get(id=company_id)
-        company.company_name = company_name
-        company.contact_name = contact_name
-        company.email = company_email
-        company.phone_number = company_phone
-        company.address = company_address
-        company.save()
+        advertiser_email = request.POST.get('email')
+        advertiser_phone = request.POST.get('phone_number')
+        advertiser_address = request.POST.get('address')
+        advertiser = Advertiser.objects.get(id=advertiser_id)
+        advertiser.advertiser_name = advertiser_name
+        advertiser.contact_name = contact_name
+        advertiser.email = advertiser_email
+        advertiser.phone_number = advertiser_phone
+        advertiser.address = advertiser_address
+        advertiser.save()
         messages.success(request, 'Company updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 class CompanyDeleteView(View):    
     @method_decorator(MustLogin)
-    def get(self, request, company_id):
-        company = Advertiser.objects.get(id=company_id)
-        company.delete()
+    def get(self, request, advertiser_id):
+        advertiser = Advertiser.objects.get(id=advertiser_id)
+        advertiser.delete()
         messages.success(request, 'Company deleted successfully')
         return redirect('dashboard:companies')

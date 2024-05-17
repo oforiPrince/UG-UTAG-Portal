@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
 from django.db import models
 from accounts.models import User
 import random
+from PIL import Image
 
 class Advertiser(models.Model):
     company_name = models.CharField(max_length=255)
@@ -20,8 +22,7 @@ class Advertisement(models.Model):
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
         ('PUBLISHED', 'Published'),
-        ('ACTIVE', 'Active'),
-        ('INACTIVE', 'Inactive'),
+        ('EXPIRED', 'Expired'),
     )
     advertiser = models.ForeignKey(Advertiser, on_delete=models.CASCADE)
     plan = models.ForeignKey('AdvertPlan', on_delete=models.SET_NULL, blank=True, null=True)
@@ -46,11 +47,31 @@ class Advertisement(models.Model):
         if self.image:
             return self.image.url
         return self.image_url
+    
+    def get_image_dimensions(self):
+        if self.image:
+            with Image.open(self.image) as img:
+                return img.width, img.height
+        return None, None
+    
+    @property
+    def image_width(self):
+        width, _ = self.get_image_dimensions()
+        return width
+
+    @property
+    def image_height(self):
+        _, height = self.get_image_dimensions()
+        return height
 
     def save(self, *args, **kwargs):
         # If an image is provided via image_url, clear the image field
         if self.image_url:
             self.image = None
+        # Calculate the end date based on the selected plan
+        if self.status == "PUBLISHED" and self.start_date and self.plan and self.plan.duration_in_days:
+            start_date_obj = datetime.strptime(str(self.start_date), "%Y-%m-%d").date()
+            self.end_date = start_date_obj + timedelta(days=self.plan.duration_in_days)
         super().save(*args, **kwargs)
 
 

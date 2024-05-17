@@ -101,11 +101,11 @@
     <section class="about_us-area mb--95">
         <div class="container-fluid p-0">
             <div class="row g-0">
-                <div class="col-md-9">
+                <div class="col-md-9 col-lg-9 col-sm-9">
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
-                                {% for ad in top_active_ads %}
+                                {% for ad in large_advert_images %}
                                     <div class="carousel-item {% if forloop.first %} active {% endif %}">
                                         <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
                                             <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
@@ -116,12 +116,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 p-3">
+                <div class="col-md-3 col-lg-3 col-sm-3 p-3">
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
                             <div class="carousel-inner">
                                 
-                                {% for ad in bottom_active_ads %}
+                                {% for ad in small_advert_images %}
                                     <div class="carousel-item {% if forloop.first %} active {% endif %}">
                                         <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
                                             <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">

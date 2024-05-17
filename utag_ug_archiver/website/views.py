@@ -2,6 +2,7 @@ from datetime import date
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
+from django.db.models import Q
 from dashboard.models import Event, News, Executive
 from adverts.models import Advertisement
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
@@ -21,16 +22,30 @@ class IndexView(View):
         executives = sorted(executives, key=officers_custom_order)
         
         # Advertisement
-        top_active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today(),status='ACTIVE').order_by('created_at')[:2]
-        print(top_active_ads)
-        bottom_active_ads = Advertisement.objects.filter(start_date__lte=date.today(), end_date__gte=date.today(),status='ACTIVE').order_by('created_at')[2:]
-        print(bottom_active_ads)
+        today = date.today()
+
+        large_advertisements = []
+        small_advertisements = []
+
+        advertisements = Advertisement.objects.filter(
+            start_date__lte=today,
+            end_date__gte=today
+        ).order_by('created_at')
+        print(advertisements)
+        for advert in advertisements:
+            if advert.image_width == 900 and advert.image_height == 300:
+                large_advertisements.append(advert)
+            elif advert.image_width == 210 and advert.image_height == 210:
+                small_advertisements.append(advert)
+
+        print(large_advertisements)
+        print(small_advertisements)
         context = {
             'published_events': published_events,
             'published_news': published_news,
             'executives': executives,
-            'top_active_ads': top_active_ads,
-            'bottom_active_ads': bottom_active_ads,
+            'large_advert_images': large_advertisements,
+            'small_advert_images': small_advertisements,
         }
         return render(request, self.template_name, context)
     

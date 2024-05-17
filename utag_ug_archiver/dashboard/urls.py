@@ -71,6 +71,9 @@ urlpatterns += [
 #For Adverts
 urlpatterns +={
     path('adverts',views.AdvertsView.as_view(), name='adverts'),
+    path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
+    path('adverts/update/',views.AdvertUpdateView.as_view(), name='update_advert'),
+    path('adverts/delete/<int:advert_id>',views.AdvertDeleteView.as_view(), name='delete_advert'),
     path('plans',views.AdvertPlansView.as_view(), name='plans'),
     path('plans/create',views.AdvertPlanCreateView.as_view(), name='create_plan'),
     path('plans/update/',views.AdvertPlanUpdateView.as_view(), name='update_plan'),

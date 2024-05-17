@@ -1,0 +1,110 @@
+<!-- Modal for Advert Update -->
+{% for ad in adverts %}
+<div class="modal fade bs-example-modal-lg" id="editAdvertisementsModal_{{ad.id}}" tabindex="-1" aria-labelledby="editAdvertisementsModal_{{ad.id}}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAdvertisementsModal_{{ad.id}}Label">Update Advertisement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form class="advertUpdateForm" enctype="multipart/form-data" action="{% url 'dashboard:update_advert' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group mb-3">
+                        <label for="imageInput_{{ad.id}}">Image (900x300 or 210x210 pixels)</label>
+                        <input type="file" class="form-control imageInput" id="imageInput_{{ad.id}}" name="image" accept="image/*">
+                        <span class="errorMessage" style="color: red;"></span>
+                    </div>
+                    <div class="mb-3 existingImageContainer">
+                        <h5>Current Image</h5>
+                        <img class="existingImage" src="{{ ad.image.url }}" alt="Current Image" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="mb-3 newImagePreviewContainer" style="display: none;">
+                        <h5>New Image Preview</h5>
+                        <img class="newImagePreview" src="#" alt="New Image Preview" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="advertiserSelect_{{ad.id}}">Advertiser</label>
+                        <select class="form-control" id="advertiserSelect_{{ad.id}}" name="advertiser_id" required>
+                            <option value="">Select an Advertiser</option>
+                            {% for advertiser in advertisers %}
+                            <option value="{{advertiser.id}}" {% if ad.advertiser.id == advertiser.id %}selected{% endif %}>{{advertiser.company_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="planSelect_{{ad.id}}">Plan</label>
+                        <select class="form-control" id="planSelect_{{ad.id}}" name="plan_id">
+                            <option value="">Select a Plan</option>
+                            {% for plan in plans %}
+                            <option value="{{plan.id}}" {% if ad.plan.id == plan.id %}selected{% endif %}>{{plan.name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="targetUrlInput_{{ad.id}}">Target URL</label>
+                        <input type="url" class="form-control" id="targetUrlInput_{{ad.id}}" name="target_url" value="{{ ad.target_url }}">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="startDateInput_{{ad.id}}">Start Date</label>
+                        <input type="date" class="form-control" id="startDateInput_{{ad.id}}" name="start_date" value="{{ ad.start_date }}" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="statusSelect_{{ad.id}}">Status</label>
+                        <select class="form-control" id="statusSelect_{{ad.id}}" name="status" required>
+                            <option value="DRAFT" {% if ad.status == 'DRAFT' %}selected{% endif %}>Draft</option>
+                            <option value="PUBLISHED" {% if ad.status == 'PUBLISHED' %}selected{% endif %}>Published</option>
+                            <option value="ACTIVE" {% if ad.status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                            <option value="INACTIVE" {% if ad.status == 'INACTIVE' %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+                        <button type="reset" class="btn btn-secondary waves-effect">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.querySelectorAll('.advertUpdateForm').forEach(form => {
+      form.addEventListener('change', function(event) {
+        if (event.target && event.target.classList.contains('imageInput')) {
+          const file = event.target.files[0];
+          const formElement = event.target.closest('form');
+          const errorMessage = formElement.querySelector('.errorMessage');
+          const newImagePreviewContainer = formElement.querySelector('.newImagePreviewContainer');
+          const newImagePreview = formElement.querySelector('.newImagePreview');
+  
+          if (file) {
+            validateUpdateImage(file, errorMessage, newImagePreview, newImagePreviewContainer);
+          } else {
+            newImagePreview.src = '';
+            newImagePreviewContainer.style.display = 'none';
+          }
+        }
+      });
+    });
+  
+    function validateUpdateImage(file, errorMessage, newImagePreview, newImagePreviewContainer) {
+      const img = new Image();
+      img.onload = function() {
+        if ((img.width !== 900 || img.height !== 300) && (img.width !== 210 || img.height !== 210)) {
+          errorMessage.textContent = 'Image must be exactly 900x300 or 210x210 pixels.';
+          newImagePreview.src = '';
+          newImagePreviewContainer.style.display = 'none';
+        } else {
+          errorMessage.textContent = '';
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            newImagePreview.src = e.target.result;
+            newImagePreviewContainer.style.display = 'block';
+          }
+          reader.readAsDataURL(file);
+        }
+      }
+      img.src = URL.createObjectURL(file);
+    }
+  </script>  
+{% endfor %}
