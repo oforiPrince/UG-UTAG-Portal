@@ -160,7 +160,8 @@
             {% endif %}
         </div>
         <!-- end row -->
-
+        
+        {% if published_events and published_news %}
         <div class="row">
             
             {% if published_events %}
@@ -186,29 +187,30 @@
             </div>  
             {% endif %}
             
-            {% if published_events %}
+            {% if published_news %}
             <div class="col-xl-6">
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title mb-4">News</h4>
                         <ol class="activity-feed">
-                            {% for event in published_events %}
+                            {% for news in published_news %}
                             <li class="feed-item">
                                 <div class="feed-item-list">
-                                    <span class="date">{{ event.date|date:"M" }} {{ event.date|date:"j" }}</span>
-                                    <span class="activity-text">{{event.title}}</span>
+                                    <span class="date">{{ news.date|date:"M" }} {{ news.date|date:"j" }}</span>
+                                    <span class="activity-text">{{news.title}}</span>
                                 </div>
                             </li>
                             {% endfor %}
                         </ol>
                         <div class="text-center">
-                            <a href="{% url 'dashboard:events' %}" class="btn btn-sm btn-primary">View All</a>
+                            <a href="{% url 'dashboard:news' %}" class="btn btn-sm btn-primary">View All</a>
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
         </div>
+        {% endif %}
         <!-- end row -->
 
         <div class="row">

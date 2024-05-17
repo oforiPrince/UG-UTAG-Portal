@@ -12,7 +12,7 @@ from django.http import HttpResponseRedirect
 
 
 from accounts.models import User
-from dashboard.models import Executive, Event, Document, Announcement
+from dashboard.models import Executive, Event, Document, Announcement, News
 
 from adverts.models import Advertisement
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -40,6 +40,7 @@ class DashboardView(View):
             announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
             new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
         published_events = Event.objects.filter(is_published=True).order_by('-date')[:5]
+        published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
         recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
         context = {
             'total_internal_documents' : total_internal_documents,
@@ -49,6 +50,7 @@ class DashboardView(View):
             'total_admins' :total_admins,
             'total_secretaries': total_secretaries,
             'published_events' : published_events,
+            'published_news' : published_news,
             'recent_added_documents' : recent_added_documents,
             'announcement_count' : announcement_count,
             'new_announcements' : new_announcements,
