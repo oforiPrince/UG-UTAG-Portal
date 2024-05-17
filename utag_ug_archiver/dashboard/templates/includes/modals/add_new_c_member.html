@@ -23,8 +23,19 @@
         <div class="tab-content" id="myTabsContent">
           <!-- Personal Information Tab -->
           <div class="tab-pane fade show active" id="personal-info" role="tabpanel" aria-labelledby="personal-info-tab">
-            <form class="custom-validation" action="{% url 'dashboard:create_new_officer' %}" method="POST">
+            <form class="custom-validation" id="personalInfoForm" action="{% url 'dashboard:create_new_officer' %}" method="POST" enctype="multipart/form-data">
               {% csrf_token %}
+              <!-- Image Preview Container -->
+              <div class="d-flex justify-content-center mb-3">
+                <img id="imagePreview" src="#" alt="Image Preview" style="display: none; max-width: 200px; max-height: 200px; border: 1px solid #ddd; padding: 5px;" />
+              </div>
+              <!-- Error Message Container -->
+              <div class="alert alert-danger" id="imageError" style="display: none;"></div>
+              <!-- Image Upload Field -->
+              <div class="mb-3">
+                <label for="id_image" class="form-label">Upload Image</label>
+                <input class="form-control" type="file" id="id_image" name="image" accept="image/*" required>
+              </div>
               <!-- Personal Info Fields -->
               <div class="mb-3">
                 <label class="form-label" for="id_title">Title</label>
@@ -42,139 +53,63 @@
               <div class="mb-3">
                 <label class="form-label" for="id_first_name">First Name</label>
                 <div>
-                  <input
-                    type="text"
-                    id="id_first_name"
-                    class="form-control"
-                    required
-                    name="first_name"
-                    placeholder="Enter your first name"
-                  />
+                  <input type="text" id="id_first_name" class="form-control" required name="first_name" placeholder="Enter your first name" />
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="id_other_name">Other Name</label>
                 <div>
-                  <input
-                    type="text"
-                    id="id_other_name"
-                    class="form-control"
-                    name="other_name"
-                    placeholder="Enter your other name"
-                  />
+                  <input type="text" id="id_other_name" class="form-control" name="other_name" placeholder="Enter your other name" />
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="id_last_name">Last Name</label>
                 <div>
-                  <input
-                    type="text"
-                    id="id_last_name"
-                    class="form-control"
-                    required
-                    name="last_name"
-                    placeholder="Enter your last name"
-                  />
+                  <input type="text" id="id_last_name" class="form-control" required name="last_name" placeholder="Enter your last name" />
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Gender</label>
                 <div>
                   <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="gender"
-                      id="gender_male"
-                      value="Male"
-                      required
-                    />
+                    <input class="form-check-input" type="radio" name="gender" id="gender_male" value="Male" required />
                     <label class="form-check-label" for="gender_male">Male</label>
                   </div>
                   <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="gender"
-                      id="gender_female"
-                      value="Female"
-                      required
-                    />
-                    <label class="form-check-label" for="gender_female"
-                      >Female</label
-                    >
+                    <input class="form-check-input" type="radio" name="gender" id="gender_female" value="Female" required />
+                    <label class="form-check-label" for="gender_female">Female</label>
                   </div>
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="id_email">Email</label>
                 <div>
-                  <input
-                    type="email"
-                    id="id_email"
-                    class="form-control"
-                    required
-                    name="email"
-                    placeholder="Enter a valid email"
-                    data-parsley-type="email"
-                  />
+                  <input type="email" id="id_email" class="form-control" required name="email" placeholder="Enter a valid email" data-parsley-type="email" />
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Password</label>
                 <div>
                   <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="password_choice"
-                      id="password_choice_auto"
-                      value="auto"
-                      checked
-                    />
-                    <label class="form-check-label" for="password_choice_auto"
-                      >Auto-Generate Password</label
-                    >
+                    <input class="form-check-input" type="radio" name="password_choice" id="password_choice_auto" value="auto" checked />
+                    <label class="form-check-label" for="password_choice_auto">Auto-Generate Password</label>
                   </div>
                   <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="password_choice"
-                      id="password_choice_manual"
-                      value="manual"
-                    />
-                    <label class="form-check-label" for="password_choice_manual"
-                      >Enter Password</label
-                    >
+                    <input class="form-check-input" type="radio" name="password_choice" id="password_choice_manual" value="manual" />
+                    <label class="form-check-label" for="password_choice_manual">Enter Password</label>
                   </div>
                 </div>
               </div>
               <div class="mb-3" id="password_fields" style="display: none">
                 <label class="form-label" for="id_password1">New Password</label>
                 <div>
-                  <input
-                    type="password"
-                    id="id_password1"
-                    class="form-control"
-                    name="password1"
-                    placeholder="New Password"
-                  />
+                  <input type="password" id="id_password1" class="form-control" name="password1" placeholder="New Password" />
                 </div>
               </div>
               <div class="mb-3" id="password_fields_confirm" style="display: none">
-                <label class="form-label" for="id_password2"
-                  >Confirm Password</label
-                >
+                <label class="form-label" for="id_password2">Confirm Password</label>
                 <div>
-                  <input
-                    type="password"
-                    id="id_password2"
-                    class="form-control"
-                    data-parsley-equalto="#id_password1"
-                    name="password2"
-                    placeholder="Confirm Password"
-                  />
+                  <input type="password" id="id_password2" class="form-control" data-parsley-equalto="#id_password1" name="password2" placeholder="Confirm Password" />
                 </div>
               </div>
             </form>
@@ -214,7 +149,7 @@
     
                     <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
                 </div>
-            </div>
+              </div>
             </form>
           </div>
         </div>
@@ -222,7 +157,7 @@
         <!-- Submit and Cancel Buttons -->
         <div class="mb-3">
           <div>
-            <button type="submit" class="btn btn-primary waves-effect waves-light me-1" form="personal-info">Next</button>
+            <button type="submit" class="btn btn-primary waves-effect waves-light me-1" form="personalInfoForm">Next</button>
             <button type="button" class="btn btn-secondary waves-effect" data-bs-dismiss="modal">Cancel</button>
           </div>
         </div>
@@ -230,43 +165,82 @@
     </div>
   </div>
 </div>
+<style>
+  #imagePreview {
+    max-width: 285px;
+    max-height: 200px;
+    border: 1px solid #ddd;
+    padding: 5px;
+  }
+  #imageError {
+    color: red;
+  }
+</style>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const myTabs = new bootstrap.Tab(document.getElementById('personal-info-tab'));
-    myTabs.show(); // Show the first tab by default
-  });
-</script>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const passwordChoice = document.querySelectorAll(
-      '[name="password_choice"]'
-    );
+    const passwordChoice = document.querySelectorAll('[name="password_choice"]');
     const passwordFields = document.getElementById("password_fields");
-    const passwordFieldsConfirm = document.getElementById(
-      "password_fields_confirm"
-    );
-
+    const passwordFieldsConfirm = document.getElementById("password_fields_confirm");
+    const password1 = document.getElementById("id_password1");
+    const password2 = document.getElementById("id_password2");
+    
     function togglePasswordFields() {
+      console.log("Toggling password fields");
       if (this.value === "auto") {
         passwordFields.style.display = "none";
         passwordFieldsConfirm.style.display = "none";
-        document.getElementById("id_password1").removeAttribute("required");
-        document.getElementById("id_password2").removeAttribute("required");
+        password1.removeAttribute("required");
+        password2.removeAttribute("required");
       } else {
         passwordFields.style.display = "block";
         passwordFieldsConfirm.style.display = "block";
-        document
-          .getElementById("id_password1")
-          .setAttribute("required", "required");
-        document
-          .getElementById("id_password2")
-          .setAttribute("required", "required");
+        password1.setAttribute("required", "required");
+        password2.setAttribute("required", "required");
       }
     }
 
     passwordChoice.forEach(function (choice) {
       choice.addEventListener("change", togglePasswordFields);
     });
+
+    function previewImage(event) {
+      const imageFile = event.target.files[0];
+      const imagePreview = document.getElementById("imagePreview");
+      const imageError = document.getElementById("imageError");
+      console.log("Image file:", imageFile);
+      if (imageFile) {
+        const fileSize = imageFile.size / 1024 / 1024; // in MB
+        console.log("File size:", fileSize);
+        if (fileSize > 2) {
+          imageError.textContent = "File size exceeds 2 MB";
+          imageError.style.display = "block";
+          imagePreview.style.display = "none";
+          event.target.value = ""; // Reset file input
+        } else {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = function () {
+              console.log("Image dimensions:", img.width, img.height);
+              if (img.width !== 285 || img.height !== 200) {
+                imageError.textContent = "Image dimensions must be 285x200 pixels";
+                imageError.style.display = "block";
+                imagePreview.style.display = "none";
+                event.target.value = ""; // Reset file input
+              } else {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = "block";
+                imageError.style.display = "none";
+              }
+            };
+          };
+          reader.readAsDataURL(imageFile);
+        }
+      }
+    }
+
+    document.getElementById("id_image").addEventListener("change", previewImage);
   });
 </script>

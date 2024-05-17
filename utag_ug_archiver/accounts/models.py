@@ -23,6 +23,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     profile_pic = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     email = models.EmailField(unique=True)
+    phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
+    department = models.CharField(max_length=50, blank=True, null=True)
     is_admin = models.BooleanField(default=False)
     is_secretary = models.BooleanField(default=False)
     is_executive = models.BooleanField(default=False)
