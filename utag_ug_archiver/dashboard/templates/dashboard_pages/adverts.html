@@ -14,7 +14,7 @@
               <div class="col-md-8">
                 <h4 class="card-title">Advertisements</h4>
               </div>
-              {% if user.is_admin or user.is_superuser or user.is_secretary %}
+              {% if user.is_admin or user.is_superuser %}
               <div class="col-md-4">
                 <div class="float-end d-none d-md-block">
                   <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createAdvertModal">
@@ -35,7 +35,7 @@
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Created At</th>
-                    <th>Status</th>
+                    <th class="text-center">Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -51,14 +51,14 @@
                     <td>{{ ad.start_date  }}</td>
                     <td>{{ ad.end_date }}</td>
                     <td>{{ ad.created_at|date:"d M Y" }}</td>
-                    <td>
-                      <span class="badge bg-{% if ad.status == 'PUBLISHED' %}success{% elif ad.status == 'DRAFT' %}warning{% elif ad.status == 'ACTIVE' %}primary{% else %}danger{% endif %}">{{ ad.status }}</span>
+                    <td class="text-center">
+                      <span class="badge bg-{% if ad.status == 'PUBLISHED' %}success{% elif ad.status == 'EXPIRED' %}warning{% else %}danger{% endif %}">{{ ad.status }}</span>
                     </td>
                     <td>
-                      <a href="#" class="btn btn-primary btn-sm">
+                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertDetailsModal_{{ ad.id }}">
                         <i class="mdi mdi-eye"></i>
                       </a>
-                      {% if user.is_admin or user.is_superuser or user.is_secretary %}
+                      {% if user.is_admin or user.is_superuser %}
                       <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisementsModal_{{ ad.id }}">
                         <i class="mdi mdi-pen"></i>
                       </a>
@@ -81,6 +81,7 @@
   
   {% include "includes/modals/edit_advert.html" %}
   {% include "includes/modals/add_advert.html" %}
+  {% include "includes/modals/advert_details.html" %}
 </div>
 {% endblock content %}
 

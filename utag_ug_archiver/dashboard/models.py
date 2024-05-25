@@ -115,11 +115,8 @@ class Document(models.Model):
         ('external', 'External'),
     )
     DOCUMENT_STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('archived', 'Archived'),
-        ('draft', 'Draft'),
+        ('Published', 'Published'),
+        ('Draft', 'Draft'),
     )
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
@@ -129,7 +126,7 @@ class Document(models.Model):
     receiver = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
     date = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='approved')
+    status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='Published')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

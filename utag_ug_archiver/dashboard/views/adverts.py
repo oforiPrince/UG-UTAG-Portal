@@ -8,6 +8,7 @@ from django.http import HttpResponseRedirect
 
 from adverts.models import AdvertPlan, Advertisement, Advertiser
 
+from dashboard.models import Announcement
 from utag_ug_archiver.utils.decorators import MustLogin
 class AdvertsView(View):
     template_name = 'dashboard_pages/adverts.html'
@@ -17,10 +18,21 @@ class AdvertsView(View):
         adverts = Advertisement.objects.all()
         advertisers = Advertiser.objects.all()
         active_plans = AdvertPlan.objects.filter(status='active')
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
             'adverts' : adverts,
             'advertisers' : advertisers,
-            'plans' : active_plans
+            'plans' : active_plans,
+            'announcement_count': announcement_count,
+            'new_announcements' : new_announcements
         }
         return render(request, self.template_name, context)
     
@@ -30,8 +42,19 @@ class AdvertPlansView(View):
     def get(self, request):
         #Get all advert plans
         plans = AdvertPlan.objects.all()
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
-            'plans' : plans
+            'plans' : plans,
+            'announcement_count' : announcement_count,
+            'new_announcements' : new_announcements
         }
         return render(request, self.template_name, context)
     
@@ -41,8 +64,19 @@ class CompaniesView(View):
     def get(self, request):
         #Get all companies
         companies = Advertiser.objects.all()
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
-            'companies' : companies
+            'companies' : companies,
+            'announcement_count' : announcement_count,
+            'new_announcements' : new_announcements
         }
         return render(request, self.template_name, context)
     
@@ -74,12 +108,13 @@ class AdvertUpdateView(View):
         advert_id = request.POST.get('advert_id')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
-        plan = request.POST.get('plan')
-        advertiser = request.POST.get('advertiser')
+        plan_id = request.POST.get('plan_id')
+        advertiser_id = request.POST.get('advertiser_id')
         status = request.POST.get('status')
         advert = Advertisement.objects.get(id=advert_id)
+        plan= AdvertPlan.objects.get(id=plan_id)
+        advertiser = Advertiser.objects.get(id=advertiser_id)
         advert.start_date = start_date
-        advert.end_date = end_date
         advert.plan = plan
         advert.advertiser = advertiser
         advert.status = status

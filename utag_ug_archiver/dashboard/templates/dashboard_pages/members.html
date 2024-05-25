@@ -78,7 +78,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for member in members %}
+                                {% for member in users %}
                                 <tr>
                                     <td>{{forloop.counter}}</td>
                                     <td>{{member.title}}</td>
@@ -89,10 +89,10 @@
                                     <td>{{member.phone_number}}</td>
                                     <td>{{member.department}}</td>
                                     <td>
-                                        <a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#memberModal_{{member.id}}">
+                                        <a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#userModal_{{member.id}}">
                                             <i class="mdi mdi-eye"></i>
                                         </a>                                                                                
-                                        <a href="#" class="btn btn-success btn-sm">
+                                        <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal_{{member.id}}">
                                             <i class="mdi mdi-pen"></i>
                                         </a>
                                         <a href="{% url 'dashboard:delete_member' member_id=member.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this member?');">
@@ -114,8 +114,9 @@
     </div>
     <!-- container-fluid -->
     {% include "includes/modals/add_member.html" %}
+    {% include "includes/modals/edit_user.html" %}
     {% include "includes/modals/upload_members.html" %}
-    {% include "includes/modals/member_details.html" %}
+    {% include "includes/modals/user_details.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}

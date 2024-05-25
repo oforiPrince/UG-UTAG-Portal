@@ -17,16 +17,15 @@ class EventsView(View):
     def get(self, request):
         #Get all events
         events = Event.objects.all()
-        announcement_count = 0
         if request.user.is_admin:
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
         elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
             'events' : events,
             'announcement_count' : announcement_count,

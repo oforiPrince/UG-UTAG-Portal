@@ -1,0 +1,60 @@
+<!-- advertisement_detail.html -->
+{% for ad in adverts %}
+<div class="modal fade " id="advertDetailsModal_{{ad.id}}" tabindex="-1" role="dialog" aria-labelledby="advertDetailsModal_{{ad.id}}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="advertDetailsModal_{{ad.id}}Label">{{ ad.advertiser.company_name }} - Advertisement Details</h5>
+          <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+        </div>
+        <div class="modal-body">
+          <div class="text-center">
+            {% if ad.get_image_url %}
+              <img src="{{ ad.get_image_url }}" alt="Advertisement Image" class="img-fluid">
+            {% endif %}
+          </div>
+          <hr>
+          <div class="row">
+            <div class="col-md-6">
+                <p><strong>Advertiser:</strong> {{ ad.advertiser.company_name }}</p>
+                <p><strong>Plan:</strong> {{ ad.plan.name }}
+                </p>
+                <p><strong>Target URL:</strong> <a href="{{ ad.target_url }}" target="_blank">{{ ad.target_url }}</a></p>
+                <p><strong>Start Date:</strong> {{ ad.start_date }}</p>
+                <p><strong>End Date:</strong> {% if ad.end_date %} {{ ad.end_date }} {% else %} N/A {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Status:</strong> {{ ad.get_status_display }}</p>
+                <p><strong>Clicks:</strong> {{ ad.clicks }}</p>
+                <p><strong>Created At:</strong> {{ ad.created_at }}</p>
+                <p><strong>Updated At:</strong> {{ ad.updated_at }}</p>
+                {% if ad.image %}
+                    <p><strong>Image Dimensions:</strong> {{ ad.get_image_dimensions.0 }} x {{ ad.get_image_dimensions.1 }}</p>
+                {% endif %}
+            </div>
+          </div>
+          
+          
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
+              </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    $(document).ready(function() {
+      $('#advertDetailsModal_{{ad.id}}').modal('show');
+    });
+  </script>
+{% endfor %}
+    
+  

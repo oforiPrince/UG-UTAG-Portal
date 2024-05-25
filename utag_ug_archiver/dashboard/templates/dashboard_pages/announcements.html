@@ -58,9 +58,9 @@
                       <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#announcementModal_{{ announcement.id }}">
                         <i class="mdi mdi-eye"></i>
                     </a>
-                    <a href="#" class="btn btn-secondary btn-sm">
+                    <!-- <a href="#" class="btn btn-secondary btn-sm">
                         <i class="mdi mdi-comment"></i>
-                    </a>
+                    </a> -->
                     {% if user.is_admin or user.is_superuser or user.is_secretary %}
                     <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAnnouncementModal_{{ announcement.id }}">
                         <i class="mdi mdi-pen"></i>

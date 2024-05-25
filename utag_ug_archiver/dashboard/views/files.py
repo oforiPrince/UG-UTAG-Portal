@@ -17,18 +17,19 @@ class InternalDocumentsView(View):
     def get(self, request):
         #Get all internal documents
         documents = Document.objects.filter(category='internal')
-        announcement_count = 0
         if request.user.is_admin:
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
         elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
-            'documents' : documents
+            'documents' : documents,
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count
         }
         return render(request, self.template_name, context)
     
@@ -38,18 +39,19 @@ class ExternalDocumentsView(View):
     def get(self, request):
         #Get all external documents
         documents = Document.objects.filter(category='external')
-        announcement_count = 0
         if request.user.is_admin:
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
         elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
-            'documents' : documents
+            'documents' : documents,
+            'new_announcements' : new_announcements,
+            'announcement_count': announcement_count
         }
         return render(request, self.template_name, context)
 
@@ -92,6 +94,13 @@ class DeleteFileView(View):
             return JsonResponse({'success': True})
         except File.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'File not found'})
+        
+class DeleteDocumentView(View):
+    def get(self, request, document_id):
+        document = Document.objects.get(pk=document_id)
+        document.delete()
+        messages.success(request, 'Document deleted successfully')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 class UpdateFileView(View):    
     @method_decorator(MustLogin)

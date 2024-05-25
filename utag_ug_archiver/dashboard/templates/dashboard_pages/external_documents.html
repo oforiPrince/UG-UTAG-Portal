@@ -11,7 +11,7 @@
             <div class="col-md-8">
               <h4 class="card-title">External Documents</h4>
             </div>
-            {% if user.is_admin or user.is_superuser or user.is_secretary %}
+            {% if user.is_admin or user.is_superuser or user.is_executive %}
             <div class="col-md-4">
               <div class="float-end d-none d-md-block">
                 <button id="openModalButton" class="btn btn-primary" type="button">
@@ -33,9 +33,11 @@
                         <th>Uploaded By</th>
                         <!-- <th>Comments</th> -->
                         <th>Created at</th>
+                        {% if not user.is_member %}
                         <th>Updated at</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        {% endif %}
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
 
@@ -51,11 +53,13 @@
                     <td>{{ document.uploaded_by }}</td>
                     <!-- <td>0</td> -->
                     <td>{{ document.created_at |date:"d M Y" }}</td>
+                    {% if not user.is_member %}
                     <td>{{ document.updated_at |date:"d M Y" }}</td>
                     <td>
                       <span class="badge bg-success">{{document.status}}</span>
                     </td>
-                    <td>
+                    {% endif %}
+                    <td class="text-center">
                       <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#documentDetailModal_{{ document.id }}">
                         <i class="mdi mdi-eye"></i>
                       </a>
@@ -63,8 +67,8 @@
                       <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editDocumentModal_{{ document.id }}">
                           <i class="mdi mdi-pen"></i>
                       </a>
-                      <a href="#" class="btn btn-danger btn-sm">
-                          <i class="mdi mdi-delete"></i>
+                      <a href="{% url 'dashboard:delete_document' document.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this document?');">
+                        <i class="mdi mdi-delete"></i>
                       </a>
                       {% endif %}
                   </td>

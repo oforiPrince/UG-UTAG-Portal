@@ -10,14 +10,13 @@ urlpatterns =[
 urlpatterns += [
     path('account_management/admins',views.AdminListView.as_view(), name='admins'),
     path('account_management/admins/create',views.AdminCreateView.as_view(), name='create_admin'),
-    path('account_management/admins/update/',views.AdminUpdateView.as_view(), name='update_admin'),
+    path('account_management/user/update/',views.UserUpdateView.as_view(), name='update_user'),
     path('account_management/admins/upload',views.UploadAdminData.as_view(), name='upload_admins'),
     path('account_management/admin/delete/<int:admin_id>',views.AdminDeleteView.as_view(), name='delete_admin'),
     path('account_management/members/upload',views.UploadMemberData.as_view(), name='upload_members'),
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
-    path('account_management/members/update/',views.MemberUpdateView.as_view(), name='update_member'),
 ]
 #For executive management
 urlpatterns += [
@@ -57,6 +56,7 @@ urlpatterns += [
     path('documents/update/',views.UpdateFileView.as_view(), name='update_file'),
     path('documents/external/add',views.AddExternalDocumentView.as_view(), name='add_external_document'),
     path('documents/delete_file/',views.DeleteFileView.as_view(), name='delete_file'),
+    path('documents/delete/<int:document_id>',views.DeleteDocumentView.as_view(), name='delete_document'),
    
 ]
 

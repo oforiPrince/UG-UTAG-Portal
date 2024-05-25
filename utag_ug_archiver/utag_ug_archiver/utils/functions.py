@@ -129,7 +129,9 @@ def process_bulk_members(request,file):
         "Other Name": "other_name",
         "Last Name": "last_name",
         "Gender": "gender",
-        "Email": "email"
+        "Email": "email",
+        "Phone Number" : "phone_number",
+        "Department" : "department"
     }
 
     df.rename(columns=rename_columns, inplace=True)

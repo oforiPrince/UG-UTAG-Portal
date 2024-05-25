@@ -1,18 +1,18 @@
 <!-- Modal for Add -->
 {% load static %}
-{% for member in members %}
+{% for user in users %}
 <div
   class="modal fade bs-example-modal-lg"
-  id="memberModal_{{member.id}}"
+  id="userModal_{{user.id}}"
   tabindex="-1"
-  aria-labelledby="memberModal_{{member.id}}"
+  aria-labelledby="userModal_{{user.id}}"
   aria-hidden="true"
 >
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="memberModal_{{member.id}}Label">
-          {{member.get_short_name}}'s Detail
+        <h5 class="modal-title" id="userModal_{{user.id}}Label">
+          {{user.get_short_name}}'s Detail
         </h5>
         <button
           type="button"
@@ -25,10 +25,10 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex flex-column align-items-center text-center">
-                    <img src="{% if member.profile_pic %} {{member.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="{{member.first_name}}" class="rounded-circle p-1 bg-primary" width="110">
+                    <img src="{% if user.profile_pic %} {{user.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="{{user.first_name}}" class="rounded-circle p-1 bg-primary" width="110">
                     <div class="mt-3">
-                        <h4>{{member.get_full_name}}</h4>
-                        <p class="mb-1">{% if member.is_superuser or member.is_member %} Admin {% elif member.is_secretary %} Secretary {% else %} Member{% endif %}  </p>
+                        <h4>{{user.get_full_name}}</h4>
+                        <p class="mb-1">{% if user.is_superuser or user.is_user %} Admin {% elif user.is_executive or user.is_secretary %} Executive {% else %} Member{% endif %}  </p>
                     </div>
                 </div>
             </div>
@@ -36,25 +36,33 @@
         <div class="">
             <p>
               <strong>Title:</strong>
-              <span id="member-name">{{member.title}}</span>
+              <span id="user-name">{{user.title}}</span>
             </p>
             <p>
               <strong>First Name:</strong>
-              <span id="member-name">{{member.first_name}}</span>
+              <span id="user-name">{{user.first_name}}</span>
             </p>
-            {% if member.other_name %}
+            {% if user.other_name %}
             <p>
               <strong>Other Name:</strong>
-              <span id="member-name">{{member.other_name}}</span>
+              <span id="user-name">{{user.other_name}}</span>
             </p>
             {% endif %}
             <p>
                 <strong>Last Name:</strong>
-                <span id="member-name">{{member.last_name}}</span>
+                <span id="user-name">{{user.last_name}}</span>
               </p>
             <p>
               <strong>Email:</strong>
-              <span id="member-email">{{member.email}}</span>
+              <span id="user-email">{{user.email}}</span>
+            </p>
+            <p>
+              <strong>Phone:</strong>
+              <span id="user-phone">{{user.phone_number}}</span>
+            </p>
+            <p>
+              <strong>Department</strong>
+              <span id="user-department">{{user.department}}</span>
             </p>
         </div>
       </div>

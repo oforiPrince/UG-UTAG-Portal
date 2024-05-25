@@ -1,15 +1,15 @@
-{% for admin in admins %}
+{% for user in users %}
 <div
   class="modal fade bs-example-modal-lg"
-  id="editAdminModal_{{admin.id}}"
+  id="editUserModal_{{user.id}}"
   tabindex="-1"
-  aria-labelledby="editAdminModal_{{admin.id}}"
+  aria-labelledby="editUserModal_{{user.id}}"
   aria-hidden="true"
 >
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editAdminModal_{{admin.id}}Label">Edit Admin</h5>
+        <h5 class="modal-title" id="editUserModal_{{user.id}}Label">Edit User</h5>
         <button
           type="button"
           class="btn-close"
@@ -20,21 +20,21 @@
       <div class="modal-body">
         <form
           class="custom-validation"
-          action="{% url 'dashboard:update_admin' %}"
+          action="{% url 'dashboard:update_user' %}"
           method="POST"
         >
           {% csrf_token %}
-          <input type="hidden" name="admin_id" value="{{admin.id}}" />
+          <input type="hidden" name="user_id" value="{{user.id}}" />
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
             <div>
               <select id="id_title" class="form-control" required name="title">
                 <option value="" selected disabled>Select a title</option>
-                <option value="Prof." {% if admin.title == 'Prof.' %}selected{% endif %}>Prof.</option>
-                <option value="Dr." {% if admin.title == 'Dr.' %}selected{% endif %}>Dr.</option>
-                <option value="Mr." {% if admin.title == 'Mr.' %}selected{% endif %}>Mr.</option>
-                <option value="Mrs." {% if admin.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
-                <option value="Ms." {% if admin.title == 'Ms.' %}selected{% endif %}>Ms.</option>
+                <option value="Prof." {% if user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                <option value="Dr." {% if user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                <option value="Mr." {% if user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                <option value="Mrs." {% if user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                <option value="Ms." {% if user.title == 'Ms.' %}selected{% endif %}>Ms.</option>
               </select>
             </div>
           </div>
@@ -48,11 +48,11 @@
                 required
                 name="first_name"
                 placeholder="Enter your first name"
-                value="{{admin.first_name}}"
+                value="{{user.first_name}}"
               />
             </div>
           </div>
-          {% if admin.other_name %}
+          {% if user.other_name %}
           <div class="mb-3">
             <label class="form-label" for="id_other_name">Other Name</label>
             <div>
@@ -62,7 +62,7 @@
                 class="form-control"
                 name="other_name"
                 placeholder="Enter your other name"
-                value="{{admin.other_name}}"
+                value="{{user.other_name}}"
               />
             </div>
           </div>
@@ -77,7 +77,7 @@
                 required
                 name="last_name"
                 placeholder="Enter your last name"
-                value="{{admin.last_name}}"
+                value="{{user.last_name}}"
               />
             </div>
           </div>
@@ -92,8 +92,18 @@
                 name="email"
                 placeholder="Enter a valid email"
                 data-parsley-type="email"
-                value="{{admin.email}}"
+                value="{{user.email}}"
               />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_gender">Gender</label>
+            <div>
+              <select id="id_gender" class="form-control" required name="gender">
+                <option value="" selected disabled>Select gender</option>
+                <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+              </select>
             </div>
           </div>
           <div class="mb-3">
@@ -106,7 +116,7 @@
                 required
                 name="phone_number"
                 placeholder="Enter your phone number"
-                value="{{admin.phone_number}}"
+                value="{{user.phone_number}}"
               />
             </div>
           </div>
@@ -120,11 +130,11 @@
                 required
                 name="department"
                 placeholder="Enter your department"
-                value="{{admin.department}}"
+                value="{{user.department}}"
               />
             </div>
           </div>          
-          <input class="form-check form-switch" type="checkbox" id="switch6" name="is_active" switch="primary" {% if admin.is_active %} checked {% endif %}>
+          <input class="form-check form-switch" type="checkbox" id="switch6" name="is_active" switch="primary" {% if user.is_active %} checked {% endif %}>
                                         <label class="form-label" for="switch6" data-on-label="Yes" data-off-label="No"></label>
           
           <div class="mb-0">

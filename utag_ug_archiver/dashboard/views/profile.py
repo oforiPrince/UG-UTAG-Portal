@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 
+from dashboard.models import Announcement
 from utag_ug_archiver.utils.decorators import MustLogin
 
 #For user's profile
@@ -13,6 +14,19 @@ class ProfileView(View):
     template_name = 'dashboard_pages/profile.html'
     @method_decorator(MustLogin)
     def get(self,request):
+        if request.user.is_admin:
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.is_secretary or request.user.is_executive:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.is_member:
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+            context = {
+                'new_announcements' : new_announcements,
+                'announcement_count' : announcement_count
+            }
         return render(request, self.template_name)
     
     @method_decorator(MustLogin)
@@ -79,3 +93,4 @@ class ChangeProfilePicView(View):
             user.save()
             messages.info(request, "Profile Picture Updated Successfully")
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        

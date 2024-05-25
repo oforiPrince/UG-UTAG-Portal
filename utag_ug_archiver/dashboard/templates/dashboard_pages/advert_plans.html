@@ -14,7 +14,7 @@
               <div class="col-md-8">
                 <h4 class="card-title">Advertisement Plans</h4>
               </div>
-              {% if user.is_admin or user.is_superuser or user.is_secretary %}
+              {% if user.is_admin or user.is_superuser %}
               <div class="col-md-4">
                 <div class="float-end d-none d-md-block">
                   <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createAdvertPlanModal">
@@ -58,7 +58,7 @@
                       <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertPlanDetailsModal_{{ plan.id }}">
                         <i class="mdi mdi-eye"></i>
                       </a>
-                      {% if user.is_admin or user.is_superuser or user.is_secretary %}
+                      {% if user.is_admin or user.is_superuser %}
                       <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertPlanModal_{{ plan.id }}">
                         <i class="mdi mdi-pen"></i>
                       </a>
