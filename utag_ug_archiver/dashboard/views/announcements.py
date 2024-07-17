@@ -39,39 +39,53 @@ class AnnouncementsView(View):
         }
         return render(request, self.template_name, context)
     
-class AnnouncementCreateView(View):    
+class AnnouncementCreateUpdateView(View):
+    template_name = 'dashboard_pages/forms/create_update_announcement.html'
+
     @method_decorator(MustLogin)
-    def post(self, request):
+    def get(self, request, announcement_id=None):
+        if announcement_id:
+            announcement = Announcement.objects.get(id=announcement_id)
+            initial_data = {
+                'title': announcement.title,
+                'content': announcement.content,
+                'target_group': announcement.target_group,
+                'status': announcement.status,
+            }
+        else:
+            initial_data = {
+                'status': 'DRAFT',
+                'target_group': 'ALL',
+            }
+        return render(request, self.template_name, {'initial_data': initial_data})
+
+    @method_decorator(MustLogin)
+    def post(self, request, announcement_id=None):
+        user = request.user
         title = request.POST.get('title')
         content = request.POST.get('content')
         target_group = request.POST.get('target_group')
         status = request.POST.get('status')
-        created_by = request.user
-        announcement = Announcement.objects.create(
-            title = title,
-            content = content,
-            target_group = target_group,
-            status = status,
-            created_by = created_by
-        )
-        messages.success(request, 'Announcement added successfully')
-        return redirect('dashboard:announcements')
-    
-class AnnouncementUpdateView(View):    
-    @method_decorator(MustLogin)
-    def post(self, request):
-        announcement_id = request.POST.get('announcement_id')
-        title = request.POST.get('title')
-        content = request.POST.get('content')
-        target_group = request.POST.get('target_group')
-        status = request.POST.get('status')
-        announcement = Announcement.objects.get(id=announcement_id)
-        announcement.title = title
-        announcement.content = content
-        announcement.target_group = target_group
-        announcement.status = status
-        announcement.save()
-        messages.success(request, 'Announcement updated successfully')
+
+        if announcement_id:
+            announcement = Announcement.objects.get(id=announcement_id)
+            announcement.title = title
+            announcement.content = content
+            announcement.target_group = target_group
+            announcement.status = status
+            announcement.save()
+            messages.info(request, "Announcement Updated Successfully")
+        else:
+            announcement = Announcement.objects.create(
+                title=title,
+                content=content,
+                target_group=target_group,
+                status=status,
+                created_by=user
+            )
+            announcement.save()
+            messages.info(request, "Announcement Created Successfully")
+
         return redirect('dashboard:announcements')
     
 class AnnouncementDeleteView(View):    
