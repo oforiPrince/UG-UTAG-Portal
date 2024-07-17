@@ -61,7 +61,7 @@
                     </td>
                     {% endif %}
                     <td>
-                      <a href="#" class="btn btn-primary btn-sm">
+                      <a href="#" class="btn btn-primary btn-sm"  data-bs-toggle="modal" data-bs-target="#newsModal_{{news.id}}">
                         <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser or user.is_secretary %}
@@ -83,6 +83,7 @@
       </div>
     </div>
   </div>
+  {% include "includes/modals/details/news_details.html" %}
 </div>
 {% endblock content %}
 

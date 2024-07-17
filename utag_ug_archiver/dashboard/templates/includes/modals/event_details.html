@@ -1,0 +1,73 @@
+<!-- Modal for Event Details -->
+{% for event in events %}
+<div
+  class="modal fade bs-example-modal-lg"
+  id="eventModal_{{event.id}}"
+  tabindex="-1"
+  aria-labelledby="eventModal_{{event.id}}"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModal_{{event.id}}Label">
+          {{ event.title }}
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <img
+              src="{{ event.image.url }}"
+              alt="{{ event.title }}"
+              class="img-fluid rounded"
+            />
+          </div>
+          <div class="col-md-6">
+            <p>
+              <strong>Description:</strong>
+              {{ event.description|safe }}
+            </p>
+            <p>
+              <strong>Venue:</strong>
+              {{ event.venue }}
+            </p>
+            <p>
+              <strong>Date:</strong>
+              {{ event.date }}
+            </p>
+            <p>
+              <strong>Time:</strong>
+              {{ event.time }}
+            </p>
+            <p>
+              <strong>Created By:</strong>
+              {{ event.created_by.get_full_name }}
+            </p>
+            <p>
+              <strong>Created At:</strong>
+              {{ event.created_at }}
+            </p>
+            <p>
+              <strong>Updated At:</strong>
+              {{ event.updated_at }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+    

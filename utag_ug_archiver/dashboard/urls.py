@@ -35,8 +35,8 @@ urlpatterns += [
 #For event management
 urlpatterns += [
     path('events',views.EventsView.as_view(), name='events'),
-    path('events/create',views.EventCreateView.as_view(), name='create_event'),
-    path('events/update/',views.EventUpdateView.as_view(), name='update_event'),
+    path('events/create',views.EventCreateUpdateView.as_view(), name='create_event'),
+    path('events/update/<int:event_id>',views.EventCreateUpdateView.as_view(), name='update_event'),
     path('events/delete/<int:event_id>',views.EventDeleteView.as_view(), name='delete_event'),
 ]
 
