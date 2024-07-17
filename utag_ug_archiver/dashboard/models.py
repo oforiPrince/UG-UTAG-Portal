@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.text import slugify
 from tinymce.models import HTMLField
 
 from accounts.models import User
@@ -6,6 +7,7 @@ from accounts.models import User
 class Event(models.Model):
     image = models.ImageField(upload_to='event_images/')
     title = models.CharField(max_length=100)
+    event_slug = models.SlugField(max_length=100, blank=True, null=True)
     description = HTMLField()
     venue = models.CharField(max_length=100)
     date = models.DateField()
@@ -21,11 +23,23 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def save(self, *args, **kwargs):
+        if not self.event_slug:
+            self.event_slug = slugify(self.title)
+            unique_slug = self.event_slug
+            num = 1
+            while Event.objects.filter(event_slug=unique_slug).exists():
+                unique_slug = f"{self.event_slug}-{num}"
+                num += 1
+            self.event_slug = unique_slug
+        super().save(*args, **kwargs)
 
 
 class News(models.Model):
     featured_image = models.ImageField(upload_to='news_images/')
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=150)
+    news_slug = models.SlugField(max_length=150, blank=True)
     content = HTMLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
     tags = models.CharField(max_length=100, blank=True, null=True)
@@ -35,6 +49,17 @@ class News(models.Model):
     
     def get_featured_image_url(self):
         return self.featured_image.url if self.featured_image else None
+    
+    def save(self, *args, **kwargs):
+        if not self.news_slug:
+            self.news_slug = slugify(self.title)
+            unique_slug = self.news_slug
+            num = 1
+            while News.objects.filter(news_slug=unique_slug).exists():
+                unique_slug = f"{self.news_slug}-{num}"
+                num += 1
+            self.news_slug = unique_slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

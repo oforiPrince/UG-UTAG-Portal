@@ -1,6 +1,6 @@
 from datetime import date
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.db.models import Q
 from dashboard.models import Event, News, Executive
@@ -71,16 +71,7 @@ class EventsView(View):
             'all_events': all_events,
         }
         return render(request, self.template_name, context)
-    
-class EventsDetailView(View):
-    template_name = 'website_pages/events_detail.html'
-    
-    def get(self, request, pk):
-        event = Event.objects.get(pk=pk)
-        context = {
-            'event': event,
-        }
-        return render(request, self.template_name, context)
+
     
 class NewsView(View):
     template_name = 'website_pages/news.html'
@@ -92,17 +83,30 @@ class NewsView(View):
             'all_news': all_news,
         }
         return render(request, self.template_name, context)
-    
+
 class NewsDetailView(View):
     template_name = 'website_pages/news_detail.html'
     
     def get(self, request, *args, **kwargs):
-        news_id = kwargs.get('news_id')
-        news = News.objects.get(id=news_id)
+        news_slug = kwargs.get('slug')
+        news = get_object_or_404(News, news_slug=news_slug)
         context = {
-            'news' : news
+            'news': news
         }
-        return render(request, self.template_name,context)
+        return render(request, self.template_name, context)
+
+
+class EventsDetailView(View):
+    template_name = 'website_pages/events_detail.html'
+    
+    def get(self, request, *args, **kwargs):
+        event_slug = kwargs.get('slug')
+        event = get_object_or_404(Event, event_slug=event_slug)
+        context = {
+            'event': event,
+        }
+        return render(request, self.template_name, context)
+
     
 class ExecutiveOfficersView(View):
     template_name = 'website_pages/executive_officers.html'

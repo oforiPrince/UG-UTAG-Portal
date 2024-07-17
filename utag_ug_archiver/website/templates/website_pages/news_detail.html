@@ -46,17 +46,17 @@
                         <strong><i class="fa fa-share-alt"></i>Share:</strong>
                         <ul class="social social-round">
                             <li class="social__item">
-                                <a href="https://www.facebook.com" class="social__link" target="_blank" rel="noopener">
+                                <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" class="social__link" target="_blank" rel="noopener">
                                     <i class="fa fa-facebook"></i>
                                 </a>
                             </li>
                             <li class="social__item">
-                                <a href="https://www.plus.google.com" class="social__link" target="_blank" rel="noopener">
-                                    <i class="fa fa-google-plus"></i>
+                                <a href="https://wa.me/?text={{ request.build_absolute_uri }}" class="social__link" target="_blank" rel="noopener">
+                                    <i class="fa fa-whatsapp"></i>
                                 </a>
                             </li>
                             <li class="social__item">
-                                <a href="https://www.plus.google.com" class="social__link" target="_blank" rel="noopener">
+                                <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.news_slug }}" class="social__link" target="_blank" rel="noopener">
                                     <i class="fa fa-twitter"></i>
                                 </a>
                             </li>

@@ -14,7 +14,6 @@
 </section>
 <!-- Page Title Area End -->
 
-
 <!-- Main Content Wrapper Start -->
 <div class="main-content-wrapper">
     <!-- News Area Start -->
@@ -53,18 +52,18 @@
                                     <span>Share <i class="fa fa-share-alt"></i></span>
                                     <ul class="social social-round">
                                         <li class="social__item">
-                                            <a href="https://www.facebook.com" class="social__link" target="_blank" rel="noopener">
+                                            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" class="social__link" target="_blank" rel="noopener">
                                                 <i class="fa fa-facebook"></i>
                                             </a>
                                         </li>
                                         <li class="social__item">
-                                            <a href="https://www.twitter.com" class="social__link" target="_blank" rel="noopener">
-                                                <i class="fa fa-twitter"></i>
+                                            <a href="https://wa.me/?text={{ request.build_absolute_uri }}" class="social__link" target="_blank" rel="noopener">
+                                                <i class="fa fa-whatsapp"></i>
                                             </a>
                                         </li>
                                         <li class="social__item">
-                                            <a href="https://www.plus.google.com" class="social__link" target="_blank" rel="noopener">
-                                                <i class="fa fa-google-plus"></i>
+                                            <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ event.event_slug }}" class="social__link" target="_blank" rel="noopener">
+                                                <i class="fa fa-twitter"></i>
                                             </a>
                                         </li>
                                     </ul>
@@ -73,28 +72,6 @@
                         </div>
                     </article>
                 </div>
-                <!-- <div class="col-lg-3">
-                    <aside class="sidebar">
-                        <div class="widget mb--45">
-                            <h3 class="widget-title mb--30">Categories</h3>
-                            <ul class="categories-menu">
-                                <li><i class="fa fa-caret-right"></i><a href="shop.html">Book</a></li>
-                                <li><i class="fa fa-caret-right"></i><a href="shop.html">Magazine</a></li>
-                                <li><i class="fa fa-caret-right"></i><a href="shop.html">Uncategorized</a></li>
-                            </ul>
-                        </div>
-                        <div class="widget">
-                            <h3 class="widget-title mb--30">Tags</h3>
-                            <div class="taglist">
-                                <a href="news.html">final</a>
-                                <a href="news.html">finance</a>
-                                <a href="news.html">service</a>
-                                <a href="news.html">transport</a>
-                                <a href="news.html">website</a>
-                            </div>
-                        </div>
-                    </aside>
-                </div> -->
             </div>
         </div>
     </div>
