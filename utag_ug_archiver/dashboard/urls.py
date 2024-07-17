@@ -50,6 +50,7 @@ urlpatterns += [
 
 #For Document management
 urlpatterns += [
+    path('documents/create',views.DocumentCreateUpdateView.as_view(), name='create_document'),
     path('documents/internal',views.InternalDocumentsView.as_view(), name='internal_documents'),
     path('documents/external',views.ExternalDocumentsView.as_view(), name='external_documents'),
     path('documents/internal/add',views.AddInternalDocumentView.as_view(), name='add_internal_document'),

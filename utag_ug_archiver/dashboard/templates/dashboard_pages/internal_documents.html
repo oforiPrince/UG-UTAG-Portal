@@ -15,9 +15,9 @@
             {% if user.is_admin or user.is_superuser or user.is_secretary %}
             <div class="col-md-4">
               <div class="float-end d-none d-md-block">
-                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">
+                <a class="btn btn-primary"href="{% url 'dashboard:create_document' %}">
                   <i class="mdi mdi-plus me-1"></i> Add
-              </button>
+              </a>
               </div>
             </div>
             {% endif %}

@@ -1,5 +1,5 @@
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
@@ -163,3 +163,47 @@ class AddExternalDocumentView(View):
         document.save()
         messages.success(request, 'Document added successfully')
         return redirect('dashboard:external_documents')
+    
+class DocumentCreateUpdateView(View):
+    template_name = 'dashboard_pages/forms/create_update_document.html'
+
+    def get(self, request, pk=None):
+        if pk:
+            document = get_object_or_404(Document, pk=pk)
+        else:
+            document = None
+
+        context = {
+            'document': document,
+            'CATEGORY_CHOICES': Document.CATEGORY_CHOICES,
+            'DOCUMENT_STATUS_CHOICES': Document.DOCUMENT_STATUS_CHOICES,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, pk=None):
+        if pk:
+            document = get_object_or_404(Document, pk=pk)
+        else:
+            document = Document()
+
+        document.title = request.POST.get('title')
+        document.sender = request.POST.get('sender')
+        document.receiver = request.POST.get('receiver')
+        document.category = request.POST.get('category')
+        document.date = request.POST.get('date')
+        document.description = request.POST.get('description')
+        document.status = request.POST.get('status')
+        document.uploaded_by = request.user
+
+        if pk:
+            document.save()  # Save the document to update it
+
+        files = request.FILES.getlist('files')
+        for file in files:
+            new_file = File(file=file)
+            new_file.save()
+            document.files.add(new_file)
+
+        document.save()
+
+        return redirect('dashboard:documents') 
