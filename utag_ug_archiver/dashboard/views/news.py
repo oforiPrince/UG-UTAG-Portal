@@ -32,29 +32,59 @@ class NewsView(View):
         }
         return render(request, self.template_name, context)
     
-class NewsCreateView(View):   
+class NewsCreateUpdateView(View):
+    template_name = 'dashboard_pages/forms/create_update_news.html'
+
     @method_decorator(MustLogin)
-    def post(self, request):
+    def get(self, request, news_id=None):
+        if news_id:
+            news = News.objects.get(id=news_id)
+            initial_data = {
+                'title': news.title,
+                'content': news.content,
+                'is_published': 'on' if news.is_published else 'off',
+                'featured_image': news.featured_image
+            }
+        else:
+            initial_data = {
+                'is_published': 'off'
+            }
+        return render(request, self.template_name, {'initial_data': initial_data})
+
+    @method_decorator(MustLogin)
+    def post(self, request, news_id=None):
         user = request.user
         title = request.POST.get('title')
         content = request.POST.get('content')
         is_published = request.POST.get('is_published')
-        print(is_published)
         featured_image = request.FILES.get('featured_image')
+
         if is_published == 'on':
             is_published = True
         else:
             is_published = False
-        news = News.objects.create(
-            author = user,
-            title = title,
-            content = content,
-            is_published = is_published,
-            featured_image = featured_image
-        )
-        news.save()
-        messages.info(request, "News Created Successfully")
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        if news_id:
+            news = News.objects.get(id=news_id)
+            news.title = title
+            news.content = content
+            news.is_published = is_published
+            news.featured_image = featured_image
+            news.save()
+            messages.info(request, "News Updated Successfully")
+        else:
+            news = News.objects.create(
+                author=user,
+                title=title,
+                content=content,
+                is_published=is_published,
+                featured_image=featured_image
+            )
+            news.save()
+            messages.info(request, "News Created Successfully")
+
+        return redirect('dashboard:news')
+
     
 class NewsUpdateView(View):
     

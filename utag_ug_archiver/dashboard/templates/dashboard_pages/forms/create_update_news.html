@@ -1,0 +1,124 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% block title %}
+{% if news.pk %}
+      Update
+    {% else %}
+      Create
+    {% endif %}
+{% endblock title %}
+{% block content %}
+<div class="page-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <h4 class="card-title">
+                  {% if news.pk %}
+                    Update News
+                  {% else %}
+                    Create News
+                  {% endif %}
+                </h4>
+              </div>
+            </div>
+
+            <form id="newsForm" class="custom-validation" method="POST" enctype="multipart/form-data">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="title" class="form-label">News Title</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="content" class="form-label">News Content</label>
+                <textarea class="form-control" id="content" name="content" rows="10">{{ initial_data.content }}</textarea>
+              </div>
+
+              <div class="mb-3">
+                <label for="image" class="form-label">News Featured Image</label>
+                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewImage(this)">
+                <div class="mt-2 d-flex justify-content-center">
+                  <img id="oldImagePreview" src="{{ initial_data.featured_image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
+                  <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.featured_image %}display: none;{% endif %}" />
+                </div>
+              </div>
+
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if initial_data.is_published %}checked{% endif %}>
+                <label class="form-check-label" for="isPublished">
+                  Published
+                  <small class="text-success">
+                    (Check this box if you want to publish the news and make it visible to the public.)
+                  </small>
+                </label>
+              </div>
+
+              <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+              <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block my_styles %}
+ <!-- DataTables -->
+ <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+ <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+
+ <!-- Responsive datatable examples -->
+ <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+{% endblock my_styles %}
+{% block my_scripts %}
+    <script>
+      // JavaScript for previewing image
+      function previewImage(input) {
+        var oldImagePreview = document.getElementById('oldImagePreview');
+        var newImagePreview = document.getElementById('newImagePreview');
+      
+        if (input.files && input.files[0]) {
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            newImagePreview.src = e.target.result;
+            newImagePreview.style.display = 'inline-block';
+            oldImagePreview.style.display = 'none';
+          };
+          reader.readAsDataURL(input.files[0]);
+        } else {
+          newImagePreview.src = '';
+          newImagePreview.style.display = 'none';
+          oldImagePreview.style.display = 'inline-block';
+        }
+      }
+    </script>
+
+    <!-- Required datatable js -->
+    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+
+    <!-- Responsive examples -->
+    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+
+    <!-- Datatable init js -->
+    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+
+    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
+    
+    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script>
+      tinymce.init({
+          selector: '#content',
+          plugins: 'lists link image',
+          toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+      });
+    </script>
+{% endblock my_scripts %}

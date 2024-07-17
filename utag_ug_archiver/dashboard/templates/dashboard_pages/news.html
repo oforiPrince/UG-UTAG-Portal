@@ -17,9 +17,9 @@
               {% if user.is_admin or user.is_superuser or user.is_secretary %}
               <div class="col-md-4">
                 <div class="float-end d-none d-md-block">
-                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addModal">
+                  <a class="btn btn-primary" href="{% url 'dashboard:create_news' %}">
                     <i class="mdi mdi-plus-circle me-1"></i> Add
-                  </button>
+                  </a>
                 </div>
               </div>
               {% endif %}
@@ -65,7 +65,7 @@
                         <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editNewsModal_{{ news.id }}">
+                      <a href="{% url 'dashboard:update_news' news.id %}" class="btn btn-success btn-sm">
                         <i class="mdi mdi-pen"></i>
                       </a>
                       <a href="{% url 'dashboard:delete_news' news_id=news.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this news?');">
@@ -83,8 +83,6 @@
       </div>
     </div>
   </div>
-  {% include "includes/modals/add_news.html" %}
-  {% include "includes/modals/edit_news.html" %}
 </div>
 {% endblock content %}
 
@@ -111,4 +109,6 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
 {% endblock my_scripts %}

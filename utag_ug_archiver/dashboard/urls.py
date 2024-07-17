@@ -43,8 +43,8 @@ urlpatterns += [
 #For news management
 urlpatterns += [
     path('news',views.NewsView.as_view(), name='news'),
-    path('news/create',views.NewsCreateView.as_view(), name='create_news'),
-    path('news/update/',views.NewsUpdateView.as_view(), name='update_news'),
+    path('news/create',views.NewsCreateUpdateView.as_view(), name='create_news'),
+    path('news/update/<int:news_id>',views.NewsCreateUpdateView.as_view(), name='update_news'),
     path('news/delete/<int:news_id>',views.NewsDeleteView.as_view(), name='delete_news'),
 ]
 

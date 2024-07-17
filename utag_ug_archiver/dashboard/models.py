@@ -1,12 +1,12 @@
 from django.db import models
-from django.conf import settings
+from tinymce.models import HTMLField
 
 from accounts.models import User
 
 class Event(models.Model):
     image = models.ImageField(upload_to='event_images/')
     title = models.CharField(max_length=100)
-    description = models.TextField()
+    description = HTMLField()
     venue = models.CharField(max_length=100)
     date = models.DateField()
     time = models.TimeField()
@@ -26,7 +26,7 @@ class Event(models.Model):
 class News(models.Model):
     featured_image = models.ImageField(upload_to='news_images/')
     title = models.CharField(max_length=100)
-    content = models.TextField()
+    content = HTMLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
     tags = models.CharField(max_length=100, blank=True, null=True)
     is_published = models.BooleanField(default=False)
@@ -51,7 +51,7 @@ class Announcement(models.Model):
         ('EXECUTIVES', 'Executives'),
     )
     title = models.CharField(max_length=100)
-    content = models.TextField()
+    content = HTMLField()
     target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='ALL')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -124,7 +124,7 @@ class Document(models.Model):
     title = models.CharField(max_length=100)
     sender = models.CharField(max_length=100)
     receiver = models.CharField(max_length=100)
-    description = models.TextField(null=True, blank=True)
+    description = HTMLField(null=True, blank=True)
     date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='Published')
     created_at = models.DateTimeField(auto_now_add=True)
