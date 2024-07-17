@@ -48,9 +48,7 @@
                         </a>
                     <ul class="sub-menu" aria-expanded="false">
                         <li><a href="{% url 'dashboard:internal_documents' %}">Internals</a></li>
-                        {% if not user.is_member %}
                         <li><a href="{% url 'dashboard:external_documents' %}">Externals</a></li>
-                        {% endif %}
                     </ul>
                 </li>
                 <li class="menu-title">Site Management</li>
