@@ -50,8 +50,8 @@
                             </div>
                             <h5 class="font-size-14 text-uppercase text-white-50">Internal Files</h5>
                             <h4 class="fw-medium font-size-20">
-                                {% if total_internal_documents > 0 %}
-                                {{total_internal_documents}}
+                                {% if total_documents > 0 %}
+                                {{total_documents}}
                                 {% else %}
                                 0
                                 {% endif %}
@@ -260,7 +260,7 @@
                         
                     </div>
                     <div class="text-center mb-2">
-                        <a href="{% url 'dashboard:internal_documents' %}" class="btn btn-sm btn-primary">View All</a>
+                        <a href="{% url 'dashboard:documents' %}" class="btn btn-sm btn-primary">View All</a>
                     </div>
                 </div>
             </div>

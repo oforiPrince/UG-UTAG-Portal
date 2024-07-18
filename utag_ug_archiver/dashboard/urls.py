@@ -50,12 +50,9 @@ urlpatterns += [
 
 #For Document management
 urlpatterns += [
+    path('documents/',views.DocumentsView.as_view(), name='documents'),
     path('documents/create',views.DocumentCreateUpdateView.as_view(), name='create_document'),
-    path('documents/internal',views.InternalDocumentsView.as_view(), name='internal_documents'),
-    path('documents/external',views.ExternalDocumentsView.as_view(), name='external_documents'),
-    path('documents/internal/add',views.AddInternalDocumentView.as_view(), name='add_internal_document'),
-    path('documents/update/',views.UpdateFileView.as_view(), name='update_file'),
-    path('documents/external/add',views.AddExternalDocumentView.as_view(), name='add_external_document'),
+    path('documents/update/<int:document_id>',views.DocumentCreateUpdateView.as_view(), name='update_document'),
     path('documents/delete_file/',views.DeleteFileView.as_view(), name='delete_file'),
     path('documents/delete/<int:document_id>',views.DeleteDocumentView.as_view(), name='delete_document'),
    

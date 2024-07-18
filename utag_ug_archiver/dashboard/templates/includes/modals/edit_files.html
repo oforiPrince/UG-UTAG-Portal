@@ -9,7 +9,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{% url 'dashboard:update_file' %}" enctype="multipart/form-data">
+                <form method="POST" action="{% url 'dashboard:update_document' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="document_id" value="{{ document.id }}">
                     <div class="form-group mt-5 mb-5">

@@ -22,7 +22,7 @@ class DashboardView(View):
     
     @method_decorator(MustLogin)
     def get(self,request):
-        total_internal_documents = Document.objects.filter(category='internal').count()
+        total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
         total_executives = Executive.objects.filter(is_active=True).count()
         total_members = User.objects.filter(is_member=True).count()
@@ -42,7 +42,7 @@ class DashboardView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
         recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
         context = {
-            'total_internal_documents' : total_internal_documents,
+            'total_documents' : total_documents,
             'total_external_documents' : total_external_documents,
             'total_executives' : total_executives,
             'total_members' : total_members,

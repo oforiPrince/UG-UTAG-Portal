@@ -26,7 +26,7 @@
               </div>
             </div>
 
-            <form id="documentForm" class="custom-validation" method="POST" action="{% if document %}{% url 'dashboard:update_file' %}{% else %}{% url 'dashboard:add_internal_document' %}{% endif %}" enctype="multipart/form-data">
+            <form id="documentForm" class="custom-validation" method="POST" action="{% if document %}{% url 'dashboard:update_document' document_id=document.id %}{% else %}{% url 'dashboard:create_document' %}{% endif %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% if document %}
                 <input type="hidden" name="document_id" value="{{ document.id }}">
@@ -47,17 +47,6 @@
                     <label for="receiver" class="form-label">Receiver</label>
                     <input type="text" class="form-control" id="receiver" name="receiver" value="{% if document %}{{ document.receiver }}{% endif %}" required>
                   </div>
-                </div>
-              
-              
-                <div class="mb-3">
-                  <label for="category" class="form-label">Category</label>
-                  <select class="form-select" name="category" required>
-                    <option value="">Select Category</option>
-                    {% for key, value in CATEGORY_CHOICES %}
-                    <option value="{{ key }}" {% if document and document.category == key %} selected {% endif %}>{{ value }}</option>
-                    {% endfor %}
-                  </select>
                 </div>
               
                 {% if document and document.files.all %}
@@ -96,8 +85,17 @@
                   <textarea class="form-control" id="text_area" name="description" rows="10">{% if document %}{{ document.description }}{% endif %}</textarea>
                 </div>
                 <div class="row">
+                  <div class="mb-3 col-md-4">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" name="category" required>
+                      <option value="">Select Category</option>
+                      {% for key, value in CATEGORY_CHOICES %}
+                      <option value="{{ key }}" {% if document and document.category == key %} selected {% endif %}>{{ value }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
 
-                  <div class="mb-3 col-md-6">
+                  <div class="mb-3 col-md-4">
                     <label for="status" class="form-label">Status</label>
                     <select class="form-select" name="status" required>
                       <option value="">Select Status</option>
@@ -107,10 +105,11 @@
                     </select>
                   </div>
                   
-                  <div class="mb-3 col-md-6">
+                  <div class="mb-3 col-md-4">
                     <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date" value="{% if document %}{{ document.date }}{% endif %}" required>
+                    <input type="date" class="form-control" id="date" name="date" value="{% if document.date %}{{ document.date|date:"Y-m-d" }}{% endif %}" {% if not document %}required{% endif %}>
                   </div>
+                
                 </div>
               
                 <div class="mb-0">

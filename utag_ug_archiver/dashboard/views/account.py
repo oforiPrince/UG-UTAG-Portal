@@ -25,7 +25,7 @@ class AdminListView(View):
     template_name = 'dashboard_pages/admins.html'
     def get(self, request):
         users = User.objects.filter(is_admin = True).order_by('first_name')
-        total_internal_documents = Document.objects.filter(category='internal').count()
+        total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
         announcement_count = 0
         if request.user.is_admin:
@@ -39,8 +39,8 @@ class AdminListView(View):
             new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
         context = {
             'users' : users,
-            'total_internal_documents' : total_external_documents,
-            'total_internal_documents' : total_internal_documents,
+            'total_documents' : total_external_documents,
+            'total_documents' : total_documents,
             'new_announcements' : new_announcements,
             'announcement_count' : announcement_count
         }

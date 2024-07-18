@@ -23,11 +23,11 @@ class ProfileView(View):
         elif request.user.is_member:
             announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
             new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
-            context = {
-                'new_announcements' : new_announcements,
-                'announcement_count' : announcement_count
-            }
-        return render(request, self.template_name)
+        context = {
+            'new_announcements' : new_announcements,
+            'announcement_count' : announcement_count
+        }
+        return render(request, self.template_name, context)
     
     @method_decorator(MustLogin)
     def post(self, request):
@@ -70,6 +70,10 @@ class ProfileView(View):
             
         if user.title != title:
             user.title = title
+            user.save()
+            
+        if user.phone_number != phone:
+            user.phone_number = phone
             user.save()
             
         if password.strip() != "":

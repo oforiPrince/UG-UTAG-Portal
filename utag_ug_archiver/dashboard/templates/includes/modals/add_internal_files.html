@@ -12,7 +12,7 @@
         ></button>
         </div>
         <div class="modal-body">
-          <form method="POST" action="{% url 'dashboard:add_internal_document' %}" enctype="multipart/form-data">
+          <form method="POST" action="{% url 'dashboard:create_document' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group mb-2">
               <label for="title">Title</label>
