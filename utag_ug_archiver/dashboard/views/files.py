@@ -35,7 +35,6 @@ class DocumentsView(View):
 class DeleteFileView(View):
     def post(self, request):
         file_id = request.POST.get('file_id')
-        print(file_id)
         try:
             file_to_delete = File.objects.get(pk=file_id)
             file_to_delete.delete()
@@ -112,7 +111,6 @@ class DocumentCreateUpdateView(View):
         document.receiver = request.POST.get('receiver')
         document.category = request.POST.get('category')
         document.date = request.POST.get('date')
-        print(request.POST.get('date'))
         document.description = request.POST.get('description')
         document.status = request.POST.get('status')
         document.uploaded_by = request.user

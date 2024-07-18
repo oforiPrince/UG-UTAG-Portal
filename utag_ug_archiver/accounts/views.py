@@ -15,7 +15,6 @@ class LoginView(View):
     def post(self,request):
         email = request.POST.get('email')
         password = request.POST.get('password')
-        print(email,password)
         user = authenticate(request,email=email,password=password)
         if user is not None:
             if user.is_admin or user.is_secretary or user.is_member:
