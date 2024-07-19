@@ -3,37 +3,50 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-
-
-
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from adverts.models import AdvertPlan, Advertisement, Advertiser
 
 from dashboard.models import Announcement
 from utag_ug_archiver.utils.decorators import MustLogin
-class AdvertsView(View):
+
+class AdvertsView(PermissionRequiredMixin, View):
     template_name = 'dashboard_pages/adverts.html'
+    permission_required = 'dashboard.view_adverts'
+    
     @method_decorator(MustLogin)
     def get(self, request):
-        #Get all adverts
+        # Get all adverts
         adverts = Advertisement.objects.all()
         advertisers = Advertiser.objects.all()
         active_plans = AdvertPlan.objects.filter(status='active')
-        if request.user.is_admin:
+        
+        # Initialize announcement variables
+        new_announcements = []
+        announcement_count = 0
+
+        # Determine the user's role and fetch relevant data
+        if request.user.has_perm('view_dashboard'):  # Assuming 'view_dashboard' is used to check admin
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Secretary').exists() or request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+
+        # Prepare context
         context = {
-            'adverts' : adverts,
-            'advertisers' : advertisers,
-            'plans' : active_plans,
+            'adverts': adverts,
+            'advertisers': advertisers,
+            'plans': active_plans,
             'announcement_count': announcement_count,
-            'new_announcements' : new_announcements
+            'new_announcements': new_announcements,
         }
+
+        # Render the template
         return render(request, self.template_name, context)
     
 class AdvertPlansView(View):

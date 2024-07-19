@@ -1,7 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import Group
 from django.utils.text import slugify
 from tinymce.models import HTMLField
-
 from accounts.models import User
 
 class Event(models.Model):
@@ -75,13 +75,19 @@ class Announcement(models.Model):
         ('MEMBERS', 'Members'),
         ('EXECUTIVES', 'Executives'),
     )
+    VISIBILITY_CHOICES = (
+        ('everyone', 'Everyone'),
+        ('specific_groups', 'Specific Groups'),
+    )
+
     title = models.CharField(max_length=100)
     content = HTMLField()
-    target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='ALL')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    target = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='everyone')
+    target_groups = models.ManyToManyField(Group, blank=True)
     
     def __str__(self):
         return self.title
@@ -143,6 +149,10 @@ class Document(models.Model):
         ('Published', 'Published'),
         ('Draft', 'Draft'),
     )
+    VISIBILITY_CHOICES = (
+        ('everyone', 'Everyone'),
+        ('selected_groups', 'Selected Groups'),
+    )
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     files = models.ManyToManyField(File)
@@ -154,6 +164,8 @@ class Document(models.Model):
     status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='Published')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='everyone')
+    visible_to_groups = models.ManyToManyField(Group, blank=True)
     
 
     def __str__(self):

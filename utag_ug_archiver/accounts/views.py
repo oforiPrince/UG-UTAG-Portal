@@ -26,7 +26,7 @@ class LoginView(View):
             print(f"User '{user.first_name}' belongs to groups: {user_groups}")
             
             # Check if user belongs to the required groups
-            required_groups = {'Admin', 'Secretary', 'Executive', 'Member', 'Committee Member'}
+            required_groups = {'Admin','Executive', 'Member'}
             user_groups_set = set(user_groups)
             
             if user_groups_set & required_groups:  # Check if there's any intersection

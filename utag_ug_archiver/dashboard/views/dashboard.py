@@ -4,10 +4,6 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
-
-
-
-
 from accounts.models import User
 from dashboard.models import Executive, Event, Document, Announcement, News
 
@@ -34,7 +30,7 @@ class DashboardView(PermissionRequiredMixin,View):
         if 'Admin' in user_groups:
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif 'Secretary' in user_groups or 'Executive' in user_groups:
+        elif 'Executive' in user_groups:
             new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
         elif 'Member' in user_groups:

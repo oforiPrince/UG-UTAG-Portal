@@ -8,7 +8,7 @@ from tablib import Dataset
 from accounts.serializers import UserResource
 import pandas as pd
 from django.contrib.auth.hashers import make_password
-
+from django.contrib.auth.models import Group
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -40,14 +40,14 @@ def send_credentials_email(user, password):
 def process_bulk_admins(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.csv':
-        try:
-            df = pd.read_csv(file)  # Read as CSV file
-        except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    else:
+    if file_extension != '.csv':
         messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    try:
+        df = pd.read_csv(file)  # Read CSV file
+    except pd.errors.ParserError:
+        messages.error(request, 'Invalid CSV file. Please ensure it is properly formatted.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
     # Check for NaN values and fill them or raise an error
@@ -65,16 +65,12 @@ def process_bulk_admins(request, file):
     }
 
     df.rename(columns=rename_columns, inplace=True)
-    df['is_admin'] = True
 
     # Debugging: Print data types
     print(df.dtypes)
 
-    member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False), format='csv')
-
     try:
-        for admin in df.itertuples():
+        for admin in df.itertuples(index=False):
             # Check if the admin already exists
             user, created = User.objects.update_or_create(
                 email=admin.email,
@@ -84,9 +80,11 @@ def process_bulk_admins(request, file):
                     'other_name': admin.other_name,
                     'last_name': admin.last_name,
                     'gender': admin.gender,
-                    'is_admin': admin.is_admin
                 }
             )
+
+            # Add the user to the Admin group (replace with appropriate group name)
+            user.groups.add(Group.objects.get(name='Admin'))
 
             if created:
                 # If the admin was created, send email with password
@@ -94,7 +92,12 @@ def process_bulk_admins(request, file):
                 from_email = settings.EMAIL_HOST_USER
                 to = admin.email
                 password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {'first_name': admin.first_name, 'last_name': admin.last_name, 'email': admin.email, 'password': password})
+                email_body = render_to_string('emails/account_credentials.html', {
+                    'first_name': admin.first_name,
+                    'last_name': admin.last_name,
+                    'email': admin.email,
+                    'password': password
+                })
                 email = EmailMessage(
                     email_subject,
                     email_body,
@@ -118,14 +121,14 @@ def process_bulk_admins(request, file):
 def process_bulk_members(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.csv':
-        try:
-            df = pd.read_csv(file)  # Read as CSV file
-        except Exception as e:  # Catch all exceptions for better error messages
-            messages.error(request, f'Error reading CSV file: {e}')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    else:
-        messages.error(request, 'Invalid file format. Only Excel CSV (.csv) files are allowed.')
+    if file_extension != '.csv':
+        messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    try:
+        df = pd.read_csv(file)  # Read CSV file
+    except pd.errors.ParserError:
+        messages.error(request, 'Invalid CSV file. Please ensure it is properly formatted.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
     # Check for NaN values and fill them or raise an error
@@ -145,16 +148,12 @@ def process_bulk_members(request, file):
     }
 
     df.rename(columns=rename_columns, inplace=True)
-    df['is_member'] = True
 
     # Debugging: Print data types
     print(df.dtypes)
 
-    member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False), format='csv')
-
     try:
-        for member in df.itertuples():
+        for member in df.itertuples(index=False):
             # Check if the user already exists
             user, created = User.objects.update_or_create(
                 email=member.email,
@@ -166,9 +165,11 @@ def process_bulk_members(request, file):
                     'gender': member.gender,
                     'phone_number': member.phone_number,
                     'department': member.department,
-                    'is_member': member.is_member
                 }
             )
+
+            # Add the user to the Member group (replace with appropriate group name)
+            user.groups.add(Group.objects.get(name='Member'))
 
             if created:
                 # If the user was created, send email with password
@@ -176,7 +177,12 @@ def process_bulk_members(request, file):
                 from_email = settings.EMAIL_HOST_USER
                 to = member.email
                 password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {'first_name': member.first_name, 'last_name': member.last_name, 'email': member.email, 'password': password})
+                email_body = render_to_string('emails/account_credentials.html', {
+                    'first_name': member.first_name,
+                    'last_name': member.last_name,
+                    'email': member.email,
+                    'password': password
+                })
                 email = EmailMessage(
                     email_subject,
                     email_body,

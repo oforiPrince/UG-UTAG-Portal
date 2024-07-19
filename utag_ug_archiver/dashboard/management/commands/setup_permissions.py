@@ -26,11 +26,6 @@ class Command(BaseCommand):
                 'add_advertplan', 'change_advertplan', 'delete_advertplan', 'view_advertplan',
                 'add_payment', 'change_payment', 'delete_payment', 'view_payment',
             ],
-            'Secretary': [
-                'view_dashboard',
-                'view_event', 'view_news', 'view_announcement', 'view_document',
-                'view_advertisement', 'view_advertiser', 'view_payment',
-            ],
             'Executive': [
                 'view_dashboard',
                 'view_members',
@@ -40,11 +35,7 @@ class Command(BaseCommand):
             'Member': [
                 'view_dashboard',
                 'view_event', 'view_news',
-            ],
-            'Committee Member': [
-                'view_dashboard',
-                'view_event', 'view_news',
-            ],
+            ]
         }
 
         for group_name, permissions in groups_permissions.items():

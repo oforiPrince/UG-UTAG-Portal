@@ -1,4 +1,3 @@
-from datetime import datetime
 import random
 import string
 from django.conf import settings
@@ -6,14 +5,11 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-
-
-
 from accounts.models import User
 from dashboard.models import Announcement, Document
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members
@@ -23,27 +19,41 @@ from utag_ug_archiver.utils.decorators import MustLogin
 #For account management
 class AdminListView(View):
     template_name = 'dashboard_pages/admins.html'
+
     def get(self, request):
-        users = User.objects.filter(is_admin = True).order_by('first_name')
+        # Fetch users
+        users = User.objects.filter(groups__name='Admin').order_by('first_name')
+        
+        # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
+        
+        # Initialize variables
+        new_announcements = []
         announcement_count = 0
-        if request.user.is_admin:
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        
+        # Prepare context
         context = {
-            'users' : users,
-            'total_documents' : total_external_documents,
-            'total_documents' : total_documents,
-            'new_announcements' : new_announcements,
-            'announcement_count' : announcement_count
+            'users': users,
+            'total_documents': total_documents,
+            'total_external_documents': total_external_documents,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count,
         }
+        
+        # Render the template
         return render(request, self.template_name, context)
     
 class AdminCreateView(View):
@@ -248,20 +258,37 @@ class MemberListView(View):
     template_name = 'dashboard_pages/members.html'
     @method_decorator(MustLogin)
     def get(self, request):
-        users = User.objects.filter(is_member = True).order_by('first_name')
+        # Fetch users
+        users = User.objects.filter(groups__name='Member').order_by('first_name')
+        
+        # Fetch document counts
+        total_documents = Document.objects.filter(category='internal').count()
+        total_external_documents = Document.objects.filter(category='external').count()
+        
+        # Initialize variables
+        new_announcements = []
         announcement_count = 0
-        if request.user.is_admin:
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        
+        # Prepare context
         context = {
-            'users' : users,
-            'new_announcements' : new_announcements,
-            'announcement_count' : announcement_count
+            'users': users,
+            'total_documents': total_documents,
+            'total_external_documents': total_external_documents,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count,
         }
+        
+        # Render the template
         return render(request, self.template_name, context)
