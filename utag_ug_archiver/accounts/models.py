@@ -25,10 +25,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
     department = models.CharField(max_length=50, blank=True, null=True)
-    is_admin = models.BooleanField(default=False)
-    is_secretary = models.BooleanField(default=False)
-    is_executive = models.BooleanField(default=False)
-    is_member = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
@@ -51,6 +47,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.get_full_name()
-
-
-
+    
+    class Meta:
+        permissions = [
+            ('view_dashboard', 'Can view dashboard'),
+            ('view_admins', 'Can view admins'),
+            ('view_members', 'Can view members'),
+            ('view_executives', 'Can view executives'),
+        ]
