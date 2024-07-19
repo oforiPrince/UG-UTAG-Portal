@@ -4,7 +4,7 @@
         <div class="d-flex">
             <!-- LOGO -->
             <div class="navbar-brand-box">
-                <a href="index.html" class="logo logo-dark">
+                <a href="{% url 'dashboard:dashboard' %}" class="logo logo-dark">
                     <span class="logo-sm">
                             <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
                         </span>
@@ -13,7 +13,7 @@
                         </span>
                 </a>
 
-                <a href="index.html" class="logo logo-light">
+                <a href="{% url 'dashboard:dashboard' %}" class="logo logo-light">
                     <span class="logo-sm">
                             <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
                         </span>
