@@ -40,20 +40,19 @@ def send_credentials_email(user, password):
 def process_bulk_admins(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.xlsx':
-        try:
-            df = pd.read_excel(file)  # Read as Excel file
-        except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    elif file_extension == '.csv':
+    if file_extension == '.csv':
         try:
             df = pd.read_csv(file)  # Read as CSV file
         except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
+            messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     else:
-        messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
+        messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    # Check for NaN values and fill them or raise an error
+    if df.isnull().values.any():
+        messages.error(request, 'The file contains missing values. Please fill all the required fields.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
     rename_columns = {
@@ -68,61 +67,72 @@ def process_bulk_admins(request, file):
     df.rename(columns=rename_columns, inplace=True)
     df['is_admin'] = True
 
+    # Debugging: Print data types
+    print(df.dtypes)
+
     member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False))
-    result = member_resource.import_data(dataset, dry_run=True, raise_errors=True)
+    dataset = Dataset().load(df.to_csv(index=False), format='csv')
 
-    if not result.has_errors():
-        result = member_resource.import_data(dataset, dry_run=False)
-        num_success = len(result.rows)
-        
-        # Send email to each admin with password
+    try:
         for admin in df.itertuples():
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = admin.email
-            password = generate_random_password()
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': admin.first_name,'last_name': admin.last_name,'email':admin.email, 'password': password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
+            # Check if the admin already exists
+            user, created = User.objects.update_or_create(
+                email=admin.email,
+                defaults={
+                    'title': admin.title,
+                    'first_name': admin.first_name,
+                    'other_name': admin.other_name,
+                    'last_name': admin.last_name,
+                    'gender': admin.gender,
+                    'is_admin': admin.is_admin
+                }
             )
-            email.content_subtype = "html"
-            email.send()
 
-            # update the password in the database
-            user = User.objects.get(email=admin.email)
-            user.password = make_password(password)
-            user.save()
+            if created:
+                # If the admin was created, send email with password
+                email_subject = 'Account Created'
+                from_email = settings.EMAIL_HOST_USER
+                to = admin.email
+                password = generate_random_password()
+                email_body = render_to_string('emails/account_credentials.html', {'first_name': admin.first_name, 'last_name': admin.last_name, 'email': admin.email, 'password': password})
+                email = EmailMessage(
+                    email_subject,
+                    email_body,
+                    from_email,
+                    [to]
+                )
+                email.content_subtype = "html"
+                email.send()
 
-        messages.success(request, f'{num_success} admin(s) uploaded successfully!')
-    else:
-        messages.error(request, 'Error Importing Admin Data')
+                # Update the password in the database
+                user.password = make_password(password)
+                user.save()
 
+        messages.success(request, f'{len(df)} admin(s) processed successfully!')
+    except Exception as e:
+        messages.error(request, f'Error during import: {e}')
+    
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
-def process_bulk_members(request,file):
+def process_bulk_members(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.xlsx':
-        try:
-            df = pd.read_excel(file)  # Read as Excel file
-        except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    elif file_extension == '.csv':
+    if file_extension == '.csv':
         try:
             df = pd.read_csv(file)  # Read as CSV file
-        except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
+        except Exception as e:  # Catch all exceptions for better error messages
+            messages.error(request, f'Error reading CSV file: {e}')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     else:
-        messages.error(request, 'Invalid file format. Only Excel (.xlsx) or CSV (.csv) files are allowed.')
+        messages.error(request, 'Invalid file format. Only Excel CSV (.csv) files are allowed.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+    # Check for NaN values and fill them or raise an error
+    if df.isnull().values.any():
+        messages.error(request, 'The file contains missing values. Please fill all the required fields.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
     rename_columns = {
         "Title": "title",
         "First Name": "first_name",
@@ -130,43 +140,58 @@ def process_bulk_members(request,file):
         "Last Name": "last_name",
         "Gender": "gender",
         "Email": "email",
-        "Phone Number" : "phone_number",
-        "Department" : "department"
+        "Phone Number": "phone_number",
+        "Department": "department"
     }
 
     df.rename(columns=rename_columns, inplace=True)
     df['is_member'] = True
+
+    # Debugging: Print data types
+    print(df.dtypes)
+
     member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False))
-    result = member_resource.import_data(dataset, dry_run=True, raise_errors=True)
-    print(result)
-    if not result.has_errors():
-        result = member_resource.import_data(dataset, dry_run=False)
-        num_success = len(result.rows)
-        
-        # Send email to each admin with password
+    dataset = Dataset().load(df.to_csv(index=False), format='csv')
+
+    try:
         for member in df.itertuples():
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = member.email
-            password = generate_random_password()
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': member.first_name,'last_name': member.last_name,'email':member.email, 'password': password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
+            # Check if the user already exists
+            user, created = User.objects.update_or_create(
+                email=member.email,
+                defaults={
+                    'title': member.title,
+                    'first_name': member.first_name,
+                    'other_name': member.other_name,
+                    'last_name': member.last_name,
+                    'gender': member.gender,
+                    'phone_number': member.phone_number,
+                    'department': member.department,
+                    'is_member': member.is_member
+                }
             )
-            email.content_subtype = "html"
-            email.send()
 
-            # update the password in the database
-            user = User.objects.get(email=member.email)
-            user.password = make_password(password)
-            user.save()
+            if created:
+                # If the user was created, send email with password
+                email_subject = 'Account Created'
+                from_email = settings.EMAIL_HOST_USER
+                to = member.email
+                password = generate_random_password()
+                email_body = render_to_string('emails/account_credentials.html', {'first_name': member.first_name, 'last_name': member.last_name, 'email': member.email, 'password': password})
+                email = EmailMessage(
+                    email_subject,
+                    email_body,
+                    from_email,
+                    [to]
+                )
+                email.content_subtype = "html"
+                email.send()
 
-        messages.success(request, f'{num_success} member(s) uploaded successfully!')
-    else:
-        messages.error(request, 'Error Importing Member Data')
+                # Update the password in the database
+                user.password = make_password(password)
+                user.save()
 
+        messages.success(request, f'{len(df)} member(s) processed successfully!')
+    except Exception as e:
+        messages.error(request, f'Error during import: {e}')
+    
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
