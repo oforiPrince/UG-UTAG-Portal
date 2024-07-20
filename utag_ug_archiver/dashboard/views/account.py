@@ -1,3 +1,4 @@
+import logging
 import random
 import string
 from django.conf import settings
@@ -9,12 +10,15 @@ from django.shortcuts import render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect
 from accounts.models import User
 from dashboard.models import Announcement, Document
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members
 
 from utag_ug_archiver.utils.decorators import MustLogin
+# Configure the logger
+logger = logging.getLogger(__name__)
 
 #For account management
 class AdminListView(PermissionRequiredMixin, View):
@@ -62,7 +66,7 @@ class AdminListView(PermissionRequiredMixin, View):
     
 class AdminCreateView(PermissionRequiredMixin, View):
     permission_required = 'accounts.add_admin'
-    password = ""
+    
     @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
@@ -73,47 +77,46 @@ class AdminCreateView(PermissionRequiredMixin, View):
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
         department = request.POST.get('department')
+
         if request.POST.get('password_choice') == 'auto':
             password_length = 10
-            self.password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+            raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
         else:
-            password = request.POST.get('password1')
-            self.password = password
+            raw_password = request.POST.get('password1')
+
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
             messages.error(request, 'Admin already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
+
+        try:
+            # Create user
             admin = User.objects.create(
-                title = title,
-                first_name = first_name,
-                other_name = other_name,
-                last_name = last_name,
-                gender = gender,
-                email = email,
-                phone_number = phone_number,
-                department = department,
-                password = make_password(self.password),
-                is_admin = True,
+                title=title,
+                first_name=first_name,
+                other_name=other_name,
+                last_name=last_name,
+                gender=gender,
+                email=email,
+                phone_number=phone_number,
+                department=department,
+                password=make_password(raw_password),
+                created_by=request.user,
+                created_from_dashboard=True,
             )
-            admin.save()
             
-            # Send email to admin with password
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = email
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
-            )
-            email.content_subtype = "html"
-            email.send()
+            # Add user to Admin group
+            admin.groups.add(Group.objects.get(name='Admin'))
             
+            # Save raw password to the instance temporarily
+            admin.raw_password = raw_password
+
             messages.success(request, 'Admin created successfully!')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        except Exception as e:
+            logger.error(f"Error creating admin: {e}")
+            messages.error(request, 'Error creating admin. Please try again.')
+        
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
 class UserUpdateView(PermissionRequiredMixin, View):
     permission_required = 'accounts.change_admin'
@@ -206,23 +209,10 @@ class MemberCreateView(PermissionRequiredMixin, View):
                 phone_number = phone_number,
                 department = department,
                 password = make_password(self.password),
-                is_member = True,
+                created_by = request.user,
+                created_from_dashboard = True,
             )
             admin.save()
-            
-            # Send email to admin with password
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = email
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
-            )
-            email.content_subtype = "html"
-            email.send()
             
             messages.success(request, 'Member created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
