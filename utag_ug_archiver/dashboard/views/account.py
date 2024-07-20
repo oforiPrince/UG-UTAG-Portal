@@ -190,32 +190,44 @@ class MemberCreateView(PermissionRequiredMixin, View):
         department = request.POST.get('department')
         if request.POST.get('password_choice') == 'auto':
             password_length = 10
-            self.password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+            raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
         else:
-            password = request.POST.get('password1')
-            self.password = password
+            raw_password = request.POST.get('password1')
+        
+        print(raw_password)
+            
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
             messages.error(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
-            admin = User.objects.create(
-                title = title,
-                first_name = first_name,
-                other_name = other_name,
-                last_name = last_name,
-                gender = gender,
-                email = email,
-                phone_number = phone_number,
-                department = department,
-                password = make_password(self.password),
-                created_by = request.user,
-                created_from_dashboard = True,
+        try:
+            # Create user
+            member = User.objects.create(
+                title=title,
+                first_name=first_name,
+                other_name=other_name,
+                last_name=last_name,
+                gender=gender,
+                email=email,
+                phone_number=phone_number,
+                department=department,
+                password=make_password(raw_password),
+                created_by=request.user,
+                created_from_dashboard=True,
             )
-            admin.save()
             
+            # Add user to Member group
+            member.groups.add(Group.objects.get(name='Member'))
+            
+            # Save raw password to the instance temporarily
+            member.raw_password = raw_password
+
             messages.success(request, 'Member created successfully!')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        except Exception as e:
+            logger.error(f"Error creating member: {e}")
+            messages.error(request, 'Error creating member. Please try again.')
+        
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
 class MemberDeleteView(PermissionRequiredMixin, View):
     permission_required = 'accounts.delete_member'

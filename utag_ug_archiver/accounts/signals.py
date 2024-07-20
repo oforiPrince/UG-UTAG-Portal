@@ -9,6 +9,7 @@ from accounts.models import User
 from django.contrib.auth.hashers import make_password
 from smtplib import SMTPException
 from tenacity import retry, stop_after_attempt, wait_fixed
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +17,13 @@ def generate_random_password():
     # Generate a random password of 12 characters
     return secrets.token_urlsafe(12)
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
 def send_email_with_retry(email):
     email.send()
 
 @receiver(post_save, sender=User)
 def send_credentials_email(sender, instance, created, **kwargs):
-    if created:
+    if created and instance.created_from_dashboard:
         try:
             # Generate a random password
             password = generate_random_password()
@@ -50,4 +51,9 @@ def send_credentials_email(sender, instance, created, **kwargs):
             send_email_with_retry(email)
         except SMTPException as e:
             logger.error(f'Error sending email to {instance.email}: {e}')
+            
+            # Rollback transaction to delete the user
+            with transaction.atomic():
+                instance.delete()
+            logger.info(f'User {instance.email} deleted due to email sending failure.')
             
