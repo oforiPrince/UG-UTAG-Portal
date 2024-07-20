@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 from accounts.models import User
+from accounts.signals import send_email_with_retry
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 from django.http import HttpResponseRedirect
 from django.contrib import messages
@@ -25,18 +26,26 @@ def officers_custom_order(executive):
 def members_custom_order(executive):
     return committee_members_position_order.index(executive.position.name)
 
-def send_credentials_email(user, password):
-    subject = 'Your Account Information'
-    message = render_to_string('accounts/emails/credentials_email.html', {
-        'user': user,
-        'password': password,
-    })
-    email = EmailMessage(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email]
-    )
+def send_credentials_email(user, raw_password):
+        try:
+            email_subject = 'Account Created'
+            from_email = settings.EMAIL_HOST_USER
+            email_body = render_to_string('emails/account_credentials.html', {
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'email': user.email,
+                'password': raw_password
+            })
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [user.email]
+            )
+            email.content_subtype = "html"
+            send_email_with_retry(email)
+        except Exception as e:
+            logger.error(f'Error sending email to {user.email}: {e}')
 
 def process_bulk_admins(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
@@ -83,7 +92,8 @@ def process_bulk_admins(request, file):
                     'gender': admin.gender,
                     'password': make_password(raw_password),
                     'created_from_dashboard': True,
-                    'created_by': request.user
+                    'created_by': request.user,
+                    'is_bulk_creation': True,
                 }
             )
             
@@ -153,7 +163,8 @@ def process_bulk_members(request, file):
                     'department': member.department,
                     'password': make_password(raw_password),
                     'created_from_dashboard': True,
-                    'created_by': request.user
+                    'created_by': request.user,
+                    'is_bulk_creation': True,
                 }
             )
             

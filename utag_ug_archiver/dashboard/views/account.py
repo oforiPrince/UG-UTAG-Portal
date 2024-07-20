@@ -7,6 +7,7 @@ from django.template.loader import render_to_string
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import render
+from django.db import transaction
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
@@ -14,7 +15,7 @@ from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect
 from accounts.models import User
 from dashboard.models import Announcement, Document
-from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members
+from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, send_credentials_email
 
 from utag_ug_archiver.utils.decorators import MustLogin
 # Configure the logger
@@ -75,14 +76,10 @@ class AdminCreateView(PermissionRequiredMixin, View):
         last_name = request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
-        phone_number = request.POST.get('phone_number')
-        department = request.POST.get('department')
+        phone_number = request.POST.get('phone')
 
-        if request.POST.get('password_choice') == 'auto':
-            password_length = 10
-            raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
-        else:
-            raw_password = request.POST.get('password1')
+        password_length = 12
+        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
 
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
@@ -90,34 +87,34 @@ class AdminCreateView(PermissionRequiredMixin, View):
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         try:
-            # Create user
-            admin = User.objects.create(
-                title=title,
-                first_name=first_name,
-                other_name=other_name,
-                last_name=last_name,
-                gender=gender,
-                email=email,
-                phone_number=phone_number,
-                department=department,
-                password=make_password(raw_password),
-                created_by=request.user,
-                created_from_dashboard=True,
-            )
-            
-            # Add user to Admin group
-            admin.groups.add(Group.objects.get(name='Admin'))
-            
-            # Save raw password to the instance temporarily
-            admin.raw_password = raw_password
+            with transaction.atomic():
+                # Create user
+                admin = User.objects.create(
+                    title=title,
+                    first_name=first_name,
+                    other_name=other_name,
+                    last_name=last_name,
+                    gender=gender,
+                    email=email,
+                    phone_number=phone_number,
+                    password=make_password(raw_password),
+                    created_by=request.user,
+                    created_from_dashboard=True,
+                )
+                
+                # Add user to Admin group
+                admin.groups.add(Group.objects.get(name='Admin'))
 
-            messages.success(request, 'Admin created successfully!')
+                # Prepare and send the email
+                send_credentials_email(admin, raw_password)
+
+                messages.success(request, 'Admin created successfully!')
         except Exception as e:
             logger.error(f"Error creating admin: {e}")
             messages.error(request, 'Error creating admin. Please try again.')
         
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        
+    
 class UserUpdateView(PermissionRequiredMixin, View):
     permission_required = 'accounts.change_admin'
     @method_decorator(MustLogin)
@@ -188,41 +185,36 @@ class MemberCreateView(PermissionRequiredMixin, View):
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
         department = request.POST.get('department')
-        if request.POST.get('password_choice') == 'auto':
-            password_length = 10
-            raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
-        else:
-            raw_password = request.POST.get('password1')
+        password_length = 12
+        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
         
-        print(raw_password)
-            
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
             messages.error(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         try:
-            # Create user
-            member = User.objects.create(
-                title=title,
-                first_name=first_name,
-                other_name=other_name,
-                last_name=last_name,
-                gender=gender,
-                email=email,
-                phone_number=phone_number,
-                department=department,
-                password=make_password(raw_password),
-                created_by=request.user,
-                created_from_dashboard=True,
-            )
-            
-            # Add user to Member group
-            member.groups.add(Group.objects.get(name='Member'))
-            
-            # Save raw password to the instance temporarily
-            member.raw_password = raw_password
+            with transaction.atomic():
+                # Create user
+                member = User.objects.create(
+                    title=title,
+                    first_name=first_name,
+                    other_name=other_name,
+                    last_name=last_name,
+                    gender=gender,
+                    email=email,
+                    phone_number=phone_number,
+                    password=make_password(raw_password),
+                    created_by=request.user,
+                    created_from_dashboard=True,
+                )
+                
+                # Add user to Member group
+                member.groups.add(Group.objects.get(name='Member'))
 
-            messages.success(request, 'Member created successfully!')
+                # Prepare and send the email
+                send_credentials_email(member, raw_password)
+
+                messages.success(request, 'Member created successfully!')
         except Exception as e:
             logger.error(f"Error creating member: {e}")
             messages.error(request, 'Error creating member. Please try again.')

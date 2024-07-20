@@ -23,7 +23,6 @@ class LoginView(View):
         if user is not None:
             # Fetch and print the user's groups
             user_groups = user.groups.values_list('name', flat=True)
-            print(f"User '{user.first_name}' belongs to groups: {user_groups}")
             
             # Check if user belongs to the required groups
             required_groups = {'Admin','Executive', 'Member'}

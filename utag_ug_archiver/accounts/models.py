@@ -35,6 +35,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     department = models.CharField(max_length=50, blank=True, null=True)
     created_from_dashboard = models.BooleanField(default=False)
     created_by = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True)
+    is_bulk_creation = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)

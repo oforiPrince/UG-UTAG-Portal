@@ -23,7 +23,7 @@ def send_email_with_retry(email):
 
 @receiver(post_save, sender=User)
 def send_credentials_email(sender, instance, created, **kwargs):
-    if created and instance.created_from_dashboard:
+    if created and instance.created_from_dashboard and instance.is_bulk_creation:
         try:
             # Generate a random password
             password = generate_random_password()
