@@ -98,38 +98,7 @@ class ReadAnnouncement(models.Model):
     date_read = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.announcement.title}"
-
-
-class ExecutivePosition(models.Model):
-    LEADERSHIP_NAME_CHOICES = (
-        ('President', 'President'),
-        ('Vice President', 'Vice President'),
-        ('Secretary', 'Secretary'),
-        ('Treasurer', 'Treasurer'),
-        ('Committee Member', 'Committee Member'),
-    )
-    name = models.CharField(max_length=30, choices=LEADERSHIP_NAME_CHOICES, unique=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Executive(models.Model):
-    image = models.ImageField(upload_to='executive_images/', blank=True, null=True)
-    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='member')
-    position = models.ForeignKey(ExecutivePosition, on_delete=models.CASCADE)
-    fb_username = models.CharField(max_length=100, blank=True, null=True)
-    twitter_username = models.CharField(max_length=100, blank=True, null=True)
-    linkedin_username = models.CharField(max_length=100, blank=True, null=True)
-    is_executive_officer = models.BooleanField(default=False)
-    date_appointed = models.DateField()
-    date_ended = models.DateField(null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.member.first_name} - {self.position.name}"
+        return f"{self.user.get_full_name} - {self.announcement.title}"
     
 
 class File(models.Model):

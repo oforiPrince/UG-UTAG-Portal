@@ -3,7 +3,7 @@ import string
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
-
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import render
 from django.views import View
@@ -17,9 +17,10 @@ from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_m
 from utag_ug_archiver.utils.decorators import MustLogin
 
 #For account management
-class AdminListView(View):
+class AdminListView(PermissionRequiredMixin, View):
     template_name = 'dashboard_pages/admins.html'
-
+    permission_required = 'accounts.view_admin'
+    @method_decorator(MustLogin)
     def get(self, request):
         # Fetch users
         users = User.objects.filter(groups__name='Admin').order_by('first_name')
@@ -38,11 +39,11 @@ class AdminListView(View):
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.has_perm('view_announcement'):
             if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
             elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
         
         # Prepare context
         context = {
@@ -51,13 +52,18 @@ class AdminListView(View):
             'total_external_documents': total_external_documents,
             'new_announcements': new_announcements,
             'announcement_count': announcement_count,
+            'has_add_permission': request.user.has_perm('accounts.add_admin'),
+            'has_change_permission': request.user.has_perm('accounts.change_admin'),
+            'has_delete_permission': request.user.has_perm('accounts.delete_admin'),
         }
         
         # Render the template
         return render(request, self.template_name, context)
     
-class AdminCreateView(View):
+class AdminCreateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_admin'
     password = ""
+    @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
         first_name = request.POST.get('first_name')
@@ -109,7 +115,9 @@ class AdminCreateView(View):
             messages.success(request, 'Admin created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class UserUpdateView(View):
+class UserUpdateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.change_admin'
+    @method_decorator(MustLogin)
     def post(self,request):
         id = request.POST.get('user_id')
         title = request.POST.get('title')
@@ -152,10 +160,11 @@ class UserUpdateView(View):
         user.save()
         messages.success(request, 'Admin updated successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
         
-        
-        
-class AdminDeleteView(View):
+class AdminDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.delete_admin'
+    @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         admin_id = kwargs.get('admin_id')
         admin = User.objects.get(id=admin_id)
@@ -163,8 +172,10 @@ class AdminDeleteView(View):
         messages.success(request, 'Admin deleted successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class MemberCreateView(View):
+class MemberCreateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_member'
     password = ""
+    @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
         first_name = request.POST.get('first_name')
@@ -216,7 +227,9 @@ class MemberCreateView(View):
             messages.success(request, 'Member created successfully!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class MemberDeleteView(View):
+class MemberDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.delete_member'
+    @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         member_id = kwargs.get('member_id')
         member = User.objects.get(id=member_id)
@@ -226,7 +239,8 @@ class MemberDeleteView(View):
         
             
 
-class UploadAdminData(View):
+class UploadAdminData(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_admin'
     @method_decorator(MustLogin)
     def post(self, request, *args, **kwargs):
         excel_file = request.FILES.get('excel')
@@ -240,7 +254,8 @@ class UploadAdminData(View):
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class UploadMemberData(View):
+class UploadMemberData(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_member'
     @method_decorator(MustLogin)
     def post(self, request, *args, **kwargs):
         excel_file = request.FILES.get('excel')
@@ -254,7 +269,8 @@ class UploadMemberData(View):
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-class MemberListView(View):
+class MemberListView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.view_member'
     template_name = 'dashboard_pages/members.html'
     @method_decorator(MustLogin)
     def get(self, request):
@@ -275,12 +291,13 @@ class MemberListView(View):
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.has_perm('view_announcement'):
             if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
             elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
-        
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        print('has add permission')
+        print(request.user.has_perm('accounts.add_member'))
         # Prepare context
         context = {
             'users': users,
@@ -288,6 +305,9 @@ class MemberListView(View):
             'total_external_documents': total_external_documents,
             'new_announcements': new_announcements,
             'announcement_count': announcement_count,
+            'has_add_permission': request.user.has_perm('accounts.add_member'),
+            'has_change_permission': request.user.has_perm('accounts.change_member'),
+            'has_delete_permission': request.user.has_perm('accounts.delete_member'),
         }
         
         # Render the template

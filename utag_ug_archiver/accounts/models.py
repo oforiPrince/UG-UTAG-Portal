@@ -33,6 +33,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     department = models.CharField(max_length=50, blank=True, null=True)
+    created_from_dashboard = models.BooleanField(default=False)
+    created_by = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
@@ -63,6 +67,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_profile_pic_url(self):
         return self.profile_pic.url if self.profile_pic else None
     
+    def is_admin(self):
+        return self.groups.filter(name='Admin').exists() or self.is_superuser
+
+    def is_executive(self):
+        return self.groups.filter(name='Executive').exists()
+
+    def is_secretary(self):
+        return self.groups.filter(name='Secretary').exists()
+
+    def is_member(self):
+        return self.groups.filter(name='Member').exists()
+    
     def is_acting(self):
         return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer', 'Committee Member']).exists() and self.is_active_executive and self.date_ended is None
 
@@ -71,8 +87,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     class Meta:
         permissions = [
-            ('view_dashboard', 'Can view dashboard'),
-            ('view_admins', 'Can view admins'),
-            ('view_members', 'Can view members'),
-            ('view_executives', 'Can view executives'),
+        ('view_dashboard', 'Can view dashboard'),
+        ('add_admin', 'Can add admin'),
+        ('change_admin', 'Can change admin'),
+        ('delete_admin', 'Can delete admin'),
+        ('view_admin', 'Can view admin'),
+        ('add_executive', 'Can add executive'),
+        ('change_executive', 'Can change executive'),
+        ('delete_executive', 'Can delete executive'),
+        ('view_executive', 'Can view executive'),
+        ('add_member', 'Can add member'),
+        ('change_member', 'Can change member'),
+        ('delete_member', 'Can delete member'),
+        ('view_member', 'Can view member'),
         ]

@@ -3,8 +3,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.db.models import Q
-from dashboard.models import Event, News, Executive
+from dashboard.models import Event, News
 from adverts.models import Advertisement
+from accounts.models import User
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 
@@ -16,7 +17,7 @@ class IndexView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get all executives
-        executives = Executive.objects.filter(position__name__in=officers_position_order, is_executive_officer=True)
+        executives = User.objects.filter(position__name__in=officers_position_order, is_executive_officer=True)
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)

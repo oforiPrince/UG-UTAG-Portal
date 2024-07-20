@@ -13,9 +13,9 @@ class Command(BaseCommand):
         groups_permissions = {
             'Admin': [
                 'view_dashboard',
-                'view_admins',
-                'view_members',
-                'view_executives',
+                'view_admin', 'add_admin', 'change_admin', 'delete_admin',
+                'view_executive', 'add_executive', 'change_executive', 'delete_executive',
+                'view_member', 'add_member', 'change_member', 'delete_member',
                 'add_user', 'change_user', 'delete_user', 'view_user',
                 'add_event', 'change_event', 'delete_event', 'view_event',
                 'add_news', 'change_news', 'delete_news', 'view_news',
@@ -28,7 +28,7 @@ class Command(BaseCommand):
             ],
             'Executive': [
                 'view_dashboard',
-                'view_members',
+                'view_member',
                 'view_event', 'view_news', 'view_announcement',
                 'view_advertisement', 'view_advertiser',
             ],
@@ -48,13 +48,18 @@ class Command(BaseCommand):
 
             for perm_codename in permissions:
                 try:
-                    # Get the permission by its codename
-                    perm = Permission.objects.get(codename=perm_codename)
-                    # Add the permission to the group
-                    group.permissions.add(perm)
-                except Permission.DoesNotExist:
-                    self.stdout.write(self.style.ERROR(f'Permission not found: {perm_codename}'))
-
-            self.stdout.write(self.style.SUCCESS(f'Assigned permissions to group: {group_name}'))
+                    # Get the permissions by its codename
+                    perms = Permission.objects.filter(codename=perm_codename)
+                    if perms.count() > 1:
+                        self.stdout.write(self.style.WARNING(f'Multiple permissions found for codename: {perm_codename}'))
+                    elif perms.count() == 1:
+                        perm = perms.first()
+                        # Add the permission to the group
+                        group.permissions.add(perm)
+                        self.stdout.write(self.style.SUCCESS(f'Added permission {perm_codename} to group {group_name}'))
+                    else:
+                        self.stdout.write(self.style.ERROR(f'Permission not found: {perm_codename}'))
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Error with permission {perm_codename}: {e}'))
 
         self.stdout.write(self.style.SUCCESS('Groups and permissions setup complete'))

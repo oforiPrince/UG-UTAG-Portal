@@ -4,10 +4,7 @@ from accounts.models import User
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 from django.http import HttpResponseRedirect
 from django.contrib import messages
-from tablib import Dataset
-from accounts.serializers import UserResource
 import pandas as pd
-from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -66,9 +63,6 @@ def process_bulk_admins(request, file):
 
     df.rename(columns=rename_columns, inplace=True)
 
-    # Debugging: Print data types
-    print(df.dtypes)
-
     try:
         for admin in df.itertuples(index=False):
             # Check if the admin already exists
@@ -80,43 +74,17 @@ def process_bulk_admins(request, file):
                     'other_name': admin.other_name,
                     'last_name': admin.last_name,
                     'gender': admin.gender,
+                    'created_from_dashboard': True
                 }
             )
-
-            # Add the user to the Admin group (replace with appropriate group name)
+            # Add the user to the Admin group
             user.groups.add(Group.objects.get(name='Admin'))
-
-            if created:
-                # If the admin was created, send email with password
-                email_subject = 'Account Created'
-                from_email = settings.EMAIL_HOST_USER
-                to = admin.email
-                password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {
-                    'first_name': admin.first_name,
-                    'last_name': admin.last_name,
-                    'email': admin.email,
-                    'password': password
-                })
-                email = EmailMessage(
-                    email_subject,
-                    email_body,
-                    from_email,
-                    [to]
-                )
-                email.content_subtype = "html"
-                email.send()
-
-                # Update the password in the database
-                user.password = make_password(password)
-                user.save()
 
         messages.success(request, f'{len(df)} admin(s) processed successfully!')
     except Exception as e:
         messages.error(request, f'Error during import: {e}')
     
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
 
 def process_bulk_members(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
@@ -149,9 +117,6 @@ def process_bulk_members(request, file):
 
     df.rename(columns=rename_columns, inplace=True)
 
-    # Debugging: Print data types
-    print(df.dtypes)
-
     try:
         for member in df.itertuples(index=False):
             # Check if the user already exists
@@ -165,36 +130,11 @@ def process_bulk_members(request, file):
                     'gender': member.gender,
                     'phone_number': member.phone_number,
                     'department': member.department,
+                    'created_from_dashboard': True
                 }
             )
-
-            # Add the user to the Member group (replace with appropriate group name)
+            # Add the user to the Member group
             user.groups.add(Group.objects.get(name='Member'))
-
-            if created:
-                # If the user was created, send email with password
-                email_subject = 'Account Created'
-                from_email = settings.EMAIL_HOST_USER
-                to = member.email
-                password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {
-                    'first_name': member.first_name,
-                    'last_name': member.last_name,
-                    'email': member.email,
-                    'password': password
-                })
-                email = EmailMessage(
-                    email_subject,
-                    email_body,
-                    from_email,
-                    [to]
-                )
-                email.content_subtype = "html"
-                email.send()
-
-                # Update the password in the database
-                user.password = make_password(password)
-                user.save()
 
         messages.success(request, f'{len(df)} member(s) processed successfully!')
     except Exception as e:

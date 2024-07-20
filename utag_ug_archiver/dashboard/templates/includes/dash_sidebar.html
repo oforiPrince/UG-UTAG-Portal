@@ -17,17 +17,17 @@
                 </li>
                 {% endif %}
 
-                {% if perms.accounts.view_admins or perms.accounts.view_members %}
+                {% if perms.accounts.view_admin or perms.accounts.view_member %}
                 <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="fas fa-users-cog"></i>
                         <span>Account Mgt</span>
                     </a>
                     <ul class="sub-menu" aria-expanded="false">
-                        {% if perms.accounts.view_admins %}
+                        {% if perms.accounts.view_admin %}
                         <li><a href="{% url 'dashboard:admins' %}">Admins</a></li>
                         {% endif %}
-                        {% if perms.accounts.view_members %}
+                        {% if perms.accounts.view_member %}
                         <li><a href="{% url 'dashboard:members' %}">Members</a></li>
                         {% endif %}
 
@@ -35,7 +35,7 @@
                 </li>
                 {% endif %}
 
-                {% if perms.accounts.view_executives %}
+                {% if perms.accounts.view_executive %}
                 <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="fas fa-users"></i>
@@ -60,7 +60,7 @@
 
                 <li class="menu-title">Site Management</li>
 
-                {% if perms.dashboard.view_events %}
+                {% if perms.dashboard.view_event %}
                 <li>
                     <a href="{% url 'dashboard:events' %}" class="">
                         <i class="fas fa-calendar-check"></i>
@@ -78,7 +78,7 @@
                 </li>
                 {% endif %}
 
-                {% if perms.dashboard.view_announcements %}
+                {% if perms.dashboard.view_announcement %}
                 <li>
                     <a href="{% url 'dashboard:announcements' %}" class="waves-effect">
                         <i class="fas fa-bullhorn"></i>
@@ -87,7 +87,7 @@
                 </li>
                 {% endif %}
 
-                {% if perms.dashboard.view_adverts %}
+                {% if perms.dashboard.view_advertisement %}
                 <li>
                     <a href="javascript: void(0);" class="has-arrow waves-effect">
                         <i class="fas fa-ad"></i>
