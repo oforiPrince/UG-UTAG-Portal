@@ -5,10 +5,11 @@ admin.site.site_title = "UTAG-UG Archiver Admin Portal"
 admin.site.index_title = "Welcome to UTAG-UG Archiver Portal"
 
 # Register your models here.
-from .models import Event, News, File, Document, Announcement
+from .models import Event, News, File, Document, Announcement, Tag
 admin.site.register(Announcement)
 admin.site.register(Event)
 admin.site.register(News)
 admin.site.register(File)
 admin.site.register(Document)
+admin.site.register(Tag)
 

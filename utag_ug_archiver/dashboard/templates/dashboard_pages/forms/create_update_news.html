@@ -39,6 +39,15 @@
               </div>
 
               <div class="mb-3">
+                <label for="tags" class="form-label">Tags</label>
+                <select class="form-control" id="tags" name="tags" multiple="multiple">
+                  {% for tag in tags %}
+                    <option value="{{ tag.id }}" {% if tag in initial_data.tags.all %}selected{% endif %}>{{ tag.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="mb-3">
                 <label for="image" class="form-label">News Featured Image</label>
                 <input type="file" class="form-control" id="image" name="featured_image" onchange="previewAndValidateImage(this)">
                 <div id="imageError" class="text-danger"></div>
@@ -75,6 +84,8 @@
 
  <!-- Responsive datatable examples -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+ <!-- Select2 CSS -->
+ <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 {% endblock my_styles %}
 {% block my_scripts %}
     <script>
@@ -112,6 +123,14 @@
           oldImagePreview.style.display = 'inline-block';
         }
       }
+
+      // Initialize Select2 for tags input
+      $(document).ready(function() {
+        $('#tags').select2({
+          tags: true,
+          tokenSeparators: [',']
+        });
+      });
     </script>
 
     <!-- Required datatable js -->
@@ -124,6 +143,8 @@
 
     <!-- Datatable init js -->
     <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     

@@ -15,7 +15,6 @@
 </section>
 <!-- Page Title Area End -->
 
-
 <!-- Main Content Wrapper Start -->
 <div class="main-content-wrapper">
     <div class="inner-content-area mb--25 mt--10">
@@ -32,24 +31,28 @@
                 </div>
             </div>
             <div class="row project-wrapper">
-                {% for news in all_news %}
-                <div class="col-lg-4 col-md-6 project-item-wrap filter-services mb--25">
-                    <div class="project-item directional">
-                        <figure class="project-item__thumbnail">
-                            <img src="{{news.get_featured_image_url}}" alt="Project">
-                            <div class="project-item__overlay directional-hover">
-                                <a href="{% url 'website:news_detail' slug=news.news_slug %}"><i class="fa fa-link"></i></a>
+                {% if all_news %}
+                    {% for news in all_news %}
+                    <div class="col-lg-4 col-md-6 project-item-wrap filter-services mb--25">
+                        <div class="project-item directional">
+                            <figure class="project-item__thumbnail">
+                                <img src="{{news.get_featured_image_url}}" alt="Project">
+                                <div class="project-item__overlay directional-hover">
+                                    <a href="{% url 'website:news_detail' slug=news.news_slug %}"><i class="fa fa-link"></i></a>
+                                </div>
+                            </figure>
+                            <div class="project-item__info">
+                                <h3 class="project-item__title"><a href="{% url 'website:news_detail' slug=news.news_slug %}">{{news.title}}</a></h3>
+                                <span class="project-item__categoris"></span>
                             </div>
-                        </figure>
-                        <div class="project-item__info">
-                            <h3 class="project-item__title"><a href="{% url 'website:news_detail' slug=news.news_slug %}">{{news.title}}</a></h3>
-                            <span class="project-item__categoris">
-                            </span>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-                
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <p class="text-center">No news articles are currently available. Please check back later.</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

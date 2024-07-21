@@ -42,7 +42,7 @@ class News(models.Model):
     news_slug = models.SlugField(max_length=150, blank=True)
     content = HTMLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
-    tags = models.CharField(max_length=100, blank=True, null=True)
+    tags = models.ManyToManyField('Tag', blank=True)
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -63,6 +63,18 @@ class News(models.Model):
 
     def __str__(self):
         return self.title
+    
+class Tag(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=50, blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.name
     
 class Announcement(models.Model):
     STATUS_CHOICES = (
