@@ -4,7 +4,7 @@
 {% if document %}
   Update Document - {{ document.title }}
 {% else %}
-  Add Internal Document
+  Add Document
 {% endif %}
 {% endblock title %}
 {% block content %}
@@ -36,54 +36,54 @@
                   <label for="title" class="form-label">Title</label>
                   <input type="text" class="form-control" id="title" name="title" value="{% if document %}{{ document.title }}{% endif %}" required>
                 </div>
+                
                 <div class="row">
-
                   <div class="mb-3 col-md-6">
                     <label for="sender" class="form-label">Sender</label>
                     <input type="text" class="form-control" id="sender" name="sender" value="{% if document %}{{ document.sender }}{% endif %}" required>
                   </div>
-                
                   <div class="mb-3 col-md-6">
                     <label for="receiver" class="form-label">Receiver</label>
                     <input type="text" class="form-control" id="receiver" name="receiver" value="{% if document %}{{ document.receiver }}{% endif %}" required>
                   </div>
                 </div>
-              
+                
                 {% if document and document.files.all %}
                 <p class="text-success">Existing Files</p>
-                <div class="card">
-                  <div class="row mb-3 mt-3">
-                    {% for file in document.files.all %}
-                    {% if not file.deleted %}
-                    <div class="col-md-2" id="file_{{ file.id }}">
-                      {% if file.file.name|lower|slice:'-4:' == ".png" or file.file.name|lower|slice:'-4:' == ".jpg" or file.file.name|lower|slice:'-5:' == ".jpeg" or file.file.name|lower|slice:'-4:' == ".gif" %}
-                      <a href="{{ file.file.url }}" target="_blank">
-                        <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.file.name }}">
-                      </a>
-                      {% else %}
-                      <a href="{{ file.file.url }}" target="_blank">
-                        <img src="{% static 'dashboard/assets/images/file/generic.png' %}" alt="Document Icon" class="img-fluid">
-                      </a>
-                      {% endif %}
-                      <div class="text-center mb-2">
-                        <button type="button" class="btn btn-danger btn-sm mt-2" onclick="removeFile('{{ file.id }}')">Remove</button>
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="row">
+                      {% for file in document.files.all %}
+                      <div class="col-md-2" id="file_{{ file.id }}">
+                        {% if file.file.name|lower|slice:'-4:' == ".png" or file.file.name|lower|slice:'-4:' == ".jpg" or file.file.name|lower|slice:'-5:' == ".jpeg" or file.file.name|lower|slice:'-4:' == ".gif" %}
+                        <a href="{{ file.file.url }}" target="_blank">
+                          <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.file.name }}">
+                        </a>
+                        {% else %}
+                        <a href="{{ file.file.url }}" target="_blank">
+                          <img src="{% static 'dashboard/assets/images/file/generic.png' %}" alt="Document Icon" class="img-fluid">
+                        </a>
+                        {% endif %}
+                        <div class="text-center mt-2">
+                          <button type="button" class="btn btn-danger btn-sm" onclick="removeFile('{{ file.id }}')">Remove</button>
+                        </div>
                       </div>
+                      {% endfor %}
                     </div>
-                    {% endif %}
-                    {% endfor %}
                   </div>
                 </div>
                 {% endif %}
               
                 <div class="mb-3">
                   <label for="files" class="form-label">Files</label>
-                  <input type="file" class="form-control-file" id="files" name="files" multiple>
+                  <input type="file" class="form-control" id="files" name="files" multiple>
                 </div>
               
                 <div class="mb-3">
                   <label for="text_area" class="form-label">Description</label>
                   <textarea class="form-control" id="text_area" name="description" rows="10">{% if document %}{{ document.description }}{% endif %}</textarea>
                 </div>
+                
                 <div class="row">
                   <div class="mb-3 col-md-4">
                     <label for="category" class="form-label">Category</label>
@@ -109,7 +109,27 @@
                     <label for="date" class="form-label">Date</label>
                     <input type="date" class="form-control" id="date" name="date" value="{% if document.date %}{{ document.date|date:"Y-m-d" }}{% endif %}" {% if not document %}required{% endif %}>
                   </div>
-                
+                </div>
+              
+                <div class="row">
+                  <div class="mb-3 col-md-6">
+                    <label for="visibility" class="form-label">Visibility</label>
+                    <select class="form-select" name="visibility" id="visibility" required>
+                      <option value="">Select Visibility</option>
+                      {% for key, value in VISIBILITY_CHOICES %}
+                      <option value="{{ key }}" {% if document and document.visibility == key %} selected {% endif %}>{{ value }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+
+                  <div class="mb-3 col-md-6" id="visible_to_groups_container" style="display: none;">
+                    <label for="visible_to_groups" class="form-label">Visible to Groups</label>
+                    <select class="form-select" name="visible_to_groups" id="visible_to_groups" multiple>
+                      {% for group in all_groups %}
+                      <option value="{{ group.id }}" {% if document and group in document.visible_to_groups.all %} selected {% endif %}>{{ group.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
                 </div>
               
                 <div class="mb-0">
@@ -123,57 +143,45 @@
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block my_scripts %}
 <script>
   $(document).ready(function() {
-    // Ensure that the status dropdown is populated correctly
-    var documentStatusChoices = JSON.parse('{{ DOCUMENT_STATUS_CHOICES_JSON|escapejs }}');
-    var statusDropdown = $('#status');
-    
-    // Clear existing options
-    statusDropdown.empty();
-    
-    // Add default option
-    statusDropdown.append('<option value="">Select Status</option>');
-    
-    // Add options from choices
-    documentStatusChoices.forEach(function(choice) {
-        var option = $('<option></option>').attr('value', choice[0]).text(choice[1]);
-        if ('{{ document.status }}' === choice[0]) {
-            option.attr('selected', 'selected');
-        }
-        statusDropdown.append(option);
-    });
-});
-
-</script>
-<script>
-  function removeFile(fileId) {
-      if (confirm("Are you sure you want to remove this file?")) {
-          $.ajax({
-              type: 'POST',
-              url: 'delete_file/',  // Replace with the URL mapped to your DeleteFileView
-              data: {
-                  'file_id': fileId,
-                  'csrfmiddlewaretoken': '{{ csrf_token }}'
-              },
-              success: function(response) {
-                  if (response.success) {
-                      $('#file_' + fileId).remove();
-                  } else {
-                      alert('Failed to remove the file: ' + response.error);
-                  }
-              },
-              error: function(xhr, status, error) {
-                  console.error('Error removing file:', error);
-                  alert('An error occurred while removing the file. Please try again later.');
-              }
-          });
+    // Show/Hide the "Visible to Groups" field based on the visibility selection
+    $('#visibility').change(function() {
+      if ($(this).val() === 'selected_groups') {
+        $('#visible_to_groups_container').show();
+      } else {
+        $('#visible_to_groups_container').hide();
       }
-  }
+    }).trigger('change');
+
+    // Remove file function
+    function removeFile(fileId) {
+      if (confirm("Are you sure you want to remove this file?")) {
+        $.ajax({
+          type: 'POST',
+          url: 'delete_file/',  // Replace with the URL mapped to your DeleteFileView
+          data: {
+            'file_id': fileId,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+          },
+          success: function(response) {
+            if (response.success) {
+              $('#file_' + fileId).remove();
+            } else {
+              alert('Failed to remove the file: ' + response.error);
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error('Error removing file:', error);
+            alert('An error occurred while removing the file. Please try again later.');
+          }
+        });
+      }
+    }
+  });
 </script>
 <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 <script>

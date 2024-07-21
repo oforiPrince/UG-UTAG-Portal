@@ -13,7 +13,7 @@
         </div>
         <!-- Error Message Container -->
         <div class="alert alert-danger" id="imageError" style="display: none;"></div>
-        <form class="custom-validation" action="{% url 'dashboard:create_existing_committee_member' %}" method="POST" enctype="multipart/form-data">
+        <form class="custom-validation" action="{% url 'dashboard:create_existing_officer' %}" method="POST" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="mb-3">
             <label for="id_image" class="form-label">Upload Image</label>

@@ -83,30 +83,24 @@
                                         <th>#</th>
                                         <th>Name</th>
                                         <th>Email</th>
+                                        <th>Phone Number</th>
                                         <th>Gender</th>
                                         <th>Position</th>
                                         <th>Date Appointed</th>
-                                        <th>Date Ended</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for executive in executive_committee_members %}
+                                    {% for executive in executive_officers %}
                                     <tr>
                                         <td>{{forloop.counter}}</td>
-                                        <td>{{executive.member.get_full_name}}</td>
-                                        <td>{{executive.member.email}}</td>
-                                        <td>{{executive.member.gender}}</td>
-                                        <td>{{executive.position}}</td>
+                                        <td>{{executive.get_full_name}}</td>
+                                        <td>{{executive.email}}</td>
+                                        <td>{{executive.phone_number}}</td>
+                                        <td>{{executive.gender}}</td>
+                                        <td>{{executive.executive_position}}</td>
                                         <td>{{executive.date_appointed}}</td>
-                                        <td>
-                                            {% if executive.date_ended %}
-                                            {{executive.date_ended}}
-                                            {% else %}
-                                            ...
-                                            {% endif %}
-                                        </td>
                                         <td>
                                             {% if executive.is_active %}
                                             <span class="badge bg-warning">Current</span>
@@ -114,27 +108,27 @@
                                         <span class="badge bg-danger">Past</span>
                                         {% endif %}
                                     </td>
-                                        <td>
-                                            <a href="#" class="btn btn-primary btn-sm view-c_member-details" data-bs-toggle="modal" data-bs-target="#c_memberModal_{{executive.id}}">
-                                                <i class="mdi mdi-eye"></i>
-                                            </a>                                                                                
-                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
-                                                <i class="mdi mdi-pen"></i>
-                                            </a>
-                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_committee_member' c_member_id=executive.id %}')" class="btn btn-danger btn-sm">
-                                                <i class="mdi mdi-delete"></i>
-                                              </a>
-                                              
-                                              <script>
-                                              function confirmDelete(event, url) {
-                                                event.preventDefault(); // Prevent the default action of the link
-                                              
-                                                if (confirm("Are you sure you want to delete this committee member?")) {
-                                                  window.location.href = url; // Redirect to the delete URL
-                                                }
-                                              }
-                                              </script>
-                                        </td>
+                                    <td>
+                                        <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}">
+                                            <i class="mdi mdi-eye"></i>
+                                        </a>                                                                                
+                                        <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
+                                            <i class="mdi mdi-pen"></i>
+                                        </a>
+                                        <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm">
+                                            <i class="mdi mdi-delete"></i>
+                                          </a>
+                                          
+                                          <script>
+                                          function confirmDelete(event, url) {
+                                            event.preventDefault(); // Prevent the default action of the link
+                                          
+                                            if (confirm("Are you sure you want to delete this officer?")) {
+                                              window.location.href = url; // Redirect to the delete URL
+                                            }
+                                          }
+                                          </script>
+                                    </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -149,10 +143,10 @@
 
     </div>
     <!-- container-fluid -->
-    {% include "includes/modals/c_member_details.html" %}
+    {% include "includes/modals/executive_details.html" %}
     {% include "includes/modals/add_new_c_member.html" %}
     {% include "includes/modals/add_existing_member_c.html" %}
-    {% include "includes/modals/edit_c_member.html" %}
+    {% include "includes/modals/edit_e_member.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}

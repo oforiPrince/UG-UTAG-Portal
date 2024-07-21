@@ -13,10 +13,10 @@
         <input type="hidden" name="executive_id" value="{{executive.id}}">
         <div class="mb-3">
           <label class="form-label">Select a member</label>
-          <select class="form-control select2" name="member_email" disabled value="{{executive.member.get_full_name}}}">
+          <select class="form-control select2" name="member_email" disabled value="{{executive.get_full_name}}}">
             <optgroup label="List of Member">
               {% for member in members %}
-                <option {% if member.email == executive.member.email %} selected {% endif %} value="{{member.email}}">{{member.get_full_name}}</option>
+                <option {% if member.email == executive.email %} selected {% endif %} value="{{member.email}}">{{member.get_full_name}}</option>
               {% endfor %}
             </optgroup>
           </select>
@@ -26,10 +26,11 @@
           <label class="form-label" for="id_title">Position</label>
           <select id="id_title" class="form-control" required name="position">
             <option value="" selected disabled>Select a title</option>
-            <option value="President" {% if executive.position.name == 'President' %} selected {% endif %}>President</option>
-            <option value="Vice President" {% if executive.position.name == 'Vice President' %} selected {% endif %}>Vice President</option>
-            <option value="Secretary" {% if executive.position.name == 'Secretary' %} selected {% endif %}>Secretary</option>
-            <option value="Treasurer" {% if executive.position.name == 'Treasurer' %} selected {% endif %}>Treasurer</option>
+            <option value="President" {% if executive.executive_position == 'President' %} selected {% endif %}>President</option>
+            <option value="Vice President" {% if executive.executive_position == 'Vice President' %} selected {% endif %}>Vice President</option>
+            <option value="Secretary" {% if executive.executive_position == 'Secretary' %} selected {% endif %}>Secretary</option>
+            <option value="Treasurer" {% if executive.executive_position == 'Treasurer' %} selected {% endif %}>Treasurer</option>
+            <option value="Committee Member" {% if executive.executive_position == 'Committee Member' %} selected {% endif %}>Committee Member</option>
           </select>
         </div>
         <div class="mb-3">

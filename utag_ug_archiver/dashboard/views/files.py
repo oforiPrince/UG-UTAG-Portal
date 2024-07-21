@@ -4,8 +4,8 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect, JsonResponse
-
-
+from django.contrib.auth.models import Group
+from django.db.models import Q
 from dashboard.models import Announcement, Document, File
 
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -13,25 +13,54 @@ from utag_ug_archiver.utils.decorators import MustLogin
 #For File Management
 class DocumentsView(View):
     template_name = 'dashboard_pages/documents.html'
+
     @method_decorator(MustLogin)
     def get(self, request):
-        #Get all Documents
-        documents = Document.objects.all().order_by('-id')
-        if request.user.is_admin:
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        # Get documents based on user role/group and public visibility
+        documents = self.get_documents(request.user)
+        
+        # Get announcements and count based on user role/group
+        new_announcements, announcement_count = self.get_announcements_and_count(request.user)
+        
         context = {
-            'documents' : documents,
-            'new_announcements' : new_announcements,
-            'announcement_count' : announcement_count
+            'documents': documents,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count
         }
         return render(request, self.template_name, context)
+
+    def get_documents(self, user):
+        # Example filtering logic based on user groups and public visibility
+        public_documents = Document.objects.filter(visible_to_groups__isnull=True).exclude(status='Draft')
+
+        if user.groups.filter(name='Admin').exists():
+            return Document.objects.all().order_by('-id')
+        elif user.groups.filter(name='Executive').exists():
+            return Document.objects.filter(
+                Q(visible_to_groups__name='Executive') | Q(visible_to_groups__isnull=True)
+            ).order_by('-id').exclude(status='Draft')
+        elif user.groups.filter(name='Member').exists():
+            return Document.objects.filter(
+                Q(visible_to_groups__name='Member') | Q(visible_to_groups__isnull=True)
+            ).order_by('-id').exclude(status='Draft')
+        else:
+            return public_documents.order_by('-id')
+
+    def get_announcements_and_count(self, user):
+        if user.groups.filter(name='Admin').exists():
+            announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')
+        elif user.groups.filter(name__in=['Secretary', 'Executive']).exists():
+            announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')
+        elif user.groups.filter(name='Member').exists():
+            announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')
+        else:
+            announcements = Announcement.objects.none()
+
+        announcement_count = announcements.count()
+        new_announcements = announcements[:3]
+        return new_announcements, announcement_count
+    
+    
 class DeleteFileView(View):
     def post(self, request):
         file_id = request.POST.get('file_id')
@@ -47,40 +76,7 @@ class DeleteDocumentView(View):
         document = Document.objects.get(pk=document_id)
         document.delete()
         messages.success(request, 'Document deleted successfully')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    
-class UpdateFileView(View):    
-    @method_decorator(MustLogin)
-    def post(self, request):
-        #Get the form data
-        document_id = request.POST.get('document_id')
-        document = Document.objects.get(pk=document_id)
-        title = request.POST.get('title')
-        sender = request.POST.get('sender')
-        receiver = request.POST.get('receiver')
-        date = request.POST.get('date')
-        description = request.POST.get('description')
-        files = request.FILES.getlist('files')
-        
-        #Update the document
-        document.title = title
-        document.sender = sender
-        document.receiver = receiver
-        document.date = date if date else document.date
-        document.description = description
-        document.save()
-        
-        # Create the file
-        if files:
-            for file in files:
-                file = File.objects.create(file=file)
-                file.save()
-                document.files.add(file)
-        
-        #Save the document
-        document.save()
-        messages.success(request, 'Document updated successfully')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))       
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))  
     
 class DocumentCreateUpdateView(View):
     template_name = 'dashboard_pages/forms/create_update_document.html'
@@ -95,6 +91,8 @@ class DocumentCreateUpdateView(View):
             'document': document,
             'CATEGORY_CHOICES': Document.CATEGORY_CHOICES,
             'DOCUMENT_STATUS_CHOICES': Document.DOCUMENT_STATUS_CHOICES,
+            'VISIBILITY_CHOICES': Document.VISIBILITY_CHOICES,
+            'all_groups': Group.objects.all()
         }
         return render(request, self.template_name, context)
 
@@ -113,11 +111,13 @@ class DocumentCreateUpdateView(View):
         document.date = request.POST.get('date')
         document.description = request.POST.get('description')
         document.status = request.POST.get('status')
+        document.visibility = request.POST.get('visibility')
         document.uploaded_by = request.user
 
         if document_id:
             document.save()  # Save the document to update it
-
+        document.save()
+        # Handle file uploads
         files = request.FILES.getlist('files')
         if files:
             for file in files:
@@ -125,6 +125,13 @@ class DocumentCreateUpdateView(View):
                 new_file.save()
                 document.files.add(new_file)
 
+        # Handle visibility and groups
+        if document.visibility == 'selected_groups':
+            visible_to_groups_ids = request.POST.getlist('visible_to_groups')
+            document.visible_to_groups.set(visible_to_groups_ids)
+        else:
+            document.visible_to_groups.clear()
+
         document.save()
         messages.success(request, success_message)
-        return redirect('dashboard:documents') 
+        return redirect('dashboard:documents')

@@ -84,10 +84,10 @@
                                         <th>#</th>
                                         <th>Name</th>
                                         <th>Email</th>
+                                        <th>Phone Number</th>
                                         <th>Gender</th>
                                         <th>Position</th>
                                         <th>Date Appointed</th>
-                                        <th>Date Ended</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -98,20 +98,15 @@
                                     {% for executive in executive_officers %}
                                     <tr>
                                         <td>{{forloop.counter}}</td>
-                                        <td>{{executive.member.get_full_name}}</td>
-                                        <td>{{executive.member.email}}</td>
-                                        <td>{{executive.member.gender}}</td>
-                                        <td>{{executive.position}}</td>
+                                        <td>{{executive.get_full_name}}</td>
+                                        <td>{{executive.email}}</td>
+                                        <td>{{executive.phone_number}}</td>
+                                        <td>{{executive.gender}}</td>
+                                        <td>{{executive.executive_position}}</td>
                                         <td>{{executive.date_appointed}}</td>
+                                        
                                         <td>
-                                            {% if executive.date_ended %}
-                                            {{executive.date_ended}}
-                                            {% else %}
-                                            ...
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if executive.is_active %}
+                                            {% if executive.is_active_executive %}
                                             <span class="badge bg-warning">Current</span>
                                         {% else %}
                                         <span class="badge bg-danger">Past</span>
@@ -152,7 +147,7 @@
 
     </div>
     <!-- container-fluid -->
-    {% include "includes/modals/officer_details.html" %}
+    {% include "includes/modals/executive_details.html" %}
     {% include "includes/modals/add_existing_member_e.html" %}
     {% include "includes/modals/add_new_c_member.html" %}
     {% include "includes/modals/edit_e_member.html" %}

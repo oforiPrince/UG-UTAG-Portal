@@ -26,10 +26,10 @@ urlpatterns += [
     path('executives/officers/update/',views.UpdateExecutiveOfficerView.as_view(), name='update_officer'),
     path('executives/officers/delete/<int:officer_id>',views.OfficerDeleteView.as_view(), name='delete_officer'),
     path('executives/committee_members',views.ExecutiveCommitteeMembersView.as_view(), name='committee_members'),
-    path('executives/committee_members/create/new',views.NewCommitteeMemberCreateView.as_view(), name='create_new_committee_member'),
-    path('executives/committee_members/create',views.ExecutiveCommitteeMemberCreateView.as_view(), name='create_existing_committee_member'),
-    path('executives/committee_members/update/',views.CommitteeMemberUpdateView.as_view(), name='update_committee_member'),
-    path('executives/committee_members/delete/<int:c_member_id>',views.CommitteeMemberDeleteView.as_view(), name='delete_committee_member'),
+    # path('executives/committee_members/create/new',views.NewCommitteeMemberCreateView.as_view(), name='create_new_committee_member'),
+    # path('executives/committee_members/create',views.ExecutiveCommitteeMemberCreateView.as_view(), name='create_existing_committee_member'),
+    # path('executives/committee_members/update/',views.CommitteeMemberUpdateView.as_view(), name='update_committee_member'),
+    # path('executives/committee_members/delete/<int:c_member_id>',views.CommitteeMemberDeleteView.as_view(), name='delete_committee_member'),
 ]
 
 #For event management
