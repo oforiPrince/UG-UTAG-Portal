@@ -30,7 +30,6 @@ class Command(BaseCommand):
                 'view_dashboard',
                 'view_member',
                 'view_event', 'view_news', 'view_announcement',
-                'view_advertisement', 'view_advertiser',
             ],
             'Member': [
                 'view_dashboard',

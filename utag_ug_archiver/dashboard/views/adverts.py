@@ -12,7 +12,7 @@ from utag_ug_archiver.utils.decorators import MustLogin
 
 class AdvertsView(PermissionRequiredMixin, View):
     template_name = 'dashboard_pages/adverts.html'
-    permission_required = 'dashboard.view_adverts'
+    permission_required = 'adverts.view_advertisement'
     
     @method_decorator(MustLogin)
     def get(self, request):
@@ -49,7 +49,8 @@ class AdvertsView(PermissionRequiredMixin, View):
         # Render the template
         return render(request, self.template_name, context)
     
-class AdvertPlansView(View):
+class AdvertPlansView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.view_advertplan'
     template_name = 'dashboard_pages/advert_plans.html'
     @method_decorator(MustLogin)
     def get(self, request):
@@ -71,7 +72,8 @@ class AdvertPlansView(View):
         }
         return render(request, self.template_name, context)
     
-class CompaniesView(View):
+class CompaniesView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.view_advertiser'
     template_name = 'dashboard_pages/advert_companies.html'
     @method_decorator(MustLogin)
     def get(self, request):
@@ -93,7 +95,8 @@ class CompaniesView(View):
         }
         return render(request, self.template_name, context)
     
-class AdvertCreateView(View):    
+class AdvertCreateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.add_advertisement'    
     @method_decorator(MustLogin)
     def post(self, request):
         image = request.FILES.get('image')
@@ -115,7 +118,8 @@ class AdvertCreateView(View):
         messages.success(request, 'Advert added successfully')
         return redirect('dashboard:adverts')
     
-class AdvertUpdateView(View):    
+class AdvertUpdateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.change_advertisement'    
     @method_decorator(MustLogin)
     def post(self, request):
         advert_id = request.POST.get('advert_id')
@@ -135,7 +139,8 @@ class AdvertUpdateView(View):
         messages.success(request, 'Advert updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
-class AdvertDeleteView(View):
+class AdvertDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.delete_advertisement'
     @method_decorator(MustLogin)
     def get(self, request, advert_id):
         advert = Advertisement.objects.get(id=advert_id)
@@ -143,7 +148,8 @@ class AdvertDeleteView(View):
         messages.success(request, 'Advert deleted successfully')
         return redirect('dashboard:adverts')
     
-class AdvertPlanCreateView(View):    
+class AdvertPlanCreateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.add_advertplan'    
     @method_decorator(MustLogin)
     def post(self, request):
         name = request.POST.get('name')
@@ -161,7 +167,8 @@ class AdvertPlanCreateView(View):
         messages.success(request, 'Advert plan added successfully')
         return redirect('dashboard:plans')
     
-class AdvertPlanUpdateView(View):
+class AdvertPlanUpdateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.change_advertplan'
     @method_decorator(MustLogin)
     def post(self, request):
         plan_id = request.POST.get('plan_id')
@@ -180,7 +187,8 @@ class AdvertPlanUpdateView(View):
         messages.success(request, 'Advert plan updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
-class AdvertPlanDeleteView(View):    
+class AdvertPlanDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.delete_advertplan'    
     @method_decorator(MustLogin)
     def get(self, request, plan_id):
         plan = AdvertPlan.objects.get(id=plan_id)
@@ -188,7 +196,8 @@ class AdvertPlanDeleteView(View):
         messages.success(request, 'Advert plan deleted successfully')
         return redirect('dashboard:plans')
     
-class CompanyCreateView(View):    
+class CompanyCreateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.add_advertiser'    
     @method_decorator(MustLogin)
     def post(self, request):
         advertiser_name = request.POST.get('advertiser_name')
@@ -206,7 +215,8 @@ class CompanyCreateView(View):
         messages.success(request, 'Company added successfully')
         return redirect('dashboard:companies')
     
-class CompanyUpdateView(View):
+class CompanyUpdateView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.change_advertiser'
     @method_decorator(MustLogin)
     def post(self, request):
         advertiser_id = request.POST.get('advertiser_id')
@@ -216,7 +226,7 @@ class CompanyUpdateView(View):
         advertiser_phone = request.POST.get('phone_number')
         advertiser_address = request.POST.get('address')
         advertiser = Advertiser.objects.get(id=advertiser_id)
-        advertiser.advertiser_name = advertiser_name
+        advertiser.company_name = advertiser_name
         advertiser.contact_name = contact_name
         advertiser.email = advertiser_email
         advertiser.phone_number = advertiser_phone
@@ -225,7 +235,8 @@ class CompanyUpdateView(View):
         messages.success(request, 'Company updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
-class CompanyDeleteView(View):    
+class CompanyDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.delete_advertiser'    
     @method_decorator(MustLogin)
     def get(self, request, advertiser_id):
         advertiser = Advertiser.objects.get(id=advertiser_id)
