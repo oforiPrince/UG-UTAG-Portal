@@ -3,9 +3,9 @@
 {% block title %}
 {% if news.pk %}
       Update
-    {% else %}
+{% else %}
       Create
-    {% endif %}
+{% endif %}
 {% endblock title %}
 {% block content %}
 <div class="page-content">
@@ -40,7 +40,8 @@
 
               <div class="mb-3">
                 <label for="image" class="form-label">News Featured Image</label>
-                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewImage(this)">
+                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewAndValidateImage(this)">
+                <div id="imageError" class="text-danger"></div>
                 <div class="mt-2 d-flex justify-content-center">
                   <img id="oldImagePreview" src="{{ initial_data.featured_image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
                   <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.featured_image %}display: none;{% endif %}" />
@@ -77,19 +78,34 @@
 {% endblock my_styles %}
 {% block my_scripts %}
     <script>
-      // JavaScript for previewing image
-      function previewImage(input) {
+      // JavaScript for previewing image and validating dimensions
+      function previewAndValidateImage(input) {
         var oldImagePreview = document.getElementById('oldImagePreview');
         var newImagePreview = document.getElementById('newImagePreview');
+        var imageError = document.getElementById('imageError');
+        imageError.textContent = '';
       
         if (input.files && input.files[0]) {
-          var reader = new FileReader();
-          reader.onload = function (e) {
-            newImagePreview.src = e.target.result;
-            newImagePreview.style.display = 'inline-block';
-            oldImagePreview.style.display = 'none';
+          var file = input.files[0];
+          var img = new Image();
+          img.onload = function() {
+            if (img.width !== 580 || img.height !== 430) {
+              imageError.textContent = 'Image dimensions must be 580 x 430 pixels.';
+              input.value = '';  // Clear the input if dimensions are incorrect
+              newImagePreview.src = '';
+              newImagePreview.style.display = 'none';
+              oldImagePreview.style.display = 'inline-block';
+            } else {
+              var reader = new FileReader();
+              reader.onload = function (e) {
+                newImagePreview.src = e.target.result;
+                newImagePreview.style.display = 'inline-block';
+                oldImagePreview.style.display = 'none';
+              };
+              reader.readAsDataURL(file);
+            }
           };
-          reader.readAsDataURL(input.files[0]);
+          img.src = URL.createObjectURL(file);
         } else {
           newImagePreview.src = '';
           newImagePreview.style.display = 'none';
