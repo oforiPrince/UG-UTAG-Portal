@@ -70,12 +70,7 @@ class Announcement(models.Model):
         ('PUBLISHED', 'Published'),
         ('ARCHIVED', 'Archived'),
     )
-    TARGET_GROUP_CHOICES = (
-        ('ALL', 'All'),
-        ('MEMBERS', 'Members'),
-        ('EXECUTIVES', 'Executives'),
-    )
-    VISIBILITY_CHOICES = (
+    TARGET_CHOICES = (
         ('everyone', 'Everyone'),
         ('specific_groups', 'Specific Groups'),
     )
@@ -86,7 +81,7 @@ class Announcement(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    target = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='everyone')
+    target = models.CharField(max_length=20, choices=TARGET_CHOICES, default='everyone')
     target_groups = models.ManyToManyField(Group, blank=True)
     
     def __str__(self):

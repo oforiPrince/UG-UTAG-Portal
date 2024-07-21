@@ -1,12 +1,13 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 {% block title %}
-{% if news.pk %}
-      Update
-    {% else %}
-      Create
-    {% endif %}
+  {% if news.pk %}
+    Update Announcement
+  {% else %}
+    Create Announcement
+  {% endif %}
 {% endblock title %}
+
 {% block content %}
 <div class="page-content">
   <div class="container-fluid">
@@ -28,6 +29,7 @@
 
             <form id="newsForm" class="custom-validation" method="POST" enctype="multipart/form-data">
               {% csrf_token %}
+              
               <div class="mb-3">
                 <label for="title" class="form-label">Announcement Title</label>
                 <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
@@ -40,22 +42,33 @@
 
               <div class="row mb-3">
                 <div class="form-group col-md-6">
-                    <label for="announcement_target_group">Target Group</label>
-                    <select class="form-control" id="announcement_target_group" name="target_group" required>
-                        <option value="ALL">All</option>
-                        <option value="MEMBERS">Members</option>
-                        <option value="EXECUTIVES">Executives</option>
-                    </select>
+                  <label for="announcement_status">Status</label>
+                  <select class="form-control" id="announcement_status" name="status" required>
+                      <option value="DRAFT" {% if initial_data.status == "DRAFT" %}selected{% endif %}>Draft</option>
+                      <option value="PUBLISHED" {% if initial_data.status == "PUBLISHED" %}selected{% endif %}>Published</option>
+                      <option value="ARCHIVED" {% if initial_data.status == "ARCHIVED" %}selected{% endif %}>Archived</option>
+                  </select>
                 </div>
+
                 <div class="form-group col-md-6">
-                    <label for="announcement_status">Status</label>
-                    <select class="form-control" id="announcement_status" name="status" required>
-                        <option value="DRAFT">Draft</option>
-                        <option value="PUBLISHED">Published</option>
-                        <option value="ARCHIVED">Archived</option>
+                  <label for="announcement_target">Target</label>
+                  <select class="form-control" id="announcement_target" name="target" required>
+                      <option value="everyone" {% if initial_data.target == "everyone" %}selected{% endif %}>Everyone</option>
+                      <option value="specific_groups" {% if initial_data.target == "specific_groups" %}selected{% endif %}>Specific Groups</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row mb-3" id="target_groups_container" {% if initial_data.target == "everyone" %}style="display: none;"{% endif %}>
+                <div class="form-group col-md-12">
+                    <label for="announcement_target_groups">Target Groups</label>
+                    <select class="form-control" id="announcement_target_groups" name="target_groups" multiple>
+                        {% for group in all_groups %}
+                            <option value="{{ group.id }}" {% if group.id in initial_data.target_groups %}selected{% endif %}>{{ group.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
-            </div>
+              </div>
 
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
               <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
@@ -67,6 +80,7 @@
   </div>
 </div>
 {% endblock %}
+
 {% block my_styles %}
  <!-- DataTables -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
@@ -75,8 +89,8 @@
  <!-- Responsive datatable examples -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
 {% endblock my_styles %}
-{% block my_scripts %}
 
+{% block my_scripts %}
     <!-- Required datatable js -->
     <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
     <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
@@ -89,7 +103,6 @@
     <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
 
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
-    
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
 
     <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
@@ -98,6 +111,16 @@
           selector: '#content',
           plugins: 'lists link image',
           toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+      });
+
+      $(document).ready(function() {
+          $('#announcement_target').on('change', function() {
+              if ($(this).val() == 'specific_groups') {
+                  $('#target_groups_container').show();
+              } else {
+                  $('#target_groups_container').hide();
+              }
+          });
       });
     </script>
 {% endblock my_scripts %}

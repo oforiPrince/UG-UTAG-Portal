@@ -11,7 +11,7 @@
             <div class="col-md-8">
               <h4 class="card-title">Announcements</h4>
             </div>
-            {% if user.is_admin or user.is_superuser or user.is_secretary %}
+            {% if perms.dashboard.add_announcement %}
             <div class="col-md-4">
               <div class="float-end d-none d-md-block">
                 <a
@@ -44,7 +44,15 @@
                   <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ announcement.title }}</td>
-                    <td>{{ announcement.target_group }}</td>
+                    <td>
+                      {% if announcement.target == 'everyone' %}
+                        Everyone
+                      {% else %}
+                        {% for group in announcement.target_groups.all %}
+                          {{ group.name }}s{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                      {% endif %}
+                    </td>
                     <td>{{ announcement.created_by }}</td>
                     <td class="text-center">
                       <span class="badge {% if announcement.status == 'PUBLISHED' %} bg-success {% elif announcement.status == 'DRAFT' %} bg-warning {% else %} bg-danger {% endif %}">
@@ -59,7 +67,7 @@
                     <!-- <a href="#" class="btn btn-secondary btn-sm">
                         <i class="mdi mdi-comment"></i>
                     </a> -->
-                    {% if user.is_admin or user.is_superuser or user.is_secretary %}
+                    {% if perms.dashboard.change_announcement or perms.dashboard.delete_announcement or user.executive_position == 'Secretary' %}
                     <a href="{% url 'dashboard:update_announcement' announcement.id %}" class="btn btn-success btn-sm">
                         <i class="mdi mdi-pen"></i>
                     </a>

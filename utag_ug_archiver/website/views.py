@@ -17,7 +17,7 @@ class IndexView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get all executives
-        executives = User.objects.filter(position__name__in=officers_position_order, is_executive_officer=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
@@ -111,7 +111,7 @@ class ExecutiveOfficersView(View):
     
     def get(self, request):
         # Get all executives
-        executives = Executive.objects.filter(position__name__in=officers_position_order, is_executive_officer=True, is_active=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
@@ -125,7 +125,7 @@ class ExecutiveCommitteeMembersView(View):
     
     def get(self, request):
         # Get all executives and include the committee members
-        executives = Executive.objects.filter(position__name__in=officers_position_order+committee_members_position_order, is_active=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order+committee_members_position_order, is_active_executive=True)
         # Sort the executives based on the custom order
         executives = sorted(executives, key=members_custom_order)
         context = {

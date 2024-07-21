@@ -21,10 +21,10 @@ def generate_random_password():
 
 # Create a custom sorting function based on the order
 def officers_custom_order(executive):
-    return officers_position_order.index(executive.position.name)
+    return officers_position_order.index(executive.executive_position)
 
 def members_custom_order(executive):
-    return committee_members_position_order.index(executive.position.name)
+    return committee_members_position_order.index(executive.executive_position)
 
 def send_credentials_email(user, raw_password):
         try:
