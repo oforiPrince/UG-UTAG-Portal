@@ -67,16 +67,16 @@
                                     <td>{{member.phone_number}}</td>
                                     <td>{{member.department}}</td>
                                     <td>
-                                        <a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#userModal_{{member.id}}">
+                                        <a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#userModal_{{member.id}}" title="View">
                                             <i class="mdi mdi-eye"></i>
                                         </a>
                                         {% if has_change_permission %}
-                                        <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal_{{member.id}}">
+                                        <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal_{{member.id}}" title="Edit">
                                             <i class="mdi mdi-pen"></i>
                                         </a>
                                         {% endif %}
                                         {% if has_delete_permission %}
-                                        <a href="{% url 'dashboard:delete_member' member_id=member.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this member?');">
+                                        <a href="{% url 'dashboard:delete_member' member_id=member.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this member?');" title="Delete">
                                             <i class="mdi mdi-delete"></i>
                                         </a>
                                         {% endif %}

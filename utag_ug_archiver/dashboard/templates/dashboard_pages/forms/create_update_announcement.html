@@ -61,17 +61,22 @@
 
               <div class="row mb-3" id="target_groups_container" {% if initial_data.target == "everyone" %}style="display: none;"{% endif %}>
                 <div class="form-group col-md-12">
-                    <label for="announcement_target_groups">Target Groups</label>
-                    <select class="form-control" id="announcement_target_groups" name="target_groups" multiple>
-                        {% for group in all_groups %}
-                            <option value="{{ group.id }}" {% if group.id in initial_data.target_groups %}selected{% endif %}>{{ group.name }}</option>
-                        {% endfor %}
-                    </select>
+                  <label for="announcement_target_groups">Target Groups</label>
+                  <div>
+                    {% for group in all_groups %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="target_groups" id="group_{{ group.id }}" value="{{ group.id }}"
+                        {% if group.id in initial_data.target_groups %} checked {% endif %}>
+                      <label class="form-check-label" for="group_{{ group.id }}">
+                        {{ group.name }}
+                      </label>
+                    </div>
+                    {% endfor %}
+                  </div>
                 </div>
-              </div>
+              </div>              
 
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-              <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
             </form>
           </div>
         </div>

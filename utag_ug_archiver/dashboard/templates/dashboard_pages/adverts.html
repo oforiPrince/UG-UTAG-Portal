@@ -55,14 +55,14 @@
                       <span class="badge bg-{% if ad.status == 'PUBLISHED' %}success{% elif ad.status == 'EXPIRED' %}warning{% else %}danger{% endif %}">{{ ad.status }}</span>
                     </td>
                     <td>
-                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertDetailsModal_{{ ad.id }}">
+                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertDetailsModal_{{ ad.id }}" title="View">
                         <i class="mdi mdi-eye"></i>
                       </a>
                       {% if user.is_admin or user.is_superuser %}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisementsModal_{{ ad.id }}">
+                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisementsModal_{{ ad.id }}" title="Edit">
                         <i class="mdi mdi-pen"></i>
                       </a>
-                      <a href="{% url 'dashboard:delete_advert' ad.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this Advert?');">
+                      <a href="{% url 'dashboard:delete_advert' ad.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this Advert?');" title="Delete">
                         <i class="mdi mdi-delete"></i>
                       </a>
                       {% endif %}

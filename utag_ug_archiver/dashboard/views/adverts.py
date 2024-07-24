@@ -56,15 +56,22 @@ class AdvertPlansView(PermissionRequiredMixin, View):
     def get(self, request):
         #Get all advert plans
         plans = AdvertPlan.objects.all()
-        if request.user.is_admin:
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
         context = {
             'plans' : plans,
             'announcement_count' : announcement_count,
@@ -79,15 +86,22 @@ class CompaniesView(PermissionRequiredMixin, View):
     def get(self, request):
         #Get all companies
         companies = Advertiser.objects.all()
-        if request.user.is_admin:
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
         context = {
             'companies' : companies,
             'announcement_count' : announcement_count,

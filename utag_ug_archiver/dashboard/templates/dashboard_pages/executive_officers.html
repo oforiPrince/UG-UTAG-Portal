@@ -113,13 +113,13 @@
                                         {% endif %}
                                     </td>
                                         <td>
-                                            <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}">
+                                            <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}" title="View">
                                                 <i class="mdi mdi-eye"></i>
                                             </a>                                                                                
-                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
+                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}" title="Edit">
                                                 <i class="mdi mdi-pen"></i>
                                             </a>
-                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm">
+                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm" title="Delete">
                                                 <i class="mdi mdi-delete"></i>
                                               </a>
                                               

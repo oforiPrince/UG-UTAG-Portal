@@ -30,23 +30,22 @@ class AnnouncementsView(View):
         announcement_count = 0
         new_announcements = []
 
-        if 'Admin' in user_groups:
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif 'Executive' in user_groups or 'Secretary' in user_groups:
-            new_announcements = Announcement.objects.filter(
-                status='PUBLISHED'
-            ).exclude(target_groups__name='Member').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(
-                status='PUBLISHED'
-            ).exclude(target_groups__name='Member').count()
-        elif 'Member' in user_groups:
-            new_announcements = Announcement.objects.filter(
-                status='PUBLISHED'
-            ).exclude(target_groups__name='Executive').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(
-                status='PUBLISHED'
-            ).exclude(target_groups__name='Executive').count()
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
 
         context = {
             'announcements': announcements,

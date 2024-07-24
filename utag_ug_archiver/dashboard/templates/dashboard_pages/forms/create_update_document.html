@@ -123,18 +123,23 @@
                   </div>
 
                   <div class="mb-3 col-md-6" id="visible_to_groups_container" style="display: none;">
-                    <label for="visible_to_groups" class="form-label">Visible to Groups</label>
-                    <select class="form-select" name="visible_to_groups" id="visible_to_groups" multiple>
+                    <label class="form-label">Visible to Groups</label>
+                    <div>
                       {% for group in all_groups %}
-                      <option value="{{ group.id }}" {% if document and group in document.visible_to_groups.all %} selected {% endif %}>{{ group.name }}</option>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="visible_to_groups" id="group_{{ group.id }}" value="{{ group.id }}"
+                          {% if document and group in document.visible_to_groups.all %} checked {% endif %}>
+                        <label class="form-check-label" for="group_{{ group.id }}">
+                          {{ group.name }}
+                        </label>
+                      </div>
                       {% endfor %}
-                    </select>
+                    </div>
                   </div>
                 </div>
               
                 <div class="mb-0">
                   <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Save</button>
-                  <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
                 </div>
             </form>              
           </div>

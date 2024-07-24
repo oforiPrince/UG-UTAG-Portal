@@ -46,6 +46,25 @@ def send_credentials_email(user, raw_password):
             send_email_with_retry(email)
         except Exception as e:
             logger.error(f'Error sending email to {user.email}: {e}')
+            
+def send_reset_password_email(user, reset_url):
+        try:
+            email_subject = 'Password Reset Request'
+            from_email = settings.EMAIL_HOST_USER
+            email_body = render_to_string('emails/password_reset_email.html', {
+                'full_name': user.get_full_name,
+                'reset_url': reset_url
+            })
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [user.email]
+            )
+            email.content_subtype = "html"
+            send_email_with_retry(email)
+        except Exception as e:
+            logger.error(f'Error sending email to {user.email}: {e}')
 
 def process_bulk_admins(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
