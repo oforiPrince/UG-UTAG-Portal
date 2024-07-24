@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.db.models import Q
-from dashboard.models import Event, News
+from dashboard.models import CarouselSlide, Event, News
 from adverts.models import Advertisement
 from accounts.models import User
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
@@ -21,7 +21,7 @@ class IndexView(View):
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
-        
+        carousel_slides = CarouselSlide.objects.filter(is_published=True).order_by('order')
         # Advertisement
         today = date.today()
 
@@ -44,6 +44,7 @@ class IndexView(View):
             'executives': executives,
             'large_advert_images': large_advertisements,
             'small_advert_images': small_advertisements,
+            'carousel_slides': carousel_slides
         }
         return render(request, self.template_name, context)
     

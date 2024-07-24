@@ -198,7 +198,7 @@
                             {% for news in published_news %}
                             <li class="feed-item">
                                 <div class="feed-item-list">
-                                    <span class="date">{{ news.date|date:"M" }} {{ news.date|date:"j" }}</span>
+                                    <span class="date">{{ news.created_at|date:"M" }} {{ news.created_at|date:"j" }}</span>
                                     <span class="activity-text">{{news.title}}</span>
                                 </div>
                             </li>

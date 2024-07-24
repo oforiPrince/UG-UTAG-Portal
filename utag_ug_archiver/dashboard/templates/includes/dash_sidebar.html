@@ -67,6 +67,12 @@
                         <span>Events</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{% url 'dashboard:carousel_slide_list' %}" class="">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Carousel Sliders</span>
+                    </a>
+                </li>
                 {% endif %}
 
                 {% if perms.dashboard.view_news %}

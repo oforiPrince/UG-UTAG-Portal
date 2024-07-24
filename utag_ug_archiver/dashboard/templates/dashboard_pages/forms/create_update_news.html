@@ -52,7 +52,7 @@
                 <input type="file" class="form-control" id="image" name="featured_image" onchange="previewAndValidateImage(this)">
                 <div id="imageError" class="text-danger"></div>
                 <div class="mt-2 d-flex justify-content-center">
-                  <img id="oldImagePreview" src="{{ initial_data.featured_image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
+                  <img id="oldImagePreview" src="{{ initial_data.get_featured_image_url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
                   <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.featured_image %}display: none;{% endif %}" />
                 </div>
               </div>
@@ -68,7 +68,6 @@
               </div>
 
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-              <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
             </form>
           </div>
         </div>

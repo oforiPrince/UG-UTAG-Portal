@@ -87,3 +87,11 @@ urlpatterns += [
     path('profile',views.ProfileView.as_view(), name='profile'),
     path('profile/update_profile_pic',views.ChangeProfilePicView.as_view(), name='update_profile_pic'),
 ]
+
+# Carousel Slider
+urlpatterns += [
+    path('carousel/', views.CarouselSlideListView.as_view(), name='carousel_slide_list'),
+    path('carousel/create/', views.CarouselSlideCreateUpdateView.as_view(), name='carousel_slide_create'),
+    path('carousel/update/<int:slide_id>/', views.CarouselSlideCreateUpdateView.as_view(), name='carousel_slide_update'),
+    path('carousel/delete/<int:slide_id>/', views.CarouselSlideDeleteView.as_view(), name='carousel_slide_delete'),
+]

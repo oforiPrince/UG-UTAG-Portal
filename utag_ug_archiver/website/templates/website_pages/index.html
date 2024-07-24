@@ -6,35 +6,31 @@
 <!-- Main Content Wrapper Start -->
 <div class="main-content-wrapper">
     <!-- Slider area  Start -->
-    <div class="slider-area mb--95">
-        <div id="rev_slider_1_1_wrapper" class="rev_slider_wrapper fullwidthbanner-container" data-alias="tm-01" data-source="gallery" style="margin:0px auto;background:transparent;padding:0px;margin-top:0px;margin-bottom:0px;">
-            <!-- START REVOLUTION SLIDER 5.4.7 auto mode -->
-            <div id="rev_slider_1_1" class="rev_slider fullwidthabanner" style="display:none;" data-version="5.4.7">
-                <ul>
-                    <!-- SLIDE  -->
-                    <li data-index="rs-1" data-transition="fade" data-slotamount="default" data-hideafterloop="0" data-hideslideonmobile="off" data-easein="default" data-easeout="default" data-masterspeed="300" data-thumb="{% static 'website/assets/img/slider/slider.jpeg' %}" data-rotate="0"
-                        data-saveperformance="off" data-title="Slide" data-param1="" data-param2="" data-param3="" data-param4="" data-param5="" data-param6="" data-param7="" data-param8="" data-param9="" data-param10="" data-description="">
-                        <!-- MAIN IMAGE -->
-                        <img src="{% static 'website/assets/img/slider/slider.jpeg' %}" alt="slider" data-bgposition="center center" data-bgfit="cover" data-bgrepeat="no-repeat" class="rev-slidebg" data-no-retina>
-                    </li>
-                    <!-- SLIDE  -->
-                    <li data-index="rs-2" data-transition="fade" data-slotamount="default" data-hideafterloop="0" data-hideslideonmobile="off" data-easein="default" data-easeout="default" data-masterspeed="300" data-thumb="{% static 'website/assets/img/slider/slider2.jpeg' %}" data-rotate="0"
-                        data-saveperformance="off" data-title="Slide" data-param1="" data-param2="" data-param3="" data-param4="" data-param5="" data-param6="" data-param7="" data-param8="" data-param9="" data-param10="" data-description="">
-                        <!-- MAIN IMAGE -->
-                        <img src="{% static 'website/assets/img/slider/slider2.jpeg' %}" alt="Slider Image" data-bgposition="center center" data-bgfit="cover" data-bgrepeat="no-repeat" class="rev-slidebg" data-no-retina>
-                    </li>
-                    <!-- SLIDE  -->
-                    <li data-index="rs-3" data-transition="fade" data-slotamount="default" data-hideafterloop="0" data-hideslideonmobile="off" data-easein="default" data-easeout="default" data-masterspeed="300" data-thumb="{% static 'website/assets/img/slider/slider3.jpeg' %}" data-rotate="0"
-                        data-saveperformance="off" data-title="Slide" data-param1="" data-param2="" data-param3="" data-param4="" data-param5="" data-param6="" data-param7="" data-param8="" data-param9="" data-param10="" data-description="">
-                        <!-- MAIN IMAGE -->
-                        <img src="{% static 'website/assets/img/slider/slider3.jpeg' %}" alt="slider" data-bgposition="center center" data-bgfit="cover" data-bgrepeat="no-repeat" class="rev-slidebg" data-no-retina>
-                    </li>
-                </ul>
-                <div class="tp-bannertimer" style="height: 5px; background: rgba(0,0,0,0.15);"></div>
-            </div>
-        </div>
-        <!-- END REVOLUTION SLIDER -->
-    </div>
+     
+     {% if carousel_slides %}
+     <div class="slider-area mb--95">
+         <div id="rev_slider_1_1_wrapper" class="rev_slider_wrapper fullwidthbanner-container" data-alias="tm-01" data-source="gallery" style="margin:0px auto;background:transparent;padding:0px;margin-top:0px;margin-bottom:0px;">
+             <!-- START REVOLUTION SLIDER 5.4.7 auto mode -->
+             <div id="rev_slider_1_1" class="rev_slider fullwidthabanner" style="display:none;" data-version="5.4.7">
+                 <ul>
+                     {% for slider in carousel_slides %}
+                     <!-- SLIDE  -->
+                     <li data-index="rs-{{ forloop.counter }}" data-transition="fade" data-slotamount="default" data-hideafterloop="0" data-hideslideonmobile="off" data-easein="default" data-easeout="default" data-masterspeed="300" data-thumb="{{ slider.image.url }}" data-rotate="0"
+                         data-saveperformance="off" data-title="Slide" data-param1="" data-param2="" data-param3="" data-param4="" data-param5="" data-param6="" data-param7="" data-param8="" data-param9="" data-param10="" data-description="">
+                         <!-- MAIN IMAGE -->
+                         <img src="{{ slider.image.url }}" alt="{{ slider.title }}" data-bgposition="center center" data-bgfit="cover" data-bgrepeat="no-repeat" class="rev-slidebg" data-no-retina>
+                     </li>
+                     {% endfor %}
+                 </ul>
+                 <div class="tp-bannertimer" style="height: 5px; background: rgba(0,0,0,0.15);"></div>
+             </div>
+         </div>
+         <!-- END REVOLUTION SLIDER -->
+     </div>
+     {% endif %}
+        
+    <!-- Slider area  End -->
+    
     <!-- Slider area  End -->
 
     <!-- Core Value area  Start -->
