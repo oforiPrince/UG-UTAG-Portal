@@ -36,50 +36,40 @@ class ProfileView(View):
         first_name = request.POST.get('first_name')
         other_name = request.POST.get('other_name')
         last_name = request.POST.get('last_name')
-        email = request.POST.get('email')
         phone = request.POST.get('phone')
         current_password = request.POST.get('current_password')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         
-        if current_password is not None:
+        # Update user details
+        if user.title != title:
+            user.title = title
+        if user.first_name != first_name:
+            user.first_name = first_name
+        if user.other_name != other_name:
+            user.other_name = other_name
+        if user.last_name != last_name:
+            user.last_name = last_name
+
+        if user.phone_number != phone:
+            user.phone_number = phone
+
+        user.save()
+
+        # Check if the user wants to change the password
+        if current_password or password or confirm_password:
             if not user.check_password(current_password):
                 messages.error(request, "Incorrect current password")
                 return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-        
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-            
-        if user.email != email:
-            user.email = email
-            user.save()
-        
-        if user.first_name != first_name:
-            user.first_name = first_name
-            user.save()
+            if password != confirm_password:
+                messages.error(request, "Passwords do not match")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-        if user.other_name != other_name:
-            user.other_name = other_name
-            user.save()
-            
-        if user.last_name != last_name:
-            user.last_name = last_name
-            user.save()
-            
-        if user.title != title:
-            user.title = title
-            user.save()
-            
-        if user.phone_number != phone:
-            user.phone_number = phone
-            user.save()
-            
-        if password.strip() != "":
-            user.set_password(password)
-            user.save()
-            
+            if password.strip():
+                user.set_password(password)
+                user.save()
+
         messages.info(request, "Profile Updated Successfully")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 

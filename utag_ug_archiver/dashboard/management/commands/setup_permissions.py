@@ -29,11 +29,13 @@ class Command(BaseCommand):
             'Executive': [
                 'view_dashboard',
                 'view_member',
+                'view_document',
                 'view_event', 'view_news', 'view_announcement',
             ],
             'Member': [
                 'view_dashboard',
-                'view_event', 'view_news',
+                'view_document',
+                'view_event', 'view_news', 'view_announcement',
             ]
         }
 

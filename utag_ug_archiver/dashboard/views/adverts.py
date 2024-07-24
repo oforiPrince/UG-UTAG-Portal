@@ -200,17 +200,19 @@ class CompanyCreateView(PermissionRequiredMixin, View):
     permission_required = 'adverts.add_advertiser'    
     @method_decorator(MustLogin)
     def post(self, request):
-        advertiser_name = request.POST.get('advertiser_name')
+        company_name = request.POST.get('company_name')
         contact_name = request.POST.get('contact_name')
         advertiser_email = request.POST.get('email')
         advertiser_phone = request.POST.get('phone_number')
         advertiser_address = request.POST.get('address')
+        created_by = request.user
         advertiser = Advertiser.objects.create(
-            advertiser_name = advertiser_name,
+            company_name = company_name,
             contact_name = contact_name,
             email = advertiser_email,
             phone_number = advertiser_phone,
-            address = advertiser_address
+            address = advertiser_address,
+            created_by = created_by
         )
         messages.success(request, 'Company added successfully')
         return redirect('dashboard:companies')
