@@ -1,53 +1,74 @@
-from datetime import datetime
+import logging
 import random
 import string
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
-
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect, render
+from django.shortcuts import render
+from django.db import transaction
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect
-
-
-
 from accounts.models import User
 from dashboard.models import Announcement, Document
-from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members
+from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, send_credentials_email
 
 from utag_ug_archiver.utils.decorators import MustLogin
+# Configure the logger
+logger = logging.getLogger(__name__)
 
 #For account management
-class AdminListView(View):
+class AdminListView(PermissionRequiredMixin, View):
     template_name = 'dashboard_pages/admins.html'
+    permission_required = 'accounts.view_admin'
+    @method_decorator(MustLogin)
     def get(self, request):
-        users = User.objects.filter(is_admin = True).order_by('first_name')
+        # Fetch users
+        users = User.objects.filter(groups__name='Admin').order_by('first_name')
+        
+        # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
+        
+        # Initialize variables
+        new_announcements = []
         announcement_count = 0
-        if request.user.is_admin:
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
+        # Prepare context
         context = {
-            'users' : users,
-            'total_documents' : total_external_documents,
-            'total_documents' : total_documents,
-            'new_announcements' : new_announcements,
-            'announcement_count' : announcement_count
+            'users': users,
+            'total_documents': total_documents,
+            'total_external_documents': total_external_documents,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count,
+            'has_add_permission': request.user.has_perm('accounts.add_admin'),
+            'has_change_permission': request.user.has_perm('accounts.change_admin'),
+            'has_delete_permission': request.user.has_perm('accounts.delete_admin'),
         }
+        
+        # Render the template
         return render(request, self.template_name, context)
     
-class AdminCreateView(View):
-    password = ""
+class AdminCreateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_admin'
+    
+    @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
         first_name = request.POST.get('first_name')
@@ -55,51 +76,48 @@ class AdminCreateView(View):
         last_name = request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
-        phone_number = request.POST.get('phone_number')
-        department = request.POST.get('department')
-        if request.POST.get('password_choice') == 'auto':
-            password_length = 10
-            self.password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
-        else:
-            password = request.POST.get('password1')
-            self.password = password
+        phone_number = request.POST.get('phone')
+
+        password_length = 12
+        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
             messages.error(request, 'Admin already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
-            admin = User.objects.create(
-                title = title,
-                first_name = first_name,
-                other_name = other_name,
-                last_name = last_name,
-                gender = gender,
-                email = email,
-                phone_number = phone_number,
-                department = department,
-                password = make_password(self.password),
-                is_admin = True,
-            )
-            admin.save()
-            
-            # Send email to admin with password
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = email
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
-            )
-            email.content_subtype = "html"
-            email.send()
-            
-            messages.success(request, 'Admin created successfully!')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        try:
+            with transaction.atomic():
+                # Create user
+                admin = User.objects.create(
+                    title=title,
+                    first_name=first_name,
+                    other_name=other_name,
+                    last_name=last_name,
+                    gender=gender,
+                    email=email,
+                    phone_number=phone_number,
+                    password=make_password(raw_password),
+                    created_by=request.user,
+                    created_from_dashboard=True,
+                )
+                
+                # Add user to Admin group
+                admin.groups.add(Group.objects.get(name='Admin'))
+
+                # Prepare and send the email
+                send_credentials_email(admin, raw_password)
+
+                messages.success(request, 'Admin created successfully!')
+        except Exception as e:
+            logger.error(f"Error creating admin: {e}")
+            messages.error(request, 'Error creating admin. Please try again.')
         
-class UserUpdateView(View):
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+class UserUpdateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.change_admin'
+    @method_decorator(MustLogin)
     def post(self,request):
         id = request.POST.get('user_id')
         title = request.POST.get('title')
@@ -142,10 +160,11 @@ class UserUpdateView(View):
         user.save()
         messages.success(request, 'Admin updated successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
         
-        
-        
-class AdminDeleteView(View):
+class AdminDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.delete_admin'
+    @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         admin_id = kwargs.get('admin_id')
         admin = User.objects.get(id=admin_id)
@@ -153,8 +172,10 @@ class AdminDeleteView(View):
         messages.success(request, 'Admin deleted successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class MemberCreateView(View):
+class MemberCreateView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_member'
     password = ""
+    @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
         first_name = request.POST.get('first_name')
@@ -164,49 +185,45 @@ class MemberCreateView(View):
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
         department = request.POST.get('department')
-        if request.POST.get('password_choice') == 'auto':
-            password_length = 10
-            self.password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
-        else:
-            password = request.POST.get('password1')
-            self.password = password
+        password_length = 12
+        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+        
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
             messages.error(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
-            admin = User.objects.create(
-                title = title,
-                first_name = first_name,
-                other_name = other_name,
-                last_name = last_name,
-                gender = gender,
-                email = email,
-                phone_number = phone_number,
-                department = department,
-                password = make_password(self.password),
-                is_member = True,
-            )
-            admin.save()
-            
-            # Send email to admin with password
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            to = email
-            email_body = render_to_string('emails/account_credentials.html', {'first_name': first_name,'last_name': last_name,'email':email, 'password': self.password})
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [to]
-            )
-            email.content_subtype = "html"
-            email.send()
-            
-            messages.success(request, 'Member created successfully!')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        try:
+            with transaction.atomic():
+                # Create user
+                member = User.objects.create(
+                    title=title,
+                    first_name=first_name,
+                    other_name=other_name,
+                    last_name=last_name,
+                    gender=gender,
+                    email=email,
+                    phone_number=phone_number,
+                    password=make_password(raw_password),
+                    created_by=request.user,
+                    created_from_dashboard=True,
+                )
+                
+                # Add user to Member group
+                member.groups.add(Group.objects.get(name='Member'))
+
+                # Prepare and send the email
+                send_credentials_email(member, raw_password)
+
+                messages.success(request, 'Member created successfully!')
+        except Exception as e:
+            logger.error(f"Error creating member: {e}")
+            messages.error(request, 'Error creating member. Please try again.')
         
-class MemberDeleteView(View):
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+class MemberDeleteView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.delete_member'
+    @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         member_id = kwargs.get('member_id')
         member = User.objects.get(id=member_id)
@@ -216,7 +233,8 @@ class MemberDeleteView(View):
         
             
 
-class UploadAdminData(View):
+class UploadAdminData(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_admin'
     @method_decorator(MustLogin)
     def post(self, request, *args, **kwargs):
         excel_file = request.FILES.get('excel')
@@ -230,7 +248,8 @@ class UploadAdminData(View):
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class UploadMemberData(View):
+class UploadMemberData(PermissionRequiredMixin, View):
+    permission_required = 'accounts.add_member'
     @method_decorator(MustLogin)
     def post(self, request, *args, **kwargs):
         excel_file = request.FILES.get('excel')
@@ -244,24 +263,46 @@ class UploadMemberData(View):
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-class MemberListView(View):
+class MemberListView(PermissionRequiredMixin, View):
+    permission_required = 'accounts.view_member'
     template_name = 'dashboard_pages/members.html'
     @method_decorator(MustLogin)
     def get(self, request):
-        users = User.objects.filter(is_member = True).order_by('first_name')
+        # Fetch users
+        users = User.objects.filter(groups__name='Member').order_by('first_name')
+        
+        # Fetch document counts
+        total_documents = Document.objects.filter(category='internal').count()
+        total_external_documents = Document.objects.filter(category='external').count()
+        
+        # Initialize variables
+        new_announcements = []
         announcement_count = 0
-        if request.user.is_admin:
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='EXECUTIVES').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_group='MEMBERS').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        print('has add permission')
+        print(request.user.has_perm('accounts.add_member'))
+        # Prepare context
         context = {
-            'users' : users,
-            'new_announcements' : new_announcements,
-            'announcement_count' : announcement_count
+            'users': users,
+            'total_documents': total_documents,
+            'total_external_documents': total_external_documents,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count,
+            'has_add_permission': request.user.has_perm('accounts.add_member'),
+            'has_change_permission': request.user.has_perm('accounts.change_member'),
+            'has_delete_permission': request.user.has_perm('accounts.delete_member'),
         }
+        
+        # Render the template
         return render(request, self.template_name, context)

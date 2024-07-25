@@ -3,9 +3,9 @@
 {% block title %}
 {% if news.pk %}
       Update
-    {% else %}
+{% else %}
       Create
-    {% endif %}
+{% endif %}
 {% endblock title %}
 {% block content %}
 <div class="page-content">
@@ -39,10 +39,20 @@
               </div>
 
               <div class="mb-3">
+                <label for="tags" class="form-label">Tags</label>
+                <select class="form-control" id="tags" name="tags" multiple="multiple">
+                  {% for tag in tags %}
+                    <option value="{{ tag.id }}" {% if tag in initial_data.tags.all %}selected{% endif %}>{{ tag.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="mb-3">
                 <label for="image" class="form-label">News Featured Image</label>
-                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewImage(this)">
+                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewAndValidateImage(this)">
+                <div id="imageError" class="text-danger"></div>
                 <div class="mt-2 d-flex justify-content-center">
-                  <img id="oldImagePreview" src="{{ initial_data.featured_image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
+                  <img id="oldImagePreview" src="{{ initial_data.get_featured_image_url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
                   <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.featured_image %}display: none;{% endif %}" />
                 </div>
               </div>
@@ -58,7 +68,6 @@
               </div>
 
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-              <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
             </form>
           </div>
         </div>
@@ -74,28 +83,53 @@
 
  <!-- Responsive datatable examples -->
  <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+ <!-- Select2 CSS -->
+ <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 {% endblock my_styles %}
 {% block my_scripts %}
     <script>
-      // JavaScript for previewing image
-      function previewImage(input) {
+      // JavaScript for previewing image and validating dimensions
+      function previewAndValidateImage(input) {
         var oldImagePreview = document.getElementById('oldImagePreview');
         var newImagePreview = document.getElementById('newImagePreview');
+        var imageError = document.getElementById('imageError');
+        imageError.textContent = '';
       
         if (input.files && input.files[0]) {
-          var reader = new FileReader();
-          reader.onload = function (e) {
-            newImagePreview.src = e.target.result;
-            newImagePreview.style.display = 'inline-block';
-            oldImagePreview.style.display = 'none';
+          var file = input.files[0];
+          var img = new Image();
+          img.onload = function() {
+            if (img.width !== 580 || img.height !== 430) {
+              imageError.textContent = 'Image dimensions must be 580 x 430 pixels.';
+              input.value = '';  // Clear the input if dimensions are incorrect
+              newImagePreview.src = '';
+              newImagePreview.style.display = 'none';
+              oldImagePreview.style.display = 'inline-block';
+            } else {
+              var reader = new FileReader();
+              reader.onload = function (e) {
+                newImagePreview.src = e.target.result;
+                newImagePreview.style.display = 'inline-block';
+                oldImagePreview.style.display = 'none';
+              };
+              reader.readAsDataURL(file);
+            }
           };
-          reader.readAsDataURL(input.files[0]);
+          img.src = URL.createObjectURL(file);
         } else {
           newImagePreview.src = '';
           newImagePreview.style.display = 'none';
           oldImagePreview.style.display = 'inline-block';
         }
       }
+
+      // Initialize Select2 for tags input
+      $(document).ready(function() {
+        $('#tags').select2({
+          tags: true,
+          tokenSeparators: [',']
+        });
+      });
     </script>
 
     <!-- Required datatable js -->
@@ -108,6 +142,8 @@
 
     <!-- Datatable init js -->
     <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     

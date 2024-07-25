@@ -3,8 +3,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.db.models import Q
-from dashboard.models import Event, News, Executive
+from dashboard.models import CarouselSlide, Event, News
 from adverts.models import Advertisement
+from accounts.models import User
 from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 
@@ -16,11 +17,11 @@ class IndexView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get all executives
-        executives = Executive.objects.filter(position__name__in=officers_position_order, is_executive_officer=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
-        
+        carousel_slides = CarouselSlide.objects.filter(is_published=True).order_by('order')
         # Advertisement
         today = date.today()
 
@@ -43,6 +44,7 @@ class IndexView(View):
             'executives': executives,
             'large_advert_images': large_advertisements,
             'small_advert_images': small_advertisements,
+            'carousel_slides': carousel_slides
         }
         return render(request, self.template_name, context)
     
@@ -110,7 +112,7 @@ class ExecutiveOfficersView(View):
     
     def get(self, request):
         # Get all executives
-        executives = Executive.objects.filter(position__name__in=officers_position_order, is_executive_officer=True, is_active=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=officers_custom_order)
@@ -124,7 +126,7 @@ class ExecutiveCommitteeMembersView(View):
     
     def get(self, request):
         # Get all executives and include the committee members
-        executives = Executive.objects.filter(position__name__in=officers_position_order+committee_members_position_order, is_active=True)
+        executives = User.objects.filter(executive_position__in=officers_position_order+committee_members_position_order, is_active_executive=True)
         # Sort the executives based on the custom order
         executives = sorted(executives, key=members_custom_order)
         context = {

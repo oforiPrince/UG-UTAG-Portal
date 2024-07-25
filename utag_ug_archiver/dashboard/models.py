@@ -1,7 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import Group
 from django.utils.text import slugify
 from tinymce.models import HTMLField
-
 from accounts.models import User
 
 class Event(models.Model):
@@ -42,7 +42,7 @@ class News(models.Model):
     news_slug = models.SlugField(max_length=150, blank=True)
     content = HTMLField()
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
-    tags = models.CharField(max_length=100, blank=True, null=True)
+    tags = models.ManyToManyField('Tag', blank=True)
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -64,24 +64,37 @@ class News(models.Model):
     def __str__(self):
         return self.title
     
+class Tag(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField(max_length=50, blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.name
+    
 class Announcement(models.Model):
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
         ('PUBLISHED', 'Published'),
         ('ARCHIVED', 'Archived'),
     )
-    TARGET_GROUP_CHOICES = (
-        ('ALL', 'All'),
-        ('MEMBERS', 'Members'),
-        ('EXECUTIVES', 'Executives'),
+    TARGET_CHOICES = (
+        ('everyone', 'Everyone'),
+        ('specific_groups', 'Specific Groups'),
     )
+
     title = models.CharField(max_length=100)
     content = HTMLField()
-    target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='ALL')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    target = models.CharField(max_length=20, choices=TARGET_CHOICES, default='everyone')
+    target_groups = models.ManyToManyField(Group, blank=True)
     
     def __str__(self):
         return self.title
@@ -92,38 +105,7 @@ class ReadAnnouncement(models.Model):
     date_read = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.announcement.title}"
-
-
-class ExecutivePosition(models.Model):
-    LEADERSHIP_NAME_CHOICES = (
-        ('President', 'President'),
-        ('Vice President', 'Vice President'),
-        ('Secretary', 'Secretary'),
-        ('Treasurer', 'Treasurer'),
-        ('Committee Member', 'Committee Member'),
-    )
-    name = models.CharField(max_length=30, choices=LEADERSHIP_NAME_CHOICES, unique=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Executive(models.Model):
-    image = models.ImageField(upload_to='executive_images/', blank=True, null=True)
-    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='member')
-    position = models.ForeignKey(ExecutivePosition, on_delete=models.CASCADE)
-    fb_username = models.CharField(max_length=100, blank=True, null=True)
-    twitter_username = models.CharField(max_length=100, blank=True, null=True)
-    linkedin_username = models.CharField(max_length=100, blank=True, null=True)
-    is_executive_officer = models.BooleanField(default=False)
-    date_appointed = models.DateField()
-    date_ended = models.DateField(null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.member.first_name} - {self.position.name}"
+        return f"{self.user.get_full_name} - {self.announcement.title}"
     
 
 class File(models.Model):
@@ -143,6 +125,10 @@ class Document(models.Model):
         ('Published', 'Published'),
         ('Draft', 'Draft'),
     )
+    VISIBILITY_CHOICES = (
+        ('everyone', 'Everyone'),
+        ('selected_groups', 'Selected Groups'),
+    )
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     files = models.ManyToManyField(File)
@@ -154,8 +140,21 @@ class Document(models.Model):
     status = models.CharField(max_length=10, choices=DOCUMENT_STATUS_CHOICES, default='Published')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='everyone')
+    visible_to_groups = models.ManyToManyField(Group, blank=True)
     
 
     def __str__(self):
         return self.title
     
+class CarouselSlide(models.Model):
+    title = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='carousel_images/')
+    order = models.PositiveIntegerField(default=0)
+    is_published = models.BooleanField(default=False)
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return self.title or f'Slide {self.id}'

@@ -1,6 +1,8 @@
 {% extends "base/base.html" %}
 {% load static %}
+
 {% block title %}News Detail{% endblock %}
+
 {% block content %}
 <!-- Page Title Area Start -->
 <section class="page-title-area bg-image ptb--80" data-bg-image="{% static 'website/assets/img/bg/balme.png' %}">
@@ -18,33 +20,41 @@
 <div class="main-content-wrapper">
     <div class="inner-content-area mt--60 mb--55">
         <div class="container">
-            <div class="mb--45">
+            <div class="row mb--45">
                 <div class="col-md-6 mb-sm--30">
                     <figure>
-                        <img src="{{news.get_featured_image_url}}" alt="News featured image">
+                        <img src="{{ news.get_featured_image_url }}" alt="News featured image" class="img-fluid">
                     </figure>
                 </div>
             </div>
             <div class="row mb--30">
                 <div class="col-12">
-                    <h2 class="font-weight-normal">{{news.title}}</h2>
+                    <h2 class="font-weight-normal">{{ news.title }}</h2>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-8 mb-sm--45">
-                    <p>
-                        {{news.content | safe}}
-                    </p>
+                    <p>{{ news.content | safe }}</p>
                 </div>
                 <div class="col-md-4">
                     <ul class="project-details mb--25">
-                        <li><strong>Date:</strong> <span>{{news.created_at |date:'M d, Y'}}</span></li>
-                        <li><strong>Author:</strong> <span>{{news.author}}</span></li>
-                        <li><strong>Tags:</strong> <span>Tag 1, Tag 2, Tag 3</span></li>
+                        <li><strong>Date:</strong> <span>{{ news.created_at | date:'M d, Y' }}</span></li>
+                        <li><strong>Author:</strong> <span>{{ news.author }}</span></li>
+                        <li><strong>Tags:</strong>
+                            <span>
+                                {% if news.tags.all %}
+                                    {% for tag in news.tags.all %}
+                                        <p href="#" class="badge bg-primary">{{ tag.name }}</p>
+                                    {% endfor %}
+                                {% else %}
+                                    <span>No Tags</span>
+                                {% endif %}
+                            </span>
+                        </li>
                     </ul>
                     <div class="project-share d-flex align-items-center">
-                        <strong><i class="fa fa-share-alt"></i>Share:</strong>
-                        <ul class="social social-round">
+                        <strong><i class="fa fa-share-alt"></i> Share:</strong>
+                        <ul class="social social-round mb-0">
                             <li class="social__item">
                                 <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" class="social__link" target="_blank" rel="noopener">
                                     <i class="fa fa-facebook"></i>
@@ -56,7 +66,7 @@
                                 </a>
                             </li>
                             <li class="social__item">
-                                <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.news_slug }}" class="social__link" target="_blank" rel="noopener">
+                                <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.title }}" class="social__link" target="_blank" rel="noopener">
                                     <i class="fa fa-twitter"></i>
                                 </a>
                             </li>

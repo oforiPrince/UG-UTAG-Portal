@@ -84,10 +84,10 @@
                                         <th>#</th>
                                         <th>Name</th>
                                         <th>Email</th>
+                                        <th>Phone Number</th>
                                         <th>Gender</th>
                                         <th>Position</th>
                                         <th>Date Appointed</th>
-                                        <th>Date Ended</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -98,33 +98,28 @@
                                     {% for executive in executive_officers %}
                                     <tr>
                                         <td>{{forloop.counter}}</td>
-                                        <td>{{executive.member.get_full_name}}</td>
-                                        <td>{{executive.member.email}}</td>
-                                        <td>{{executive.member.gender}}</td>
-                                        <td>{{executive.position}}</td>
+                                        <td>{{executive.get_full_name}}</td>
+                                        <td>{{executive.email}}</td>
+                                        <td>{{executive.phone_number}}</td>
+                                        <td>{{executive.gender}}</td>
+                                        <td>{{executive.executive_position}}</td>
                                         <td>{{executive.date_appointed}}</td>
+                                        
                                         <td>
-                                            {% if executive.date_ended %}
-                                            {{executive.date_ended}}
-                                            {% else %}
-                                            ...
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if executive.is_active %}
+                                            {% if executive.is_active_executive %}
                                             <span class="badge bg-warning">Current</span>
                                         {% else %}
                                         <span class="badge bg-danger">Past</span>
                                         {% endif %}
                                     </td>
                                         <td>
-                                            <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}">
+                                            <a href="#" class="btn btn-primary btn-sm view-officers-details" data-bs-toggle="modal" data-bs-target="#officerModal_{{executive.id}}" title="View">
                                                 <i class="mdi mdi-eye"></i>
                                             </a>                                                                                
-                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}">
+                                            <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}" title="Edit">
                                                 <i class="mdi mdi-pen"></i>
                                             </a>
-                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm">
+                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm" title="Delete">
                                                 <i class="mdi mdi-delete"></i>
                                               </a>
                                               
@@ -152,10 +147,10 @@
 
     </div>
     <!-- container-fluid -->
-    {% include "includes/modals/officer_details.html" %}
-    {% include "includes/modals/add_existing_member_e.html" %}
-    {% include "includes/modals/add_new_c_member.html" %}
-    {% include "includes/modals/edit_e_member.html" %}
+    {% include "includes/modals/details/executive_details.html" %}
+    {% include "includes/modals/create/add_existing_member_e.html" %}
+    {% include "includes/modals/create/add_new_c_member.html" %}
+    {% include "includes/modals/update/edit_e_member.html" %}
 </div>
 {% endblock content %}
 {% block my_styles %}
@@ -181,4 +176,7 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 {% endblock my_scripts %}

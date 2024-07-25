@@ -6,42 +6,47 @@
             <div class="navbar-brand-box">
                 <a href="{% url 'dashboard:dashboard' %}" class="logo logo-dark">
                     <span class="logo-sm">
-                            <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
-                        </span>
+                        <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
+                    </span>
                     <span class="logo-lg">
-                            <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="50">
-                        </span>
+                        <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="50">
+                    </span>
                 </a>
 
                 <a href="{% url 'dashboard:dashboard' %}" class="logo logo-light">
                     <span class="logo-sm">
-                            <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
-                        </span>
+                        <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="30">
+                    </span>
                     <span class="logo-lg">
-                            <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="80">
-                        </span>
+                        <img src="{% static 'dashboard/assets/images/utag_ug.png' %}" alt="" height="80">
+                    </span>
                 </a>
             </div>
 
             <button type="button" class="btn btn-sm px-3 font-size-24 header-item waves-effect" id="vertical-menu-btn">
-                    <i class="mdi mdi-menu"></i>
-                </button>
+                <i class="mdi mdi-menu"></i>
+            </button>
 
             <div class="d-none d-sm-block">
                 <div class="pt-3 d-inline-block">
                     {% if user.is_authenticated %}
                     <p class="btn btn-secondary">
-                        {% if user.is_admin or user.is_superuser %} Admin Dashboard {% elif user.is_secretary %} Secretary Dashboard {% else %} Member Dashboard {% endif %}
+                        {% if is_admin %} Admin Dashboard
+                        {% elif is_executive %} Executive Dashboard
+                        {% elif is_member %} Member Dashboard
+                        {% endif %}
                     </p>
                     {% endif %}
                 </div>
             </div>
         </div>
+
         <div class="d-flex">
             {% include "includes/alerts.html" %}
         </div>
+
         <div class="d-flex">
-            <!-- App Search-->
+            <!-- App Search -->
             <form class="app-search d-none d-lg-block">
                 <div class="position-relative">
                     <input type="text" class="form-control" placeholder="Search...">
@@ -51,10 +56,9 @@
 
             <div class="dropdown d-inline-block d-lg-none ms-2">
                 <button type="button" class="btn header-item noti-icon waves-effect" id="page-header-search-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="mdi mdi-magnify"></i>
-                    </button>
+                    <i class="mdi mdi-magnify"></i>
+                </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-search-dropdown">
-
                     <form class="p-3">
                         <div class="form-group m-0">
                             <div class="input-group">
@@ -68,42 +72,41 @@
                 </div>
             </div>
 
-
             <div class="dropdown d-none d-lg-inline-block">
                 <button type="button" class="btn header-item noti-icon waves-effect" data-bs-toggle="fullscreen">
-                        <i class="mdi mdi-fullscreen"></i>
-                    </button>
+                    <i class="mdi mdi-fullscreen"></i>
+                </button>
             </div>
 
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item noti-icon waves-effect" id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="mdi mdi-bell-outline"></i>
-                        <span class="badge bg-danger rounded-pill">{{announcement_count}}</span>
-                    </button>
+                    <i class="mdi mdi-bell-outline"></i>
+                    <span class="badge bg-danger rounded-pill">{{ announcement_count }}</span>
+                </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-notifications-dropdown">
                     <div class="p-3">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h5 class="m-0 font-size-16"> Notifications ({{announcement_count}}) </h5>
+                                <h5 class="m-0 font-size-16"> Notifications ({{ announcement_count }}) </h5>
                             </div>
                         </div>
                     </div>
                     <div data-simplebar style="max-height: 230px;">
-                        <!-- item-->
+                        <!-- item -->
                         {% for announcement in new_announcements %}
                         <a href="" class="text-reset notification-item">
                             <div class="d-flex">
                                 <div class="flex-shrink-0 me-3">
                                     <div class="avatar-xs">
                                         <span class="avatar-title bg-success rounded-circle font-size-16">
-                                                <i class="mdi mdi-bell-outline"></i>
-                                            </span>
+                                            <i class="mdi mdi-bell-outline"></i>
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{announcement.title}}</h6>
+                                    <h6 class="mb-1">{{ announcement.title }}</h6>
                                     <div class="font-size-12 text-muted">
-                                        <p class="mb-1">{{announcement.content|truncatewords:10}}</p>
+                                        <p class="mb-1">{{ announcement.content|truncatewords:10|safe }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -113,8 +116,8 @@
                     <div class="p-2 border-top">
                         <div class="d-grid">
                             <a class="btn btn-sm btn-link font-size-14 text-center" href="javascript:void(0)">
-                                    View all
-                                </a>
+                                View all
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -122,13 +125,11 @@
 
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item waves-effect" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <img class="rounded-circle header-profile-user" src="{% if request.user.profile_pic %} {{request.user.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}"
-                            alt="Header Avatar">
-                    </button>
+                    <img class="rounded-circle header-profile-user" src="{% if request.user.profile_pic %} {{ request.user.get_profile_pic_url }} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="Header Avatar">
+                </button>
                 <div class="dropdown-menu dropdown-menu-end">
-                    <!-- item-->
-
-                    <p class="dropdown-item" href="#">{{user.get_full_name}}</p>
+                    <!-- item -->
+                    <p class="dropdown-item">{{ user.get_full_name }}</p>
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}"><i class="bx bx-power-off font-size-17 align-middle me-1 text-danger"></i> Logout</a>
                 </div>

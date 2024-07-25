@@ -1,17 +1,19 @@
+import logging
 import os
 import secrets
 from accounts.models import User
+from accounts.signals import send_email_with_retry
 from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
 from django.http import HttpResponseRedirect
 from django.contrib import messages
-from tablib import Dataset
-from accounts.serializers import UserResource
-import pandas as pd
 from django.contrib.auth.hashers import make_password
-
+import pandas as pd
+from django.contrib.auth.models import Group
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+# Configure the logger
+logger = logging.getLogger(__name__)
 
 def generate_random_password():
     # Generate a random password of 12 characters
@@ -19,35 +21,62 @@ def generate_random_password():
 
 # Create a custom sorting function based on the order
 def officers_custom_order(executive):
-    return officers_position_order.index(executive.position.name)
+    return officers_position_order.index(executive.executive_position)
 
 def members_custom_order(executive):
-    return committee_members_position_order.index(executive.position.name)
+    return committee_members_position_order.index(executive.executive_position)
 
-def send_credentials_email(user, password):
-    subject = 'Your Account Information'
-    message = render_to_string('accounts/emails/credentials_email.html', {
-        'user': user,
-        'password': password,
-    })
-    email = EmailMessage(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email]
-    )
+def send_credentials_email(user, raw_password):
+        try:
+            email_subject = 'Account Created'
+            from_email = settings.EMAIL_HOST_USER
+            email_body = render_to_string('emails/account_credentials.html', {
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'email': user.email,
+                'password': raw_password
+            })
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [user.email]
+            )
+            email.content_subtype = "html"
+            send_email_with_retry(email)
+        except Exception as e:
+            logger.error(f'Error sending email to {user.email}: {e}')
+            
+def send_reset_password_email(user, reset_url):
+        try:
+            email_subject = 'Password Reset Request'
+            from_email = settings.EMAIL_HOST_USER
+            email_body = render_to_string('emails/password_reset_email.html', {
+                'full_name': user.get_full_name,
+                'reset_url': reset_url
+            })
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [user.email]
+            )
+            email.content_subtype = "html"
+            send_email_with_retry(email)
+        except Exception as e:
+            logger.error(f'Error sending email to {user.email}: {e}')
 
 def process_bulk_admins(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.csv':
-        try:
-            df = pd.read_csv(file)  # Read as CSV file
-        except pd.errors.ParserError:
-            messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    else:
+    if file_extension != '.csv':
         messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    try:
+        df = pd.read_csv(file)  # Read CSV file
+    except pd.errors.ParserError:
+        messages.error(request, 'Invalid CSV file. Please ensure it is properly formatted.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
     # Check for NaN values and fill them or raise an error
@@ -65,17 +94,13 @@ def process_bulk_admins(request, file):
     }
 
     df.rename(columns=rename_columns, inplace=True)
-    df['is_admin'] = True
-
-    # Debugging: Print data types
-    print(df.dtypes)
-
-    member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False), format='csv')
 
     try:
-        for admin in df.itertuples():
-            # Check if the admin already exists
+        for admin in df.itertuples(index=False):
+            # Generate a random password
+            raw_password = generate_random_password()
+
+            # Create or update the user
             user, created = User.objects.update_or_create(
                 email=admin.email,
                 defaults={
@@ -84,29 +109,23 @@ def process_bulk_admins(request, file):
                     'other_name': admin.other_name,
                     'last_name': admin.last_name,
                     'gender': admin.gender,
-                    'is_admin': admin.is_admin
+                    'password': make_password(raw_password),
+                    'created_from_dashboard': True,
+                    'created_by': request.user,
+                    'is_bulk_creation': True,
                 }
             )
+            
+            # Add the user to the Admin group
+            user.groups.add(Group.objects.get(name='Admin'))
 
+            # Save the raw password temporarily
+            user.raw_password = raw_password
+
+            # Send email if user is newly created
             if created:
-                # If the admin was created, send email with password
-                email_subject = 'Account Created'
-                from_email = settings.EMAIL_HOST_USER
-                to = admin.email
-                password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {'first_name': admin.first_name, 'last_name': admin.last_name, 'email': admin.email, 'password': password})
-                email = EmailMessage(
-                    email_subject,
-                    email_body,
-                    from_email,
-                    [to]
-                )
-                email.content_subtype = "html"
-                email.send()
-
-                # Update the password in the database
-                user.password = make_password(password)
-                user.save()
+                user.save()  # Ensure the user is saved with the temporary raw password
+                # Email sending handled by signal
 
         messages.success(request, f'{len(df)} admin(s) processed successfully!')
     except Exception as e:
@@ -114,18 +133,17 @@ def process_bulk_admins(request, file):
     
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-
 def process_bulk_members(request, file):
     file_extension = os.path.splitext(file.name)[1].lower()
 
-    if file_extension == '.csv':
-        try:
-            df = pd.read_csv(file)  # Read as CSV file
-        except Exception as e:  # Catch all exceptions for better error messages
-            messages.error(request, f'Error reading CSV file: {e}')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    else:
-        messages.error(request, 'Invalid file format. Only Excel CSV (.csv) files are allowed.')
+    if file_extension != '.csv':
+        messages.error(request, 'Invalid file format. Only CSV (.csv) files are allowed.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    try:
+        df = pd.read_csv(file)  # Read CSV file
+    except pd.errors.ParserError:
+        messages.error(request, 'Invalid CSV file. Please ensure it is properly formatted.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
     # Check for NaN values and fill them or raise an error
@@ -145,17 +163,13 @@ def process_bulk_members(request, file):
     }
 
     df.rename(columns=rename_columns, inplace=True)
-    df['is_member'] = True
-
-    # Debugging: Print data types
-    print(df.dtypes)
-
-    member_resource = UserResource()
-    dataset = Dataset().load(df.to_csv(index=False), format='csv')
 
     try:
-        for member in df.itertuples():
-            # Check if the user already exists
+        for member in df.itertuples(index=False):
+            # Generate a random password
+            raw_password = generate_random_password()
+
+            # Create or update the user
             user, created = User.objects.update_or_create(
                 email=member.email,
                 defaults={
@@ -166,29 +180,23 @@ def process_bulk_members(request, file):
                     'gender': member.gender,
                     'phone_number': member.phone_number,
                     'department': member.department,
-                    'is_member': member.is_member
+                    'password': make_password(raw_password),
+                    'created_from_dashboard': True,
+                    'created_by': request.user,
+                    'is_bulk_creation': True,
                 }
             )
+            
+            # Add the user to the Member group
+            user.groups.add(Group.objects.get(name='Member'))
 
+            # Save the raw password temporarily
+            user.raw_password = raw_password
+
+            # Send email if user is newly created
             if created:
-                # If the user was created, send email with password
-                email_subject = 'Account Created'
-                from_email = settings.EMAIL_HOST_USER
-                to = member.email
-                password = generate_random_password()
-                email_body = render_to_string('emails/account_credentials.html', {'first_name': member.first_name, 'last_name': member.last_name, 'email': member.email, 'password': password})
-                email = EmailMessage(
-                    email_subject,
-                    email_body,
-                    from_email,
-                    [to]
-                )
-                email.content_subtype = "html"
-                email.send()
-
-                # Update the password in the database
-                user.password = make_password(password)
-                user.save()
+                user.save()  # Ensure the user is saved with the temporary raw password
+                # Email sending handled by signal
 
         messages.success(request, f'{len(df)} member(s) processed successfully!')
     except Exception as e:

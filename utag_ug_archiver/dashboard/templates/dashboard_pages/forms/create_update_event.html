@@ -29,44 +29,44 @@
               {% csrf_token %}
               <div class="mb-3">
                 <label for="title" class="form-label">Event Title</label>
-                <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
+                <input type="text" class="form-control" id="title" name="title" value="{{ context.title }}" required>
               </div>
               
               <div class="mb-3">
                 <label for="description" class="form-label">Event Description</label>
-                <textarea class="form-control" id="description" name="description" rows="10">{{ initial_data.description }}</textarea>
+                <textarea class="form-control" id="description" name="description" rows="10">{{ context.description }}</textarea>
               </div>
 
               <div class="mb-3">
                 <label for="image" class="form-label">Event Image</label>
                 <input type="file" class="form-control" id="image" name="image" onchange="previewImage(this)">
                 <div class="mt-2 d-flex justify-content-center">
-                  <img id="oldImagePreview" src="{{ initial_data.image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.image %}display: none;{% endif %}" />
-                  <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.image %}display: none;{% endif %}" />
+                  <img id="oldImagePreview" src="{{ context.image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not context.image %}display: none;{% endif %}" />
+                  <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if context.image %}display: none;{% endif %}" />
                 </div>
               </div>
               
               <div class="mb-3">
                 <label for="venue" class="form-label">Event Venue</label>
-                <input type="text" class="form-control" id="venue" name="venue" value="{{ initial_data.venue }}" required>
+                <input type="text" class="form-control" id="venue" name="venue" value="{{ context.venue }}" required>
               </div>
 
               <div class="row">
 
                 <div class="mb-3 col-md-6">
                   <label for="date" class="form-label">Event Date</label>
-                  <input type="date" class="form-control" id="date" name="date" value="{{ initial_data.date }}" required>
+                  <input type="date" class="form-control" id="date" name="date" value="{{ context.date|date:"Y-m-d" }}" required>
                 </div>
                 
                 <div class="mb-3 col-md-6">
                   <label for="time" class="form-label">Event Time</label>
-                  <input type="time" class="form-control" id="time" name="time" value="{{ initial_data.time }}" required>
+                  <input type="time" class="form-control" id="time" name="time" value="{{ context.time|time:"H:i" }}" required>
                 </div>
               </div>
               
 
               <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if initial_data.is_published %}checked{% endif %}>
+                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if context.is_published %}checked{% endif %}>
                 <label class="form-check-label" for="isPublished">
                   Published
                   <small class="text-success">
@@ -76,7 +76,6 @@
               </div>
 
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-              <a href="#" class="btn btn-secondary waves-effect">Cancel</a>
             </form>
           </div>
         </div>

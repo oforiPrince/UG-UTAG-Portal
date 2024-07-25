@@ -3,7 +3,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="existingMemberModalLabel">Existing Member Modal</h5>
+        <h5 class="modal-title" id="existingMemberModalLabel">Create Committee Member from Existing Members</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -13,7 +13,7 @@
         </div>
         <!-- Error Message Container -->
         <div class="alert alert-danger" id="imageError" style="display: none;"></div>
-        <form class="custom-validation" action="{% url 'dashboard:create_existing_committee_member' %}" method="POST" enctype="multipart/form-data">
+        <form class="custom-validation" action="{% url 'dashboard:create_existing_officer' %}" method="POST" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="mb-3">
             <label for="id_image" class="form-label">Upload Image</label>
@@ -102,14 +102,14 @@
     reader.onload = function(e) {
       img.src = e.target.result;
       img.onload = function() {
-        if (img.width === 285 && img.height === 200) {
+        if (img.width === 600 && img.height === 600) {
           previewContainer.src = img.src;
           previewContainer.style.display = 'block';
           errorContainer.style.display = 'none';
         } else {
 
           previewContainer.style.display = 'none';
-          errorContainer.textContent = 'Image dimensions must be 285x200 pixels.';
+          errorContainer.textContent = 'Image dimensions must be 600x600 pixels.';
           errorContainer.style.display = 'block';
           fileInput.value = '';
         }

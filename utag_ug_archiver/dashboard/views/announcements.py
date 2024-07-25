@@ -1,97 +1,129 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-
 from django.db.models import Q
 
-
 from dashboard.models import Announcement
-
 from utag_ug_archiver.utils.decorators import MustLogin
+from django.contrib.auth.models import Group
 
 class AnnouncementsView(View):
     template_name = 'dashboard_pages/announcements.html'
+
     def get(self, request):
-        if request.user.is_superuser or request.user.is_admin:
+        user = request.user
+        user_groups = user.groups.values_list('name', flat=True)  # Get names of the user's groups
+
+        if 'Admin' in user_groups:
             announcements = Announcement.objects.all().order_by('-created_at')
-        elif request.user.is_secretary or request.user.is_executive:
-            announcements = Announcement.objects.filter(target_group='ALL').exclude(
-    Q(status='DRAFT') & ~Q(created_by=request.user)
-)
+        elif 'Executive' in user_groups or 'Secretary' in user_groups:
+            announcements = Announcement.objects.filter(
+                Q(target='everyone') | Q(target_groups__in=user.groups.all())
+            ).exclude(Q(status='DRAFT') & ~Q(created_by=user)).distinct()
         else:
-            announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES')
+            announcements = Announcement.objects.filter(
+                Q(target='everyone') | Q(target_groups__in=user.groups.all())
+            ).exclude(Q(status='DRAFT') & ~Q(created_by=user)).distinct()
+
         announcement_count = 0
-        if request.user.is_admin:
+        new_announcements = []
+
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
+
         context = {
-            'announcements' : announcements,
-            'announcement_count' : announcement_count,
-            'new_announcements' : new_announcements
+            'announcements': announcements,
+            'announcement_count': announcement_count,
+            'new_announcements': new_announcements
         }
         return render(request, self.template_name, context)
-    
+
+
 class AnnouncementCreateUpdateView(View):
     template_name = 'dashboard_pages/forms/create_update_announcement.html'
 
-    @method_decorator(MustLogin)
     def get(self, request, announcement_id=None):
         if announcement_id:
             announcement = Announcement.objects.get(id=announcement_id)
             initial_data = {
                 'title': announcement.title,
                 'content': announcement.content,
-                'target_group': announcement.target_group,
                 'status': announcement.status,
+                'target': announcement.target,
+                'target_groups': announcement.target_groups.values_list('id', flat=True)
             }
         else:
             initial_data = {
                 'status': 'DRAFT',
-                'target_group': 'ALL',
+                'target': 'everyone',
+                'target_groups': [],  # Default empty list
             }
-        return render(request, self.template_name, {'initial_data': initial_data})
 
-    @method_decorator(MustLogin)
+        context = {
+            'initial_data': initial_data,
+            'all_groups': Group.objects.all()
+        }
+        return render(request, self.template_name, context)
+
     def post(self, request, announcement_id=None):
         user = request.user
         title = request.POST.get('title')
         content = request.POST.get('content')
-        target_group = request.POST.get('target_group')
+        target = request.POST.get('target')
         status = request.POST.get('status')
+        target_groups_ids = request.POST.getlist('target_groups')  # List of selected group IDs
 
         if announcement_id:
             announcement = Announcement.objects.get(id=announcement_id)
             announcement.title = title
             announcement.content = content
-            announcement.target_group = target_group
+            announcement.target = target
             announcement.status = status
+            announcement.target_groups.set(Group.objects.filter(id__in=target_groups_ids))
             announcement.save()
             messages.info(request, "Announcement Updated Successfully")
         else:
             announcement = Announcement.objects.create(
                 title=title,
                 content=content,
-                target_group=target_group,
+                target=target,
                 status=status,
                 created_by=user
             )
             announcement.save()
+            if announcement.target == 'specific_groups':
+                announcement.target_groups.set(Group.objects.filter(id__in=target_groups_ids))
+            announcement.save()
+            
+            # Send email to users
+            # if announcement.status == 'PUBLISHED':
+            #     send_announcement_email(announcement)
+            
             messages.info(request, "Announcement Created Successfully")
 
         return redirect('dashboard:announcements')
-    
-class AnnouncementDeleteView(View):    
+
+
+class AnnouncementDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, announcement_id):
-        announcement = Announcement.objects.get(id=announcement_id)
+        announcement = get_object_or_404(Announcement, id=announcement_id)
         announcement.delete()
         messages.success(request, 'Announcement deleted successfully')
         return redirect('dashboard:announcements')

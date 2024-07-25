@@ -17,15 +17,22 @@ class EventsView(View):
     def get(self, request):
         #Get all events
         events = Event.objects.all()
-        if request.user.is_admin:
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='MEMBERS').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_group='EXECUTIVES').order_by('-created_at')[:3]
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
         context = {
             'events' : events,
             'announcement_count' : announcement_count,
@@ -38,9 +45,25 @@ class EventCreateUpdateView(View):
 
     @method_decorator(MustLogin)
     def get(self, request, event_id=None):
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        
         if event_id:
             event = Event.objects.get(id=event_id)
-            initial_data = {
+            context = {
                 'title': event.title,
                 'description': event.description,
                 'is_published': 'on' if event.is_published else 'off',
@@ -48,12 +71,16 @@ class EventCreateUpdateView(View):
                 'venue': event.venue,
                 'date': event.date,
                 'time': event.time,
+                'new_announcements':new_announcements,
+                'announcement_count': announcement_count
             }
         else:
-            initial_data = {
-                'is_published': 'off'
+            context = {
+                'is_published': 'off',
+                'new_announcements':new_announcements,
+                'announcement_count': announcement_count
             }
-        return render(request, self.template_name, {'initial_data': initial_data})
+        return render(request, self.template_name, {'context': context})
 
     @method_decorator(MustLogin)
     def post(self, request, event_id=None):

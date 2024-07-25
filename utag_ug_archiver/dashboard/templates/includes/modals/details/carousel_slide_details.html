@@ -1,0 +1,59 @@
+{% for slide in carousel_slides %}
+<div
+    class="modal fade bs-example-modal-lg"
+    id="slideModal_{{ slide.id }}"
+    tabindex="-1"
+    aria-labelledby="slideModal_{{ slide.id }}"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="slideModal_{{ slide.id }}Label">
+                    {{ slide.title }}
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <img
+                            src="{{ slide.image.url }}"
+                            alt="{{ slide.title }}"
+                            class="img-fluid rounded"
+                        />
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <strong>Description:</strong>
+                            {{ slide.description|safe }}
+                        </p>
+                        <p>
+                            <strong>Order:</strong>
+                            {{ slide.order }}
+                        </p>
+                        <p>
+                            <strong>Published:</strong>
+                            {% if slide.is_published %}
+                            <span class="badge bg-success">Yes</span>
+                            {% else %}
+                            <span class="badge bg-warning">No</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}

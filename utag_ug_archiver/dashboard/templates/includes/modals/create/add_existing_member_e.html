@@ -3,7 +3,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="existingMemberModalLabel">Existing Member Modal</h5>
+        <h5 class="modal-title" id="existingMemberModalLabel">Create Executive officer from Existing Members</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -19,7 +19,7 @@
             <label for="id_image" class="form-label">Upload Image</label>
             <input class="form-control" type="file" id="id_image" name="image" accept="image/*" onchange="previewImage(event)">
           </div>
-          <div class="mb-3">
+          <!-- <div class="mb-3">
             <label class="form-label">Select a member</label>
             <select class="form-control select2" name="member_id" required>
               <optgroup label="List of Member">
@@ -29,12 +29,21 @@
                 {% endfor %}
               </optgroup>
             </select>
+          </div> -->
+          <div class="mb-3">
+            <label for="member" class="form-label">Member</label>
+            <select class="form-control" id="member" name="member_id">
+              <option value="">Select a member</option>
+              {% for member in members %}
+                <option value="{{ member.id }}" {% if member.id == initial_data.member.id %}selected{% endif %}>{{ member.get_full_name }}</option>
+              {% endfor %}
+            </select>
           </div>
           <hr class="mt-4 mb-4">
           <div class="mb-3">
             <label class="form-label" for="id_title">Position</label>
             <select id="id_title" class="form-control" required name="position">
-              <option value="" selected disabled>Select a title</option>
+              <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
               <option value="Vice President">Vice President</option>
               <option value="Secretary">Secretary</option>
@@ -42,24 +51,24 @@
             </select>
           </div>
           <div class="mb-3">
-            <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
+            <label for="validationOfficerFbProfile" class="form-label">Facebook Profile</label>
             <div class="input-group has-validation">
               <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username" />
+              <input type="text" class="form-control" id="validationOfficerFbProfile" name="fb_username" />
             </div>
           </div>
           <div class="mb-3">
-            <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
+            <label for="validationOfficerTwitterProfile" class="form-label">Twitter Profile</label>
             <div class="input-group has-validation">
               <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username" />
+              <input type="text" class="form-control" id="validationOfficerTwitterProfile" name="twitter_username" />
             </div>
           </div>
           <div class="mb-3">
-            <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
+            <label for="validationOfficerLinkedinProfile" class="form-label">Linkedin Profile</label>
             <div class="input-group has-validation">
               <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username" />
+              <input type="text" class="form-control" id="validationOfficerLinkedinProfile" name="linkedin_username" />
             </div>
           </div>
           <div class="mb-3">
@@ -106,14 +115,14 @@
     reader.onload = function(e) {
       img.src = e.target.result;
       img.onload = function() {
-        if (img.width === 285 && img.height === 200) {
+        if (img.width === 600 && img.height === 600) {
           previewContainer.src = img.src;
           previewContainer.style.display = 'block';
           errorContainer.style.display = 'none';
         } else {
 
           previewContainer.style.display = 'none';
-          errorContainer.textContent = 'Image dimensions must be 285x200 pixels.';
+          errorContainer.textContent = 'Image dimensions must be 600x600 pixels.';
           errorContainer.style.display = 'block';
           fileInput.value = '';
         }

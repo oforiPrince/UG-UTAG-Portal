@@ -7,3 +7,4 @@ from .executives import *
 from .files import *
 from .news import *
 from .profile import *
+from .carousel import *

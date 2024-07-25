@@ -14,48 +14,53 @@
 </section>
 <!-- Page Title Area End -->
 
-
 <!-- Main Content Wrapper Start -->
 <div class="main-content-wrapper">
     <!-- News Area Start -->
     <div class="inner-content-area mt--60 mb--20">
         <div class="container">
             <div class="row">
-                {% for event in all_events %}
-                <div class="col-lg-4">
-                    <article class="post post-grid">
-                        <div class="post__thumbnail">
-                            <figure class="image">
-                                <a href="{% url 'website:events_detail' slug=event.event_slug %}">
-                                    <img src="{{event.get_image_url}}" alt="post Thumb">
-                                </a>
-                            </figure>
-                            <span class="post__date">
-                                <strong>{{event.date|date:"j"}}</strong>
-                                <span>{{ event.date|date:"M" }}</span>
-                            </span>
-                        </div>
-                        <div class="post__info">
-                            <h2 class="post__title"><a href="{% url 'website:events_detail' slug=event.event_slug %}">{{event.title}}</a></h2>
-                            <div class="post__entry-meta">
-                                <span class="post__category-links">
-                                    <i class="fa fa-map-marker"></i>  
-                                    {{event.venue}}
-                                </span>
-                                <span class="post__comment-link">
-                                    <i class="fa fa-calendar"></i>
-                                    {{ event.time|time:"g:i A" }}
+                {% if all_events %}
+                    {% for event in all_events %}
+                    <div class="col-lg-4">
+                        <article class="post post-grid">
+                            <div class="post__thumbnail">
+                                <figure class="image">
+                                    <a href="{% url 'website:events_detail' slug=event.event_slug %}">
+                                        <img src="{{event.get_image_url}}" alt="post Thumb">
+                                    </a>
+                                </figure>
+                                <span class="post__date">
+                                    <strong>{{event.date|date:"j"}}</strong>
+                                    <span>{{ event.date|date:"M" }}</span>
                                 </span>
                             </div>
-                            <!--
-                                <div class="post__content">
-                                    <p>Financial services must tie these three factors together – customer experience, best practices and reliability/responsiveness – to have an </p>
+                            <div class="post__info">
+                                <h2 class="post__title"><a href="{% url 'website:events_detail' slug=event.event_slug %}">{{event.title}}</a></h2>
+                                <div class="post__entry-meta">
+                                    <span class="post__category-links">
+                                        <i class="fa fa-map-marker"></i>  
+                                        {{event.venue}}
+                                    </span>
+                                    <span class="post__comment-link">
+                                        <i class="fa fa-calendar"></i>
+                                        {{ event.time|time:"g:i A" }}
+                                    </span>
                                 </div>
-                            -->
-                        </div>
-                    </article>
-                </div>
-                {% endfor %}
+                                <!--
+                                    <div class="post__content">
+                                        <p>Financial services must tie these three factors together – customer experience, best practices and reliability/responsiveness – to have an </p>
+                                    </div>
+                                -->
+                            </div>
+                        </article>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12">
+                        <p class="text-center">No events are currently available. Please check back later.</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
