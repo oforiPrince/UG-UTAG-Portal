@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views import View
-from dashboard.models import CarouselSlide
+from dashboard.models import Announcement, CarouselSlide
 from django.shortcuts import get_object_or_404, redirect
 
 from dashboard.forms import CarouselSlideForm
@@ -11,8 +11,27 @@ class CarouselSlideListView(View):
 
     def get(self, request):
         slides = CarouselSlide.objects.all()
+        
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+
         context = {
-            'carousel_slides': slides
+            'carousel_slides': slides,
+            'new_announcements': new_announcements,
+            'announcement_count': announcement_count
         }
         return render(request, self.template_name, context)
     
@@ -21,9 +40,26 @@ class CarouselSlideCreateUpdateView(View):
     template_name = 'dashboard_pages/forms/create_update_carousel.html'
 
     def get(self, request, slide_id=None):
+        # Initialize variables
+        new_announcements = []
+        announcement_count = 0
+        
+        # Determine the user's role and fetch relevant data
+        if request.user.groups.filter(name='Admin').exists():
+            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+        elif request.user.has_perm('view_announcement'):
+            if request.user.groups.filter(name='Executive').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
+            elif request.user.groups.filter(name='Member').exists():
+                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
+                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+
         if slide_id:
             slide = get_object_or_404(CarouselSlide, id=slide_id)
             form = CarouselSlideForm(instance=slide)
+            
             initial_data = {
                 'title': slide.title,
                 'description': slide.description,

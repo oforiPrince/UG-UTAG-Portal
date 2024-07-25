@@ -7,13 +7,13 @@
         <h5 class="modal-title" id="editOfficerModal_{{executive.id}}Label">Update Officer</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{% url 'dashboard:update_officer' %}" method="post">
+      <form action="{% url 'dashboard:update_officer' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
       <div class="modal-body">
         <input type="hidden" name="executive_id" value="{{executive.id}}">
         <div class="mb-3">
           <label class="form-label">Select a member</label>
-          <select class="form-control select2" name="member_email" disabled value="{{executive.get_full_name}}}">
+          <select class="form-control select2" name="member_email" disabled value="{{executive.get_full_name}}">
             <optgroup label="List of Member">
               {% for member in members %}
                 <option {% if member.email == executive.email %} selected {% endif %} value="{{member.email}}">{{member.get_full_name}}</option>
@@ -32,6 +32,14 @@
             <option value="Treasurer" {% if executive.executive_position == 'Treasurer' %} selected {% endif %}>Treasurer</option>
             <option value="Committee Member" {% if executive.executive_position == 'Committee Member' %} selected {% endif %}>Committee Member</option>
           </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Upload Image</label>
+          <input class="form-control" type="file" id="id_image_{{executive.id}}" name="image" accept="image/*" onchange="previewImage(event, {{executive.id}})">
+          <div class="d-flex justify-content-center mb-3 mt-3">
+            <img id="imagePreview_{{executive.id}}" src="{{ executive.get_executive_image_url }}" alt="Image Preview" style="display: {% if executive.executive_image %}block{% else %}none{% endif %}; max-width: 100%; height: auto;">
+          </div>
+          <div class="alert alert-danger" id="imageError_{{executive.id}}" style="display: none;"></div>
         </div>
         <div class="mb-3">
           <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
@@ -72,10 +80,8 @@
         <div class="mb-3">
           <label class="form-label">Is Member Active?</label>
           <div class="form-check form-switch">
-            <input class="form-check form-switch" type="checkbox" id="switch6" name="active" switch="primary" {% if executive.is_active %} checked {% endif %}>
-            {% if executive.is_active %}
-              <label class="form-label" for="switch6" data-on-label="Active" data-off-label="Inactive"></label>
-            {% endif %}
+            <input class="form-check form-switch" type="checkbox" id="switch6" name="active" switch="primary" {% if executive.is_active_executive %} checked {% endif %}>
+            <label class="form-label" for="switch6" data-on-label="Active" data-off-label="Inactive"></label>
           </div>
         </div>
       </div>
@@ -95,3 +101,31 @@
   });
 </script>
 {% endfor %}
+
+<script>
+  function previewImage(event, executiveId) {
+    var file = event.target.files[0];
+    var reader = new FileReader();
+    var img = new Image();
+    var errorContainer = document.getElementById('imageError_' + executiveId);
+    var previewContainer = document.getElementById('imagePreview_' + executiveId);
+    var fileInput = document.getElementById('id_image_' + executiveId);
+
+    reader.onload = function(e) {
+      img.src = e.target.result;
+      img.onload = function() {
+        if (img.width === 600 && img.height === 600) {
+          previewContainer.src = img.src;
+          previewContainer.style.display = 'block';
+          errorContainer.style.display = 'none';
+        } else {
+          previewContainer.style.display = 'none';
+          errorContainer.textContent = 'Image dimensions must be 600x600 pixels.';
+          errorContainer.style.display = 'block';
+          fileInput.value = '';
+        }
+      };
+    };
+    reader.readAsDataURL(file);
+  }
+</script>

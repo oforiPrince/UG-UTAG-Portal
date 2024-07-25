@@ -68,6 +68,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_profile_pic_url(self):
         return self.profile_pic.url if self.profile_pic else None
     
+    def get_executive_image_url(self):
+        return self.executive_image.url if self.executive_image else None
+    
     def is_admin(self):
         return self.groups.filter(name='Admin').exists() or self.is_superuser
 

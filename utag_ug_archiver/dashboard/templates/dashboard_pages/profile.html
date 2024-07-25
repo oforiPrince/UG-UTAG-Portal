@@ -12,7 +12,7 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex flex-column align-items-center text-center">
-                            <img src="{% if request.user.profile_pic %} {{request.user.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="Admin" class="rounded-circle p-1 bg-primary" width="110">
+                            <img src="{% if request.user.profile_pic %} {{request.user.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="Admin" class="rounded-circle p-1 bg-primary" width="120" height="120">
                             <div class="mt-3">
                                 <h4>{{request.user.get_full_name}}</h4>
                                 <p class="mb-1">{% if request.user.is_superuser or request.user.is_admin %} Admin {% elif request.user.is_secretary %} Secretary {% else %} Member{% endif %}  </p>
@@ -61,7 +61,7 @@
                                 <h6 class="mb-0">Other Name</h6>
                             </div>
                             <div class="col-sm-9">
-                                <input type="text" class="form-control" name="other_name" value="{{request.user.other_name}}" />
+                                <input type="text" class="form-control" name="other_name" value="{{ request.user.other_name|default_if_none:'' }}" />
                             </div>
                         </div>
                         <div class="row mb-3">
