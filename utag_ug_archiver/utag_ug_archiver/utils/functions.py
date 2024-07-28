@@ -3,7 +3,7 @@ import os
 import secrets
 from accounts.models import User
 from accounts.signals import send_email_with_retry
-from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
+from utag_ug_archiver.utils.constants import executive_members_position_order
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
@@ -20,11 +20,9 @@ def generate_random_password():
     return secrets.token_urlsafe(12)
 
 # Create a custom sorting function based on the order
-def officers_custom_order(executive):
-    return officers_position_order.index(executive.executive_position)
+def executive_members_custom_order(executive):
+    return executive_members_position_order.index(executive.executive_position)
 
-def members_custom_order(executive):
-    return committee_members_position_order.index(executive.executive_position)
 
 def send_credentials_email(user, raw_password):
         try:

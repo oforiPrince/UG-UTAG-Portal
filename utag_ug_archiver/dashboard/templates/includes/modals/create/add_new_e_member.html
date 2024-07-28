@@ -7,234 +7,169 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3">
-          <!-- Bootstrap Nav Tabs -->
-          <ul class="nav nav-tabs" id="myTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <a class="nav-link active" id="personal-info-tab" data-bs-toggle="tab" href="#personal-info" role="tab" aria-controls="personal-info" aria-selected="true">Personal Info</a>
-            </li>
-            <li class="nav-item" role="presentation">
-              <a class="nav-link" id="officer-details-tab" data-bs-toggle="tab" href="#officer-details" role="tab" aria-controls="officer-details" aria-selected="false">Officer Details</a>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Bootstrap Tab Content -->
-        <div class="tab-content" id="myTabsContent">
-          <!-- Personal Information Tab -->
-          <div class="tab-pane fade show active" id="personal-info" role="tabpanel" aria-labelledby="personal-info-tab">
-            <form id="personalInfoForm" class="custom-validation" action="{% url 'dashboard:create_new_officer' %}" method="POST" enctype="multipart/form-data">
-              {% csrf_token %}
-              <!-- Image Preview Container -->
-              <div class="d-flex justify-content-center mb-3">
-                <img id="imagePreview" src="#" alt="Image Preview" style="display: none; max-width: 600px; max-height: 600px; border: 1px solid #ddd; padding: 5px;" />
-              </div>
-              <!-- Error Message Container -->
-              <div class="alert alert-danger" id="imageError" style="display: none;"></div>
-              <!-- Image Upload Field -->
-              <div class="mb-3">
-                <label for="id_image" class="form-label">Upload Image</label>
-                <input class="form-control" type="file" id="id_image" name="image" accept="image/*" required>
-              </div>
-              <!-- Personal Info Fields -->
-              <div class="mb-3">
-                <label class="form-label" for="id_title">Title</label>
-                <div>
-                  <select id="id_title" class="form-control" required name="title">
-                    <option value="" selected disabled>Select a title</option>
-                    <option value="Prof.">Prof.</option>
-                    <option value="Dr.">Dr.</option>
-                    <option value="Mr.">Mr.</option>
-                    <option value="Mrs.">Mrs.</option>
-                    <option value="Ms.">Ms.</option>
-                  </select>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="id_first_name">First Name</label>
-                <div>
-                  <input type="text" id="id_first_name" class="form-control" required name="first_name" placeholder="Enter your first name" />
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="id_other_name">Other Name</label>
-                <div>
-                  <input type="text" id="id_other_name" class="form-control" name="other_name" placeholder="Enter your other name" />
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="id_last_name">Last Name</label>
-                <div>
-                  <input type="text" id="id_last_name" class="form-control" required name="last_name" placeholder="Enter your last name" />
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Gender</label>
-                <div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="gender" id="gender_male" value="Male" required />
-                    <label class="form-check-label" for="gender_male">Male</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="gender" id="gender_female" value="Female" required />
-                    <label class="form-check-label" for="gender_female">Female</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="id_email">Email</label>
-                <div>
-                  <input type="email" id="id_email" class="form-control" required name="email" placeholder="Enter a valid email" data-parsley-type="email" />
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Password</label>
-                <div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="password_choice" id="password_choice_auto" value="auto" checked />
-                    <label class="form-check-label" for="password_choice_auto">Auto-Generate Password</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="password_choice" id="password_choice_manual" value="manual" />
-                    <label class="form-check-label" for="password_choice_manual">Enter Password</label>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3" id="password_fields" style="display: none">
-                <label class="form-label" for="id_password1">New Password</label>
-                <div>
-                  <input type="password" id="id_password1" class="form-control" name="password1" placeholder="New Password" />
-                </div>
-              </div>
-              <div class="mb-3" id="password_fields_confirm" style="display: none">
-                <label class="form-label" for="id_password2">Confirm Password</label>
-                <div>
-                  <input type="password" id="id_password2" class="form-control" data-parsley-equalto="#id_password1" name="password2" placeholder="Confirm Password" />
-                </div>
-              </div>
-            </form>
+        <form class="custom-validation" action="{% url 'dashboard:create_new_executive_member' %}" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+          
+          <!-- Image Preview Container -->
+          <div class="d-flex justify-content-center mb-3">
+            <img id="imagePreview2" src="#" alt="Image Preview" style="display: none; max-width: 285px; max-height: 200px; border: 1px solid #ddd; padding: 5px;" />
           </div>
-
-          <!-- Officer Details Tab -->
-          <div class="tab-pane fade" id="officer-details" role="tabpanel" aria-labelledby="officer-details-tab">
-            <form id="officerDetailsForm" class="custom-validation" action="{% url 'dashboard:create_new_officer' %}" method="POST">
-              {% csrf_token %}
-              <!-- Officer Details Fields -->
-              <div class="mb-3">
-                <label class="form-label" for="id_position">Position</label>
-                <select id="id_position" class="form-control" required name="position">
-                  <option value="" selected disabled>Select a position</option>
-                  <option value="President">President</option>
-                  <option value="Vice President">Vice President</option>
-                  <option value="Secretary">Secretary</option>
-                  <option value="Treasurer">Treasurer</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
-                <div class="input-group has-validation">
-                  <span class="input-group-text" id="inputGroupPrepend">@</span>
-                  <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username">
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
-                <div class="input-group has-validation">
-                  <span class="input-group-text" id="inputGroupPrepend">@</span>
-                  <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username">
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
-                <div class="input-group has-validation">
-                  <span class="input-group-text" id="inputGroupPrepend">@</span>
-                  <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username">
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Date Appointed</label>
-                <div class="input-group" id="datepicker2">
-                  <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container='#datepicker2' data-provide="datepicker" data-date-autoclose="true" name="date_appointed">
-                  <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
-                </div>
-              </div>
-            </form>
+          
+          <!-- Error Message Container -->
+          <div class="alert alert-danger" id="imageError2" style="display: none;"></div>
+          
+          <!-- Image Upload Field -->
+          <div class="mb-3">
+            <label for="id_image2" class="form-label">Upload Image</label>
+            <input class="form-control" type="file" id="id_image2" name="image" accept="image/*" required>
           </div>
-        </div>
-
-        <!-- Submit and Cancel Buttons -->
-        <div class="mb-3">
-          <div>
-            <button type="submit" class="btn btn-primary waves-effect waves-light me-1" form="personalInfoForm">Next</button>
-            <button type="button" class="btn btn-secondary waves-effect" data-bs-dismiss="modal">Cancel</button>
+          
+          <!-- Personal Info Fields -->
+          <div class="mb-3">
+            <label class="form-label" for="id_title">Title</label>
+            <div>
+              <select id="id_title" class="form-control" required name="title">
+                <option value="" selected disabled>Select a title</option>
+                <option value="Prof.">Prof.</option>
+                <option value="Dr.">Dr.</option>
+                <option value="Mr.">Mr.</option>
+                <option value="Mrs.">Mrs.</option>
+                <option value="Ms.">Ms.</option>
+              </select>
+            </div>
           </div>
-        </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_first_name">First Name</label>
+            <div>
+              <input type="text" id="id_first_name" class="form-control" required name="first_name" placeholder="Enter your first name" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_other_name">Other Name</label>
+            <div>
+              <input type="text" id="id_other_name" class="form-control" name="other_name" placeholder="Enter your other name" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_last_name">Last Name</label>
+            <div>
+              <input type="text" id="id_last_name" class="form-control" required name="last_name" placeholder="Enter your last name" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Gender</label>
+            <div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="gender" id="gender_male" value="Male" required />
+                <label class="form-check-label" for="gender_male">Male</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="gender" id="gender_female" value="Female" required />
+                <label class="form-check-label" for="gender_female">Female</label>
+              </div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label" for="id_email">Email</label>
+              <div>
+                <input type="email" id="id_email" class="form-control" required name="email" placeholder="Enter a valid email" data-parsley-type="email" />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="id_phone">Phone Number</label>
+              <div>
+                <input type="tel" id="id_phone" class="form-control" required name="phone" placeholder="Enter a phone number" />
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_position">Position</label>
+            <select id="id_position" class="form-control" required name="position">
+              <option value="" selected disabled>Select a position</option>
+              <option value="President">President</option>
+              <option value="Vice President">Vice President</option>
+              <option value="Secretary">Secretary</option>
+              <option value="Treasurer">Treasurer</option>
+              <option value="Committee Member">Committee Member</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
+            <div class="input-group has-validation">
+              <span class="input-group-text" id="inputGroupPrepend">@</span>
+              <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
+            <div class="input-group has-validation">
+              <span class="input-group-text" id="inputGroupPrepend">@</span>
+              <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
+            <div class="input-group has-validation">
+              <span class="input-group-text" id="inputGroupPrepend">@</span>
+              <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date Appointed</label>
+            <div class="input-group" id="datepicker2">
+              <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container='#datepicker2' data-provide="datepicker" data-date-autoclose="true" name="date_appointed">
+              <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
+            </div>
+          </div>
+          <!-- Submit and Cancel Buttons -->
+          <div class="mb-3">
+            <div>
+              <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+              <button type="button" class="btn btn-secondary waves-effect" data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </div>
-
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const myTabs = new bootstrap.Tab(document.getElementById('personal-info-tab'));
-    myTabs.show(); // Show the first tab by default
+    function previewImage(event, previewId, errorId) {
+      var file = event.target.files[0];
+      var reader = new FileReader();
+      var img = new Image();
+      var errorContainer = document.getElementById(errorId);
+      var previewContainer = document.getElementById(previewId);
+      var fileInput = event.target;
 
-    const passwordChoice = document.querySelectorAll('[name="password_choice"]');
-    const passwordFields = document.getElementById("password_fields");
-    const passwordFieldsConfirm = document.getElementById("password_fields_confirm");
-
-    function togglePasswordFields() {
-      if (this.value === "auto") {
-        passwordFields.style.display = "none";
-        passwordFieldsConfirm.style.display = "none";
-        document.getElementById("id_password1").removeAttribute("required");
-        document.getElementById("id_password2").removeAttribute("required");
-      } else {
-        passwordFields.style.display = "block";
-        passwordFieldsConfirm.style.display = "block";
-        document.getElementById("id_password1").setAttribute("required", "required");
-        document.getElementById("id_password2").setAttribute("required", "required");
-      }
+      reader.onload = function(e) {
+        img.src = e.target.result;
+        img.onload = function() {
+          if (img.width === 600 && img.height === 600) {
+            previewContainer.src = img.src;
+            previewContainer.style.display = 'block';
+            errorContainer.style.display = 'none';
+          } else {
+            previewContainer.style.display = 'none';
+            errorContainer.textContent = 'Image dimensions must be 600x600 pixels.';
+            errorContainer.style.display = 'block';
+            fileInput.value = '';
+          }
+        };
+      };
+      reader.readAsDataURL(file);
     }
 
-    passwordChoice.forEach(function (choice) {
-      choice.addEventListener("change", togglePasswordFields);
+    // Event listener for existing member modal
+    document.getElementById('id_image1').addEventListener('change', function(event) {
+      previewImage(event, 'imagePreview1', 'imageError1');
     });
 
-    function previewImage(event) {
-      const imageFile = event.target.files[0];
-      const imagePreview = document.getElementById("imagePreview");
-      const imageError = document.getElementById("imageError");
-      if (imageFile) {
-        const fileSize = imageFile.size / 1024 / 1024; // in MB
-        if (fileSize > 2) {
-          imageError.textContent = "File size exceeds 2 MB";
-          imageError.style.display = "block";
-          imagePreview.style.display = "none";
-          event.target.value = ""; // Reset file input
-        } else {
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function () {
-              if (img.width !== 600 || img.height !== 600) {
-                imageError.textContent = "Image dimensions must be 600x600 pixels";
-                imageError.style.display = "block";
-                imagePreview.style.display = "none";
-                event.target.value = ""; // Reset file input
-              } else {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = "block";
-                imageError.style.display = "none";
-              }
-            };
-          };
-          reader.readAsDataURL(imageFile);
-        }
-      }
-    }
-
-    document.getElementById("id_image").addEventListener("change", previewImage);
+    // Event listener for new member modal
+    document.getElementById('id_image2').addEventListener('change', function(event) {
+      previewImage(event, 'imagePreview2', 'imageError2');
+    });
   });
 </script>

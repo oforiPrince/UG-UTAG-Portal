@@ -1,6 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
-{% block title %}Executive Officers{% endblock title %}
+{% block title %}Executive Members{% endblock title %}
 {% block content %}
 
 <div class="page-content">
@@ -10,37 +10,14 @@
         <div class="page-title-box">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h6 class="page-title">Executive Officers</h6>
+                    <h6 class="page-title">Executive Members</h6>
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Executive Officers</li>
+                        <li class="breadcrumb-item active" aria-current="page">Executive Members</li>
                     </ol>
                 </div>
-                <!-- <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                        <div class="dropdown">
-                            <button class="btn btn-primary  dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="mdi mdi-download me-1"></i> Download
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    <a class="dropdown-item" href="#" onclick="showAlert()">Excel</a>
-                                    <a class="dropdown-item" href="#" onclick="showAlert()">Csv</a>
-                                    <a class="dropdown-item" href="#" onclick="showAlert()">Pdf</a>
-                                  </div>
-                                  
-                                  <script>
-                                  function showAlert() {
-                                    alert("This feature is under development");
-                                  }
-                                  </script>
-                        </div>
-                    </div>
-                </div> -->
             </div>
         </div>
-        <!-- end page title -->
-
-
 
         <div class="row">
             <div class="col-12">
@@ -48,7 +25,7 @@
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-md-8">
-                                <h4 class="card-title">Executive Officers</h4>
+                                <h4 class="card-title">Executive Members</h4>
                             </div>
                             {% if user.is_admin or user.is_superuser %}
                             <div class="col-md-4">
@@ -63,17 +40,6 @@
                                           </div>
                                     </div>
                                 </div>
-                                <!-- <div class="float-end d-none d-md-block mx-2">
-                                    <div class="dropdown">
-                                        <button class="btn btn-success dropdown-toggle" type="button" id="uploadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="mdi mdi-upload me-1"></i> Upload
-                                        </button>
-                                        <div class="dropdown-menu" aria-labelledby="uploadDropdown">
-                                            <a class="dropdown-item" href="#">Excel</a>
-                                            <a class="dropdown-item" href="#">Csv</a>
-                                        </div>
-                                    </div>
-                                </div> -->
                             </div>                                                                                 
                             {% endif %}
                         </div>
@@ -119,7 +85,7 @@
                                             <a href="#" class="btn btn-success btn-sm edit-officers-info" data-bs-toggle="modal" data-bs-target="#editOfficerModal_{{executive.id}}" title="Edit">
                                                 <i class="mdi mdi-pen"></i>
                                             </a>
-                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_officer' officer_id=executive.id %}')" class="btn btn-danger btn-sm" title="Delete">
+                                            <a href="#" onclick="confirmDelete(event, '{% url 'dashboard:delete_executive_member' officer_id=executive.id %}')" class="btn btn-danger btn-sm" title="Delete">
                                                 <i class="mdi mdi-delete"></i>
                                               </a>
                                               
@@ -149,7 +115,7 @@
     <!-- container-fluid -->
     {% include "includes/modals/details/executive_details.html" %}
     {% include "includes/modals/create/add_existing_member_e.html" %}
-    {% include "includes/modals/create/add_new_c_member.html" %}
+    {% include "includes/modals/create/add_new_e_member.html" %}
     {% include "includes/modals/update/edit_e_member.html" %}
 </div>
 {% endblock content %}

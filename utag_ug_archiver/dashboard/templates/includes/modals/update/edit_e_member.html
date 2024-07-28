@@ -7,7 +7,7 @@
         <h5 class="modal-title" id="editOfficerModal_{{executive.id}}Label">Update Officer</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{% url 'dashboard:update_officer' %}" method="post" enctype="multipart/form-data">
+      <form action="{% url 'dashboard:update_executive_member' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
       <div class="modal-body">
         <input type="hidden" name="executive_id" value="{{executive.id}}">
@@ -37,7 +37,7 @@
           <label class="form-label">Upload Image</label>
           <input class="form-control" type="file" id="id_image_{{executive.id}}" name="image" accept="image/*" onchange="previewImage(event, {{executive.id}})">
           <div class="d-flex justify-content-center mb-3 mt-3">
-            <img id="imagePreview_{{executive.id}}" src="{{ executive.get_executive_image_url }}" alt="Image Preview" style="display: {% if executive.executive_image %}block{% else %}none{% endif %}; max-width: 100%; height: auto;">
+            <img id="imagePreview_{{executive.id}}" src="{{ executive.get_executive_image_url }}" alt="Image Preview" style="display: {% if executive.executive_image %}block{% else %}none{% endif %}; max-width: 285px; height: 200px;">
           </div>
           <div class="alert alert-danger" id="imageError_{{executive.id}}" style="display: none;"></div>
         </div>

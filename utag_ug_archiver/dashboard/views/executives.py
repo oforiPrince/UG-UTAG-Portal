@@ -11,24 +11,24 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User
 from dashboard.models import Announcement
-from utag_ug_archiver.utils.constants import officers_position_order, committee_members_position_order
-from utag_ug_archiver.utils.functions import officers_custom_order, members_custom_order
+from utag_ug_archiver.utils.constants import executive_members_position_order
+from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
 
 #For Executives
-class ExecutiveOfficersView(PermissionRequiredMixin,View):
-    template_name = 'dashboard_pages/executive_officers.html'
+class ExecutiveMembersView(PermissionRequiredMixin,View):
+    template_name = 'dashboard_pages/executive_members.html'
     permission_required = 'accounts.view_dashboard'
     @method_decorator(MustLogin)
     def get(self, request):
         # Get all executive officers
-        executive_officers = User.objects.filter(executive_position__in=officers_position_order, is_active_executive=True)
+        executive_officers = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
         # Sort the executive officers based on the custom order
-        executive_officers = sorted(executive_officers, key=lambda x: officers_position_order.index(x.executive_position) if x.executive_position in officers_position_order else len(officers_position_order))
+        executive_officers = sorted(executive_officers, key=lambda x: executive_members_position_order.index(x.executive_position) if x.executive_position in executive_members_position_order else len(executive_members_position_order))
 
         # Get all members
-        members = User.objects.filter(groups__name='Member')
+        members = User.objects.all().exclude(is_active_executive=True)
 
         # Determine announcements based on user role
         if request.user.groups.filter(name='Admin').exists():
@@ -49,7 +49,7 @@ class ExecutiveOfficersView(PermissionRequiredMixin,View):
         }
         return render(request, self.template_name, context)
 
-class NewOfficerCreateView(View):
+class NewExecutiveMemberCreateView(View):
     def post(self, request):
         # Extract fields from POST request
         title = request.POST.get('title')
@@ -58,6 +58,7 @@ class NewOfficerCreateView(View):
         last_name = request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
+        phone_number = request.POST.get('phone')
 
         # Fields for executive
         position_name = request.POST.get('position')
@@ -65,7 +66,8 @@ class NewOfficerCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed_str = request.POST.get('date_appointed')
-
+        executive_image = request.FILES.get('image')
+        print(executive_image)
         # Handle password
         if request.POST.get('password_choice') == 'auto':
             password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
@@ -96,8 +98,10 @@ class NewOfficerCreateView(View):
             last_name=last_name,
             gender=gender,
             email=email,
+            phone_number=phone_number,
             password=make_password(password),
             executive_position=position_name,  # Set executive position
+            executive_image = executive_image,
             fb_profile_url=fb_username,        # Set social media URLs
             twitter_profile_url=twitter_username,
             linkedin_profile_url=linkedin_username,
@@ -105,15 +109,16 @@ class NewOfficerCreateView(View):
             is_active_executive=True,          # Mark as active executive
         )
         # Add to executive group
+        member.groups.add(Group.objects.get(name='Member'))
         member.groups.add(Group.objects.get(name='Executive'))
 
         # Send email to admin with password
         # send_credentials_email(member, password)
 
-        messages.success(request, 'Executive Officer created successfully!')
+        messages.success(request, 'Executive Member created successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class ExistingExecutiveOfficerCreateView(View):
+class ExistingExecutiveMemberCreateView(View):
     def post(self, request):
         member_id = request.POST.get('member_id')
         position = request.POST.get('position')
@@ -121,6 +126,8 @@ class ExistingExecutiveOfficerCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
+        executive_image = request.FILES.get('image')
+        print(executive_image)
         if position == '' or position is None:
             position = 'Committee Member'
         print(position)
@@ -156,17 +163,17 @@ class ExistingExecutiveOfficerCreateView(View):
         member.twitter_profile_url = twitter_username
         member.linkedin_profile_url = linkedin_username
         member.date_appointed = formatted_appointed_date
+        member.executive_image = executive_image
         member.is_active_executive = True
         member.save()
         
         # Add to executive group
         member.groups.add(Group.objects.get(name='Executive'))
-        print(member.groups.all())
 
         messages.success(request, 'Executive member created successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
-class UpdateExecutiveOfficerView(View):
+class UpdateExecutiveMemberView(View):
     def post(self, request):
         executive_id = request.POST.get('executive_id')
         position = request.POST.get('position')
@@ -181,7 +188,7 @@ class UpdateExecutiveOfficerView(View):
         try:
             executive = User.objects.get(id=executive_id, is_active_executive=True)
         except User.DoesNotExist:
-            messages.error(request, 'Executive Officer does not exist!')
+            messages.error(request, 'Executive Member does not exist!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Check if date appointed is valid
@@ -214,10 +221,10 @@ class UpdateExecutiveOfficerView(View):
         executive.is_active_executive = True if active == 'on' else False
         executive.save()
 
-        messages.success(request, 'Executive Officer updated successfully!')
+        messages.success(request, 'Executive Member updated successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
-class OfficerDeleteView(View):
+class ExecutiveMemberDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         officer_id = kwargs.get('officer_id')
@@ -225,7 +232,7 @@ class OfficerDeleteView(View):
             # Retrieve the officer (executive) by ID
             officer = User.objects.get(id=officer_id, is_active_executive=True)
         except User.DoesNotExist:
-            messages.error(request, 'Officer not found!')
+            messages.error(request, 'Member not found!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
         
@@ -236,53 +243,53 @@ class OfficerDeleteView(View):
         officer.groups.remove(Group.objects.get(name='Executive'))
         print(officer.groups.all())
 
-        messages.success(request, 'Officer removed from executive successfully!')
+        messages.success(request, 'Member removed from executive successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-class ExecutiveCommitteeMembersView(View):
-    template_name = 'dashboard_pages/executive_committee_members.html'
+# class ExecutiveCommitteeMembersView(View):
+#     template_name = 'dashboard_pages/executive_committee_members.html'
     
-    @method_decorator(MustLogin)
-    def get(self, request):
-        members = User.objects.filter(groups__name='Member')
-        # Get all active executive committee members
-        executive_committee_members = User.objects.filter(
-            executive_position__in=officers_position_order + committee_members_position_order,
-            is_active_executive=True
-        )
+#     @method_decorator(MustLogin)
+#     def get(self, request):
+#         members = User.objects.filter(groups__name='Member')
+#         # Get all active executive committee members
+#         executive_committee_members = User.objects.filter(
+#             executive_position__in=executive_members_position_order + committee_members_position_order,
+#             is_active_executive=True
+#         )
         
-        announcement_count = 0
-        new_announcements = []
+#         announcement_count = 0
+#         new_announcements = []
 
-        if request.user.is_admin:
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.groups.filter(name='Secretary').exists() or request.user.is_active_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Executive').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Executive').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Member').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Member').order_by('-created_at')[:3]
+#         if request.user.is_admin:
+#             new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+#             announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+#         elif request.user.groups.filter(name='Secretary').exists() or request.user.is_active_executive:
+#             announcement_count = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Executive').count()
+#             new_announcements = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Executive').order_by('-created_at')[:3]
+#         elif request.user.is_member:
+#             announcement_count = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Member').count()
+#             new_announcements = Announcement.objects.filter(status='PUBLISHED', target_groups__name='Member').order_by('-created_at')[:3]
 
-        # Custom order sorting
-        def members_custom_order(member):
-            position_order = officers_position_order + committee_members_position_order
-            try:
-                return position_order.index(member.executive_position)
-            except ValueError:
-                return len(position_order)
+#         # Custom order sorting
+#         def members_custom_order(member):
+#             position_order = executive_members_position_order + committee_members_position_order
+#             try:
+#                 return position_order.index(member.executive_position)
+#             except ValueError:
+#                 return len(position_order)
         
-        # Sort the executive committee members based on the custom order
-        executive_committee_members = sorted(executive_committee_members, key=members_custom_order)
+#         # Sort the executive committee members based on the custom order
+#         executive_committee_members = sorted(executive_committee_members, key=members_custom_order)
         
-        context = {
-            'executive_officers': executive_committee_members,
-            'members': members,
-            'new_announcements': new_announcements,
-            'announcement_count': announcement_count,
-        }
+#         context = {
+#             'executive_officers': executive_committee_members,
+#             'members': members,
+#             'new_announcements': new_announcements,
+#             'announcement_count': announcement_count,
+#         }
         
-        return render(request, self.template_name, context)
+#         return render(request, self.template_name, context)
     
 # class NewCommitteeMemberCreateView(View):
 #     password = ""
@@ -396,7 +403,7 @@ class ExecutiveCommitteeMembersView(View):
 #         )
 #         executive.save()
         
-#         messages.success(request, 'Executive Officer created successfully!')
+#         messages.success(request, 'Executive Member created successfully!')
 #         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 # class CommitteeMemberUpdateView(View):
@@ -438,7 +445,7 @@ class ExecutiveCommitteeMembersView(View):
 #             executive.is_active = False
 #         executive.save()
         
-#         messages.success(request, 'Executive Officer updated successfully!')
+#         messages.success(request, 'Executive Member updated successfully!')
 #         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 # class CommitteeMemberDeleteView(View):
@@ -447,5 +454,5 @@ class ExecutiveCommitteeMembersView(View):
 #         c_member_id = kwargs.get('c_member_id')
 #         c_member = Executive.objects.get(id=c_member_id)
 #         c_member.delete()
-#         messages.success(request, 'Officer deleted successfully!')
+#         messages.success(request, 'Member deleted successfully!')
 #         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))

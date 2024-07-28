@@ -27,7 +27,7 @@
                                 <div class="team-member team-member-style-2">
                                     <div class="team-member__inner">
                                         <figure class="team-member__thumbnail">
-                                            <a href="#"><img src="{% if executive.image %} {{executive.image.url}}  {% else %} {% static 'website/assets/img/team/ourteam31.png' %} {% endif %}" alt="Team Member"></a>
+                                            <a href="#"><img src="{% if executive.executive_image %} {{executive.get_executive_image_url}}  {% else %} {% static 'website/assets/img/team/ourteam31.png' %} {% endif %}" alt="Team Member"></a>
                                         </figure>
                                         <div class="team-member__info">
                                             <div class="team-member__content">
@@ -36,22 +36,22 @@
                                             </div>
                                             <ul class="social social-round">
                                                 <li class="social__item">
-                                                    <a class="social__link" href="https://www.facebook.com">
+                                                    <a class="social__link" href="{{executive.fb_profile_url}}">
                                                         <i class="social__icon fa fa-facebook"></i>
                                                     </a>
                                                 </li>
                                                 <li class="social__item">
-                                                    <a class="social__link" href="https://www.plus.google.com">
+                                                    <a class="social__link" href="maito://{{executive.email}}">
                                                         <i class="social__icon fa fa-google-plus"></i>
                                                     </a>
                                                 </li>
                                                 <li class="social__item">
-                                                    <a class="social__link" href="https://www.twitter.com">
+                                                    <a class="social__link" href="{{executive.twitter_profile_url}}">
                                                         <i class="social__icon fa fa-twitter"></i>
                                                     </a>
                                                 </li>
                                                 <li class="social__item">
-                                                    <a class="social__link" href="#">
+                                                    <a class="social__link" href="{{executive.linkedin_profile_url}}">
                                                         <i class="social__icon fa fa-linkedin"></i>
                                                     </a>
                                                 </li>
