@@ -14,7 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect
 from accounts.models import User
-from dashboard.models import Announcement, Document
+from dashboard.models import Announcement, Document, Notification
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, send_credentials_email
 
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -34,29 +34,17 @@ class AdminListView(PermissionRequiredMixin, View):
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
         
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
-        
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         # Prepare context
         context = {
             'users': users,
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
-            'new_announcements': new_announcements,
-            'announcement_count': announcement_count,
+            'notifications': notifications,
+            'notification_count': notification_count,
             'has_add_permission': request.user.has_perm('accounts.add_admin'),
             'has_change_permission': request.user.has_perm('accounts.change_admin'),
             'has_delete_permission': request.user.has_perm('accounts.delete_admin'),
@@ -276,20 +264,20 @@ class MemberListView(PermissionRequiredMixin, View):
         total_external_documents = Document.objects.filter(category='external').count()
         
         # Initialize variables
-        new_announcements = []
-        announcement_count = 0
+        notifications = []
+        notification_count = 0
         
         # Determine the user's role and fetch relevant data
         if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
+            notifications = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
+            notification_count = Announcement.objects.filter(status='PUBLISHED').count()
         elif request.user.has_perm('view_announcement'):
             if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
+                notification_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
+                notifications = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
             elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+                notification_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
+                notifications = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
         print('has add permission')
         print(request.user.has_perm('accounts.add_member'))
         # Prepare context
@@ -297,8 +285,8 @@ class MemberListView(PermissionRequiredMixin, View):
             'users': users,
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
-            'new_announcements': new_announcements,
-            'announcement_count': announcement_count,
+            'notifications': notifications,
+            'notification_count': notification_count,
             'has_add_permission': request.user.has_perm('accounts.add_member'),
             'has_change_permission': request.user.has_perm('accounts.change_member'),
             'has_delete_permission': request.user.has_perm('accounts.delete_member'),

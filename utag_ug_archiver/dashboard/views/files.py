@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.models import Group
 from django.db.models import Q
-from dashboard.models import Announcement, Document, File
+from dashboard.models import Announcement, Document, File, Notification
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -19,49 +19,20 @@ class DocumentsView(View):
         # Get documents based on user role/group and public visibility
         documents = self.get_documents(request.user)
         
-        # Get announcements and count based on user role/group
-        new_announcements, announcement_count = self.get_announcements_and_count(request.user)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         context = {
             'documents': documents,
-            'new_announcements': new_announcements,
-            'announcement_count': announcement_count,
+            'notifications': notifications,
+            'notification_count': notification_count,
             'has_add_permission': request.user.has_perm('dashboard.add_document') or request.user.executive_position=="Secretary",
             'has_change_permission': request.user.has_perm('dashboard.change_document') or request.user.executive_position=="Secretary",
             'has_delete_permission': request.user.has_perm('dashboard.delete_document') or request.user.executive_position=="Secretary",
         }
         return render(request, self.template_name, context)
 
-    def get_documents(self, user):
-        # Example filtering logic based on user groups and public visibility
-        public_documents = Document.objects.filter(visible_to_groups__isnull=True).exclude(status='Draft')
-
-        if user.groups.filter(name='Admin').exists():
-            return Document.objects.all().order_by('-id')
-        elif user.groups.filter(name='Executive').exists():
-            return Document.objects.filter(
-                Q(visible_to_groups__name='Executive') | Q(visible_to_groups__isnull=True)
-            ).order_by('-id').exclude(status='Draft')
-        elif user.groups.filter(name='Member').exists():
-            return Document.objects.filter(
-                Q(visible_to_groups__name='Member') | Q(visible_to_groups__isnull=True)
-            ).order_by('-id').exclude(status='Draft')
-        else:
-            return public_documents.order_by('-id')
-
-    def get_announcements_and_count(self, user):
-        if user.groups.filter(name='Admin').exists():
-            announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')
-        elif user.groups.filter(name__in=['Secretary', 'Executive']).exists():
-            announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')
-        elif user.groups.filter(name='Member').exists():
-            announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')
-        else:
-            announcements = Announcement.objects.none()
-
-        announcement_count = announcements.count()
-        new_announcements = announcements[:3]
-        return new_announcements, announcement_count
     
     
 class DeleteFileView(View):

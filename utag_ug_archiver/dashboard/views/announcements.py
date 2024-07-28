@@ -2,10 +2,9 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.db.models import Q
 
-from dashboard.models import Announcement
+from dashboard.models import Announcement, Notification
 from utag_ug_archiver.utils.decorators import MustLogin
 from django.contrib.auth.models import Group
 
@@ -27,30 +26,13 @@ class AnnouncementsView(View):
                 Q(target='everyone') | Q(target_groups__in=user.groups.all())
             ).exclude(Q(status='DRAFT') & ~Q(created_by=user)).distinct()
 
-        announcement_count = 0
-        new_announcements = []
-
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
-        
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
-        
-
+         # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         context = {
             'announcements': announcements,
-            'announcement_count': announcement_count,
-            'new_announcements': new_announcements
+            'notification_count': notification_count,
+            'notifications': notifications
         }
         return render(request, self.template_name, context)
 
@@ -59,6 +41,9 @@ class AnnouncementCreateUpdateView(View):
     template_name = 'dashboard_pages/forms/create_update_announcement.html'
 
     def get(self, request, announcement_id=None):
+         # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         if announcement_id:
             announcement = Announcement.objects.get(id=announcement_id)
             initial_data = {
@@ -77,7 +62,10 @@ class AnnouncementCreateUpdateView(View):
 
         context = {
             'initial_data': initial_data,
-            'all_groups': Group.objects.all()
+            'all_groups': Group.objects.all(),
+            
+            'notification_count': notification_count,
+            'notifications': notifications
         }
         return render(request, self.template_name, context)
 

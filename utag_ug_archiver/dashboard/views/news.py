@@ -6,7 +6,7 @@ from django.http import HttpResponseRedirect
 
 
 
-from dashboard.models import Announcement, News, Tag
+from dashboard.models import Announcement, News, Notification, Tag
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -16,19 +16,14 @@ class NewsView(View):
     def get(self, request):
         #Get all news
         news = News.objects.all()
-        if request.user.is_admin:
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.is_secretary or request.user.is_executive:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-        elif request.user.is_member:
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
         context = {
             'newss' : news,
-            'announcement_count' : announcement_count,
-            'new_announcements' : new_announcements
+            'notifications' : notifications,
+            'notification_count' : notification_count
         }
         return render(request, self.template_name, context)
 

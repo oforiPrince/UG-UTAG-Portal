@@ -99,6 +99,17 @@ class Announcement(models.Model):
     def __str__(self):
         return self.title
     
+class Notification(models.Model):
+    STATUS_CHOICES = (
+        ('UNREAD', 'Unread'),
+        ('READ', 'Read'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    announcement = models.ForeignKey('Announcement', on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UNREAD')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 class ReadAnnouncement(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE)

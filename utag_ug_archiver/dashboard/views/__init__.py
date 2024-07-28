@@ -8,3 +8,4 @@ from .files import *
 from .news import *
 from .profile import *
 from .carousel import *
+from .notifications import *

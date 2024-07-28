@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from adverts.models import AdvertPlan, Advertisement, Advertiser
 
-from dashboard.models import Announcement
+from dashboard.models import Announcement, Notification
 from utag_ug_archiver.utils.decorators import MustLogin
 
 class AdvertsView(PermissionRequiredMixin, View):
@@ -21,29 +21,17 @@ class AdvertsView(PermissionRequiredMixin, View):
         advertisers = Advertiser.objects.all()
         active_plans = AdvertPlan.objects.filter(status='active')
         
-        # Initialize announcement variables
-        new_announcements = []
-        announcement_count = 0
-
-        # Determine the user's role and fetch relevant data
-        if request.user.has_perm('view_dashboard'):  # Assuming 'view_dashboard' is used to check admin
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Secretary').exists() or request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
 
         # Prepare context
         context = {
             'adverts': adverts,
             'advertisers': advertisers,
             'plans': active_plans,
-            'announcement_count': announcement_count,
-            'new_announcements': new_announcements,
+            'notification_count': notification_count,
+            'notifications': notifications,
         }
 
         # Render the template
@@ -56,26 +44,14 @@ class AdvertPlansView(PermissionRequiredMixin, View):
     def get(self, request):
         #Get all advert plans
         plans = AdvertPlan.objects.all()
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
         
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
-        
+         # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         context = {
             'plans' : plans,
-            'announcement_count' : announcement_count,
-            'new_announcements' : new_announcements
+            'notification_count' : notification_count,
+            'notifications' : notifications
         }
         return render(request, self.template_name, context)
     
@@ -86,26 +62,14 @@ class CompaniesView(PermissionRequiredMixin, View):
     def get(self, request):
         #Get all companies
         companies = Advertiser.objects.all()
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
-        
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+         # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         context = {
             'companies' : companies,
-            'announcement_count' : announcement_count,
-            'new_announcements' : new_announcements
+            'notification_count' : notification_count,
+            'notifications' : notifications
         }
         return render(request, self.template_name, context)
     

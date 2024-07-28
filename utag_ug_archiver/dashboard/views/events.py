@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 
-from dashboard.models import Announcement, Event
+from dashboard.models import Announcement, Event, Notification
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -17,26 +17,15 @@ class EventsView(View):
     def get(self, request):
         #Get all events
         events = Event.objects.all()
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
         
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         context = {
             'events' : events,
-            'announcement_count' : announcement_count,
-            'new_announcements' : new_announcements
+            'notification_count' : notification_count,
+            'notifications' : notifications
         }
         return render(request, self.template_name, context)
     
@@ -45,21 +34,9 @@ class EventCreateUpdateView(View):
 
     @method_decorator(MustLogin)
     def get(self, request, event_id=None):
-        # Initialize variables
-        new_announcements = []
-        announcement_count = 0
-        
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            new_announcements = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            announcement_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Members').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                announcement_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').count()
-                new_announcements = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executives').order_by('-created_at')[:3]
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         if event_id:
             event = Event.objects.get(id=event_id)
@@ -71,14 +48,14 @@ class EventCreateUpdateView(View):
                 'venue': event.venue,
                 'date': event.date,
                 'time': event.time,
-                'new_announcements':new_announcements,
-                'announcement_count': announcement_count
+                'notifications':notifications,
+                'notification_count': notification_count
             }
         else:
             context = {
                 'is_published': 'off',
-                'new_announcements':new_announcements,
-                'announcement_count': announcement_count
+                'notifications':notifications,
+                'notification_count': notification_count
             }
         return render(request, self.template_name, {'context': context})
 

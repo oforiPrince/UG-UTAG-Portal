@@ -93,6 +93,14 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if perms.dashboard.view_notification %}
+                <li>
+                    <a href="{% url 'dashboard:notifications' %}" class="waves-effect">
+                        <i class="mdi mdi-bell"></i>
+                        <span>Notifications</span>
+                    </a>
+                </li>
+                {% endif %}
 
                 {% if perms.adverts.view_advertisement %}
                 <li>

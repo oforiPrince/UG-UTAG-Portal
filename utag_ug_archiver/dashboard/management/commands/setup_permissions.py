@@ -32,7 +32,9 @@ class Command(BaseCommand):
                 'view_dashboard',
                 'view_member',
                 'view_document',
-                'view_event', 'view_news', 'view_announcement',
+                'view_event', 'view_news', 
+                'add_announcement', 'change_announcement', 'delete_announcement', 'view_announcement',
+                'view_notification',
             ],
             'Member': [
                 'view_dashboard',

@@ -81,19 +81,19 @@
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item noti-icon waves-effect" id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="mdi mdi-bell-outline"></i>
-                    <span class="badge bg-danger rounded-pill">{{ announcement_count }}</span>
+                    <span class="badge bg-danger rounded-pill">{{ notification_count }}</span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-notifications-dropdown">
                     <div class="p-3">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h5 class="m-0 font-size-16"> Notifications ({{ announcement_count }}) </h5>
+                                <h5 class="m-0 font-size-16"> Notifications ({{ notification_count }}) </h5>
                             </div>
                         </div>
                     </div>
                     <div data-simplebar style="max-height: 230px;">
                         <!-- item -->
-                        {% for announcement in new_announcements %}
+                        {% for notification in notifications %}
                         <a href="" class="text-reset notification-item">
                             <div class="d-flex">
                                 <div class="flex-shrink-0 me-3">
@@ -104,9 +104,9 @@
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ announcement.title }}</h6>
+                                    <h6 class="mb-1">{{ notification.announcement.title }}</h6>
                                     <div class="font-size-12 text-muted">
-                                        <p class="mb-1">{{ announcement.content|truncatewords:10|safe }}</p>
+                                        <p class="mb-1">{{ notification.announcement.content|truncatewords:10|safe }}</p>
                                     </div>
                                 </div>
                             </div>
