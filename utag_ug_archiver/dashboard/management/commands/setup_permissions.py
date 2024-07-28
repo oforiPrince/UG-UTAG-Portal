@@ -25,6 +25,8 @@ class Command(BaseCommand):
                 'add_advertisement', 'change_advertisement', 'delete_advertisement', 'view_advertisement',
                 'add_advertplan', 'change_advertplan', 'delete_advertplan', 'view_advertplan',
                 'add_payment', 'change_payment', 'delete_payment', 'view_payment',
+                'add_payment', 'change_payment', 'delete_carouselslide', 'view_carouselslide',
+                
             ],
             'Executive': [
                 'view_dashboard',

@@ -197,28 +197,13 @@ class UpdateExecutiveMemberView(View):
             messages.error(request, 'Date appointed is required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-        try:
-            # Convert date string to datetime object
-            input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
-            formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
-        except ValueError:
-            messages.error(request, 'Invalid date format! Use "dd Mon, yyyy".')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-        try:
-            input_date_ended = datetime.strptime(date_ended, "%d %b, %Y") if date_ended else None
-            formatted_date_ended = input_date_ended.strftime("%Y-%m-%d") if input_date_ended else None
-        except ValueError:
-            messages.error(request, 'Invalid end date format! Use "dd Mon, yyyy".')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
         # Update the executive officer's details
         executive.executive_position = position
         executive.fb_profile_url = fb_username
         executive.twitter_profile_url = twitter_username
         executive.linkedin_profile_url = linkedin_username
-        executive.date_appointed = formatted_appointed_date
-        executive.date_ended = formatted_date_ended
+        executive.date_appointed = date_appointed
+        executive.date_ended = date_ended if date_ended else None
         executive.is_active_executive = True if active == 'on' else False
         if executive_image:
             executive.executive_image = executive_image

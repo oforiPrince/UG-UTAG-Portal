@@ -25,7 +25,10 @@ class DocumentsView(View):
         context = {
             'documents': documents,
             'new_announcements': new_announcements,
-            'announcement_count': announcement_count
+            'announcement_count': announcement_count,
+            'has_add_permission': request.user.has_perm('dashboard.add_document') or request.user.executive_position=="Secretary",
+            'has_change_permission': request.user.has_perm('dashboard.change_document') or request.user.executive_position=="Secretary",
+            'has_delete_permission': request.user.has_perm('dashboard.delete_document') or request.user.executive_position=="Secretary",
         }
         return render(request, self.template_name, context)
 

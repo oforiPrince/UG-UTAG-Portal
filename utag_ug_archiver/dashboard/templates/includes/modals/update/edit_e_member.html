@@ -68,13 +68,13 @@
             <div class="col-md-6">
               <label class="form-label">Date Appointed</label>
               <div class="input-group" id="datepicker2_{{executive.id}}">
-                <input type="date" class="form-control" name="date_appointed" value="{{executive.date_appointed|date:'d M, Y'}}" />
+                <input type="date" class="form-control" name="date_appointed" value="{{executive.date_appointed|date:'Y-m-d'}}" />
               </div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Date Ended</label>
               <div class="input-group" id="datepicker3_{{executive.id}}">
-                <input type="date" class="form-control" name="date_ended" {% if executive.date_ended %} value="{{executive.date_ended}}" {% endif %} />
+                <input type="date" class="form-control" name="date_ended" {% if executive.date_ended %} value="{{executive.date_ended|date:'Y-m-d'}}" {% endif %} />
               </div>
             </div>
           </div>
