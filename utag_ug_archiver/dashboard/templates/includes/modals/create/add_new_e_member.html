@@ -94,32 +94,33 @@
               <option value="Committee Member">Committee Member</option>
             </select>
           </div>
-          <div class="mb-3">
-            <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
-            <div class="input-group has-validation">
-              <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username" {% if executive.fb_username %} value="{{executive.fb_username}}" {% endif %} />
+              </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
-            <div class="input-group has-validation">
-              <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username">
+            <div class="col-md-4">
+              <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username" {% if executive.twitter_username %} value="{{executive.twitter_username}}" {% endif %} />
+              </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
-            <div class="input-group has-validation">
-              <span class="input-group-text" id="inputGroupPrepend">@</span>
-              <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username">
+            <div class="col-md-4">
+              <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username" {% if executive.linkedin_username %} value="{{executive.linkedin_username}}" {% endif %} />
+              </div>
             </div>
           </div>
           <div class="mb-3">
             <label class="form-label">Date Appointed</label>
             <div class="input-group" id="datepicker2">
-              <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container='#datepicker2' data-provide="datepicker" data-date-autoclose="true" name="date_appointed">
-              <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
+              <input type="date" class="form-control" name="date_appointed">
             </div>
           </div>
           <!-- Submit and Cancel Buttons -->

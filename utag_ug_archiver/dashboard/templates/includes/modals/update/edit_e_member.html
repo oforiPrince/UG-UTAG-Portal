@@ -9,100 +9,103 @@
       </div>
       <form action="{% url 'dashboard:update_executive_member' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-      <div class="modal-body">
-        <input type="hidden" name="executive_id" value="{{executive.id}}">
-        <div class="mb-3">
-          <label class="form-label">Select a member</label>
-          <select class="form-control select2" name="member_email" disabled value="{{executive.get_full_name}}">
-            <optgroup label="List of Member">
-              {% for member in members %}
-                <option {% if member.email == executive.email %} selected {% endif %} value="{{member.email}}">{{member.get_full_name}}</option>
-              {% endfor %}
-            </optgroup>
-          </select>
-        </div>
-        <hr class="mt-4 mb-4">
-        <div class="mb-3">
-          <label class="form-label" for="id_title">Position</label>
-          <select id="id_title" class="form-control" required name="position">
-            <option value="" selected disabled>Select a title</option>
-            <option value="President" {% if executive.executive_position == 'President' %} selected {% endif %}>President</option>
-            <option value="Vice President" {% if executive.executive_position == 'Vice President' %} selected {% endif %}>Vice President</option>
-            <option value="Secretary" {% if executive.executive_position == 'Secretary' %} selected {% endif %}>Secretary</option>
-            <option value="Treasurer" {% if executive.executive_position == 'Treasurer' %} selected {% endif %}>Treasurer</option>
-            <option value="Committee Member" {% if executive.executive_position == 'Committee Member' %} selected {% endif %}>Committee Member</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Upload Image</label>
-          <input class="form-control" type="file" id="id_image_{{executive.id}}" name="image" accept="image/*" onchange="previewImage(event, {{executive.id}})">
-          <div class="d-flex justify-content-center mb-3 mt-3">
-            <img id="imagePreview_{{executive.id}}" src="{{ executive.get_executive_image_url }}" alt="Image Preview" style="display: {% if executive.executive_image %}block{% else %}none{% endif %}; max-width: 285px; height: 200px;">
+        <div class="modal-body">
+          <input type="hidden" name="executive_id" value="{{executive.id}}">
+          <div class="mb-3">
+            <label class="form-label">Select a member</label>
+            <select class="form-control select2" name="member_email" disabled>
+              <optgroup label="List of Member">
+                {% for member in members %}
+                  <option {% if member.email == executive.email %} selected {% endif %} value="{{member.email}}">{{member.get_full_name}}</option>
+                {% endfor %}
+              </optgroup>
+            </select>
           </div>
-          <div class="alert alert-danger" id="imageError_{{executive.id}}" style="display: none;"></div>
-        </div>
-        <div class="mb-3">
-          <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
-          <div class="input-group has-validation">
-            <span class="input-group-text" id="inputGroupPrepend">@</span>
-            <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username" {% if executive.fb_username %} value="{{executive.fb_username}}" {% endif %} />
+          <hr class="mt-4 mb-4">
+          <div class="mb-3">
+            <label class="form-label" for="id_title_{{executive.id}}">Position</label>
+            <select id="id_title_{{executive.id}}" class="form-control" required name="position">
+              <option value="" selected disabled>Select a title</option>
+              <option value="President" {% if executive.executive_position == 'President' %} selected {% endif %}>President</option>
+              <option value="Vice President" {% if executive.executive_position == 'Vice President' %} selected {% endif %}>Vice President</option>
+              <option value="Secretary" {% if executive.executive_position == 'Secretary' %} selected {% endif %}>Secretary</option>
+              <option value="Treasurer" {% if executive.executive_position == 'Treasurer' %} selected {% endif %}>Treasurer</option>
+              <option value="Committee Member" {% if executive.executive_position == 'Committee Member' %} selected {% endif %}>Committee Member</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Upload Image</label>
+            <input class="form-control" type="file" id="id_image_{{executive.id}}" name="image" accept="image/*" onchange="previewImage(event, '{{executive.id}}')">
+            <div class="d-flex justify-content-center mb-3 mt-3">
+              <img id="imagePreview_{{executive.id}}" src="{{ executive.get_executive_image_url }}" alt="Image Preview" style="display: {% if executive.executive_image %}block{% else %}none{% endif %}; max-width: 285px; height: 200px;">
+            </div>
+            <div class="alert alert-danger" id="imageError_{{executive.id}}" style="display: none;"></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="validationOfficerFbUsername" class="form-label">Facebook Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerFbUsername" name="fb_username" {% if executive.fb_username %} value="{{executive.fb_username}}" {% endif %} />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username" {% if executive.twitter_username %} value="{{executive.twitter_username}}" {% endif %} />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text" id="inputGroupPrepend">@</span>
+                <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username" {% if executive.linkedin_username %} value="{{executive.linkedin_username}}" {% endif %} />
+              </div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Date Appointed</label>
+              <div class="input-group" id="datepicker2_{{executive.id}}">
+                <input type="date" class="form-control" name="date_appointed" value="{{executive.date_appointed|date:'d M, Y'}}" />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date Ended</label>
+              <div class="input-group" id="datepicker3_{{executive.id}}">
+                <input type="date" class="form-control" name="date_ended" {% if executive.date_ended %} value="{{executive.date_ended}}" {% endif %} />
+              </div>
+            </div>
+          </div>
+          <hr class="mt-4 mb-4">
+          <div class="mb-3">
+            <label class="form-label">Is Member Active?</label>
+            <div class="form-check form-switch">
+              <input class="form-check form-switch" type="checkbox" id="switch6_{{executive.id}}" name="active" switch="primary" {% if executive.is_active_executive %} checked {% endif %}>
+              <label class="form-label" for="switch6_{{executive.id}}" data-on-label="Active" data-off-label="Inactive"></label>
+            </div>
           </div>
         </div>
-        <div class="mb-3">
-          <label for="validationOfficerTwitterUsername" class="form-label">Twitter Username</label>
-          <div class="input-group has-validation">
-            <span class="input-group-text" id="inputGroupPrepend">@</span>
-            <input type="text" class="form-control" id="validationOfficerTwitterUsername" name="twitter_username" {% if executive.twitter_username %} value="{{executive.twitter_username}}" {% endif %} />
-          </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         </div>
-        <div class="mb-3">
-          <label for="validationOfficerLinkedinUsername" class="form-label">Linkedin Username</label>
-          <div class="input-group has-validation">
-            <span class="input-group-text" id="inputGroupPrepend">@</span>
-            <input type="text" class="form-control" id="validationOfficerLinkedinUsername" name="linkedin_username" {% if executive.linkedin_username %} value="{{executive.linkedin_username}}" {% endif %} />
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Date Appointed</label>
-          <div class="input-group" id="datepicker2">
-            <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container="#datepicker2" data-provide="datepicker" data-date-autoclose="true" name="date_appointed" value="{{executive.date_appointed|date:'d M, Y'}}" />
-            <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Date Ended</label>
-          <div class="input-group" id="datepicker3">
-            <input type="text" class="form-control" placeholder="dd M, yyyy" data-date-format="dd M, yyyy" data-date-container="#datepicker3" data-provide="datepicker" data-date-autoclose="true" name="date_ended" {% if executive.date_ended %} value="{{executive.date_ended}}" {% endif %} />
-            <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
-          </div>
-        </div>
-        <hr class="mt-4 mb-4">
-        <div class="mb-3">
-          <label class="form-label">Is Member Active?</label>
-          <div class="form-check form-switch">
-            <input class="form-check form-switch" type="checkbox" id="switch6" name="active" switch="primary" {% if executive.is_active_executive %} checked {% endif %}>
-            <label class="form-label" for="switch6" data-on-label="Active" data-off-label="Inactive"></label>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary">Submit</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      </div>
       </form>
     </div>
   </div>
 </div>
-<script>
-  // Your existing script for datepicker initialization (if needed)
-  document.addEventListener("DOMContentLoaded", function () {
-    $('#datepicker2').datepicker();
-    $('#datepicker3').datepicker();
-  });
-</script>
 {% endfor %}
 
 <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize datepickers for each executive
+    {% for executive in executive_officers %}
+      $('#datepicker2_{{executive.id}}').datepicker();
+      $('#datepicker3_{{executive.id}}').datepicker();
+    {% endfor %}
+  });
+
   function previewImage(event, executiveId) {
     var file = event.target.files[0];
     var reader = new FileReader();

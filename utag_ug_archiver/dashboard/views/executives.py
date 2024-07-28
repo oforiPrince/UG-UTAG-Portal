@@ -183,6 +183,7 @@ class UpdateExecutiveMemberView(View):
         date_appointed = request.POST.get('date_appointed')
         date_ended = request.POST.get('date_ended')
         active = request.POST.get('active')
+        executive_image = request.FILES.get('image')
         
         # Retrieve the executive officer
         try:
@@ -219,6 +220,8 @@ class UpdateExecutiveMemberView(View):
         executive.date_appointed = formatted_appointed_date
         executive.date_ended = formatted_date_ended
         executive.is_active_executive = True if active == 'on' else False
+        if executive_image:
+            executive.executive_image = executive_image
         executive.save()
 
         messages.success(request, 'Executive Member updated successfully!')
