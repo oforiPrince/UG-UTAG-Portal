@@ -17,14 +17,15 @@
                     <th>Announcement Title</th>
                     <th>Status</th>
                     <th>Created at</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for notification in notifications %}
+                  {% for notification in user_notifications %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>
-                      <a href="#">
+                      <a href="#" class="view-details" data-id="{{ notification.id }}" data-bs-toggle="modal" data-bs-target="#detailsModal">
                         {{ notification.announcement.title }}
                       </a>
                     </td>
@@ -34,6 +35,12 @@
                       </span>
                     </td>
                     <td>{{ notification.created_at|date:"d M Y" }}</td>
+                    <td>
+                      {% if notification.status == 'UNREAD' %}
+                        <a href="{% url 'dashboard:read_notification' notification_id=notification.id %}" class="btn btn-sm btn-primary">Mark as Read</a>
+                      {% endif %}
+                      <a href="{% url 'dashboard:delete_notification' notification_id=notification.id %}" class="btn btn-sm btn-danger">Delete</a>
+                    </td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -41,6 +48,26 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailsModalLabel">Notification Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h5 id="announcementTitle"></h5>
+        <p id="announcementContent"></p>
+        <p><strong>Status:</strong> <span id="notificationStatus"></span></p>
+        <p><strong>Created at:</strong> <span id="notificationCreatedAt"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -69,5 +96,37 @@
 
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     
-    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>    
+    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>   
+    
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Function to fetch and display notification details
+        document.querySelectorAll('.view-details').forEach(function(element) {
+          element.addEventListener('click', function(event) {
+            event.preventDefault();
+            var notificationId = this.getAttribute('data-id');
+            
+            fetch(`notifications/notification_details/${notificationId}/`)
+              .then(response => response.json())
+              .then(data => {
+                document.getElementById('announcementTitle').innerText = data.announcement_title;
+                document.getElementById('announcementContent').innerHTML = data.announcement_content;
+                document.getElementById('notificationStatus').innerText = data.status;
+                document.getElementById('notificationCreatedAt').innerText = data.created_at;
+                // Show the modal
+                var myModal = new bootstrap.Modal(document.getElementById('notificationDetailsModal'));
+                myModal.show();
+
+              })
+              .catch(error => console.error('Error fetching notification details:', error));
+          });
+        });
+        // Reload the page when the modal is closed
+        var detailsModal = document.getElementById('detailsModal');
+        detailsModal.addEventListener('hide.bs.modal', function (event) {
+          location.reload();
+        });
+      });
+    </script>
+    
 {% endblock my_scripts %}

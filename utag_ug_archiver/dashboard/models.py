@@ -110,14 +110,6 @@ class Notification(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UNREAD')
     created_at = models.DateTimeField(auto_now_add=True)
     
-class ReadAnnouncement(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE)
-    date_read = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.get_full_name} - {self.announcement.title}"
-    
 
 class File(models.Model):
     file = models.FileField(upload_to='files/')

@@ -39,7 +39,7 @@ class Command(BaseCommand):
             'Member': [
                 'view_dashboard',
                 'view_document',
-                'view_event', 'view_news', 'view_announcement',
+                'view_event', 'view_news', 'view_notification',
             ]
         }
 

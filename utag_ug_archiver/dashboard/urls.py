@@ -70,6 +70,8 @@ urlpatterns += [
 urlpatterns += [
     path('notifications', views.NotificationsView.as_view(), name='notifications'),
     path('notifications/delete/<int:notification_id>', views.NotificationDeleteView.as_view(), name='delete_notification'),
+    path('notifications/read/<int:notification_id>', views.NotificationReadView.as_view(), name='read_notification'),
+    path('notifications/notification_details/<int:notification_id>/', views.NotificationDetailsView.as_view(), name='notification_details'),
 ]
 
 #For Adverts
