@@ -52,7 +52,6 @@
               />
             </div>
           </div>
-          {% if user.other_name %}
           <div class="mb-3">
             <label class="form-label" for="id_other_name">Other Name</label>
             <div>
@@ -62,11 +61,10 @@
                 class="form-control"
                 name="other_name"
                 placeholder="Enter your other name"
-                value="{{user.other_name}}"
+                value="{% if user.other_name %}{{user.other_name}}{% endif %}"
               />
             </div>
           </div>
-          {% endif %}
           <div class="mb-3">
             <label class="form-label" for="id_last_name">Last Name</label>
             <div>
@@ -137,7 +135,7 @@
           <input class="form-check form-switch" type="checkbox" id="switch6" name="is_active" switch="primary" {% if user.is_active %} checked {% endif %}>
                                         <label class="form-label" for="switch6" data-on-label="Yes" data-off-label="No"></label>
           
-          <div class="mb-0">
+          <div class="modal-footer mb-0">
             <div>
               <button
                 type="submit"
@@ -145,8 +143,8 @@
               >
                 Submit
               </button>
-              <button type="reset" class="btn btn-secondary waves-effect">
-                Cancel
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
               </button>
             </div>
           </div>

@@ -263,23 +263,10 @@ class MemberListView(PermissionRequiredMixin, View):
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
         
-        # Initialize variables
-        notifications = []
-        notification_count = 0
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
-        # Determine the user's role and fetch relevant data
-        if request.user.groups.filter(name='Admin').exists():
-            notifications = Announcement.objects.filter(status='PUBLISHED').order_by('-created_at')[:3]
-            notification_count = Announcement.objects.filter(status='PUBLISHED').count()
-        elif request.user.has_perm('view_announcement'):
-            if request.user.groups.filter(name='Executive').exists():
-                notification_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').count()
-                notifications = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Member').order_by('-created_at')[:3]
-            elif request.user.groups.filter(name='Member').exists():
-                notification_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
-                notifications = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
-        print('has add permission')
-        print(request.user.has_perm('accounts.add_member'))
         # Prepare context
         context = {
             'users': users,

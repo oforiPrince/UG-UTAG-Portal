@@ -91,6 +91,8 @@
                             </div>
                         </div>
                     </div>
+                    
+                    {% if notification_count > 0 %}
                     <div data-simplebar style="max-height: 230px;">
                         <!-- item -->
                         {% for notification in notifications %}
@@ -120,6 +122,12 @@
                             </a>
                         </div>
                     </div>
+                    {% else %}
+                    <div class="p-2 border text-center">
+                        <p class="text-muted mb-0 py-2">No new notifications</p>
+                    </div>
+                    {% endif %}
+                        
                 </div>
             </div>
 
