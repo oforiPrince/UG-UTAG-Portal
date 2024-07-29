@@ -6,8 +6,8 @@ from django.db.models import Q
 from dashboard.models import CarouselSlide, Event, News
 from adverts.models import Advertisement
 from accounts.models import User
-from utag_ug_archiver.utils.functions import executive_members_custom_order
-from utag_ug_archiver.utils.constants import executive_members_position_order
+from utag_ug_archiver.utils.functions import executive_members_custom_order, executive_officers_custom_order
+from utag_ug_archiver.utils.constants import executive_members_position_order, executive_officers_position_order
 
 class IndexView(View):
     template_name = 'website_pages/index.html'
@@ -17,10 +17,10 @@ class IndexView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get all executives
-        executives = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
+        executives = User.objects.filter(executive_position__in=executive_officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
-        executives = sorted(executives, key=executive_members_custom_order)
+        executives = sorted(executives, key=executive_officers_custom_order)
         carousel_slides = CarouselSlide.objects.filter(is_published=True).order_by('order')
         # Advertisement
         today = date.today()
@@ -112,10 +112,10 @@ class ExecutiveOfficersView(View):
     
     def get(self, request):
         # Get all executives
-        executives = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
+        executives = User.objects.filter(executive_position__in=executive_officers_position_order, is_active_executive=True)
 
         # Sort the executives based on the custom order
-        executives = sorted(executives, key=executive_members_custom_order)
+        executives = sorted(executives, key=executive_officers_custom_order)
         context = {
             'executives': executives,
         }
