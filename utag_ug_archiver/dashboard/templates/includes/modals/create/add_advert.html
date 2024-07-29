@@ -1,46 +1,46 @@
 <!-- Modal for Advert Creation -->
 <div class="modal fade bs-example-modal-lg" id="createAdvertModal" tabindex="-1" aria-labelledby="createAdvertModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createAdvertModalLabel">Create Advertisement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form class="advertForm" enctype="multipart/form-data" action="{% url 'dashboard:create_advert' %}" method="POST">
-                    {% csrf_token %}
-                    <div class="form-group mb-3">
-                        <label for="imageInput">Image (900x300 or 210x210 pixels)</label>
-                        <input type="file" class="form-control" id="imageInput" name="image" accept="image/*" onchange="validateImage()">
-                        <span id="errorMessage" style="color: red;"></span>
-                    </div>
-                    <div class="mb-3" id="imagePreviewContainer" style="display: none;">
-                        <h5>Image Preview</h5>
-                        <img id="imagePreview" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px;">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="advertiserSelect">Advertiser</label>
-                        <select class="form-control" id="advertiserSelect" name="advertiser_id" required>
-                            <option value="">Select an Advertiser</option>
-                            {% for advertiser in advertisers %}
-                            <option value="{{advertiser.id}}">{{advertiser.company_name}}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="planSelect">Plan</label>
-                        <select class="form-control" id="planSelect" name="plan_id">
-                            <option value="">Select a Plan</option>
-                            {% for plan in plans %}
-                            <option value="{{plan.id}}">{{plan.name}}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="targetUrlInput">Target URL</label>
-                        <input type="url" class="form-control" id="targetUrlInput" name="target_url">
-                    </div>
-                    <div class="row mb-3">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="createAdvertModalLabel">Create Advertisement</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+              <form class="advertForm" enctype="multipart/form-data" action="{% url 'dashboard:create_advert' %}" method="POST">
+                  {% csrf_token %}
+                  <div class="form-group mb-3">
+                      <label for="imageInput">Image (900x300 or 210x210 pixels)</label>
+                      <input type="file" class="form-control" id="imageInput" name="image" accept="image/*" onchange="validateImage()">
+                      <span id="errorMessage" style="color: red;"></span>
+                  </div>
+                  <div class="mb-3" id="imagePreviewContainer" style="display: none;">
+                      <h5>Image Preview</h5>
+                      <img id="imagePreview" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px;">
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="advertiserSelect">Advertiser</label>
+                      <select class="form-control" id="advertiserSelect" name="advertiser_id" required>
+                          <option value="">Select an Advertiser</option>
+                          {% for advertiser in advertisers %}
+                          <option value="{{advertiser.id}}">{{advertiser.company_name}}</option>
+                          {% endfor %}
+                      </select>
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="planSelect">Plan</label>
+                      <select class="form-control" id="planSelect" name="plan_id" onchange="updatePrice()">
+                          <option value="">Select a Plan</option>
+                          {% for plan in plans %}
+                          <option value="{{plan.id}}" data-price="{{plan.price}}">{{plan.name}}</option>
+                          {% endfor %}
+                      </select>
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="targetUrlInput">Target URL</label>
+                      <input type="url" class="form-control" id="targetUrlInput" name="target_url">
+                  </div>
+                  <div class="row mb-3">
                       <div class="form-group col-md-6">
                           <label for="startDateInput">Start Date</label>
                           <input type="date" class="form-control" id="startDateInput" name="start_date" required>
@@ -48,97 +48,128 @@
                       <div class="form-group col-md-6">
                           <label for="statusSelect">Status</label>
                           <select class="form-control" id="statusSelect" name="status" required>
-                              <!-- <option value="">Select Status</option> -->
                               <option value="DRAFT">Draft</option>
                               <option value="PUBLISHED" selected>Published</option>
                               <option value="EXPIRED">Expired</option>
                           </select>
                       </div>
-                    </div>
-                    <div class="modal-footer mt-3">
-                        <div>
-                          <button
-                            type="submit"
-                            class="btn btn-primary waves-effect waves-light me-1"
-                          >
-                            Submit
-                          </button>
-                          <button type="reset" class="btn btn-secondary waves-effect">
-                            Cancel
-                          </button>
-                        </div>
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="priceInput">Price</label>
+                      <input type="text" class="form-control" id="priceInput" name="price" readonly>
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="paymentMethodSelect">Payment Method</label>
+                      <select class="form-control" id="paymentMethodSelect" name="payment_method" required>
+                          <option value="Cash">Cash</option>
+                          <!-- Add more payment methods if needed -->
+                      </select>
+                  </div>
+                  <div class="form-group mb-3">
+                      <label for="paymentStatusSelect">Payment Status</label>
+                      <select class="form-control" id="paymentStatusSelect" name="payment_status" required>
+                          <option value="Yet to Pay">Yet to Pay</option>
+                          <option value="Paid">Paid</option>
+                      </select>
+                  </div>
+                  <div class="modal-footer mt-3">
+                      <div>
+                        <button
+                          type="submit"
+                          class="btn btn-primary waves-effect waves-light me-1"
+                        >
+                          Submit
+                        </button>
+                        <button type="reset" class="btn btn-secondary waves-effect">
+                          Cancel
+                        </button>
                       </div>
-                </form>
-            </div>
-        </div>
-    </div>
+                    </div>
+              </form>
+          </div>
+      </div>
+  </div>
 </div>
 
 <script>
-  // Function to validate image dimensions
-  function validateImage() {
-    return new Promise((resolve, reject) => {
-      var input = document.getElementById('imageInput');
-      var file = input.files[0];
-      var errorMessage = document.getElementById('errorMessage');
-      var imagePreviewContainer = document.getElementById('imagePreviewContainer');
-      var imagePreview = document.getElementById('imagePreview');
+// Function to validate image dimensions
+function validateImage() {
+  return new Promise((resolve, reject) => {
+    var input = document.getElementById('imageInput');
+    var file = input.files[0];
+    var errorMessage = document.getElementById('errorMessage');
+    var imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    var imagePreview = document.getElementById('imagePreview');
 
-      // Check if a file is selected
-      if (file) {
-        // Create a new FileReader object
-        var reader = new FileReader();
+    // Check if a file is selected
+    if (file) {
+      // Create a new FileReader object
+      var reader = new FileReader();
 
-        // Set up the onload event handler
-        reader.onload = function(e) {
-          var img = new Image();
-          img.src = e.target.result;
+      // Set up the onload event handler
+      reader.onload = function(e) {
+        var img = new Image();
+        img.src = e.target.result;
 
-          // Check the dimensions of the image
-          img.onload = function() {
-            var width = this.width;
-            var height = this.height;
+        // Check the dimensions of the image
+        img.onload = function() {
+          var width = this.width;
+          var height = this.height;
 
-            // Check if width and height match the required dimensions (900x300 or 210x210)
-            if ((width === 900 && height === 300) || (width === 210 && height === 210)) {
-              // Image dimensions are valid, clear error message and show preview
-              errorMessage.textContent = '';
-              imagePreview.src = e.target.result;
-              imagePreviewContainer.style.display = 'block';
-              resolve();
-            } else {
-              // Image dimensions are not valid, display error message and hide preview
-              errorMessage.textContent = 'Image must be exactly 900x300 or 210x210 pixels.';
-              imagePreviewContainer.style.display = 'none';
-              // Reset the input field to allow selecting a new file
-              input.value = '';
-              reject();
-            }
-          };
+          // Check if width and height match the required dimensions (900x300 or 210x210)
+          if ((width === 900 && height === 300) || (width === 210 && height === 210)) {
+            // Image dimensions are valid, clear error message and show preview
+            errorMessage.textContent = '';
+            imagePreview.src = e.target.result;
+            imagePreviewContainer.style.display = 'block';
+            resolve();
+          } else {
+            // Image dimensions are not valid, display error message and hide preview
+            errorMessage.textContent = 'Image must be exactly 900x300 or 210x210 pixels.';
+            imagePreviewContainer.style.display = 'none';
+            // Reset the input field to allow selecting a new file
+            input.value = '';
+            reject();
+          }
         };
+      };
 
-        // Read the selected file as a data URL
-        reader.readAsDataURL(file);
-      } else {
-        resolve();  // If no file is selected, resolve the promise
-      }
-    });
-  }
-
-  // JavaScript for Form Submission
-  document.getElementById('advertForm').addEventListener('submit', function(event) {
-    // Prevent the default form submission
-    event.preventDefault();
-
-    // Validate the image dimensions before submitting the form
-    validateImage()
-      .then(() => {
-        // If validation passes, submit the form
-        event.target.submit();
-      })
-      .catch(() => {
-        // If validation fails, do not submit the form
-        console.log("Image validation failed.");
-      });
+      // Read the selected file as a data URL
+      reader.readAsDataURL(file);
+    } else {
+      resolve();  // If no file is selected, resolve the promise
+    }
   });
+}
+
+// Function to update price based on selected plan
+function updatePrice() {
+  var planSelect = document.getElementById('planSelect');
+  var selectedOption = planSelect.options[planSelect.selectedIndex];
+  var priceInput = document.getElementById('priceInput');
+
+  if (selectedOption) {
+    var price = selectedOption.getAttribute('data-price');
+    priceInput.value = price ? `$${price}` : '';
+  } else {
+    priceInput.value = '';
+  }
+}
+
+// JavaScript for Form Submission
+document.getElementById('advertForm').addEventListener('submit', function(event) {
+  // Prevent the default form submission
+  event.preventDefault();
+
+  // Validate the image dimensions before submitting the form
+  validateImage()
+    .then(() => {
+      // If validation passes, submit the form
+      event.target.submit();
+    })
+    .catch(() => {
+      // If validation fails, do not submit the form
+      console.log("Image validation failed.");
+    });
+});
 </script>

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from adverts.models import AdvertPlan, Advertisement, Advertiser
+from adverts.models import AdvertPlan, Advertisement, Advertiser, Payment
 
 from dashboard.models import Announcement, Notification
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -77,22 +77,40 @@ class AdvertCreateView(PermissionRequiredMixin, View):
     permission_required = 'adverts.add_advertisement'    
     @method_decorator(MustLogin)
     def post(self, request):
+        # Extract form data
         image = request.FILES.get('image')
         start_date = request.POST.get('start_date')
         plan_id = request.POST.get('plan_id')
-        plan = AdvertPlan.objects.get(id=plan_id)
         advertiser_id = request.POST.get('advertiser_id')
-        advertiser = Advertiser.objects.get(id=advertiser_id)
         status = request.POST.get('status')
         target_url = request.POST.get('target_url')
+        payment_method = request.POST.get('payment_method')
+        payment_status = request.POST.get('payment_status')
+
+        # Retrieve related objects
+        plan = AdvertPlan.objects.get(id=plan_id)
+        advertiser = Advertiser.objects.get(id=advertiser_id)
+
+        # Create the Advertisement instance
         advert = Advertisement.objects.create(
-            image = image,
-            target_url =target_url,
-            start_date = start_date,
-            plan = plan,
-            advertiser = advertiser,
-            status = status,
+            image=image,
+            target_url=target_url,
+            start_date=start_date,
+            plan=plan,
+            advertiser=advertiser,
+            status=status,
         )
+
+        # Create a Payment instance
+        Payment.objects.create(
+            advertiser=advertiser,
+            plan=plan,
+            advert=advert,
+            amount=plan.price,
+            payment_method=payment_method,
+            payment_status=payment_status,
+        )
+
         messages.success(request, 'Advert added successfully')
         return redirect('dashboard:adverts')
     
@@ -106,14 +124,37 @@ class AdvertUpdateView(PermissionRequiredMixin, View):
         plan_id = request.POST.get('plan_id')
         advertiser_id = request.POST.get('advertiser_id')
         status = request.POST.get('status')
+        payment_method = request.POST.get('payment_method')
+        payment_status = request.POST.get('payment_status')
+        price = request.POST.get('price')
+
+        # Retrieve the advertisement to update
         advert = Advertisement.objects.get(id=advert_id)
-        plan= AdvertPlan.objects.get(id=plan_id)
+        
+        # Handle the image upload
+        image = request.FILES.get('image')
+        if image:
+            advert.image = image
+        
+        # Update other fields
+        plan = AdvertPlan.objects.get(id=plan_id)
         advertiser = Advertiser.objects.get(id=advertiser_id)
         advert.start_date = start_date
         advert.plan = plan
         advert.advertiser = advertiser
         advert.status = status
+
+        # Save the advertisement
         advert.save()
+        
+        # Update payment information if necessary
+        # Assumes there is a related Payment model linked to Advertisement
+        payment, created = Payment.objects.get_or_create(advertisement=advert)
+        payment.payment_method = payment_method
+        payment.payment_status = payment_status
+        payment.price = price
+        payment.save()
+
         messages.success(request, 'Advert updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     

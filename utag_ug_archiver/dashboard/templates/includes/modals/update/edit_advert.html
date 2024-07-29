@@ -35,7 +35,7 @@
                     </div>
                     <div class="form-group mb-3">
                         <label for="planSelect_{{ad.id}}">Plan</label>
-                        <select class="form-control" id="planSelect_{{ad.id}}" name="plan_id">
+                        <select class="form-control" id="planSelect_{{ad.id}}" name="plan_id" required>
                             <option value="">Select a Plan</option>
                             {% for plan in plans %}
                             <option value="{{plan.id}}" {% if ad.plan.id == plan.id %}selected{% endif %}>{{plan.name}}</option>
@@ -48,7 +48,7 @@
                     </div>
                     <div class="row mb-3">
                       <div class="form-group col-md-6">
-                          <label for="startDateInput_{{ad.id}}">Start Date: </label><span class="text-danger"> {{ad.start_date}}</span>
+                          <label for="startDateInput_{{ad.id}}">Start Date:</label><span class="text-danger"> {{ad.start_date}}</span>
                           <input type="date" class="form-control" id="startDateInput_{{ad.id}}" name="start_date" value="{{ ad.start_date|date:'Y-m-d' }}">
                       </div>
                       <div class="form-group col-md-6">
@@ -60,55 +60,87 @@
                           </select>
                       </div>
                     </div>
+                    <div class="form-group mb-3">
+                        <label for="paymentMethod_{{ad.id}}">Payment Method</label>
+                        <select class="form-control" id="paymentMethod_{{ad.id}}" name="payment_method" required>
+                            <option value="Cash" {% if ad.payment_set.first.payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+                            <!-- Add more payment methods if needed -->
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="paymentStatus_{{ad.id}}">Payment Status</label>
+                        <select class="form-control" id="paymentStatus_{{ad.id}}" name="payment_status" required>
+                            <option value="Paid" {% if ad.payment_set.first.payment_status == 'Paid' %}selected{% endif %}>Paid</option>
+                            <option value="Yet to Pay" {% if ad.payment_set.first.payment_status == 'Yet to Pay' %}selected{% endif %}>Yet to Pay</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="price_{{ad.id}}">Plan Price</label>
+                        <input type="text" class="form-control" id="price_{{ad.id}}" name="price" value="{{ ad.plan.price }}" readonly>
+                    </div>
                     <div class="modal-footer mt-3">
                         <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                          Close
-                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 <script>
     document.querySelectorAll('.advertUpdateForm').forEach(form => {
-      form.addEventListener('change', function(event) {
-        if (event.target && event.target.classList.contains('imageInput')) {
-          const file = event.target.files[0];
-          const formElement = event.target.closest('form');
-          const errorMessage = formElement.querySelector('.errorMessage');
-          const newImagePreviewContainer = formElement.querySelector('.newImagePreviewContainer');
-          const newImagePreview = formElement.querySelector('.newImagePreview');
-  
-          if (file) {
-            validateUpdateImage(file, errorMessage, newImagePreview, newImagePreviewContainer);
-          } else {
-            newImagePreview.src = '';
-            newImagePreviewContainer.style.display = 'none';
-          }
-        }
-      });
+        form.addEventListener('change', function(event) {
+            if (event.target && event.target.classList.contains('imageInput')) {
+                const file = event.target.files[0];
+                const formElement = event.target.closest('form');
+                const errorMessage = formElement.querySelector('.errorMessage');
+                const newImagePreviewContainer = formElement.querySelector('.newImagePreviewContainer');
+                const newImagePreview = formElement.querySelector('.newImagePreview');
+
+                if (file) {
+                    validateUpdateImage(file, errorMessage, newImagePreview, newImagePreviewContainer);
+                } else {
+                    newImagePreview.src = '';
+                    newImagePreviewContainer.style.display = 'none';
+                }
+            }
+            if (event.target && event.target.id.startsWith('planSelect_')) {
+                const formElement = event.target.closest('form');
+                const selectedPlanId = event.target.value;
+                const priceInput = formElement.querySelector(`#price_${formElement.querySelector('[name="advert_id"]').value}`);
+                
+                if (selectedPlanId) {
+                    fetch(`/get-plan-price/${selectedPlanId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            priceInput.value = data.price;
+                        });
+                } else {
+                    priceInput.value = '';
+                }
+            }
+        });
     });
-  
+
     function validateUpdateImage(file, errorMessage, newImagePreview, newImagePreviewContainer) {
-      const img = new Image();
-      img.onload = function() {
-        if ((img.width !== 900 || img.height !== 300) && (img.width !== 210 || img.height !== 210)) {
-          errorMessage.textContent = 'Image must be exactly 900x300 or 210x210 pixels.';
-          newImagePreview.src = '';
-          newImagePreviewContainer.style.display = 'none';
-        } else {
-          errorMessage.textContent = '';
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            newImagePreview.src = e.target.result;
-            newImagePreviewContainer.style.display = 'block';
-          }
-          reader.readAsDataURL(file);
+        const img = new Image();
+        img.onload = function() {
+            if ((img.width !== 900 || img.height !== 300) && (img.width !== 210 || img.height !== 210)) {
+                errorMessage.textContent = 'Image must be exactly 900x300 or 210x210 pixels.';
+                newImagePreview.src = '';
+                newImagePreviewContainer.style.display = 'none';
+            } else {
+                errorMessage.textContent = '';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    newImagePreview.src = e.target.result;
+                    newImagePreviewContainer.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
         }
-      }
-      img.src = URL.createObjectURL(file);
+        img.src = URL.createObjectURL(file);
     }
-  </script>  
+</script>
 {% endfor %}
