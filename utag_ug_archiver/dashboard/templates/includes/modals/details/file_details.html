@@ -62,15 +62,19 @@
                                 </a>
                                 {% endif %}
                                 <div class="text-center mb-2">
-                                    <a href="#" class="btn btn-danger btn-sm mt-2" onclick="removeFile('{{ file.id }}')">
+                                    {% if perms.dashboard.delete_document %}
+                                    <a href="#" class="btn btn-danger btn-sm mt-2" onclick="removeFile('{{ file.id }}')" title="Delete file">
                                         <i class="mdi mdi-delete"></i>
                                     </a>
-                                    <a href="{{ file.file.url }}" class="btn btn-sm btn-success mt-2" target="_blank">
+                                    {% endif %}
+                                    {% if perms.dashboard.view_document %}
+                                    <a href="{{ file.file.url }}" class="btn btn-sm btn-success mt-2" target="_blank" title="View file">
                                         <i class="mdi mdi-eye"></i>
                                     </a>
-                                    <a href="{{ file.file.url }}" class="btn btn-sm btn-primary mt-2" download>
+                                    <a href="{{ file.file.url }}" class="btn btn-sm btn-primary mt-2" download title="Download file">
                                         <i class="mdi mdi-download"></i>
                                     </a>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}

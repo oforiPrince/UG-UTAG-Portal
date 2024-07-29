@@ -32,6 +32,14 @@ class DocumentsView(View):
             'has_delete_permission': request.user.has_perm('dashboard.delete_document') or request.user.executive_position=="Secretary",
         }
         return render(request, self.template_name, context)
+    
+    def get_documents(self, user):
+        if user.is_superuser:
+            return Document.objects.all()
+        elif user.has_perm('dashboard.view_document'):
+            return Document.objects.filter(Q(visibility='everyone') | Q(uploaded_by=user) | Q(visible_to_groups__in=user.groups.all())).distinct()
+        else:
+            return Document.objects.filter(Q(visibility='everyone') | Q(visible_to_groups__in=user.groups.all())).distinct()
 
     
     
