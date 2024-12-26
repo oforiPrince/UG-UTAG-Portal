@@ -33,6 +33,14 @@ class DocumentsView(View):
         }
         return render(request, self.template_name, context)
 
+    def get_documents(self, user):
+        # Example implementation of get_documents method
+        if user.is_superuser:
+            return Document.objects.all()
+        elif user.groups.filter(name='SomeGroup').exists():
+            return Document.objects.filter(visibility='selected_groups', visible_to_groups__in=user.groups.all())
+        else:
+            return Document.objects.filter(visibility='everyone')
     
     
 class DeleteFileView(View):
