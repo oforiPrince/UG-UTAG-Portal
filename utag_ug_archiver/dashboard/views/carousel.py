@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.views import View
 from dashboard.models import Announcement, CarouselSlide, Notification
 from django.shortcuts import get_object_or_404, redirect
-
+from django.contrib import messages
 from dashboard.forms import CarouselSlideForm
 
 
@@ -70,11 +70,12 @@ class CarouselSlideCreateUpdateView(View):
         if form.is_valid():
             form.save()
             return redirect('dashboard:carousel_slide_list')
-
-        return render(request, self.template_name, {'form': form})
+        else:
+            messages.info(request, 'An error occurred while saving the carousel slide. Please try again.') 
+            return render(request, self.template_name, {'form': form, 'carousel_slide': slide if slide_id else None})
     
 class CarouselSlideDeleteView(View):
-    def post(self, request, slide_id):
+    def get(self, request, slide_id):
         slide = get_object_or_404(CarouselSlide, id=slide_id)
         slide.delete()
         return redirect('dashboard:carousel_slide_list')

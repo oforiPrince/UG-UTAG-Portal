@@ -82,7 +82,10 @@ class NewsCreateUpdateView(View):
                 if featured_image:
                     news.featured_image = featured_image
                 news.save()
-                news.tags.set(tags)  # Update tags
+                # Update tags
+                news.tags.clear()
+                for tag in tags:
+                    news.tags.add(tag)
                 self._handle_citations(request, news)
                 self._handle_documents(request, news)
                 messages.success(request, "News updated successfully!")
@@ -94,7 +97,8 @@ class NewsCreateUpdateView(View):
                     is_published=is_published,
                     featured_image=featured_image
                 )
-                news.tags.set(tags)  # Assign tags
+                for tag in tags:
+                    news.tags.add(tag)
                 self._handle_citations(request, news)
                 self._handle_documents(request, news)
                 messages.success(request, "News created successfully!")
@@ -103,7 +107,7 @@ class NewsCreateUpdateView(View):
 
         except Exception as e:
             messages.error(request, f"Error saving news: {e}")
-            return redirect('dashboard:create_news')
+            return redirect('dashboard:news')
 
     def _handle_citations(self, request, news):
         """

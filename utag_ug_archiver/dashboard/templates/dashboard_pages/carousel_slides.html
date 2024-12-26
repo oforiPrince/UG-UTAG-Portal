@@ -63,7 +63,7 @@
                         <i class="mdi mdi-pen"></i>
                       </a>
                       {% endif %}
-                      {% if perms.dashboard.change_carouselslide  %}
+                      {% if perms.dashboard.delete_carouselslide  %}
                       <a href="{% url 'dashboard:carousel_slide_delete' slide_id=slide.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this slide?');" title="Delete">
                         <i class="mdi mdi-delete"></i>
                       </a>

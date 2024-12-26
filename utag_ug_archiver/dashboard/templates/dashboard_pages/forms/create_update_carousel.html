@@ -51,7 +51,7 @@
                             
                                 <div class="mb-3 col-md-4">
                                     <label for="order" class="form-label">Slide Order</label>
-                                    <input type="number" class="form-control" id="order" name="order" value="{{ initial_data.order }}" required>
+                                    <input type="number" class="form-control" id="order" name="order" value="{{ initial_data.order }}">
                                 </div>
                             </div>
 
@@ -160,7 +160,7 @@
         tinymce.init({
             selector: '#description',
             plugins: 'lists link image',
-            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
+            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent',
         });
     </script>
 {% endblock my_scripts %}
