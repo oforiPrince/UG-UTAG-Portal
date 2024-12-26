@@ -66,7 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.first_name
     
     def get_profile_pic_url(self):
-        return self.profile_pic.url if self.profile_pic else None
+        return self.profile_pic.url if self.profile_pic else '/static/dashboard/assets/images/users/profile.png'
     
     def get_executive_image_url(self):
         return self.executive_image.url if self.executive_image else None
