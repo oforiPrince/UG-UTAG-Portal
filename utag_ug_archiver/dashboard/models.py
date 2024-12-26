@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import Group
 from django.utils.text import slugify
 from tinymce.models import HTMLField
-from accounts.models import User
+from django.conf import settings
 
 class Event(models.Model):
     image = models.ImageField(upload_to='event_images/')
@@ -14,7 +14,7 @@ class Event(models.Model):
     time = models.TimeField()
     is_published = models.BooleanField(default=False)
     is_past_due = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -36,20 +36,58 @@ class Event(models.Model):
         super().save(*args, **kwargs)
 
 
+from django.db import models
+from django.utils.text import slugify
+from tinymce.models import HTMLField
+from django.contrib.auth.models import User
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class Citation(models.Model):
+    source_name = models.CharField(max_length=255)
+    url = models.URLField(max_length=500)
+    description = models.TextField(blank=True, null=True)
+    news = models.ForeignKey('News', related_name='citations', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.source_name
+
+
+class AttachedDocument(models.Model):
+    news = models.ForeignKey('News', related_name='attached_documents', on_delete=models.CASCADE)
+    name = models.CharField(max_length=150)
+    file = models.FileField(upload_to='news_documents/')
+
+    def __str__(self):
+        return self.name
+
+
 class News(models.Model):
-    featured_image = models.ImageField(upload_to='news_images/')
+    featured_image = models.ImageField(upload_to='news_images/', blank=True, null=True)
     title = models.CharField(max_length=150)
-    news_slug = models.SlugField(max_length=150, blank=True)
+    news_slug = models.SlugField(max_length=150, unique=True, blank=True)
     content = HTMLField()
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='author')
     tags = models.ManyToManyField('Tag', blank=True)
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def get_featured_image_url(self):
         return self.featured_image.url if self.featured_image else None
-    
+
     def save(self, *args, **kwargs):
         if not self.news_slug:
             self.news_slug = slugify(self.title)
@@ -63,18 +101,7 @@ class News(models.Model):
 
     def __str__(self):
         return self.title
-    
-class Tag(models.Model):
-    name = models.CharField(max_length=50)
-    slug = models.SlugField(max_length=50, blank=True)
-    
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return self.name
+
     
 class Announcement(models.Model):
     STATUS_CHOICES = (
@@ -90,7 +117,7 @@ class Announcement(models.Model):
     title = models.CharField(max_length=100)
     content = HTMLField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     target = models.CharField(max_length=20, choices=TARGET_CHOICES, default='everyone')
@@ -105,7 +132,7 @@ class Notification(models.Model):
         ('READ', 'Read'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     announcement = models.ForeignKey('Announcement', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UNREAD')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -132,7 +159,7 @@ class Document(models.Model):
         ('everyone', 'Everyone'),
         ('selected_groups', 'Selected Groups'),
     )
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name='uploaded_by',null=True, blank=True)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     files = models.ManyToManyField(File)
     title = models.CharField(max_length=100)

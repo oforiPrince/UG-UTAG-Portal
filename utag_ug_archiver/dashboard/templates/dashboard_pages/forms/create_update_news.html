@@ -1,20 +1,22 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
+
 {% block title %}
 {% if news.pk %}
-      Update
+    Update News
 {% else %}
-      Create
+    Create News
 {% endif %}
 {% endblock title %}
+
 {% block content %}
 <div class="page-content">
   <div class="container-fluid">
     <div class="row">
       <div class="col-12">
-        <div class="card">
+        <div class="card shadow-sm">
           <div class="card-body">
-            <div class="row align-items-center">
+            <div class="row align-items-center mb-4">
               <div class="col-md-8">
                 <h4 class="card-title">
                   {% if news.pk %}
@@ -26,49 +28,112 @@
               </div>
             </div>
 
-            <form id="newsForm" class="custom-validation" method="POST" enctype="multipart/form-data">
+            <!-- News Form -->
+            <form id="newsForm" method="POST" enctype="multipart/form-data" class="custom-validation">
               {% csrf_token %}
+
+              <!-- News Title -->
               <div class="mb-3">
-                <label for="title" class="form-label">News Title</label>
+                <label for="title" class="form-label fw-bold">News Title</label>
                 <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
               </div>
 
+              <!-- News Content -->
               <div class="mb-3">
-                <label for="content" class="form-label">News Content</label>
+                <label for="content" class="form-label fw-bold">News Content</label>
                 <textarea class="form-control" id="content" name="content" rows="10">{{ initial_data.content }}</textarea>
               </div>
 
+              <!-- Tags -->
               <div class="mb-3">
-                <label for="tags" class="form-label">Tags</label>
-                <select class="form-control" id="tags" name="tags" multiple="multiple">
+                <label for="tags" class="form-label fw-bold">Tags</label>
+                <select class="form-control select2" id="tags" name="tags" multiple="multiple">
                   {% for tag in tags %}
-                    <option value="{{ tag.id }}" {% if tag in initial_data.tags.all %}selected{% endif %}>{{ tag.name }}</option>
+                    <option value="{{ tag.id }}" {% if tag.id in initial_data.tags %}selected{% endif %}>{{ tag.name }}</option>
                   {% endfor %}
                 </select>
               </div>
 
+              <!-- Featured Image -->
               <div class="mb-3">
-                <label for="image" class="form-label">News Featured Image</label>
-                <input type="file" class="form-control" id="image" name="featured_image" onchange="previewAndValidateImage(this)">
-                <div id="imageError" class="text-danger"></div>
-                <div class="mt-2 d-flex justify-content-center">
-                  <img id="oldImagePreview" src="{{ initial_data.get_featured_image_url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.featured_image %}display: none;{% endif %}" />
-                  <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.featured_image %}display: none;{% endif %}" />
+                <label for="image" class="form-label fw-bold">News Featured Image</label>
+                <input type="file" class="form-control" id="image" name="featured_image">
+                <div id="imageError" class="text-danger mt-2"></div>
+
+                <!-- Images Container -->
+                <div class="d-flex justify-content-center align-items-center mt-3 gap-3">
+                  <!-- Current Image -->
+                  {% if initial_data.featured_image %}
+                  <div class="text-center">
+                    <p class="text-muted">Current Image:</p>
+                    <img src="{{ initial_data.featured_image }}" 
+                        alt="Current Image" 
+                        class="img-fluid rounded shadow-sm border" 
+                        style="max-width: 150px; max-height: 150px;">
+                  </div>
+                  {% endif %}
+
+                  <!-- New Image Preview -->
+                  <div id="newImagePreviewWrapper" class="text-center" style="display: none;">
+                    <p class="text-muted">New Image Preview:</p>
+                    <img id="newImagePreview" 
+                        class="img-fluid rounded shadow-sm border" 
+                        style="max-width: 150px; max-height: 150px;" />
+                  </div>
                 </div>
               </div>
 
+
+              <!-- Citations -->
+              <div class="mb-3">
+                <label for="citations" class="form-label fw-bold">Citations</label>
+                <div id="citationsWrapper">
+                  {% for citation in initial_data.citations %}
+                  <div class="citation-item mb-3">
+                    <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name" value="{{ citation.source_name }}">
+                    <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL" value="{{ citation.url }}">
+                    <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description">{{ citation.description }}</textarea>
+                    <button type="button" class="btn btn-danger btn-sm remove-citation">Remove</button>
+                  </div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="addCitation">Add Citation</button>
+              </div>
+
+              <!-- Attached Documents -->
+              <div class="mb-3">
+                <label for="documents" class="form-label fw-bold">Attached Documents</label>
+                <div id="documentsWrapper">
+                  {% for document in initial_data.attached_documents %}
+                  <div class="document-item mb-3">
+                    <input type="text" name="document_names[]" class="form-control mb-2" placeholder="Document Name" value="{{ document.name }}">
+                    <input type="file" name="document_files[]" class="form-control mb-2">
+                    <a href="{{ document.file.url }}" class="btn btn-primary btn-sm" target="_blank">View Existing</a>
+                    <button type="button" class="btn btn-danger btn-sm remove-document">Remove</button>
+                  </div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="addDocument">Add Document</button>
+              </div>
+
+              <!-- Publish Checkbox -->
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if initial_data.is_published %}checked{% endif %}>
-                <label class="form-check-label" for="isPublished">
-                  Published
-                  <small class="text-success">
-                    (Check this box if you want to publish the news and make it visible to the public.)
-                  </small>
+                <label class="form-check-label fw-bold" for="isPublished">
+                  Publish
+                  <small class="text-muted d-block">(Make this news visible to the public.)</small>
                 </label>
               </div>
 
-              <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+              <!-- Submit Button -->
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                  <i class="mdi mdi-check-circle-outline me-2"></i>Submit
+                </button>
+              </div>
             </form>
+            <!-- End News Form -->
+
           </div>
         </div>
       </div>
@@ -76,85 +141,91 @@
   </div>
 </div>
 {% endblock %}
+
 {% block my_styles %}
- <!-- DataTables -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-
- <!-- Responsive datatable examples -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- <!-- Select2 CSS -->
- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 {% endblock my_styles %}
+
 {% block my_scripts %}
-    <script>
-      // JavaScript for previewing image and validating dimensions
-      function previewAndValidateImage(input) {
-        var oldImagePreview = document.getElementById('oldImagePreview');
-        var newImagePreview = document.getElementById('newImagePreview');
-        var imageError = document.getElementById('imageError');
-        imageError.textContent = '';
-      
-        if (input.files && input.files[0]) {
-          var file = input.files[0];
-          var img = new Image();
-          img.onload = function() {
-            if (img.width !== 580 || img.height !== 430) {
-              imageError.textContent = 'Image dimensions must be 580 x 430 pixels.';
-              input.value = '';  // Clear the input if dimensions are incorrect
-              newImagePreview.src = '';
-              newImagePreview.style.display = 'none';
-              oldImagePreview.style.display = 'inline-block';
-            } else {
-              var reader = new FileReader();
-              reader.onload = function (e) {
-                newImagePreview.src = e.target.result;
-                newImagePreview.style.display = 'inline-block';
-                oldImagePreview.style.display = 'none';
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-          img.src = URL.createObjectURL(file);
-        } else {
-          newImagePreview.src = '';
-          newImagePreview.style.display = 'none';
-          oldImagePreview.style.display = 'inline-block';
-        }
+<script>
+  // Dynamic New Image Preview
+    document.getElementById('image').addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      const previewWrapper = document.getElementById('newImagePreviewWrapper');
+      const previewImage = document.getElementById('newImagePreview');
+      const imageError = document.getElementById('imageError');
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          previewImage.src = e.target.result;
+          previewWrapper.style.display = 'block'; // Show new image preview
+          imageError.textContent = ''; // Clear any previous errors
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewWrapper.style.display = 'none'; // Hide new image preview if no file is selected
+        previewImage.src = '';
       }
+    });
 
-      // Initialize Select2 for tags input
-      $(document).ready(function() {
-        $('#tags').select2({
-          tags: true,
-          tokenSeparators: [',']
-        });
-      });
-    </script>
 
-    <!-- Required datatable js -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+  // Initialize Select2 for Tags
+  $(document).ready(function () {
+    $('#tags').select2({
+      tags: true,
+      tokenSeparators: [','],
+      placeholder: 'Add or select tags',
+      allowClear: true
+    });
 
-    <!-- Responsive examples -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+    // Add and remove citations dynamically
+    $('#addCitation').click(function () {
+      $('#citationsWrapper').append(`
+        <div class="citation-item mb-3">
+          <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name">
+          <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL">
+          <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description"></textarea>
+          <button type="button" class="btn btn-danger btn-sm remove-citation">Remove</button>
+        </div>
+      `);
+    });
 
-    <!-- Datatable init js -->
-    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+    $('#citationsWrapper').on('click', '.remove-citation', function () {
+      $(this).closest('.citation-item').remove();
+    });
 
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    // Add and remove documents dynamically
+    $('#addDocument').click(function () {
+      $('#documentsWrapper').append(`
+        <div class="document-item mb-3">
+          <input type="text" name="document_names[]" class="form-control mb-2" placeholder="Document Name">
+          <input type="file" name="document_files[]" class="form-control mb-2">
+          <button type="button" class="btn btn-danger btn-sm remove-document">Remove</button>
+        </div>
+      `);
+    });
 
-    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
-    
-    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+    $('#documentsWrapper').on('click', '.remove-document', function () {
+      $(this).closest('.document-item').remove();
+    });
 
-    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-    <script>
-      tinymce.init({
-          selector: '#content',
-          plugins: 'lists link image',
-          toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
-      });
-    </script>
-{% endblock my_scripts %}
+    // Initialize TinyMCE
+    tinymce.init({
+      selector: '#content',
+      plugins: 'lists link image media table paste code help wordcount',
+      toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image media | code help',
+      menubar: false,
+      branding: false,
+      height: 400,
+    });
+  });
+</script>
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- TinyMCE JS -->
+<script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+{% endblock %}

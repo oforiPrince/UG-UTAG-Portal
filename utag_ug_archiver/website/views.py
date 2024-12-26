@@ -89,8 +89,10 @@ class NewsDetailView(View):
     def get(self, request, *args, **kwargs):
         news_slug = kwargs.get('slug')
         news = get_object_or_404(News, news_slug=news_slug)
+        latest_news = News.objects.filter(is_published=True).exclude(id=news.id).order_by('-created_at')[:5]
         context = {
-            'news': news
+            'news': news,
+            'latest_news': latest_news
         }
         return render(request, self.template_name, context)
 

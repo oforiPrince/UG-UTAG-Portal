@@ -1,4 +1,4 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
@@ -6,7 +6,7 @@ from django.http import HttpResponseRedirect
 
 
 
-from dashboard.models import Announcement, News, Notification, Tag
+from dashboard.models import Announcement, AttachedDocument, Citation, News, Notification, Tag
 
 from utag_ug_archiver.utils.decorators import MustLogin
 
@@ -27,27 +27,39 @@ class NewsView(View):
         }
         return render(request, self.template_name, context)
 
+
 class NewsCreateUpdateView(View):
     template_name = 'dashboard_pages/forms/create_update_news.html'
 
     @method_decorator(MustLogin)
     def get(self, request, news_id=None):
         tags = Tag.objects.all()
-        if news_id:
-            news = News.objects.get(id=news_id)
-            initial_data = {
-                'title': news.title,
-                'content': news.content,
-                'is_published': 'on' if news.is_published else 'off',
-                'featured_image': news.featured_image,
-                'tags': [tag.id for tag in news.tags.all()]  # Get the list of tag IDs
-            }
-        else:
-            initial_data = {
-                'is_published': 'off',
-                'tags': []
-            }
-        return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags})
+        try:
+            if news_id:
+                news = get_object_or_404(News, id=news_id)
+                initial_data = {
+                    'title': news.title,
+                    'content': news.content,
+                    'is_published': news.is_published,
+                    'featured_image': news.featured_image.url if news.featured_image else None,
+                    'tags': [tag.id for tag in news.tags.all()],
+                    'citations': news.citations.all(),
+                    'attached_documents': news.attached_documents.all(),
+                }
+            else:
+                initial_data = {
+                    'title': '',
+                    'content': '',
+                    'is_published': False,
+                    'tags': [],
+                    'citations': [],
+                    'attached_documents': [],
+                    'featured_image': None,
+                }
+            return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags})
+        except Exception as e:
+            messages.error(request, f"Error loading news form: {e}")
+            return redirect('dashboard:news')
 
     @method_decorator(MustLogin)
     def post(self, request, news_id=None):
@@ -57,34 +69,80 @@ class NewsCreateUpdateView(View):
         is_published = request.POST.get('is_published') == 'on'
         featured_image = request.FILES.get('featured_image')
 
-        # Handle tags
-        tag_names = request.POST.getlist('tags')  # Get the selected tag names from the form
-        tags = []
-        for name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=name)  # Create or get the tag
-            tags.append(tag)
+        try:
+            # Handle tags
+            tag_ids = request.POST.getlist('tags')
+            tags = Tag.objects.filter(id__in=tag_ids)
 
-        if news_id:
-            news = News.objects.get(id=news_id)
-            news.title = title
-            news.content = content
-            news.is_published = is_published
-            news.featured_image = featured_image
-            news.save()
-            news.tags.set(tags)  # Update the tags
-            messages.info(request, "News Updated Successfully")
-        else:
-            news = News.objects.create(
-                author=user,
-                title=title,
-                content=content,
-                is_published=is_published,
-                featured_image=featured_image
-            )
-            news.tags.set(tags)  # Set the tags for the new news item
-            messages.info(request, "News Created Successfully")
+            if news_id:
+                news = get_object_or_404(News, id=news_id)
+                news.title = title
+                news.content = content
+                news.is_published = is_published
+                if featured_image:
+                    news.featured_image = featured_image
+                news.save()
+                news.tags.set(tags)  # Update tags
+                self._handle_citations(request, news)
+                self._handle_documents(request, news)
+                messages.success(request, "News updated successfully!")
+            else:
+                news = News.objects.create(
+                    author=user,
+                    title=title,
+                    content=content,
+                    is_published=is_published,
+                    featured_image=featured_image
+                )
+                news.tags.set(tags)  # Assign tags
+                self._handle_citations(request, news)
+                self._handle_documents(request, news)
+                messages.success(request, "News created successfully!")
 
-        return redirect('dashboard:news')
+            return redirect('dashboard:news')
+
+        except Exception as e:
+            messages.error(request, f"Error saving news: {e}")
+            return redirect('dashboard:create_news')
+
+    def _handle_citations(self, request, news):
+        """
+        Handle adding/updating citations for a news item.
+        """
+        citation_sources = request.POST.getlist('citation_sources[]')
+        citation_urls = request.POST.getlist('citation_urls[]')
+        citation_descriptions = request.POST.getlist('citation_descriptions[]')
+
+        # Clear existing citations
+        news.citations.all().delete()
+
+        for source, url, description in zip(citation_sources, citation_urls, citation_descriptions):
+            if source and url:  # Ensure valid citations
+                Citation.objects.create(
+                    news=news,
+                    source_name=source,
+                    url=url,
+                    description=description
+                )
+
+    def _handle_documents(self, request, news):
+        """
+        Handle adding/updating attached documents for a news item.
+        """
+        document_names = request.POST.getlist('document_names[]')
+        document_files = request.FILES.getlist('document_files[]')
+
+        # Clear existing documents
+        news.attached_documents.all().delete()
+
+        for name, file in zip(document_names, document_files):
+            if name and file:  # Ensure valid documents
+                AttachedDocument.objects.create(
+                    news=news,
+                    name=name,
+                    file=file
+                )
+
     
 class NewsUpdateView(View):
     
