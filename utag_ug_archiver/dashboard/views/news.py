@@ -132,16 +132,27 @@ class NewsCreateUpdateView(View):
         document_names = request.POST.getlist('document_names[]')
         document_files = request.FILES.getlist('document_files[]')
 
-        # Clear existing documents
-        news.attached_documents.all().delete()
+        existing_documents = {doc.name: doc for doc in news.attached_documents.all()}
 
+        # Update existing or add new documents
         for name, file in zip(document_names, document_files):
             if name and file:  # Ensure valid documents
-                AttachedDocument.objects.create(
-                    news=news,
-                    name=name,
-                    file=file
-                )
+                if name in existing_documents:  # If the document already exists, update the file
+                    existing_document = existing_documents[name]
+                    existing_document.file = file
+                    existing_document.save()
+                else:  # Add new document
+                    AttachedDocument.objects.create(
+                        news=news,
+                        name=name,
+                        file=file
+                    )
+
+        # Remove documents whose names are not in the updated list
+        for doc_name in existing_documents.keys():
+            if doc_name not in document_names:
+                existing_documents[doc_name].delete()
+
 
     
 class NewsUpdateView(View):
