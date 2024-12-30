@@ -1,6 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
-{% block title %}Executive Members{% endblock title %}
+{% block title %}All Executives{% endblock title %}
 {% block content %}
 
 <div class="page-content">
@@ -10,10 +10,10 @@
         <div class="page-title-box">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h6 class="page-title">Executive Members</h6>
+                    <h6 class="page-title">All Executives</h6>
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Dashboard</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Executive Members</li>
+                        <li class="breadcrumb-item active" aria-current="page">All Executives</li>
                     </ol>
                 </div>
             </div>
@@ -25,7 +25,7 @@
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-md-8">
-                                <h4 class="card-title">Executive Members</h4>
+                                <h4 class="card-title">All Executives</h4>
                             </div>
                             {% if user.is_admin or user.is_superuser %}
                             <div class="col-md-4">

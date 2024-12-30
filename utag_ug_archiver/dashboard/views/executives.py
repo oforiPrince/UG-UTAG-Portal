@@ -11,7 +11,7 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User
 from dashboard.models import Announcement, Notification
-from utag_ug_archiver.utils.constants import executive_members_position_order
+from utag_ug_archiver.utils.constants import executive_committee_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -23,9 +23,9 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
     @method_decorator(MustLogin)
     def get(self, request):
         # Get all executive officers
-        executive_officers = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
+        executive_officers = User.objects.filter(executive_position__in=executive_committee_members_position_order, is_active_executive=True)
         # Sort the executive officers based on the custom order
-        executive_officers = sorted(executive_officers, key=lambda x: executive_members_position_order.index(x.executive_position) if x.executive_position in executive_members_position_order else len(executive_members_position_order))
+        executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position) if x.executive_position in executive_committee_members_position_order else len(executive_committee_members_position_order))
 
         # Get all members
         members = User.objects.all().exclude(is_active_executive=True)
@@ -120,9 +120,6 @@ class ExistingExecutiveMemberCreateView(View):
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
         executive_image = request.FILES.get('image')
-        print(executive_image)
-        if position == '' or position is None:
-            position = 'Committee Member'
         print(position)
         print(member_id)
         # Retrieve the member
