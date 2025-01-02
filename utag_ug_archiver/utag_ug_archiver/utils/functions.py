@@ -43,8 +43,10 @@ def send_credentials_email(user, raw_password):
                 from_email,
                 [user.email]
             )
+            print(email_body)
             email.content_subtype = "html"
             send_email_with_retry(email)
+            print('Email sent')
         except Exception as e:
             logger.error(f'Error sending email to {user.email}: {e}')
             

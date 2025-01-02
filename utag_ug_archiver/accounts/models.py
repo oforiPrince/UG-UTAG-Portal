@@ -31,6 +31,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     profile_pic = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     email = models.EmailField(unique=True)
+    email_sent = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     department = models.CharField(max_length=50, blank=True, null=True)
     created_from_dashboard = models.BooleanField(default=False)

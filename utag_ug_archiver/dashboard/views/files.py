@@ -34,10 +34,11 @@ class DocumentsView(View):
         return render(request, self.template_name, context)
 
     def get_documents(self, user):
-        # Example implementation of get_documents method
+        # get user's group names
+        group_names = user.groups.values_list('name', flat=True)
         if user.is_superuser:
             return Document.objects.all()
-        elif user.groups.filter(name='SomeGroup').exists():
+        elif user.groups.filter(name__in=['Executive', 'Member']).exists():
             return Document.objects.filter(visibility='selected_groups', visible_to_groups__in=user.groups.all())
         else:
             return Document.objects.filter(visibility='everyone')

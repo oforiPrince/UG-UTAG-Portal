@@ -191,16 +191,15 @@ class MemberCreateView(PermissionRequiredMixin, View):
                     gender=gender,
                     email=email,
                     phone_number=phone_number,
+                    department=department,
                     password=make_password(raw_password),
                     created_by=request.user,
                     created_from_dashboard=True,
+                    is_bulk_creation=True
                 )
                 
                 # Add user to Member group
                 member.groups.add(Group.objects.get(name='Member'))
-
-                # Prepare and send the email
-                send_credentials_email(member, raw_password)
 
                 messages.success(request, 'Member created successfully!')
         except Exception as e:
@@ -278,8 +277,7 @@ class MemberListView(PermissionRequiredMixin, View):
             elif request.user.groups.filter(name='Member').exists():
                 notification_count = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').count()
                 notifications = Announcement.objects.filter(status='PUBLISHED').exclude(target_groups__name='Executive').order_by('-created_at')[:3]
-        print('has add permission')
-        print(request.user.has_perm('accounts.add_member'))
+
         # Prepare context
         context = {
             'users': users,
