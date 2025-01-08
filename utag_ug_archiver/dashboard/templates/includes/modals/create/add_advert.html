@@ -10,7 +10,7 @@
                 <form class="advertForm" enctype="multipart/form-data" action="{% url 'dashboard:create_advert' %}" method="POST">
                     {% csrf_token %}
                     <div class="form-group mb-3">
-                        <label for="imageInput">Image (900x300 or 210x210 pixels)</label>
+                        <label for="imageInput">Image (900x300 or 300X300 pixels)</label>
                         <input type="file" class="form-control" id="imageInput" name="image" accept="image/*" onchange="validateImage()">
                         <span id="errorMessage" style="color: red;"></span>
                     </div>
@@ -101,8 +101,8 @@
             var width = this.width;
             var height = this.height;
 
-            // Check if width and height match the required dimensions (900x300 or 210x210)
-            if ((width === 900 && height === 300) || (width === 210 && height === 210)) {
+            // Check if width and height match the required dimensions (900x300 or 300X300)
+            if ((width === 900 && height === 300) || (width === 300 && height === 300)) {
               // Image dimensions are valid, clear error message and show preview
               errorMessage.textContent = '';
               imagePreview.src = e.target.result;

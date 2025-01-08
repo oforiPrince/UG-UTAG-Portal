@@ -88,7 +88,7 @@
     <!-- Core Value area  End -->
 
     <!-- About Us area Start -->
-    <section class="about_us-area">
+    <section class="about_us-area mb--50">
         <div class="container-fluid p-0">
             <div class="row g-0">
                 <div class="col-md-6">
@@ -112,35 +112,29 @@
     <section class="about_us-area mb--50">
         <div class="container-fluid p-0">
             <div class="row g-0">
-                <div class="col-md-9 col-lg-9 col-sm-9">
+                <div class="col-9 col-md-9 pr--15">
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
-                            <div class="carousel-inner">
-                                {% for ad in large_advert_images %}
-                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
-                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
-                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
-                                        </a>
-                                    </div>
-                                {% endfor %}
-                            </div>
+                            {% for ad in large_advert_images %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                        <img src="{{ ad.get_image_url }}" loading="lazy" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                    </a>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-lg-3 col-sm-3 p-3">
+                <div class="col-3 col-md-3 pl--5">
                     <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
                         <div class="carousel-inner">
-                            <div class="carousel-inner">
-                                
-                                {% for ad in small_advert_images %}
-                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
-                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
-                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
-                                        </a>
-                                    </div>
-                                {% endfor %}
-                                    
-                            </div>
+                            {% for ad in small_advert_images %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                        <img src="{{ ad.get_image_url }}" loading="lazy" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                    </a>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -199,29 +193,41 @@
     <!-- News Area End -->
     <!-- Advert -->
     {% if top_active_ads %}
-    <section class="projects-area mb--50">
-        <div class="ontainer-fluid p-0">
-            <div class="row g-0">
-                <div class="col-md-12">
-                    <div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+    <section class="advertisements mb--50">
+        <div class="container-fluid pr--15">
+            <div class="row g-0 advertisements-row">
+                <!-- Large Advertisements -->
+                <div class="col-md-9 p-3">
+                    <div id="carouselExampleSlidesOnlyLarge" class="carousel slide h-100" data-ride="carousel">
                         <div class="carousel-inner">
-                            <div class="carousel-inner">
-                                
-                                {% for ad in top_active_ads %}
-                                    <div class="carousel-item {% if forloop.first %} active {% endif %}">
-                                        <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
-                                            <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
-                                        </a>
-                                    </div>
-                                {% endfor %}
-                                    
-                            </div>
+                            {% for ad in large_advert_images %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                        <img src="{{ ad.get_image_url }}" loading="lazy" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <!-- Small Advertisements -->
+                <div class="col-md-3 pl-5">
+                    <div id="carouselExampleSlidesOnlySmall" class="carousel slide h-100" data-ride="carousel">
+                        <div class="carousel-inner">
+                            {% for ad in small_advert_images %}
+                                <div class="carousel-item {% if forloop.first %} active {% endif %}">
+                                    <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
+                                        <img src="{{ ad.get_image_url }}" loading="lazy" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                    </a>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+    
     {% endif %}
         
     <!-- Advert -->
@@ -353,7 +359,7 @@
                             {% for ad in bottom_active_ads %}
                                 <div class="carousel-item {% if forloop.first %} active {% endif %}">
                                     <a href="{{ ad.target_url }}" class="advertisement-link" data-ad-id="{{ ad.id }}" target="_blank">
-                                        <img src="{{ ad.get_image_url }}" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
+                                        <img src="{{ ad.get_image_url }}" loading="lazy" class="d-block w-100" alt="{{ ad.advertiser.company_name }}">
                                     </a>
                                 </div>
                             {% endfor %}
@@ -370,4 +376,31 @@
 
 </div>
 <!-- Main Content Wrapper End -->
+<style>
+    /* Ensure the parent row has flexbox properties */
+.advertisements-row {
+    display: flex;
+    align-items: stretch; /* Ensures all columns are the same height */
+}
+
+/* Style each column to stretch */
+.advertisements-row .col-md-9,
+.advertisements-row .col-md-3 {
+    display: flex;
+    flex-direction: column; /* Ensure inner content adapts to column layout */
+}
+
+/* Style the carousel to fill the column */
+.advertisements-row .carousel {
+    flex: 1; /* Makes the carousel take up the full height of the column */
+}
+
+/* Ensure images fit their containers */
+.advertisements-row img {
+    object-fit: cover; /* Ensures images maintain aspect ratio while filling container */
+    height: 100%; /* Matches image height to container height */
+    width: 100%; /* Ensures images are responsive to the width */
+}
+
+</style>
 {% endblock content %}

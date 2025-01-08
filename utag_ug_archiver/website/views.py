@@ -35,7 +35,7 @@ class IndexView(View):
         for advert in advertisements:
             if advert.image_width == 900 and advert.image_height == 300:
                 large_advertisements.append(advert)
-            elif advert.image_width == 210 and advert.image_height == 210:
+            elif advert.image_width == 300 and advert.image_height == 300:
                 small_advertisements.append(advert)
 
         context = {

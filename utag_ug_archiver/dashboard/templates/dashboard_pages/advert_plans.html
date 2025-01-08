@@ -31,9 +31,9 @@
                     <th>#</th>
                     <th>Name</th>
                     <th>Price</th>
-                    <th>Duration</th>
-                    <th>Created at</th>
+                    <th>Duration (in days)</th>
                     <th class="text-center">Status</th>
+                    <th>Created at</th>
                     <th class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -44,7 +44,6 @@
                     <td>{{ plan.name }}</td>
                     <td>GHC {{ plan.price }}</td>
                     <td>{{ plan.duration_in_days }}</td>
-                    <td>{{ plan.created_at|date:"d M Y" }}</td>
                     {% if plan.status == "active" %}
                     <td class="text-center">
                       <span class="badge bg-success">Active</span>
@@ -54,6 +53,7 @@
                       <span class="badge bg-warning">Inactive</span>
                     </td>
                     {% endif %}
+                    <td>{{ plan.created_at|date:"d M Y" }}</td>
                     <td class="text-center">
                       <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertPlanDetailsModal_{{ plan.id }}" title="View">
                         <i class="mdi mdi-eye"></i>
