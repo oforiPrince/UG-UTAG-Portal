@@ -37,42 +37,44 @@
               </select>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_first_name">First Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_first_name"
-                class="form-control"
-                required
-                name="first_name"
-                placeholder="Enter your first name"
-              />
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_first_name">First Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_first_name"
+                  class="form-control"
+                  required
+                  name="first_name"
+                  placeholder="Enter your first name"
+                />
+              </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_other_name">Other Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_other_name"
-                class="form-control"
-                name="other_name"
-                placeholder="Enter your other name"
-              />
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_other_name">Other Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_other_name"
+                  class="form-control"
+                  name="other_name"
+                  placeholder="Enter your other name"
+                />
+              </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_last_name">Last Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_last_name"
-                class="form-control"
-                required
-                name="last_name"
-                placeholder="Enter your last name"
-              />
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_last_name">Last Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_last_name"
+                  class="form-control"
+                  required
+                  name="last_name"
+                  placeholder="Enter your last name"
+                />
+              </div>
             </div>
           </div>
           <div class="mb-3">
@@ -104,47 +106,50 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_email">Email</label>
-            <div>
-              <input
-                type="email"
-                id="id_email"
-                class="form-control"
-                required
-                name="email"
-                placeholder="Enter a valid email"
-                data-parsley-type="email"
-              />
+          
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_email">Email</label>
+              <div>
+                <input
+                  type="email"
+                  id="id_email"
+                  class="form-control"
+                  required
+                  name="email"
+                  placeholder="Enter a valid email"
+                  data-parsley-type="email"
+                />
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_phone_number">Phone Number</label>
+              <div>
+                <input
+                  type="tel"
+                  id="id_phone_number"
+                  class="form-control"
+                  required
+                  name="phone_number"
+                  placeholder="Enter your phone number"
+                />
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_department">Department</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_department"
+                  class="form-control"
+                  required
+                  name="department"
+                  placeholder="Enter your department"
+                />
+              </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_phone_number">Phone Number</label>
-            <div>
-              <input
-                type="tel"
-                id="id_phone_number"
-                class="form-control"
-                required
-                name="phone_number"
-                placeholder="Enter your phone number"
-              />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_department">Department</label>
-            <div>
-              <input
-                type="text"
-                id="id_department"
-                class="form-control"
-                required
-                name="department"
-                placeholder="Enter your department"
-              />
-            </div>
-          </div>
-          <div class="mb-0">
+          <div class="mb-0 text-end">
             <div>
               <button
                 type="submit"
@@ -152,8 +157,8 @@
               >
                 Submit
               </button>
-              <button type="reset" class="btn btn-secondary waves-effect">
-                Cancel
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
               </button>
             </div>
           </div>

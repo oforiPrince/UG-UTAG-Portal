@@ -195,11 +195,13 @@ class MemberCreateView(PermissionRequiredMixin, View):
                     password=make_password(raw_password),
                     created_by=request.user,
                     created_from_dashboard=True,
-                    is_bulk_creation=True
                 )
                 
                 # Add user to Member group
                 member.groups.add(Group.objects.get(name='Member'))
+                
+                # Prepare and send the email
+                send_credentials_email(member, raw_password)
 
                 messages.success(request, 'Member created successfully!')
         except Exception as e:

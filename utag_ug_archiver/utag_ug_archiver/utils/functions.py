@@ -43,7 +43,7 @@ def send_credentials_email(user, raw_password):
                 from_email,
                 [user.email]
             )
-            print(email_body)
+            print(f'User email: {user.email} and password: {raw_password}')
             email.content_subtype = "html"
             send_email_with_retry(email)
             print('Email sent')

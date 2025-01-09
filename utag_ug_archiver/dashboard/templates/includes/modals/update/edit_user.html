@@ -38,106 +38,111 @@
               </select>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_first_name">First Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_first_name"
-                class="form-control"
-                required
-                name="first_name"
-                placeholder="Enter your first name"
-                value="{{user.first_name}}"
-              />
+          <div class="row">
+
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_first_name">First Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_first_name"
+                  class="form-control"
+                  required
+                  name="first_name"
+                  placeholder="Enter your first name"
+                  value="{{user.first_name}}"
+                />
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_other_name">Other Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_other_name"
+                  class="form-control"
+                  name="other_name"
+                  placeholder="Enter your other name"
+                  value="{{user.other_name}}"
+                />
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="id_last_name">Last Name</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_last_name"
+                  class="form-control"
+                  required
+                  name="last_name"
+                  placeholder="Enter your last name"
+                  value="{{user.last_name}}"
+                />
+              </div>
             </div>
           </div>
-          {% if user.other_name %}
-          <div class="mb-3">
-            <label class="form-label" for="id_other_name">Other Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_other_name"
-                class="form-control"
-                name="other_name"
-                placeholder="Enter your other name"
-                value="{{user.other_name}}"
-              />
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_gender">Gender</label>
+              <div>
+                <select id="id_gender" class="form-control" required name="gender">
+                  <option value="" selected disabled>Select gender</option>
+                  <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                  <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_email">Email</label>
+              <div>
+                <input
+                  type="email"
+                  id="id_email"
+                  class="form-control"
+                  required
+                  name="email"
+                  placeholder="Enter a valid email"
+                  data-parsley-type="email"
+                  value="{{user.email}}"
+                />
+              </div>
             </div>
           </div>
-          {% endif %}
-          <div class="mb-3">
-            <label class="form-label" for="id_last_name">Last Name</label>
-            <div>
-              <input
-                type="text"
-                id="id_last_name"
-                class="form-control"
-                required
-                name="last_name"
-                placeholder="Enter your last name"
-                value="{{user.last_name}}"
-              />
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_phone_number">Phone Number</label>
+              <div>
+                <input
+                  type="tel"
+                  id="id_phone_number"
+                  class="form-control"
+                  required
+                  name="phone_number"
+                  placeholder="Enter your phone number"
+                  value="{{user.phone_number}}"
+                />
+              </div>
             </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_department">Department</label>
+              <div>
+                <input
+                  type="text"
+                  id="id_department"
+                  class="form-control"
+                  required
+                  name="department"
+                  placeholder="Enter your department"
+                  value="{{user.department}}"
+                />
+              </div>
+            </div>          
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_email">Email</label>
-            <div>
-              <input
-                type="email"
-                id="id_email"
-                class="form-control"
-                required
-                name="email"
-                placeholder="Enter a valid email"
-                data-parsley-type="email"
-                value="{{user.email}}"
-              />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_gender">Gender</label>
-            <div>
-              <select id="id_gender" class="form-control" required name="gender">
-                <option value="" selected disabled>Select gender</option>
-                <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
-                <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_phone_number">Phone Number</label>
-            <div>
-              <input
-                type="tel"
-                id="id_phone_number"
-                class="form-control"
-                required
-                name="phone_number"
-                placeholder="Enter your phone number"
-                value="{{user.phone_number}}"
-              />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_department">Department</label>
-            <div>
-              <input
-                type="text"
-                id="id_department"
-                class="form-control"
-                required
-                name="department"
-                placeholder="Enter your department"
-                value="{{user.department}}"
-              />
-            </div>
-          </div>          
           <input class="form-check form-switch" type="checkbox" id="switch6" name="is_active" switch="primary" {% if user.is_active %} checked {% endif %}>
                                         <label class="form-label" for="switch6" data-on-label="Yes" data-off-label="No"></label>
           
-          <div class="mb-0">
+          <div class="mb-0 text-end">
             <div>
               <button
                 type="submit"
@@ -145,8 +150,8 @@
               >
                 Submit
               </button>
-              <button type="reset" class="btn btn-secondary waves-effect">
-                Cancel
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
               </button>
             </div>
           </div>
