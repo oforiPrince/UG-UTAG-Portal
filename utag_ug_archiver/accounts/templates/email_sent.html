@@ -4,7 +4,7 @@
 <head>
 
     <meta charset="utf-8">
-    <title>Forgot Password</title>
+    <title>Email Sent</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="Premium Multipurpose Admin & Dashboard Template" name="description">
     <meta content="Themesbrand" name="author">
@@ -27,33 +27,25 @@
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6 col-xl-4">
                     <div class="card overflow-hidden">
-                        <div class="bg-primary">
-                            <div class="text-primary text-center p-4">
-                                <h5 class="text-white font-size-20">Forgot Password?</h5>
-                                <p class="text-white-50">Enter your email to reset your password.</p>
+                        <div class="bg-success">
+                            <div class="text-success text-center p-4">
+                                <h5 class="text-white font-size-20">Email Sent Successfully!</h5>
+                                <p class="text-white-50">Please check your inbox for the password reset link.</p>
                                 <a href="{% url 'website:index' %}" class="logo logo-admin">
                                     <img src="{% static 'website/assets/img/logo/utag_ug.png' %}" height="40" alt="logo">
                                 </a>
                             </div>
                         </div>
-                        {% include "alerts.html" %}
                         <div class="card-body px-4 mt-5">
-                            <div class="p-1">
-                                <form class="" action="{% url 'accounts:forgot_password' %}" method="post">
-                                    {% csrf_token %}
-                                    <div class="mb-3">
-                                        <label class="form-label" for="email">Email</label>
-                                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter email" required>
-                                    </div>
-                                    <div class="text-end">
-                                        <button class="btn btn-primary w-md waves-effect waves-light" type="submit">Reset Password</button>
-                                    </div>
-                                </form>
+                            <div class="p-1 text-center">
+                                <p>If you don't receive the email within a few minutes, please check your spam or junk folder.</p>
+                                <a href="{% url 'accounts:forgot_password' %}" class="btn btn-primary w-md waves-effect waves-light">Resend Email</a>
+                                <a href="{% url 'accounts:login' %}" class="btn btn-secondary w-md waves-effect waves-light">Back to Login</a>
                             </div>
                         </div>
                     </div>
                     <div class="mt-5 text-center">
-                        <p>Remember It? <a href="{% url 'accounts:login' %}" class="fw-medium text-primary"> Sign In here</a> </p>
+                        <p>Need further assistance? <a href="{% url 'website:contact_us' %}" class="fw-medium text-primary"> Contact Support</a></p>
                     </div>
                 </div>
             </div>

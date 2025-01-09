@@ -66,17 +66,22 @@ class ForgotPasswordView(View):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
             reset_url = request.build_absolute_uri(reverse('accounts:password_reset_confirm', args=[uid, token]))
-            # subject = 'Password Reset Request'
-            # message = render_to_string('emails/password_reset_email.html', {
-            #     'user': user,
-            #     'reset_url': reset_url
-            # })
-            # send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])
+            subject = 'Password Reset Request'
+            message = render_to_string('emails/password_reset_email.html', {
+                'user': user,
+                'reset_url': reset_url
+            })
             send_reset_password_email(user,reset_url)
             messages.success(request, 'An email has been sent to reset your password.')
+            return redirect('accounts:email_sent')
         except User.DoesNotExist:
             messages.error(request, 'No user with this email exists.')
+        messages.error(request, 'An error occurred. Please try again.')
         return redirect('accounts:forgot_password')
+    
+class EmailSentView(View):
+    def get(self, request):
+        return render(request, 'email_sent.html')
     
 class PasswordResetConfirmView(View):
     def get(self, request, uidb64, token):
