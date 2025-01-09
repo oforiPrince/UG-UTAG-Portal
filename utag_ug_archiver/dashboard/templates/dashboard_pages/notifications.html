@@ -37,7 +37,7 @@
                     <td>{{ notification.created_at|date:"d M Y" }}</td>
                     <td>
                       {% if notification.status == 'UNREAD' %}
-                        <a href="{% url 'dashboard:read_notification' notification_id=notification.id %}" class="btn btn-sm btn-primary">Mark as Read</a>
+                        <a href="#" class="view-details btn btn-sm btn-primary" data-id="{{ notification.id }}" data-bs-toggle="modal" data-bs-target="#detailsModal">Read</a>
                       {% endif %}
                       <a href="{% url 'dashboard:delete_notification' notification_id=notification.id %}" class="btn btn-sm btn-danger">Delete</a>
                     </td>
@@ -63,8 +63,8 @@
       <div class="modal-body">
         <h5 id="announcementTitle"></h5>
         <p id="announcementContent"></p>
-        <p><strong>Status:</strong> <span id="notificationStatus"></span></p>
-        <p><strong>Created at:</strong> <span id="notificationCreatedAt"></span></p>
+        <!-- <p><strong>Status:</strong> <span id="notificationStatus"></span></p>
+        <p><strong>Created at:</strong> <span id="notificationCreatedAt"></span></p> -->
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -111,8 +111,9 @@
               .then(data => {
                 document.getElementById('announcementTitle').innerText = data.announcement_title;
                 document.getElementById('announcementContent').innerHTML = data.announcement_content;
-                document.getElementById('notificationStatus').innerText = data.status;
-                document.getElementById('notificationCreatedAt').innerText = data.created_at;
+                
+                //document.getElementById('notificationStatus').innerText = data.status;
+                //document.getElementById('notificationCreatedAt').innerText = data.created_at;
                 // Show the modal
                 var myModal = new bootstrap.Modal(document.getElementById('notificationDetailsModal'));
                 myModal.show();
