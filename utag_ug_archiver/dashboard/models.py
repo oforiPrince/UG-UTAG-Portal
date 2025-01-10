@@ -3,6 +3,11 @@ from django.contrib.auth.models import Group
 from django.utils.text import slugify
 from tinymce.models import HTMLField
 from django.conf import settings
+from django.db import models
+from django.utils.text import slugify
+from tinymce.models import HTMLField
+from django.contrib.auth.models import User
+
 
 class Event(models.Model):
     image = models.ImageField(upload_to='event_images/')
@@ -35,11 +40,6 @@ class Event(models.Model):
             self.event_slug = unique_slug
         super().save(*args, **kwargs)
 
-
-from django.db import models
-from django.utils.text import slugify
-from tinymce.models import HTMLField
-from django.contrib.auth.models import User
 
 
 class Tag(models.Model):

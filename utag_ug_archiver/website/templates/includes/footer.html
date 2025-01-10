@@ -1,63 +1,72 @@
-<!-- Footer Start-->
-<footer class="footer">
-    <div class="home-contact-area ptb--10 ptb-md--35 bg-color" data-bg-color="#01004e">
+<!-- Footer Start -->
+<footer class="footer bg-dark text-white">
+    <!-- Footer Top Area -->
+    <div class="footer-top py-4">
         <div class="container">
             <div class="row">
-                <div class="col-lg-4 mb-md--20">
-                    <div class="home-contact">
-                        <div class="home-contact__icon">
-                            <div class="icon icon-rounded icon-big icon-hover-1">
-                                <i class="pe-7s-call bg--white-light"></i>
-                            </div>
-                        </div>
-                        <div class="home-contact__info">
-                            <span class="home-contact__small">Call Us Now</span>
-                            <span class="home-contact__big">+233 (0) 24 427 7275</span>
-                        </div>
-                    </div>
+                <!-- About Section -->
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <h5 class="mb-3">About Us</h5>
+                    <p>University of Ghana - UTAG represents faculty members dedicated to fostering academic excellence and service to the university community.</p>
+                    <p>
+                        <strong>Working Hours:</strong><br>
+                        Monday to Friday: 9:00 AM - 6:00 PM
+                    </p>
                 </div>
-                <div class="col-lg-4 mb-md--20">
-                    <div class="home-contact">
-                        <div class="home-contact__icon">
-                            <div class="icon icon-rounded icon-big icon-hover-1">
-                                <i class="pe-7s-mail-open-file bg--white-light"></i>
-                            </div>
-                        </div>
-                        <div class="home-contact__info">
-                            <span class="home-contact__small">Emal Us</span>
-                            <span class="home-contact__big">utagoffice@ug.edu.gh</span>
-                        </div>
-                    </div>
+
+                <!-- Contact Section -->
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <h5 class="mb-3">Contact Us</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fa fa-map-marker"></i> University of Ghana, Legon - Accra, Ghana</li>
+                        <li><i class="fa fa-phone"></i> +233 (0) 24 427 7275</li>
+                        <li><i class="fa fa-envelope"></i> <a href="mailto:utagoffice@ug.edu.gh" class="text-white">utagoffice@ug.edu.gh</a></li>
+                    </ul>
                 </div>
-                <div class="col-lg-4">
-                    <div class="home-contact">
-                        <div class="home-contact__icon">
-                            <div class="icon icon-rounded icon-big icon-hover-1">
-                                <i class="pe-7s-map-marker bg--white-light"></i>
-                            </div>
-                        </div>
-                        <div class="home-contact__info">
-                            <span class="home-contact__small">Our Address</span>
-                            <span class="home-contact__big">Unviversity of Ghana</span>
-                        </div>
-                    </div>
+
+                <!-- Quick Links -->
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <h5 class="mb-3">Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'website:index' %}" class="text-white">Home</a></li>
+                        <li><a href="{% url 'website:about_us' %}" class="text-white">About Us</a></li>
+                        <li><a href="{% url 'website:contact_us' %}" class="text-white">Contact Us</a></li>
+                        <li><a href="{% url 'website:events' %}" class="text-white">Events</a></li>
+                        <li><a href="{% url 'accounts:login' %}" class="text-white">Login</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
-    <div class="footer-bottom ptb--10">
+
+    <!-- Footer Bottom Area -->
+    <div class="footer-bottom py-3 bg-primary">
         <div class="container">
-            <div class="row">
+            <div class="row align-items-center">
                 <div class="col-md-6 text-center text-md-start">
-                    <p> Copyright &copy; 2021, <a href="/" target="_blank">University of Ghana - UTAG</a></p>
+                    <p class="mb-0">© 2021 University of Ghana - UTAG. All Rights Reserved.</p>
                 </div>
                 <div class="col-md-6 text-center text-md-end">
-                    <ul class="footer-menu">
-                        <li><a href="">Privacy Policy</a></li>
+                    <ul class="social list-inline mb-0">
+                        <li class="list-inline-item">
+                            <a href="https://www.facebook.com" class="text-white" target="_blank" rel="noopener" aria-label="Facebook">
+                                <i class="fa fa-facebook"></i>
+                            </a>
+                        </li>
+                        <li class="list-inline-item">
+                            <a href="https://twitter.com" class="text-white" target="_blank" rel="noopener" aria-label="Twitter">
+                                <i class="fa fa-twitter"></i>
+                            </a>
+                        </li>
+                        <li class="list-inline-item">
+                            <a href="mailto:utagoffice@ug.edu.gh" class="text-white" aria-label="Email">
+                                <i class="fa fa-envelope"></i>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
 </footer>
-<!-- Footer End-->
+<!-- Footer End -->

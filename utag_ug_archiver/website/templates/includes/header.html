@@ -1,30 +1,32 @@
 {% load static %}
 <!-- Header Start -->
 <header class="header">
-    <div class="header__inner fixed-header">
-        <div class="header__middle">
+    <div class=" fixed-header">
+        <div class="">
             <div class="container">
                 <div class="row">
                     <div class="col-12">
                         <div class="header__middle-inner">
-                            <div class="header__middle-left">
+                            <!-- Logo Section -->
+                            <div class="header-left">
                                 <div class="logo">
-                                    <a href="{% url 'website:index' %}" class="logo--normal">
-                                        <img src="{% static 'website/assets/img/logo/utag_ug.png' %}" alt="Logo" height="70">
+                                    <a href="{% url 'website:index' %}" class="logo--normal" aria-label="Homepage">
+                                        <img src="{% static 'website/assets/img/logo/utag_ug.png' %}" alt="UTAG Logo" height="70">
                                     </a>
                                 </div>
                             </div>
-                            <div class="header__middle-right d-none d-lg-block">
+                            <!-- Login Button -->
+                            <div class="header-right d-none d-lg-block">
                                 <ul class="social social-round text-end">
-                                    <li><a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm">Login</a></li>
+                                    <li>
+                                        <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm" aria-label="Login">Login</a>
+                                    </li>
                                 </ul>
                             </div>
+                            <!-- Hamburger Menu for Mobile -->
                             <div class="header__toolbar-wrap d-block d-lg-none">
                                 <div class="header__toolbar">
-                                    <!-- <a href="#searchForm" class="toolbar-btn">
-                                        <i class="fa fa-search"></i>
-                                    </a> -->
-                                    <a href="#offcanvasMenu" class="toolbar-btn menu-btn">
+                                    <a href="#offcanvasMenu" class="toolbar-btn menu-btn" aria-label="Open Menu">
                                         <div class="hamburger-icon">
                                             <span></span>
                                             <span></span>
@@ -41,12 +43,13 @@
                 </div>
             </div>
         </div>
-        <div class="header__bottom  bg-gradient d-none d-lg-block">
+        <!-- Navigation Bar -->
+        <div class="header__bottom bg-gradient d-none d-lg-block">
             <div class="container">
                 <div class="row">
                     <div class="col-12">
                         <div class="header__middle-middle">
-                            <nav class="main-navigation">
+                            <nav class="main-navigation" role="navigation">
                                 <ul class="mainmenu">
                                     <li class="mainmenu__item">
                                         <a href="{% url 'website:index' %}" class="mainmenu__link">
@@ -90,52 +93,21 @@
                                             <span data-hover="Contact Us" class="mm-text">Contact Us</span>
                                         </a>
                                     </li>
-
-
-                                    <li class="mainmenu__item menu-item-has-children">
-                                        <a href="#" class="mainmenu__link">
-                                            <span data-hover="Help" class="mm-text">Help</span>
-                                        </a>
-                                        <ul class="sub-menu">
-                                            <li>
-                                                <a href="#" onclick="showAlert()">
-                                                    <span data-hover="FAQs" class="mm-text">FAQs</span>
-                                                  </a>
-                                                  
-                                                  <script>
-                                                  function showAlert() {
-                                                    alert("This feature is under development");
-                                                  }
-                                                  </script>
-                                            </li>
-                                            <li>
-                                                <a href="#" onclick="showAlert()">
-                                                    <span data-hover="Privacy &amp; Policy" class="mm-text">Privacy &amp; Policy</span>
-                                                  </a>
-                                                  
-                                                  <script>
-                                                  function showAlert() {
-                                                    alert("This feature is under development");
-                                                  }
-                                                  </script>
-                                            </li>
-                                        </ul>
-                                    </li>
                                 </ul>
                             </nav>
-
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="offcanvas-menu-wrapper" id="offcanvasMenu">
+    <!-- Offcanvas Menu -->
+    <div class="offcanvas-menu-wrapper" id="offcanvasMenu" aria-hidden="true">
         <div class="offcanvas-menu-inner">
-            <a href="" class="btn-close">
+            <a href="" class="btn-close" aria-label="Close Menu">
                 <i class="pe-7s-close"></i>
             </a>
-            <nav class="offcanvas-navigation">
+            <nav class="offcanvas-navigation" role="navigation">
                 <ul class="offcanvas-menu">
                     <li class="active">
                         <a href="{% url 'website:index' %}">
@@ -178,23 +150,6 @@
                         <a href="{% url 'website:events' %}">
                             <span data-hover="Pages" class="mm-text">Events</span>
                         </a>
-                    </li>
-                    <li class="menu-item-has-children">
-                        <a href="#">
-                            <span data-hover="Help" class="mm-text">Help</span>
-                        </a>
-                        <ul class="sub-menu">
-                            <li>
-                                <a href="#">
-                                    <span data-hover="fAQs" class="mm-text">FAQs</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#">
-                                    <span data-hover="Privacy & Policy" class="mm-text">Privacy & Policy</span>
-                                </a>
-                            </li>
-                        </ul>
                     </li>
                     <li>
                         <a href="{% url 'accounts:login' %}">

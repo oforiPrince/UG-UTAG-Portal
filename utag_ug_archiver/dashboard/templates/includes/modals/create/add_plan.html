@@ -9,19 +9,24 @@
                     class="btn-close"
                     data-bs-dismiss="modal"
                     aria-label="Close"
-                    ></button>
+                ></button>
             </div>
             <div class="modal-body">
                 <form method="POST" action="{% url 'dashboard:create_plan' %}">
                     {% csrf_token %}
+                    <!-- Plan Name -->
                     <div class="form-group mb-3">
                         <label for="name">Name</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
+
+                    <!-- Plan Price -->
                     <div class="form-group mb-3">
                         <label for="price">Price</label>
                         <input type="number" class="form-control" id="price" name="price" step="0.01" required>
                     </div>
+
+                    <!-- Duration and Status -->
                     <div class="row mb-3">
                         <div class="form-group col-md-6">
                             <label for="duration_in_days">Duration (in days)</label>
@@ -35,14 +40,62 @@
                             </select>
                         </div>
                     </div>
+
+                    <!-- Plan Description -->
                     <div class="form-group mb-3">
                         <label for="description">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
                     </div>
+
+                    <!-- Positions -->
+                    <div class="form-group mb-3">
+                        <label for="positions">Available Positions</label>
+                        <div class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="position_top"
+                                name="positions"
+                                value="top"
+                            >
+                            <label class="form-check-label" for="position_top">
+                                Top
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="position_sidebar"
+                                name="positions"
+                                value="sidebar"
+                            >
+                            <label class="form-check-label" for="position_sidebar">
+                                Sidebar
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="position_bottom"
+                                name="positions"
+                                value="bottom"
+                            >
+                            <label class="form-check-label" for="position_bottom">
+                                Bottom
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            Select one or more positions for this advert plan.
+                        </small>
+                    </div>
+
+                    <!-- Submit Buttons -->
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             Close
-                          </button>
+                        </button>
                         <button type="submit" class="btn btn-primary">Create</button>
                     </div>
                 </form>

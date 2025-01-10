@@ -33,9 +33,9 @@ class IndexView(View):
             end_date__gte=today
         ).order_by('created_at')
         for advert in advertisements:
-            if advert.image_width == 900 and advert.image_height == 300:
+            if advert.image_width == 900 and advert.image_height == 250:
                 large_advertisements.append(advert)
-            elif advert.image_width == 300 and advert.image_height == 300:
+            elif advert.image_width == 300 and advert.image_height == 250:
                 small_advertisements.append(advert)
 
         context = {

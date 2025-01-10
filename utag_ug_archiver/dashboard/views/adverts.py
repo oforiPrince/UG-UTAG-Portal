@@ -74,27 +74,48 @@ class CompaniesView(PermissionRequiredMixin, View):
         return render(request, self.template_name, context)
     
 class AdvertCreateView(PermissionRequiredMixin, View):
-    permission_required = 'adverts.add_advertisement'    
+    permission_required = 'adverts.add_advertisement'
+
     @method_decorator(MustLogin)
     def post(self, request):
+        # Retrieve form data
         image = request.FILES.get('image')
         start_date = request.POST.get('start_date')
         plan_id = request.POST.get('plan_id')
-        plan = AdvertPlan.objects.get(id=plan_id)
+        position = request.POST.get('position')  # Retrieve selected position
         advertiser_id = request.POST.get('advertiser_id')
-        advertiser = Advertiser.objects.get(id=advertiser_id)
         status = request.POST.get('status')
         target_url = request.POST.get('target_url')
+
+        # Validate plan and advertiser
+        try:
+            plan = AdvertPlan.objects.get(id=plan_id)
+            advertiser = Advertiser.objects.get(id=advertiser_id)
+        except (AdvertPlan.DoesNotExist, Advertiser.DoesNotExist):
+            messages.error(request, 'Invalid Plan or Advertiser.')
+            return redirect('dashboard:adverts')
+
+        # Validate position
+        valid_positions = plan.positions.split(',')  # Retrieve allowed positions for the plan
+        if position not in valid_positions:
+            messages.error(request, f"The position '{position}' is not allowed for the selected plan.")
+            return redirect('dashboard:adverts')
+
+        # Create the advertisement
         advert = Advertisement.objects.create(
-            image = image,
-            target_url =target_url,
-            start_date = start_date,
-            plan = plan,
-            advertiser = advertiser,
-            status = status,
+            image=image,
+            target_url=target_url,
+            start_date=start_date,
+            plan=plan,
+            advertiser=advertiser,
+            position=position,  # Save the selected position
+            status=status,
         )
+
+        # Success message and redirect
         messages.success(request, 'Advert added successfully')
         return redirect('dashboard:adverts')
+
     
 class AdvertUpdateView(PermissionRequiredMixin, View):
     permission_required = 'adverts.change_advertisement'    
@@ -127,7 +148,8 @@ class AdvertDeleteView(PermissionRequiredMixin, View):
         return redirect('dashboard:adverts')
     
 class AdvertPlanCreateView(PermissionRequiredMixin, View):
-    permission_required = 'adverts.add_advertplan'    
+    permission_required = 'adverts.add_advertplan'
+    
     @method_decorator(MustLogin)
     def post(self, request):
         name = request.POST.get('name')
@@ -135,15 +157,26 @@ class AdvertPlanCreateView(PermissionRequiredMixin, View):
         price = request.POST.get('price')
         duration_in_days = request.POST.get('duration_in_days')
         status = request.POST.get('status')
+        
+        # Get selected positions from checkboxes
+        positions = request.POST.getlist('positions')  # List of selected positions
+        
+        # Join positions into a comma-separated string for storage
+        positions_str = ','.join(positions)
+        
+        # Create the advert plan
         plan = AdvertPlan.objects.create(
-            name = name,
-            description = description,
-            price = price,
-            duration_in_days = duration_in_days,
-            status = status
+            name=name,
+            description=description,
+            price=price,
+            duration_in_days=duration_in_days,
+            status=status,
+            positions=positions_str
         )
+        
         messages.success(request, 'Advert plan added successfully')
         return redirect('dashboard:plans')
+
     
 class AdvertPlanUpdateView(PermissionRequiredMixin, View):
     permission_required = 'adverts.change_advertplan'
