@@ -44,8 +44,14 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-6 text-center text-md-start">
-                    <p class="mb-0">© 2021 University of Ghana - UTAG. All Rights Reserved.</p>
+                    <p class="mb-0" id="footer-year">© <span id="current-year"></span> University of Ghana - UTAG. All Rights Reserved.</p>
                 </div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var currentYear = new Date().getFullYear();
+                        document.getElementById('current-year').textContent = currentYear;
+                    });
+                </script>
                 <div class="col-md-6 text-center text-md-end">
                     <ul class="social list-inline mb-0">
                         <li class="list-inline-item">

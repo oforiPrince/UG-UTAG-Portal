@@ -28,7 +28,8 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position) if x.executive_position in executive_committee_members_position_order else len(executive_committee_members_position_order))
 
         # Get all members
-        members = User.objects.all().exclude(is_active_executive=True)
+        members = User.objects.all()
+        print(members)
 
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
@@ -59,6 +60,7 @@ class NewExecutiveMemberCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed_str = request.POST.get('date_appointed')
+        print(date_appointed_str)
         executive_image = request.FILES.get('image')
         print(executive_image)
         # Handle password
@@ -69,19 +71,20 @@ class NewExecutiveMemberCreateView(View):
 
         # Validation
         if not email or not date_appointed_str:
-            messages.error(request, 'Email and date appointed are required!')
+            messages.info(request, 'Email and date appointed are required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         if User.objects.filter(email=email).exists():
-            messages.error(request, 'Member already exists!')
+            messages.info(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Check if date appointed is valid
-        try:
-            date_appointed = datetime.strptime(date_appointed_str, "%d %b, %Y").date()
-        except ValueError:
-            messages.error(request, 'Invalid date format! Use "dd Mon, yyyy".')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        # try:
+        #     date_appointed = datetime.strptime(date_appointed_str, "%d %b, %Y").date()
+        #     print(date_appointed)
+        # except ValueError:
+        #     messages.info(request, 'Invalid date format! Use "dd Mon, yyyy".')
+        #     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Create User
         member = User.objects.create(
@@ -98,7 +101,7 @@ class NewExecutiveMemberCreateView(View):
             fb_profile_url=fb_username,        # Set social media URLs
             twitter_profile_url=twitter_username,
             linkedin_profile_url=linkedin_username,
-            date_appointed=date_appointed,
+            date_appointed=date_appointed_str,
             is_active_executive=True,          # Mark as active executive
         )
         # Add to executive group
@@ -126,33 +129,33 @@ class ExistingExecutiveMemberCreateView(View):
         try:
             member = User.objects.get(id=member_id)
         except User.DoesNotExist:
-            messages.error(request, 'Member does not exist!')
+            messages.info(request, 'Member does not exist!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Check if the member is already an executive
         if member.is_active_executive:
-            messages.error(request, 'Member already exists in the executive!')
+            messages.info(request, 'Member already exists in the executive!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Check if date appointed is valid
         if not date_appointed:
-            messages.error(request, 'Date appointed is required!')
+            messages.info(request, 'Date appointed is required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-        try:
-            # Convert date string to datetime object
-            input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
-            formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
-        except ValueError:
-            messages.error(request, 'Invalid date format! Use "dd Mon, yyyy".')
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        # try:
+        #     # Convert date string to datetime object
+        #     input_appointed_date = datetime.strptime(date_appointed, "%d %b, %Y")
+        #     formatted_appointed_date = input_appointed_date.strftime("%Y-%m-%d")
+        # except ValueError:
+        #     messages.info(request, 'Invalid date format! Use "dd Mon, yyyy".')
+        #     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update member to executive
         member.executive_position = position
         member.fb_profile_url = fb_username
         member.twitter_profile_url = twitter_username
         member.linkedin_profile_url = linkedin_username
-        member.date_appointed = formatted_appointed_date
+        member.date_appointed = date_appointed
         member.executive_image = executive_image
         member.is_active_executive = True
         member.save()
@@ -179,12 +182,12 @@ class UpdateExecutiveMemberView(View):
         try:
             executive = User.objects.get(id=executive_id, is_active_executive=True)
         except User.DoesNotExist:
-            messages.error(request, 'Executive Member does not exist!')
+            messages.info(request, 'Executive Member does not exist!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Check if date appointed is valid
         if not date_appointed:
-            messages.error(request, 'Date appointed is required!')
+            messages.info(request, 'Date appointed is required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update the executive officer's details
@@ -210,7 +213,7 @@ class ExecutiveMemberDeleteView(View):
             # Retrieve the officer (executive) by ID
             officer = User.objects.get(id=officer_id, is_active_executive=True)
         except User.DoesNotExist:
-            messages.error(request, 'Member not found!')
+            messages.info(request, 'Member not found!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
         

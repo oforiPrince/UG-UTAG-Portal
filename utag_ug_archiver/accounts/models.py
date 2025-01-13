@@ -21,7 +21,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Vice President', 'Vice President'),
         ('Secretary', 'Secretary'),
         ('Treasurer', 'Treasurer'),
-        ('Committee Member', 'Committee Member'),
+        ("Women's Executive Officer", "Women's Executive Officer"),
+        ('Past President', 'Past President'),
+        ('CBAS Rep', 'CBAS Rep'),
+        ('College of Humanities Rep', 'College of Humanities Rep'),
+        ('College of Health Rep', 'College of Health Rep'),
     )
 
     title = models.CharField(max_length=5, choices=TITLE_CHOICES)
@@ -85,7 +89,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.filter(name='Member').exists()
     
     def is_acting(self):
-        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer', 'Committee Member']).exists() and self.is_active_executive and self.date_ended is None
+        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer', 'Past President']).exists() and self.is_active_executive and self.date_ended is None
 
     def __str__(self):
         return self.get_full_name()
