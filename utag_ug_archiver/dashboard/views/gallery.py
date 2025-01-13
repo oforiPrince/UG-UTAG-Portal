@@ -134,7 +134,6 @@ class ViewGalleryDetails(View):
             {
                 'id': image.id,
                 'image': image.get_absolute_url(),
-                'caption': image.caption,
             }
             for image in gallery.images.all()
         ]

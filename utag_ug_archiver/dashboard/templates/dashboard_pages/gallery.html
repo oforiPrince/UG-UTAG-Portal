@@ -36,7 +36,6 @@
                       <p class="text-muted small">Created on: {{ gallery.created_at|date:"d M Y" }}</p>
                     </div>
                     <div class="col-md-2 text-end d-flex flex-column gap-2">
-                      <!-- View -->
                       <button class="btn btn-info btn-sm w-100" data-bs-toggle="modal" 
                               data-bs-target="#galleryModal_{{ gallery.id }}">
                         <i class="mdi mdi-eye"></i> View
@@ -196,7 +195,6 @@
               <div class="card">
                 <img src="${image.image}" class="card-img-top img-fluid" alt="${image.caption || 'Image'}">
                 <div class="card-body">
-                  <p class="card-text">${image.caption || 'No Caption'}</p>
                   <button class="btn btn-danger btn-sm delete-image" data-image-id="${image.id}">
                     Delete
                   </button>

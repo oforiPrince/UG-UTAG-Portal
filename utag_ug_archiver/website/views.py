@@ -6,6 +6,7 @@ from django.db.models import Q
 from dashboard.models import CarouselSlide, Event, News
 from adverts.models import Advertisement
 from accounts.models import User
+from gallery.models import Gallery
 from utag_ug_archiver.utils.functions import executive_members_custom_order, executive_committee_members_custom_order
 from utag_ug_archiver.utils.constants import executive_members_position_order, executive_committee_members_position_order
 
@@ -135,6 +136,21 @@ class ExecutiveCommitteeMembersView(View):
             'executives': executives,
         }
         return render(request, self.template_name, context)
+    
+class GalleryView(View):
+    template_name = 'website_pages/gallery.html'
+
+    def get(self, request):
+        """
+        Handle GET requests to display the gallery.
+        Fetch all active galleries and their associated images.
+        """
+        galleries = Gallery.objects.prefetch_related('images')
+        context = {
+            'galleries': galleries
+        }
+        return render(request, self.template_name, context)
+        
     
 class AddClick(View):
     def get(self, request, pk):

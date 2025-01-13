@@ -11,5 +11,6 @@ urlpatterns = [
     path('news/<str:slug>/UG-UTAG', views.NewsDetailView.as_view(), name='news_detail'),
     path('executive_officers/', views.ExecutiveOfficersView.as_view(), name='executive_officers'),
     path('executive_committee_members/', views.ExecutiveCommitteeMembersView.as_view(), name='executive_committee_members'),
+    path('gallery/', views.GalleryView.as_view(), name='gallery'),
     path('add_click/<int:pk>/', views.AddClick.as_view(), name='add_click'),
 ]
