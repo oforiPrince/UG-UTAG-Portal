@@ -314,7 +314,7 @@
             <div class="container">
                 <div class="row mb--10 mb-md--60">
                     <div class="col-12 order-lg-3">
-                        <div class="row">
+                        <div class="row horizontal-scroll">
                             {% for executive in executives %}
                             <div class="col-lg-3 col-sm-6 col-md-6 mb--50">
                                 <div class="team-member team-member-style-2">
@@ -334,7 +334,7 @@
                                                     </a>
                                                 </li>
                                                 <li class="social__item">
-                                                    <a class="social__link" href="maito://{{executive.email}}">
+                                                    <a class="social__link" href="mailto:{{executive.email}}">
                                                         <i class="social__icon fa fa-google-plus"></i>
                                                     </a>
                                                 </li>
@@ -354,10 +354,9 @@
                                 </div>
                             </div>
                             {% endfor %}
-                            
                         </div>
                     </div>
-                </div> 
+                </div>
             </div>
         </section>
     </div>

@@ -17,7 +17,7 @@ class IndexView(View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get all executives
-        executives = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
+        executives = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)[:4]
 
         # Sort the executives based on the custom order
         executives = sorted(executives, key=executive_members_custom_order)

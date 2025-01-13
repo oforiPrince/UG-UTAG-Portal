@@ -48,6 +48,17 @@ urlpatterns += [
     path('news/delete/<int:news_id>',views.NewsDeleteView.as_view(), name='delete_news'),
 ]
 
+# For gallery management
+urlpatterns += [
+    path('galleries/', views.GalleryListView.as_view(), name='gallery'),
+    path('galleries/add/', views.GalleryCreateView.as_view(), name='gallery_add'),
+    path('galleries/upload-images/', views.ImageUploadView.as_view(), name='gallery_upload_images'),
+    path('galleries/delete/<int:gallery_id>/', views.GalleryDeleteView.as_view(), name='gallery_delete'),
+    path('galleries/edit/<int:gallery_id>/', views.EditGalleryView.as_view(), name='gallery_edit'),
+    path('galleries/view/<int:gallery_id>/', views.ViewGalleryDetails.as_view(), name='gallery_view'),
+    path('images/delete/<int:image_id>/', views.DeleteImageView.as_view(), name='image_delete'),
+]
+
 #For Document management
 urlpatterns += [
     path('documents/',views.DocumentsView.as_view(), name='documents'),

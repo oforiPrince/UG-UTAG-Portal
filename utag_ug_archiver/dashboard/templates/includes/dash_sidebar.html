@@ -84,6 +84,14 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if perms.gallery.view_gallery %}
+                <li>
+                    <a href="{% url 'dashboard:gallery' %}" class="waves-effect">
+                        <i class="fas fa-image"></i>
+                        <span>Gallery</span>
+                    </a>
+                </li>
+                {% endif %}
 
                 {% if perms.dashboard.view_announcement %}
                 <li>

@@ -68,12 +68,12 @@
                                         <ul class="sub-menu">
                                             <li>
                                                 <a href="{% url 'website:executive_officers' %}">
-                                                    <span data-hover="Executive Officers" class="mm-text">Officers</span>
+                                                    <span data-hover="Officers" class="mm-text">Executive Officers</span>
                                                 </a>
                                             </li>
                                             <li>
                                                 <a href="{% url 'website:executive_committee_members' %}">
-                                                    <span data-hover="Executive Committee Members" class="mm-text">Committee Members</span>
+                                                    <span data-hover="Committee Members" class="mm-text">Committee Members</span>
                                                 </a>
                                             </li>
                                         </ul>
@@ -86,6 +86,11 @@
                                     <li class="mainmenu__item">
                                         <a href="{% url 'website:events' %}" class="mainmenu__link">
                                             <span data-hover="Events" class="mm-text">Events</span>
+                                        </a>
+                                    </li>
+                                    <li class="mainmenu__item">
+                                        <a href="{% url 'website:news' %}" class="mainmenu__link">
+                                            <span data-hover="Gallery" class="mm-text">Gallery</span>
                                         </a>
                                     </li>
                                     <li class="mainmenu__item">
@@ -119,11 +124,6 @@
                             <span data-hover="About Us" class="mm-text">About Us</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="{% url 'website:contact_us' %}">
-                            <span data-hover="Contact Us" class="mm-text">Contact Us</span>
-                        </a>
-                    </li>
                     <li class="menu-item-has-children">
                         <a href="#">
                             <span data-hover="Leadership" class="mm-text">Leadership</span>
@@ -149,6 +149,16 @@
                     <li>
                         <a href="{% url 'website:events' %}">
                             <span data-hover="Pages" class="mm-text">Events</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:contact_us' %}">
+                            <span data-hover="Gallery" class="mm-text">Gallery</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'website:contact_us' %}">
+                            <span data-hover="Contact Us" class="mm-text">Contact Us</span>
                         </a>
                     </li>
                     <li>

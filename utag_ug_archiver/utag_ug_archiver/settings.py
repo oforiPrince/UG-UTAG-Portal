@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'adverts',
     'accounts',
     'dashboard',
+    'gallery',
     'website',
     
     #External libraries
