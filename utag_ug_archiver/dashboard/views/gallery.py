@@ -19,16 +19,17 @@ class GalleryListView(ListView):
 class GalleryCreateView(CreateView):
     model = Gallery
     form_class = GalleryForm
+    success_url = reverse_lazy('dashboard:gallery')  # Adjust this to the appropriate URL name
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        if self.request.is_ajax():
+        if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'message': 'Gallery added successfully!'}, status=201)
         return response
 
     def form_invalid(self, form):
         response = super().form_invalid(form)
-        if self.request.is_ajax():
+        if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'errors': form.errors}, status=400)
         return response
 
@@ -52,16 +53,15 @@ class ImageUploadView(CreateView):
             return JsonResponse({'errors': form.errors}, status=400)
         return response
 
-class GalleryDeleteView(DeleteView):
-    model = Gallery
-    template_name = 'dashboard_pages/gallery_confirm_delete.html'  # Create a separate confirmation template if needed
-
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        if self.request.is_ajax():
-            return JsonResponse({'message': 'Gallery deleted successfully!'}, status=200)
-        return redirect(self.success_url)
+def delete_gallery(request, gallery_id):
+    """
+    Delete a gallery and its associated images.
+    """
+    gallery = get_object_or_404(Gallery, id=gallery_id)
+    if request.method == 'DELETE':
+        gallery.delete()
+        return JsonResponse({'message': 'Gallery deleted successfully!'}, status=200)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
     
 @method_decorator(csrf_exempt, name='dispatch')
 class EditGalleryView(View):

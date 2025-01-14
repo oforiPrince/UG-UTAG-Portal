@@ -145,7 +145,7 @@ class GalleryView(View):
         Handle GET requests to display the gallery.
         Fetch all active galleries and their associated images.
         """
-        galleries = Gallery.objects.prefetch_related('images')
+        galleries = Gallery.objects.prefetch_related('images').order_by('-created_at')
         context = {
             'galleries': galleries
         }

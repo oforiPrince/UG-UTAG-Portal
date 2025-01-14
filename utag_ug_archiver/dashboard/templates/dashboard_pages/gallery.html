@@ -22,44 +22,50 @@
             </div>
 
             <div id="galleryList">
-              {% for gallery in galleries %}
-              <div class="card mb-3">
-                <div class="card-body">
-                  <div class="row">
-                    <div class="col-md-2">
-                      <img src="{{ gallery.images.first.image.url|default:'https://via.placeholder.com/150' }}" 
-                           class="img-fluid rounded" alt="Gallery Cover">
+              {% if galleries %}
+                {% for gallery in galleries %}
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-2">
+                        <img src="{{ gallery.images.first.image.url|default:'https://via.placeholder.com/150' }}" 
+                             class="img-fluid rounded" alt="Gallery Cover">
+                      </div>
+                      <div class="col-md-8">
+                        <h5>{{ gallery.title }}</h5>
+                        <p>{{ gallery.description|default:"No description provided." }}</p>
+                        <p class="text-muted small">Created on: {{ gallery.created_at|date:"d M Y" }}</p>
+                      </div>
+                      <div class="col-md-2 text-end d-flex flex-column gap-2">
+                        <button class="btn btn-info btn-sm w-100" data-bs-toggle="modal" 
+                                data-bs-target="#galleryModal_{{ gallery.id }}">
+                          <i class="mdi mdi-eye"></i> View
+                        </button>
+                        <button class="btn btn-secondary btn-sm w-100" data-bs-toggle="modal" 
+                                data-bs-target="#uploadImagesModal" 
+                                data-gallery-id="{{ gallery.id }}" 
+                                data-gallery-title="{{ gallery.title }}">
+                          <i class="mdi mdi-upload"></i> Upload Images
+                        </button>
+                        <button class="btn btn-info btn-sm w-100" data-bs-toggle="modal" 
+                                data-bs-target="#editGalleryModal" 
+                                data-gallery-id="{{ gallery.id }}">
+                          <i class="mdi mdi-pencil"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm w-100 delete-gallery" 
+                                data-gallery-id="{{ gallery.id }}">
+                          <i class="mdi mdi-delete"></i> Delete
+                        </button>
+                      </div>                    
                     </div>
-                    <div class="col-md-8">
-                      <h5>{{ gallery.title }}</h5>
-                      <p>{{ gallery.description|default:"No description provided." }}</p>
-                      <p class="text-muted small">Created on: {{ gallery.created_at|date:"d M Y" }}</p>
-                    </div>
-                    <div class="col-md-2 text-end d-flex flex-column gap-2">
-                      <button class="btn btn-info btn-sm w-100" data-bs-toggle="modal" 
-                              data-bs-target="#galleryModal_{{ gallery.id }}">
-                        <i class="mdi mdi-eye"></i> View
-                      </button>
-                      <button class="btn btn-secondary btn-sm w-100" data-bs-toggle="modal" 
-                              data-bs-target="#uploadImagesModal" 
-                              data-gallery-id="{{ gallery.id }}" 
-                              data-gallery-title="{{ gallery.title }}">
-                        <i class="mdi mdi-upload"></i> Upload Images
-                      </button>
-                      <button class="btn btn-info btn-sm w-100" data-bs-toggle="modal" 
-                              data-bs-target="#editGalleryModal" 
-                              data-gallery-id="{{ gallery.id }}">
-                        <i class="mdi mdi-pencil"></i> Edit
-                      </button>
-                      <button class="btn btn-danger btn-sm w-100 delete-gallery" 
-                              data-gallery-id="{{ gallery.id }}">
-                        <i class="mdi mdi-delete"></i> Delete
-                      </button>
-                    </div>                    
                   </div>
                 </div>
-              </div>
-              {% endfor %}
+                {% endfor %}
+              {% else %}
+                <div class="alert alert-warning text-center" role="alert">
+                  No galleries are available. Please add a new gallery.
+                </div>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -71,6 +77,7 @@
   {% include "includes/modals/partials/gallery_modals.html" %}
 </div>
 {% endblock content %}
+
 {% block my_styles %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css" rel="stylesheet">
 {% endblock my_styles %}
@@ -107,7 +114,7 @@
   const uploadModal = $('#uploadImagesModal');
   const dropzone = new Dropzone("#dropzone", {
     url: "{% url 'dashboard:gallery_upload_images' %}",
-    maxFilesize: 2, // MB
+    maxFilesize: 7, // MB
     acceptedFiles: 'image/*',
     addRemoveLinks: true,
     headers: { "X-CSRFToken": csrfToken },
