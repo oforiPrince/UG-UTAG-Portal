@@ -6,7 +6,9 @@ from .managers import UserManager
 class User(AbstractBaseUser, PermissionsMixin):
     TITLE_CHOICES = (
         ('Prof.', 'Prof.'),
+        ("Prof. (Mrs.)", "Prof. (Mrs.)"),
         ('Dr.', 'Dr.'),
+        ("Dr. (Alhaji)", "Dr. (Alhaji)"),
         ('Mr.', 'Mr.'),
         ('Mrs.', 'Mrs.'),
     )
@@ -26,9 +28,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('CBAS Rep', 'CBAS Rep'),
         ('College of Humanities Rep', 'College of Humanities Rep'),
         ('College of Health Rep', 'College of Health Rep'),
+        ("College of Education Rep", "College of Education Rep"),
     )
 
-    title = models.CharField(max_length=5, choices=TITLE_CHOICES)
+    title = models.CharField(max_length=15, choices=TITLE_CHOICES)
     first_name = models.CharField(max_length=30)
     other_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30)

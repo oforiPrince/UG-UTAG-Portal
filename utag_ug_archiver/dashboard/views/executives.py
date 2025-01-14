@@ -29,7 +29,6 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
 
         # Get all members
         members = User.objects.all()
-        print(members)
 
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
