@@ -1,0 +1,86 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}Gallery{% endblock title %}
+{% block content %}
+<!--Breadcrumb Banner Area Start-->
+<div class="breadcrumb-banner-area gallery">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="breadcrumb-text">
+          <h1 class="text-center">Gallery</h1>
+          <div class="breadcrumb-bar">
+            <ul class="breadcrumb">
+              <li><a href="{% url 'website:index' %}">Home</a></li>
+              <li>Gallery</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Breadcrumb Banner Area-->
+<!--Gallery Area Start-->
+<div class="gallery-area section-padding gallery-full-width">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="filter-menu">
+          <ul>
+            <li class="filter active" data-filter="all">All</li>
+            {% if galleries %}
+              {% for gallery in galleries %}
+                <li class="filter" data-filter=".gallery-{{ gallery.id }}">{{ gallery.title }}</li>
+              {% endfor %}
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="filter-items">
+      <div class="row mix-grid">
+        {% if galleries %}
+          {% for gallery in galleries %}
+            {% for image in gallery.images.all %}
+              <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover mix gallery-{{ gallery.id }}">
+                <div class="overlay-effect sea-green-overlay">
+                  <a href="{{ image.get_absolute_url }}"><img src="{{ image.get_absolute_url }}" alt="{{ image.caption|default:gallery.title }}" /></a>
+                  <div class="gallery-hover-effect">
+                    <a class="gallery-icon venobox" href="{{ image.get_absolute_url }}"><i class="fa fa-image"></i></a>
+                    <span class="gallery-text">{{ image.caption|default:"" }}</span>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          <div class="col-12">
+            <p class="text-center">No galleries are currently available. Please check back later.</p>
+          </div>
+        {% endif %}
+      </div>
+      
+      <!-- Pagination removed temporarily -->
+    </div>
+  </div>
+</div>
+<!--End of Gallery Area-->
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function(){
+    // Initialize MixItUp
+    $('.mix-grid').mixItUp({
+      selectors: {
+        target: '.mix',
+        filter: '.filter'
+      },
+      animation: {
+        duration: 300
+      }
+    });
+  });
+</script>
+{% endblock %}

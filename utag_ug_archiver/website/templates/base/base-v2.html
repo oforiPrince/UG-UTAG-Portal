@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>
+        University of Ghana - UTAG
+        {% block title %} | Home {% endblock title %}
+    </title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {% load static %}
+    <!-- favicon
+		============================================ -->
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'website-v2/img/logo.png' %}" />
+
+    <!-- Google Fonts
+		============================================ -->
+    <link
+      href="https://fonts.googleapis.com/css?family=Poppins:400,300,500,600,700"
+      rel="stylesheet"
+      type="text/css"
+    />
+
+    <!-- Style CSS
+		============================================ -->
+    <link rel="stylesheet" href="{% static 'website-v2/style.css' %}" />
+
+    <!-- Modernizr JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/vendor/modernizr-2.8.3.min.js' %}"></script>
+  </head>
+  <body>
+    <!--Header Area Start-->
+    {% include 'includes/header-v2.html' %}
+    <!--End of Header Area-->
+    <!-- Content Start -->
+        {% block content %}
+          
+        {% endblock content %}
+     <!-- Content End -->
+    <!--Footer Area Start-->
+    {% include 'includes/footer-v2.html' %}
+    <!--End of Footer Area-->
+
+    <!-- jquery
+		============================================ -->
+    <script src="{% static 'website-v2/js/vendor/jquery-1.12.3.min.js' %}"></script>
+
+    <!-- Popper JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/popper.js' %}"></script>
+
+    <!-- bootstrap JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/bootstrap.min.js' %}"></script>
+
+    <!-- bootstrap Toggle JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/bootstrap-toggle.min.js' %}"></script>
+
+    <!-- nivo slider js
+		============================================ -->
+    <script src="{% static 'website-v2/lib/nivo-slider/js/jquery.nivo.slider.js' %}"></script>
+    <script src="{% static 'website-v2/lib/nivo-slider/home.js' %}"></script>
+
+    <!-- wow JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/wow.min.js' %}"></script>
+
+    <!-- meanmenu JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/jquery.meanmenu.js' %}"></script>
+
+    <!-- Owl carousel JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/owl.carousel.min.js' %}"></script>
+
+    <!-- Countdown JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/jquery.countdown.min.js' %}"></script>
+
+    <!-- scrollUp JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/jquery.scrollUp.min.js' %}"></script>
+
+    <!-- Waypoints JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/waypoints.min.js' %}"></script>
+
+    <!-- Counterup JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/jquery.counterup.min.js' %}"></script>
+
+    <!-- Slick JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/slick.min.js' %}"></script>
+
+    <!-- Mix It Up JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/jquery.mixitup.js' %}"></script>
+
+    <!-- Venubox JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/venobox.min.js' %}"></script>
+
+    <!-- plugins JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/plugins.js' %}"></script>
+
+    <!-- Google Map js
+		============================================ -->
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMDaJTeAidmIzHlfOnilEE7VpBlHk_TUU"></script>
+    <script src="https://www.google.com/jsapi"></script>
+    <script>
+      function initialize() {
+        var mapOptions = {
+          zoom: 15,
+          scrollwheel: false,
+          center: new google.maps.LatLng(5.644060344995316, -0.18598731172044378), // University of Ghana coordinates
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          disableDefaultUI: false,
+          zoomControl: true,
+          mapTypeControl: true,
+          mapTypeControlOptions: {
+            style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+            position: google.maps.ControlPosition.TOP_RIGHT
+          },
+          scaleControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          styles: [
+            {
+              featureType: "road",
+              elementType: "geometry",
+              stylers: [{ visibility: "on" }, { color: "#ffffff" }]
+            },
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "on" }]
+            }
+          ]
+        };
+
+        var map = new google.maps.Map(
+          document.getElementById("googleMap"),
+          mapOptions
+        );
+
+        var svgMarker = {
+          path: 'M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z',
+          fillColor: '#ff5722', // Your brand color
+          fillOpacity: 1,
+          strokeWeight: 0,
+          rotation: 0,
+          scale: 2,
+          anchor: new google.maps.Point(12, 22),
+        };
+
+        var marker = new google.maps.Marker({
+          position: map.getCenter(),
+          animation: google.maps.Animation.BOUNCE,
+          icon: svgMarker,
+          map: map,
+        });
+        
+        // Add traffic layer
+        var trafficLayer = new google.maps.TrafficLayer();
+        
+        // Create a traffic button
+        var trafficButton = document.createElement('button');
+        trafficButton.innerHTML = 'Toggle Traffic';
+        trafficButton.className = 'custom-map-control-button';
+        trafficButton.style.backgroundColor = '#fff';
+        trafficButton.style.border = '2px solid #fff';
+        trafficButton.style.borderRadius = '3px';
+        trafficButton.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
+        trafficButton.style.color = 'rgb(25,25,25)';
+        trafficButton.style.cursor = 'pointer';
+        trafficButton.style.fontFamily = 'Roboto,Arial,sans-serif';
+        trafficButton.style.fontSize = '16px';
+        trafficButton.style.lineHeight = '38px';
+        trafficButton.style.margin = '8px 0 22px';
+        trafficButton.style.padding = '0 5px';
+        trafficButton.style.textAlign = 'center';
+        
+        // Add the button to the map
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(trafficButton);
+        
+        // Toggle traffic layer visibility
+        var trafficShowing = false;
+        trafficButton.addEventListener('click', function() {
+          if (trafficShowing) {
+            trafficLayer.setMap(null);
+            trafficShowing = false;
+          } else {
+            trafficLayer.setMap(map);
+            trafficShowing = true;
+          }
+        });
+        
+        // Create info window with UG-UTAG info
+        var infowindow = new google.maps.InfoWindow({
+          content: '<div style="padding:10px;"><h4>University of Ghana - UTAG</h4>' +
+                   '<p>Legon, Accra, Ghana</p>' +
+                   '<p>Email: <a href="mailto:utagoffice@ug.edu.gh">utagoffice@ug.edu.gh</a></p>' +
+                   '<p>Phone: +233 (0) 24 427 7275</p></div>'
+        });
+        
+        // Open info window when marker is clicked
+        marker.addListener('click', function() {
+          infowindow.open(map, marker);
+        });
+        
+        // Add a "Find directions" link
+        var directionDiv = document.createElement('div');
+        directionDiv.style.backgroundColor = '#fff';
+        directionDiv.style.border = '2px solid #fff';
+        directionDiv.style.borderRadius = '3px';
+        directionDiv.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
+        directionDiv.style.cursor = 'pointer';
+        directionDiv.style.marginBottom = '22px';
+        directionDiv.style.textAlign = 'center';
+        directionDiv.title = 'Get directions to University of Ghana';
+        
+        var controlText = document.createElement('div');
+        controlText.style.color = 'rgb(25,25,25)';
+        controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
+        controlText.style.fontSize = '16px';
+        controlText.style.lineHeight = '38px';
+        controlText.style.paddingLeft = '5px';
+        controlText.style.paddingRight = '5px';
+        controlText.innerHTML = 'Get Directions';
+        directionDiv.appendChild(controlText);
+        
+        // Add the control to the map
+        map.controls[google.maps.ControlPosition.TOP_RIGHT].push(directionDiv);
+        
+        // Set up directions URL
+        directionDiv.addEventListener('click', function() {
+          window.open('https://www.google.com/maps/dir/?api=1&destination=Vikings+Hostel');
+        });
+      }
+
+      google.maps.event.addDomListener(window, "load", initialize);
+    </script>
+
+    <!-- main JS
+		============================================ -->
+    <script src="{% static 'website-v2/js/main.js' %}"></script>
+  </body>
+</html>

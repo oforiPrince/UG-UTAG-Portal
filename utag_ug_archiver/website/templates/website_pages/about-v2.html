@@ -1,0 +1,117 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}About Us{% endblock title %}
+{% block content %}
+<!--Breadcrumb Banner Area Start-->
+<div class="breadcrumb-banner-area">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="breadcrumb-text">
+          <h1 class="text-center">About Us</h1>
+          <div class="breadcrumb-bar">
+            <ul class="breadcrumb">
+              <li><a href="{% url 'website:index' %}">Home</a></li>
+              <li>About Us</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Breadcrumb Banner Area-->
+<!--Activity Area Start-->
+<div class="activity-area">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-3 col-md-6 col-sm-6 activity">
+        <div class="single-activity">
+          <div class="single-activity-icon">
+            <i class="fa fa-pencil"></i>
+          </div>
+          <h4>Quality Education</h4>
+          <p>
+            We are committed to defending and promoting academic freedom, ensuring that scholars can pursue research and teaching without undue external interference.
+          </p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 activity">
+        <div class="single-activity">
+          <div class="single-activity-icon">
+            <i class="fa fa-rocket"></i>
+          </div>
+          <h4>Teaching & Research</h4>
+          <p>
+            We are committed to advancing teaching and research excellence. We strive to enhance standards for a brighter future through education.
+          </p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 activity">
+        <div class="single-activity">
+          <div class="single-activity-icon">
+            <i class="fa fa-users"></i>
+          </div>
+          <h4>Advocate for Membership</h4>
+          <p>
+            We advocate for the needs and concerns of our members to University Management, national leadership, other stakeholders, and the Government.
+          </p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 col-sm-6 activity">
+        <div class="single-activity">
+          <div class="single-activity-icon">
+            <i class="fa fa-life-ring"></i>
+          </div>
+          <h4>Member Welfare</h4>
+          <p>
+            We prioritize the well-being of our members by securing fair compensation, benefits, and working conditions for a supportive academic environment.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Activity Area-->
+<!--About Area Start-->
+<div class="about-area section-padding-bottom">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="section-title-wrapper">
+          <div class="section-title">
+            <h3>Who we are</h3>
+            <p>University of Ghana Branch of the University Teachers Association of Ghana</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="about-text-container">
+          <p>
+            <span>Welcome to UG-UTAG</span> The University of Ghana Branch of the University Teachers Association of Ghana (UG-UTAG) is an organization representing the teaching and research staff of the University of Ghana. Its primary purpose is to promote the academic, professional, and economic welfare of its members, as well as the welfare of the entire academic community of the University of Ghana.
+          </p>
+          <div class="about-us">
+            <span>Defend and promote academic freedom</span>
+            <span>Advance teaching and research standards</span>
+            <span>Advocate for membership needs and concerns</span>
+            <span>Foster healthy relationships within the University</span>
+          </div>
+          <p>
+            The association advocates for the needs and concerns of its members to the University Management, the leadership of the National Association, and the Government of the Republic. UG-UTAG also aims to foster healthy relationships among its members and other members of the University as defined under the University of Ghana Act and the Statutes of the University. The association carries out various activities deemed necessary for the attainment of its objectives and operates in accordance with its constitution and the policies of the National Association.
+          </p>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="skill-image">
+          <img src="{% static 'website/assets/img/bg/about_bg.png' %}" alt="UG-UTAG About" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of About Area-->
+
+<!--End of Skill And Experience Area-->
+{% endblock content %}

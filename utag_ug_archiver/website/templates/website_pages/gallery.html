@@ -16,60 +16,48 @@
 <!-- Page Title Area End -->
 
 <!-- Main Content Wrapper Start -->
-<div class="main-content-wrapper">
-    <div class="inner-content-area mb--25 mt--10">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="project-filters mb--50">
-                        <button data-filter="*" class="is-checked">All</button>
-                        {% if galleries %}
-                        {% for gallery in galleries %}
-                        <button data-filter=".gallery-{{ gallery.id }}">{{ gallery.title }}</button>
-                        {% endfor %}
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="row project-wrapper">
-                {% if galleries %}
-                    {% for gallery in galleries %}
-                        {% for image in gallery.images.all %}
-                        <div class="col-lg-4 col-md-6 project-item-wrap filter-services mb--25 gallery-{{ gallery.id }}">
-                            <div class="project-item directional">
-                                <figure class="project-item__thumbnail">
-                                    <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption|default:'Image' }}">
-                                    <div class="project-item__overlay directional-hover">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#imageModal_{{ image.id }}"><i class="fa fa-eye"></i></a>
-                                    </div>
-                                </figure>
-                            </div>
-                        </div>
-
-                        <!-- Modal for Viewing Individual Image -->
-                        <div class="modal fade" id="imageModal_{{ image.id }}" tabindex="-1" aria-labelledby="imageModalLabel_{{ image.id }}" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body text-center">
-                                        <img src="{{ image.image.url }}" class="img-fluid rounded" alt="{{ image.caption|default:'Image' }}">
-                                    </div>
-                                    
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% endfor %}
-                {% else %}
-                    <div class="col-12">
-                        <p class="text-center">No galleries are currently available. Please check back later.</p>
-                    </div>
-                {% endif %}
-            </div>
+<div class="gallery-area section-padding gallery-full-width">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="filter-menu">
+          <ul>
+            <li class="filter" data-filter="all">All</li>
+            {% if galleries %}
+            {% for gallery in galleries %}
+            <li class="filter" data-filter=".gallery-{{ gallery.id }}">{{ gallery.title }}</li>
+            {% endfor %}
+            {% endif %}
+          </ul>
         </div>
+      </div>
     </div>
+    <div class="filter-items">
+      <div class="row">
+        {% for gallery in galleries %}
+          {% for image in gallery.images.all %}
+        <div class="col-lg-4 col-md-4 col-sm-6 col-12 mix single-items gallery-{{ gallery.id }} overlay-hover">
+          <div class="overlay-effect">
+            <a href="#"><img src="{{ image.image.url }}" alt="{{ image.caption|default:'Image' }}" /></a>
+            <div class="gallery-hover-effect">
+              <a class="gallery-icon venobox" href="{{ image.image.url }}"
+                ><i class="fa fa-image"></i
+              ></a>
+              <span class="gallery-text">{{ image.caption|default:"" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-md-12">
+        <div class="button text-center">
+          <a class="button-default button-yellow" href="#"
+            ><i class="fa fa-refresh"></i>Load More</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <!-- Main Content Wrapper End -->
 {% endblock %}

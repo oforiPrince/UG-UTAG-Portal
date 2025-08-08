@@ -1,0 +1,98 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}Events{% endblock title %}
+{% block content %}
+<!--Breadcrumb Banner Area Start-->
+<div class="breadcrumb-banner-area">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="breadcrumb-text">
+          <h1 class="text-center">Events</h1>
+          <div class="breadcrumb-bar">
+            <ul class="breadcrumb">
+              <li><a href="{% url 'website:index' %}">Home</a></li>
+              <li>Events</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Breadcrumb Banner Area-->
+<!--Events Area Start-->
+<div class="blog-fullwidth-area section-padding blog-two">
+    <div class="container">
+        <div class="row">
+            {% if events_page.object_list %}
+                {% for event in events_page.object_list %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="single-class">
+                        <div class="single-class-image">
+                            <a href="{% url 'website:events_detail' slug=event.event_slug %}">
+                                <img src="{{ event.get_featured_image_url }}" alt="{{ event.title }}" class="img-fluid rounded shadow" />
+                                <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
+                            </a>
+                        </div>
+                        <div class="single-class-text">
+                            <div class="class-des">
+                                <h4><a href="{% url 'website:events_detail' slug=event.event_slug %}">{{ event.title }}</a></h4>
+                                <p>{{ event.description|truncatechars:100|safe }}</p>
+                            </div>
+                            <div class="class-schedule">
+                                <span class="post__category-links">
+                                    <i class="fa fa-map-marker"></i>
+                                    {{ event.venue }}
+                                </span>
+                                <span class="post__comment-link">
+                                    <i class="fa fa-calendar"></i>
+                                    {{ event.start_time|time:"g:i A" }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <p class="text-center">No events are currently available. Please check back later.</p>
+                </div>
+            {% endif %}
+        </div>
+        <!-- Pagination -->
+        {% if events_page.paginator.num_pages > 1 %}
+        <div class="row">
+          <div class="col-md-12">
+            <div class="pagination-content">
+              <div class="pagination-button">
+                <ul class="pagination">
+                  {% if events_page.has_previous %}
+                    <li><a href="?page={{ events_page.previous_page_number }}">&laquo;</a></li>
+                  {% else %}
+                    <li class="disabled"><span>&laquo;</span></li>
+                  {% endif %}
+                  {% for num in events_page.paginator.page_range %}
+                    {% if events_page.number == num %}
+                      <li class="current"><a href="#">{{ num }}</a></li>
+                    {% else %}
+                      <li><a href="?page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                  {% endfor %}
+                  {% if events_page.has_next %}
+                    <li><a href="?page={{ events_page.next_page_number }}">&raquo;</a></li>
+                  {% else %}
+                    <li class="disabled"><span>&raquo;</span></li>
+                  {% endif %}
+                </ul>
+                <span>Page: {{ events_page.number }} of {{ events_page.paginator.num_pages }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        <!-- End Pagination -->
+    </div>
+  </div>
+<!--End of Events Area-->
+{% endblock content %}

@@ -1,0 +1,125 @@
+{% load static %}
+<header class="header-two">
+      <div class="header-top">
+        <div class="container">
+          <div class="row mt-2 mb-1">
+            <div class="col-lg-7 col-md-8">
+              <div class="header-top-info">
+                <span
+                  ><i class="fa fa-clock-o"></i>Open hours: 9:00 AM - 06.00 pm
+                  Mon-Fri</span
+                >
+              </div>
+            </div>
+            <div class="col-lg-5 col-md-4">
+              <div class="header-login-register d-flex justify-content-center align-items-center">
+                <ul class="login">
+                  <li>
+                    <a href="{% url 'accounts:login' %}"><i class="fa fa-key"></i>Login</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--Logo Mainmenu Start-->
+      <div class="header-logo-menu sticker">
+        <div class="container">
+          <div class="logo-menu-bg">
+            <div class="row">
+              <div class="col-lg-3 col-md-12">
+                <div class="logo">
+                  <a href="{% url 'website:index' %}"
+                    ><img src="{% static 'website-v2/img/logo/logo-blue.png' %}" alt="UG-UTAG" class="{% static 'website-v2/img-fluid"/></a>
+                </div>
+              </div>
+              <div class="col-lg-9 d-none d-lg-block">
+                <div class="mainmenu-area">
+                  <div class="mainmenu">
+                    <nav>
+                      <ul id="nav">
+                        <li class="current"><a href="{% url 'website:index' %}">Home</a></li>
+                        <li><a href="{% url 'website:about_us' %}">About us</a></li>
+                        <li>
+                          <a href="#"
+                            >Leadership<i class="fa fa-angle-down"></i
+                          ></a>
+                          <ul class="sub-menu">
+                            <li>
+                              <a href="{% url 'website:executive_officers' %}">Executives</a>
+                            </li>
+                            <li>
+                              <a href="{% url 'website:executive_committee_members' %}">Committee Members</a>
+                            </li>
+                          </ul>
+                        </li>
+                        <li><a href="{% url 'website:news' %}">News</a></li>
+                        <li><a href="{% url 'website:events' %}">Events</a></li>
+                        <li><a href="{% url 'website:gallery' %}">Gallery</a></li>
+                        <li><a href="{% url 'website:contact_us' %}">Contact</a></li>
+                      </ul>
+                    </nav>
+                  </div>
+                  <ul class="header-search">
+                    <li class="search-menu">
+                      <i id="toggle-search" class="fa fa-search"></i>
+                    </li>
+                  </ul>
+                  <!--Search Form-->
+                  <div class="search">
+                    <div class="search-form">
+                      <form id="search-form" action="#">
+                        <input
+                          type="search"
+                          placeholder="Search here..."
+                          name="search"
+                        />
+                        <button type="submit" aria-label="Search">
+                          <span><i class="fa fa-search"></i></span>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                  <!--End of Search Form-->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--End of Logo Mainmenu-->
+      <!-- Mobile Menu Area start -->
+      <div class="mobile-menu-area">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-12">
+              <div class="mobile-menu">
+                <nav id="dropdown">
+                  <ul>
+                    <li class="current"><a href="{% url 'website:index' %}">Home</a></li>
+                    <li><a href="{% url 'website:about_us' %}">About us</a></li>
+                    <li>
+                      <a href="#">Leadership</a>
+                      <ul class="sub-menu">
+                        <li>
+                          <a href="{% url 'website:executive_officers' %}">Executives</a>
+                        </li>
+                        <li>
+                          <a href="{% url 'website:executive_committee_members' %}">Committee Members</a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li><a href="{% url 'website:news' %}">News</a></li>
+                    <li><a href="{% url 'website:events' %}">Events</a></li>
+                    <li><a href="{% url 'website:gallery' %}">Gallery</a></li>
+                    <li><a href="{% url 'website:contact_us' %}">CONTACT</a></li>
+                  </ul>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Mobile Menu Area end -->
+    </header>

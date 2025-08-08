@@ -1,0 +1,91 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}News{% endblock title %}
+{% block content %}
+
+<!--Breadcrumb Banner Area Start-->
+<div class="breadcrumb-banner-area blog">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="breadcrumb-text">
+          <h1 class="text-center">News</h1>
+          <div class="breadcrumb-bar">
+            <ul class="breadcrumb">
+              <li><a href="{% url 'website:index' %}">Home</a></li>
+              <li>News</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Breadcrumb Banner Area-->
+<!--News Fullwidth Area Start-->
+<div class="blog-fullwidth-area section-padding blog-two">
+  <div class="container">
+    <div class="row">
+      {% if news_page.object_list %}
+        {% for news in news_page.object_list %}
+        <div class="col-lg-4 col-md-6">
+          <div class="single-blog-item overlay-hover">
+            <div class="single-blog-image">
+              <div class="overlay-effect">
+                <a href="{% url 'website:news_detail' slug=news.news_slug %}">
+                  <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" />
+                  <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
+                </a>
+              </div>
+            </div>
+            <div class="single-blog-text">
+              <h4>
+                <a href="{% url 'website:news_detail' slug=news.news_slug %}">{{ news.title|truncatechars:80 }}</a>
+              </h4>
+              <div class="blog-date">
+                <span><i class="fa fa-calendar"></i>{{ news.created_at|date:"d M, Y" }}</span>
+              </div>
+              <p>{{ news.content|truncatechars:120|safe }}</p>
+              <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-12">
+          <p class="text-center">No news articles are currently available. Please check back later.</p>
+        </div>
+      {% endif %}
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="pagination-content">
+          <div class="pagination-button">
+            <ul class="pagination">
+              {% if news_page.has_previous %}
+                <li><a href="?page={{ news_page.previous_page_number }}">&laquo;</a></li>
+              {% else %}
+                <li class="disabled"><span>&laquo;</span></li>
+              {% endif %}
+              {% for num in news_page.paginator.page_range %}
+                {% if news_page.number == num %}
+                  <li class="current"><a href="#">{{ num }}</a></li>
+                {% elif num > news_page.number|add:'-3' and num < news_page.number|add:'3' %}
+                  <li><a href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+              {% endfor %}
+              {% if news_page.has_next %}
+                <li><a href="?page={{ news_page.next_page_number }}">&raquo;</a></li>
+              {% else %}
+                <li class="disabled"><span>&raquo;</span></li>
+              {% endif %}
+            </ul>
+            <span>Page: {{ news_page.number }} of {{ news_page.paginator.num_pages }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of News Fullwidth Area-->
+{% endblock %}

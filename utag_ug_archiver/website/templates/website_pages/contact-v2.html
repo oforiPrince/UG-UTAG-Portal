@@ -1,0 +1,196 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}Contact Us{% endblock title %}
+{% block content %}
+<!--Google Map Area Start -->
+<div class="google-map-area">
+  <!--  Map Section -->
+  <div id="contacts" class="map-area">
+    <div id="googleMap" style="width: 100%; height: 451px;"></div>
+  </div>
+  <div class="breadcrumb-bar">
+    <ul class="breadcrumb">
+      <li><a href="{% url 'website:index' %}">Home</a></li>
+      <li>Contact Us</li>
+    </ul>
+  </div>
+</div>
+<!--End of Google Map Area-->
+<!--Contact Area Strat-->
+<div class="contact-area section-padding">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="contact-area-container">
+          <div class="single-title">
+            <h3>Contact Info</h3>
+          </div>
+          <!-- <p>
+            Have questions or need assistance? The University of Ghana Branch of UTAG is here to help. 
+            Feel free to reach out to us using the contact information below or send us a message 
+            through the form.
+          </p> -->
+          <div class="contact-address-container">
+            <div class="contact-address-info">
+              <div class="contact-icon">
+                <i class="fa fa-map-marker"></i>
+              </div>
+              <div class="contact-text">
+                <h4>Address</h4>
+                <span>University of Ghana, Legon - Accra, GPS Ghana</span>
+              </div>
+            </div>
+            <div class="contact-address-info">
+              <div class="contact-icon">
+                <i class="fa fa-phone"></i>
+              </div>
+              <div class="contact-text">
+                <h4>Phone</h4>
+                <span>+233 (0) 24 427 7275</span>
+              </div>
+            </div>
+            <div class="contact-address-info">
+              <div class="contact-icon">
+                <i class="fa fa-envelope"></i>
+              </div>
+              <div class="contact-text">
+                <h4>Email</h4>
+                <span>utagoffice@ug.edu.gh</span>
+              </div>
+            </div>
+            <div class="contact-address-info">
+              <div class="contact-icon">
+                <i class="fa fa-clock-o"></i>
+              </div>
+              <div class="contact-text">
+                <h4>Office Hours</h4>
+                <span>Mon – Fri : 9:00 – 18:00</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Social Media Links -->
+          <div class="mt-4">
+            <h4>Follow Us</h4>
+            <div class="d-flex mt-3">
+              <a href="https://www.facebook.com" target="_blank" rel="noopener" aria-label="Visit our Facebook page" 
+                class="btn btn-outline-primary rounded-circle me-2 mx-1" 
+                style="width: 40px; height: 40px; padding: 8px 0;">
+                <i class="fa fa-facebook"></i>
+              </a>
+              <a href="https://www.twitter.com" target="_blank" rel="noopener" aria-label="Visit our Twitter page" 
+                class="btn btn-outline-info rounded-circle me-2 mx-1" 
+                style="width: 40px; height: 40px; padding: 8px 0;">
+                <i class="fa fa-twitter"></i>
+              </a>
+              <a href="mailto:utagoffice@ug.edu.gh" aria-label="Send us an email" 
+                class="btn btn-outline-danger rounded-circle me-2 mx-1" 
+                style="width: 40px; height: 40px; padding: 8px 0;">
+                <i class="fa fa-google-plus"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="contact-form">
+          <div class="single-title">
+            <h3>Send A Message</h3>
+          </div>
+          <p class="mb-4">
+            Would you like to speak to one of our representatives? Just submit your details and 
+            we'll be in touch shortly. You can also email us for any further concerns.
+          </p>
+          <div class="contact-form-container">
+            <form id="contact-form" method="post">
+              {% csrf_token %}
+              <div class="row">
+                <div class="col-md-6">
+                  <input
+                    type="text"
+                    id="contact_name"
+                    name="contact_name"
+                    placeholder="Your Name *"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <input
+                    type="email"
+                    id="contact_email"
+                    name="contact_email"
+                    placeholder="Your Email *"
+                    required
+                  />
+                </div>
+              </div>
+              <input 
+                type="tel" 
+                id="contact_phone" 
+                name="contact_phone" 
+                placeholder="Your Phone"
+              />
+              <textarea
+                id="contact_message"
+                name="contact_message"
+                class="yourmessage"
+                placeholder="Your message"
+              ></textarea>
+              <button
+                type="submit"
+                class="button-default button-yellow submit"
+              >
+                <i class="fa fa-send"></i> Submit
+              </button>
+              <div class="form-message mt-3" style="display: none;"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Contact Area-->
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  "mainEntity": {
+    "@type": "Organization",
+    "name": "University of Ghana - UTAG",
+    "url": "https://utag.ug.edu.gh",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+233 24 427 7275",
+      "email": "utagoffice@ug.edu.gh",
+      "contactType": "Customer Service"
+    }
+  }
+}
+</script>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+document.getElementById('contact-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const output = document.querySelector('.form-message');
+    const name = document.getElementById('contact_name').value;
+    const email = document.getElementById('contact_email').value;
+
+    if (!name || !email) {
+        output.style.color = 'red';
+        output.textContent = 'Please fill in the required fields.';
+        output.style.display = 'block';
+    } else {
+        output.style.color = 'green';
+        output.textContent = 'Thank you for contacting us! We will respond shortly.';
+        output.style.display = 'block';
+        document.getElementById('contact-form').reset();
+    }
+});
+</script>
+{% endblock %}

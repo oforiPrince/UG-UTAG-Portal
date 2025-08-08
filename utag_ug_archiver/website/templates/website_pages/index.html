@@ -277,8 +277,8 @@
                                         <figure class="image">
                                             <img src="{{event.get_image_url}}" alt="Blog">
                                         </figure>
-                                        {% if event.date %}
-                                        <span class="mini-blog__date">{{ event.date|date:"j" }} <br>{{ event.date|date:"M" }}</span>
+                                        {% if event.start_date %}
+                                        <<span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
                                         {% endif %}
                                     </div>
                                     <div class="mini-blog__info">

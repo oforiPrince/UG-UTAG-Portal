@@ -1,0 +1,201 @@
+{% extends "base/base-v2.html" %}
+{% load static %}
+{% block title %}News Detail{% endblock %}
+{% block content %}
+<!--Breadcrumb Banner Area Start-->
+<div class="breadcrumb-banner-area blog">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="breadcrumb-text">
+          <h1 class="text-center">News Details</h1>
+          <div class="breadcrumb-bar">
+            <ul class="breadcrumb">
+              <li><a href="{% url 'website:index' %}">Home</a></li>
+              <li>News Details</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of Breadcrumb Banner Area-->
+<!--News Details Area Start-->
+<div class="blog-details-area section-padding blog-two">
+  <div class="container">
+    <div class="row">
+      <div class="col-xl-9 col-lg-8">
+        <div class="blog-post-wrapper">
+          <div class="blog-post-details">
+            <h1>{{ news.title }}</h1>
+            <span><i class="fa fa-calendar"></i>{{ news.created_at|date:'F d, Y' }} / By: {{ news.author }}</span>
+          </div>
+          <div class="blog-post-details-img">
+            <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" class="img-fluid rounded shadow" />
+          </div>
+          <div class="blog-post-details-text">
+            <div class="news-content">
+              <p class="text-justify">{{ news.content|safe }}</p>
+              {% if news.citations.exists %}
+              <div class="news-citations mt-5">
+                <h4 class="mb-3"><i class="fa fa-book"></i> References</h4>
+                <ol>
+                  {% for citation in news.citations.all %}
+                  <li>
+                    <a href="{{ citation.url }}" target="_blank" rel="noopener">
+                      {{ citation.source_name }}
+                    </a>
+                    {% if citation.description %}
+                      - {{ citation.description }}
+                    {% endif %}
+                  </li>
+                  {% endfor %}
+                </ol>
+              </div>
+              {% endif %}
+              {% if news.attached_documents.exists %}
+              <div class="news-documents mt-5">
+                <h4 class="mb-3"><i class="fa fa-file"></i> Related Documents</h4>
+                <ul class="list-group">
+                  {% for document in news.attached_documents.all %}
+                  <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                    <!-- <span>{{ document.name }}</span> -->
+                    {% if document.is_pdf %}
+                      <div class="w-100 mt-2 mt-md-0" style="height:400px;">
+                        <iframe src="{{ document.file.url }}#toolbar=1" width="100%" height="100%" style="border:1px solid #ccc; border-radius:4px;" allowfullscreen title="PDF Preview"></iframe>
+                      </div>
+                    {% else %}
+                      <a href="{{ document.file.url }}" class="btn btn-primary btn-sm mt-2 mt-md-0" download>
+                        <i class="fa fa-download"></i> Download
+                      </a>
+                    {% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="single-title">
+            <h3>Related Posts</h3>
+          </div>
+          <div class="row">
+            {% for latest in latest_news %}
+            <div class="col-xl-4 col-lg-6 col-md-6 col-12">
+              <div class="single-blog-item overlay-hover">
+                <div class="single-blog-image">
+                  <div class="overlay-effect">
+                    <a href="{% url 'website:news_detail' slug=latest.news_slug %}">
+                      <img src="{{ latest.get_featured_image_url }}" alt="{{ latest.title }}" />
+                      <span class="class-date">{{ latest.created_at|date:'M d' }} <span>{{ latest.created_at|date:'Y' }}</span></span>
+                    </a>
+                  </div>
+                </div>
+                <div class="single-blog-text">
+                  <h4>
+                    <a href="{% url 'website:news_detail' slug=latest.news_slug %}">{{ latest.title }}</a>
+                  </h4>
+                  <div class="blog-date">
+                    <span><i class="fa fa-calendar"></i>{{ latest.created_at|date:'d M, Y' }}</span>
+                  </div>
+                  <p>{{ latest.content|truncatechars:80|safe }}</p>
+                  <a href="{% url 'website:news_detail' slug=latest.news_slug %}">Read more.</a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-lg-4">
+        <div class="single-widget-item">
+          <div class="single-title">
+            <h3>News Details</h3>
+          </div>
+          <div class="single-widget-container">
+            <ul class="sidebar-categories">
+              <li><strong>Published:</strong> {{ news.created_at|date:'F d, Y' }}</li>
+              <li><strong>Author:</strong> {{ news.author }}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="single-widget-item">
+          <div class="single-title">
+            <h3>Share this News</h3>
+          </div>
+          <div class="single-widget-container">
+            <ul class="list-unstyled d-flex gap-3 mt-3 mb-0">
+              <li>
+                <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on Facebook">
+                  <i class="fa fa-facebook fa-lg"></i>
+                </a>
+              </li>
+              <li>
+                <a href="https://wa.me/?text={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on WhatsApp">
+                  <i class="fa fa-whatsapp fa-lg"></i>
+                </a>
+              </li>
+              <li>
+                <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.title }}" target="_blank" rel="noopener" class="btn btn-info rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on Twitter">
+                  <i class="fa fa-twitter fa-lg"></i>
+                </a>
+              </li>
+              <li>
+                <a href="mailto:?subject={{ news.title }}&body={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-danger rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share by Email">
+                  <i class="fa fa-envelope fa-lg"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        {% if news.tags.exists %}
+        <div class="single-widget-item">
+          <div class="single-title">
+            <h3>Tags</h3>
+          </div>
+          <div class="single-widget-container">
+            <ul class="tag-list">
+                {% for tag in news.tags.all %}
+              <li><a href="#">{{ tag.name }}</a></li>
+                {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+        <!-- Advertisement Banners -->
+        <div class="single-widget-item">
+          <div class="single-widget-container">
+            <a href="#">
+              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
+            </a>
+          </div>
+        </div>
+        <div class="single-widget-item">
+          <div class="single-widget-container">
+            <a href="#">
+              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
+            </a>
+          </div>
+        </div>
+        <div class="single-widget-item">
+          <div class="single-widget-container">
+            <a href="#">
+              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
+            </a>
+          </div>
+        </div>
+        <div class="single-widget-item">
+          <div class="single-widget-container">
+            <a href="#">
+              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
+            </a>
+          </div>
+        </div>
+        <!-- Advertisement Banners End -->
+      </div>
+    </div>
+  </div>
+</div>
+<!--End of News Details Details Area-->
+{% endblock content %}
