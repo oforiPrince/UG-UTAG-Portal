@@ -142,7 +142,7 @@
                   </span>
                   <span class="post__comment-link">
                       <i class="fa fa-calendar"></i>
-                      {{ event.start_time|time:"g:i A" }}
+                      {{ event.start_date|date:"d M, Y" }} {% if event.end_date %} - {{ event.end_date|date:"d M, Y" }}{% endif %}
                   </span>
               </div>
           </div>

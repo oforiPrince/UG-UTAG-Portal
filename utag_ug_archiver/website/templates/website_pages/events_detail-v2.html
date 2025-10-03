@@ -1,130 +1,138 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
-{% block title %}{{ event.title|default:"Event Details" }}{% endblock title %}
+{% block title %}
+  {{ event.title|default:"Event Details" }}
+{% endblock title %}
 {% block content %}
-    <!--Breadcrumb Banner Area Start-->
-    <div class="breadcrumb-banner-area">
-      <div class="container">
-        <div class="row">
-          <div class="col-md-12">
-            <div class="breadcrumb-text">
-              <h1 class="text-center">{{ event.title }}</h1>
-              <div class="breadcrumb-bar">
-                <ul class="breadcrumb">
-                  <li><a href="{% url 'website:index' %}">Home</a></li>
-                  <li><a href="{% url 'website:events' %}">Events</a></li>
-                  <li>{{ event.title }}</li>
-                </ul>
-              </div>
+  <!--Breadcrumb Banner Area Start-->
+  <div class="breadcrumb-banner-area">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="breadcrumb-text">
+            <h1 class="text-center">{{ event.title }}</h1>
+            <div class="breadcrumb-bar">
+              <ul class="breadcrumb">
+                <li>
+                  <a href="{% url 'website:index' %}">Home</a>
+                </li>
+                <li>
+                  <a href="{% url 'website:events' %}">Events</a>
+                </li>
+                <li>{{ event.title }}</li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <!--End of Breadcrumb Banner Area-->
-    
-    <!--Event Details Area Start-->
-    <div class="class-details-area section-padding-top">
-      <div class="container">
-        <!-- Event Status Banner -->
-        {% if event.status == 'cancelled' %}
-          <div class="alert alert-danger text-center mb-4">
-            <strong>This event has been cancelled</strong>
-          </div>
-        {% elif event.status == 'postponed' %}
-          <div class="alert alert-warning text-center mb-4">
-            <strong>This event has been postponed</strong>
-          </div>
-        {% endif %}
-        
-        <div class="row">
-          <div class="col-xl-9 col-lg-8">
-            <div class="class-details-container">
-              <h1>{{ event.title }}</h1>
-              
-              <!-- Event Type Badge -->
-              <div class="mb-3">
-                <span class="badge text-white {% if event.is_online %}bg-info{% else %}bg-success{% endif %} p-2">
-                  {% if event.is_online %}Online{% else %}In Person{% endif %} {{ event.get_event_type_display }}
-                </span>
-                
-                <!-- Status Badge -->
-                <span class="badge text-white
-                  {% if event.status == 'upcoming' %}bg-primary
-                  {% elif event.status == 'ongoing' %}bg-primary
-                  {% elif event.status == 'completed' %}bg-secondary
-                  {% elif event.status == 'cancelled' %}bg-danger
-                  {% elif event.status == 'postponed' %}bg-warning
-                  {% endif %} p-2">
-                  {{ event.get_status_display }}
-                </span>
-              </div>
-              
-              <!-- Event Image Carousel -->
-              <div class="class-details-carousel carousel-style-one owl-carousel">
-                <img src="{{ event.featured_image.url }}" alt="{{ event.title }}" />
-                {% for image in event.additional_images.all %}
-                  <img src="{{ image.image.url }}" alt="{{ image.caption|default:event.title }}" />
-                {% endfor %}
-              </div>
+  </div>
+  <!--End of Breadcrumb Banner Area-->
+  <!--Event Details Area Start-->
+  <div class="class-details-area section-padding-top">
+    <div class="container">
+      <!-- Event Status Banner -->
+      {% if event.status == 'cancelled' %}
+        <div class="alert alert-danger text-center mb-4">
+          <strong>This event has been cancelled</strong>
+        </div>
+      {% elif event.status == 'postponed' %}
+        <div class="alert alert-warning text-center mb-4">
+          <strong>This event has been postponed</strong>
+        </div>
+      {% endif %}
+      <div class="row">
+        <div class="col-xl-9 col-lg-8">
+          <div class="class-details-container">
+            <h1>{{ event.title }}</h1>
+            <!-- Event Type Badge -->
+            <div class="mb-3">
+              <span class="badge text-white {% if event.is_online %}bg-info{% else %}bg-success{% endif %} p-2">
+                {% if event.is_online %}
+                  Online
+                {% else %}
+                  In Person
+                {% endif %}
+                {{ event.get_event_type_display }}
+              </span>
+              <!-- Status Badge -->
+              <span class="badge text-white {% if event.status == 'upcoming' %}bg-primary {% elif event.status == 'ongoing' %}bg-primary {% elif event.status == 'completed' %}bg-secondary {% elif event.status == 'cancelled' %}bg-danger {% elif event.status == 'postponed' %}bg-warning {% endif %} p-2">
+                {{ event.get_status_display }}
+              </span>
             </div>
-            
-            <div class="class-details-tab">
-              <div class="class-details-tab-menu">
-                <ul role="tablist" class="nav nav-tabs">
+            <!-- Event Image Carousel -->
+            <div class="class-details-carousel carousel-style-one owl-carousel">
+              <img src="{{ event.featured_image.url }}" alt="{{ event.title }}" />
+              {% for image in event.additional_images.all %}
+                <img src="{{ image.image.url }}"
+                     alt="{{ image.caption|default:event.title }}" />
+              {% endfor %}
+            </div>
+          </div>
+          <div class="class-details-tab">
+            <div class="class-details-tab-menu">
+              <ul role="tablist" class="nav nav-tabs">
+                <li role="presentation">
+                  <a class="active"
+                     data-toggle="tab"
+                     role="tab"
+                     aria-controls="overview"
+                     href="#overview">
+                    <i class="fa fa-info-circle"></i>Event Overview
+                  </a>
+                </li>
+                {% if event.schedule_items.exists %}
                   <li role="presentation">
-                    <a class="active" data-toggle="tab" role="tab" aria-controls="overview" href="#overview">
-                      <i class="fa fa-info-circle"></i>Event Overview
-                    </a>
-                  </li>
-                  {% if event.schedule_items.exists %}
-                  <li role="presentation">
-                    <a data-toggle="tab" role="tab" aria-controls="schedule" href="#schedule">
+                    <a data-toggle="tab"
+                       role="tab"
+                       aria-controls="schedule"
+                       href="#schedule">
                       <i class="fa fa-calendar"></i>Event Schedule
                     </a>
                   </li>
-                  {% endif %}
-                  {% if event.speakers.exists %}
+                {% endif %}
+                {% if event.speakers.exists %}
                   <li role="presentation">
-                    <a data-toggle="tab" role="tab" aria-controls="speakers" href="#speakers">
+                    <a data-toggle="tab"
+                       role="tab"
+                       aria-controls="speakers"
+                       href="#speakers">
                       <i class="fa fa-users"></i>Speakers
                     </a>
                   </li>
-                  {% endif %}
-                  {% if event.documents.exists %}
+                {% endif %}
+                {% if event.documents.exists %}
                   <li role="presentation">
-                    <a data-toggle="tab" role="tab" aria-controls="documents" href="#documents">
+                    <a data-toggle="tab"
+                       role="tab"
+                       aria-controls="documents"
+                       href="#documents">
                       <i class="fa fa-file-pdf-o"></i>Documents
                     </a>
                   </li>
-                  {% endif %}
-                </ul>
-              </div>
-              <div class="clearfix"></div>
-              <div class="tab-content">
-                <!-- Overview Tab -->
-                <div id="overview" class="tab-pane active" role="tabpanel">
-                  <h3>EVENT DESCRIPTION</h3>
-                  <div>{{ event.description|safe }}</div>
-                  
-                  {% if event.tags.exists %}
+                {% endif %}
+              </ul>
+            </div>
+            <div class="clearfix"></div>
+            <div class="tab-content">
+              <!-- Overview Tab -->
+              <div id="overview" class="tab-pane active" role="tabpanel">
+                <h3>EVENT DESCRIPTION</h3>
+                <div>{{ event.description|safe }}</div>
+                {% if event.tags.exists %}
                   <div class="mt-4">
                     <h5>Tags:</h5>
                     <div class="d-flex flex-wrap">
-                      {% for tag in event.tags.all %}
-                        <span class="badge bg-secondary me-2 mb-2 p-2">{{ tag.name }}</span>
-                      {% endfor %}
+                      {% for tag in event.tags.all %}<span class="badge bg-secondary me-2 mb-2 p-2">{{ tag.name }}</span>{% endfor %}
                     </div>
                   </div>
-                  {% endif %}
-                </div>
-                
-                <!-- Schedule Tab -->
-                {% if event.schedule_items.exists %}
+                {% endif %}
+              </div>
+              <!-- Schedule Tab -->
+              {% if event.schedule_items.exists %}
                 <div id="schedule" class="tab-pane" role="tabpanel">
                   <h3>Event Schedule</h3>
                   <p>Below is the detailed schedule for this event.</p>
-                  
                   <div class="table-content table-responsive">
                     <table class="table table-striped">
                       <thead>
@@ -137,98 +145,104 @@
                       </thead>
                       <tbody>
                         {% for item in event.schedule_items.all %}
-                        <tr>
-                          <td>{{ item.date|date:"M d, Y" }}</td>
-                          <td>{{ item.start_time|time:"g:i A" }} - {{ item.end_time|time:"g:i A" }}</td>
-                          <td>
-                            <strong>{{ item.title }}</strong>
-                            {% if item.description %}<p>{{ item.description }}</p>{% endif %}
-                          </td>
-                          <td>{{ item.location }}</td>
-                        </tr>
+                          <tr>
+                            <td>{{ item.date|date:"M d, Y" }}</td>
+                            <td>{{ item.start_time|time:"g:i A" }} - {{ item.end_time|time:"g:i A" }}</td>
+                            <td>
+                              <strong>{{ item.title }}</strong>
+                              {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+                            </td>
+                            <td>{{ item.location }}</td>
+                          </tr>
                         {% endfor %}
                       </tbody>
                     </table>
                   </div>
                 </div>
-                {% endif %}
-                
-                <!-- Speakers Tab -->
-                {% if event.speakers.exists %}
+              {% endif %}
+              <!-- Speakers Tab -->
+              {% if event.speakers.exists %}
                 <div id="speakers" class="tab-pane" role="tabpanel">
                   <h3>Featured Speakers</h3>
                   <div class="row">
                     {% for speaker in event.speakers.all %}
-                    <div class="col-lg-6 mb-4">
-                      <div class="speaker-profile card h-100">
-                        <div class="card-body d-flex">
-                          {% if speaker.image %}
-                          <div class="speaker-image me-3">
-                            <img src="{{ speaker.image.url }}" alt="{{ speaker.name }}" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
-                          </div>
-                          {% endif %}
-                          <div class="speaker-info">
-                            <h4>{{ speaker.name }}</h4>
-                            <p class="text-muted">{{ speaker.title }}</p>
-                            {% if speaker.presentation_title %}
-                            <p><em>"{{ speaker.presentation_title }}"</em></p>
+                      <div class="col-lg-6 mb-4">
+                        <div class="speaker-profile card h-100">
+                          <div class="card-body d-flex">
+                            {% if speaker.image %}
+                              <div class="speaker-image me-3">
+                                <img src="{{ speaker.image.url }}"
+                                     alt="{{ speaker.name }}"
+                                     class="rounded-circle"
+                                     style="width: 100px;
+                                            height: 100px;
+                                            object-fit: cover">
+                              </div>
                             {% endif %}
-                            {% if speaker.bio %}
-                            <p>{{ speaker.bio|truncatewords:30 }}</p>
-                            {% endif %}
+                            <div class="speaker-info">
+                              <h4>{{ speaker.name }}</h4>
+                              <p class="text-muted">{{ speaker.title }}</p>
+                              {% if speaker.presentation_title %}
+                                <p>
+                                  <em>"{{ speaker.presentation_title }}"</em>
+                                </p>
+                              {% endif %}
+                              {% if speaker.bio %}<p>{{ speaker.bio|truncatewords:30 }}</p>{% endif %}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
                     {% endfor %}
                   </div>
                 </div>
-                {% endif %}
-                
-                <!-- Documents Tab -->
-                {% if event.documents.exists %}
+              {% endif %}
+              <!-- Documents Tab -->
+              {% if event.documents.exists %}
                 <div id="documents" class="tab-pane" role="tabpanel">
                   <h3>Event Documents</h3>
                   <p>Download event materials and resources below.</p>
-                  
                   <div class="list-group">
                     {% for doc in event.documents.all %}
                       {% if doc.is_public %}
-                      <a href="{{ doc.file.url }}" class="list-group-item list-group-item-action" target="_blank">
-                        <i class="fa fa-file-pdf-o me-2"></i> {{ doc.title }}
-                      </a>
+                        <a href="{{ doc.file.url }}"
+                           class="list-group-item list-group-item-action"
+                           target="_blank">
+                          <i class="fa fa-file-pdf-o me-2"></i> {{ doc.title }}
+                        </a>
                       {% endif %}
                     {% endfor %}
                   </div>
                 </div>
-                {% endif %}
-              </div>
+              {% endif %}
             </div>
           </div>
-          
-          <div class="col-xl-3 col-lg-4">
-            <!-- Event Information Widget -->
-            <div class="single-widget-item">
-              <div class="single-title">
-                <h3>Event Information</h3>
-              </div>
-              <div class="single-widget-container">
-                <ul class="class-infos">
-                  <li>
-                    <i class="fa fa-calendar"></i>Date: 
-                    {% if event.end_date and event.end_date != event.start_date %}
-                      {{ event.start_date|date:"M d" }} - {{ event.end_date|date:"M d, Y" }}
-                    {% else %}
-                      {{ event.start_date|date:"M d, Y" }}
-                    {% endif %}
-                  </li>
-                  <li>
-                    <i class="fa fa-clock-o"></i>Time: 
+        </div>
+        <div class="col-xl-3 col-lg-4">
+          <!-- Event Information Widget -->
+          <div class="single-widget-item">
+            <div class="single-title">
+              <h3>Event Information</h3>
+            </div>
+            <div class="single-widget-container">
+              <ul class="class-infos">
+                <li>
+                  <i class="fa fa-calendar"></i>Date:
+                  {% if event.end_date and event.end_date != event.start_date %}
+                    {{ event.start_date|date:"M d" }} - {{ event.end_date|date:"M d, Y" }}
+                  {% else %}
+                    {{ event.start_date|date:"M d, Y" }}
+                  {% endif %}
+                </li>
+                <li>
+                  <i class="fa fa-clock-o"></i>Time:
+                  {% if event.start_time %}
                     {{ event.start_time|time:"g:i A" }}
-                    {% if event.end_time %} - {{ event.end_time|time:"g:i A" }}{% endif %}
-                  </li>
-                  
-                  {% if event.is_online %}
+                    {% if event.end_time %}- {{ event.end_time|time:"g:i A" }}{% endif %}
+                  {% else %}
+                    All Day Event
+                  {% endif %}
+                </li>
+                {% if event.is_online %}
                   <li>
                     <i class="fa fa-laptop"></i>Online Event
                   </li>
@@ -236,53 +250,53 @@
                     <i class="fa fa-video-camera"></i>Platform: {{ event.online_platform }}
                   </li>
                   {% if not event.is_past_due %}
-                  <li>
-                    <i class="fa fa-link"></i>
-                    <a href="{{ event.online_link }}" target="_blank" class="btn btn-sm btn-primary">Join Meeting</a>
-                  </li>
+                    <li>
+                      <i class="fa fa-link"></i>
+                      <a href="{{ event.online_link }}"
+                         target="_blank"
+                         class="btn btn-sm btn-primary">Join Meeting</a>
+                    </li>
                   {% endif %}
-                  {% else %}
+                {% else %}
                   <li>
                     <i class="fa fa-map-marker"></i>Venue: {{ event.venue }}
                   </li>
                   {% if event.address %}
-                  <li>
-                    <i class="fa fa-location-arrow"></i>Address: {{ event.address }}
-                    {% if event.city %}, {{ event.city }}{% endif %}
-                  </li>
+                    <li>
+                      <i class="fa fa-location-arrow"></i>Address: {{ event.address }}
+                      {% if event.city %}, {{ event.city }}{% endif %}
+                    </li>
                   {% endif %}
                   {% if event.location_url %}
-                  <li>
-                    <a href="{{ event.location_url }}" target="_blank" class="btn btn-sm btn-info">
-                      <i class="fa fa-map"></i> View Map
-                    </a>
-                  </li>
+                    <li>
+                      <a href="{{ event.location_url }}"
+                         target="_blank"
+                         class="btn btn-sm btn-info">
+                        <i class="fa fa-map"></i> View Map
+                      </a>
+                    </li>
                   {% endif %}
-                  {% endif %}
-                  
-                  {% if event.expected_participants > 0 %}
+                {% endif %}
+                {% if event.expected_participants > 0 %}
                   <li>
                     <i class="fa fa-users"></i>Expected Participants: {{ event.expected_participants }}+
                   </li>
-                  {% endif %}
-                  
-                  {% if event.cpd_credits > 0 %}
+                {% endif %}
+                {% if event.cpd_credits > 0 %}
                   <li>
                     <i class="fa fa-certificate"></i>CPD Credits: {{ event.cpd_credits }}
                   </li>
-                  {% endif %}
-                  
-                  {% if event.event_type != 'online' %}
+                {% endif %}
+                {% if event.event_type != 'online' %}
                   <li>
                     <i class="fa fa-tag"></i>Event Type: {{ event.get_event_type_display }}
                   </li>
-                  {% endif %}
-                </ul>
-              </div>
+                {% endif %}
+              </ul>
             </div>
-            
-            <!-- Organizer Information -->
-            {% if event.organizer_name or event.organizer_email or event.organizer_phone %}
+          </div>
+          <!-- Organizer Information -->
+          {% if event.organizer_name or event.organizer_email or event.organizer_phone %}
             <div class="single-widget-item">
               <div class="single-title">
                 <h3>Organizer Information</h3>
@@ -290,123 +304,124 @@
               <div class="single-widget-container">
                 <ul class="class-infos">
                   {% if event.organizer_name %}
-                  <li>
-                    <i class="fa fa-user"></i>{{ event.organizer_name }}
-                  </li>
+                    <li>
+                      <i class="fa fa-user"></i>{{ event.organizer_name }}
+                    </li>
                   {% endif %}
-                  
                   {% if event.organizer_email %}
-                  <li>
-                    <i class="fa fa-envelope"></i>
-                    <a href="mailto:{{ event.organizer_email }}">{{ event.organizer_email }}</a>
-                  </li>
+                    <li>
+                      <i class="fa fa-envelope"></i>
+                      <a href="mailto:{{ event.organizer_email }}">{{ event.organizer_email }}</a>
+                    </li>
                   {% endif %}
-                  
                   {% if event.organizer_phone %}
-                  <li>
-                    <i class="fa fa-phone"></i>{{ event.organizer_phone }}
-                  </li>
+                    <li>
+                      <i class="fa fa-phone"></i>{{ event.organizer_phone }}
+                    </li>
                   {% endif %}
                 </ul>
               </div>
             </div>
-            {% endif %}
-            
-            <!-- Registration Widget -->
-            {% if event.registration_required and event.is_registration_open %}
+          {% endif %}
+          <!-- Registration Widget -->
+          {% if event.registration_required and event.is_registration_open %}
             <div class="single-widget-item">
               <div class="single-title">
                 <h3>Register for Event</h3>
               </div>
               <div class="single-widget-container">
                 {% if event.registration_url %}
-                <a href="{{ event.registration_url }}" class="button-default button-yellow w-100 text-center" target="_blank">
-                  Register Now
-                </a>
-                <p class="mt-2">Registration Deadline: {{ event.registration_deadline|date:"M d, Y" }}</p>
+                  <a href="{{ event.registration_url }}"
+                     class="button-default button-yellow w-100 text-center"
+                     target="_blank">Register Now</a>
+                  <p class="mt-2">Registration Deadline: {{ event.registration_deadline|date:"M d, Y" }}</p>
                 {% else %}
-                <form action="#" method="post" id="event-registration">
-                  {% csrf_token %}
-                  <input type="text" name="name" placeholder="Your Full Name" required />
-                  <input type="email" name="email" placeholder="Your Email" required />
-                  <input type="text" name="department" placeholder="Department/Institution" required />
-                  <textarea name="special_requests" placeholder="Special Requirements or Questions"></textarea>
-                  <button type="submit" class="button-default button-yellow">
-                    Register Now
-                  </button>
-                </form>
+                  <form action="#" method="post" id="event-registration">
+                    {% csrf_token %}
+                    <input type="text" name="name" placeholder="Your Full Name" required />
+                    <input type="email" name="email" placeholder="Your Email" required />
+                    <input type="text"
+                           name="department"
+                           placeholder="Department/Institution"
+                           required />
+                    <textarea name="special_requests"
+                              placeholder="Special Requirements or Questions"></textarea>
+                    <button type="submit" class="button-default button-yellow">Register Now</button>
+                  </form>
                 {% endif %}
-                
                 {% if event.max_participants > 0 %}
-                <p class="mt-2 text-center">
-                  Limited to {{ event.max_participants }} participants
-                </p>
+                  <p class="mt-2 text-center">Limited to {{ event.max_participants }} participants</p>
                 {% endif %}
               </div>
             </div>
-            {% elif event.registration_required and not event.is_registration_open %}
+          {% elif event.registration_required and not event.is_registration_open %}
             <div class="single-widget-item">
               <div class="single-title">
                 <h3>Registration</h3>
               </div>
               <div class="single-widget-container">
-                <div class="alert alert-warning">
-                  Registration is now closed for this event.
-                </div>
+                <div class="alert alert-warning">Registration is now closed for this event.</div>
                 {% if event.registration_deadline %}
-                <p>Registration deadline was {{ event.registration_deadline|date:"M d, Y" }}.</p>
+                  <p>Registration deadline was {{ event.registration_deadline|date:"M d, Y" }}.</p>
                 {% endif %}
               </div>
             </div>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-    <!--End of Event Details Area-->
-    
-    <!-- Social Sharing Section -->
-    <!-- Social Sharing Section -->
-<div class="container mb-5">
-  <div class="row">
-    <div class="col-12">
-      <div class="social-share-panel text-center mt-5 py-4">
-        <h4 class="mb-4">Share This Event</h4>
-        <div class="d-flex justify-content-center">
-          <!-- Facebook -->
-          <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" 
-             class="btn btn-outline-primary rounded-circle mx-2" 
-             style="width: 45px; height: 45px; padding: 10px 0;" 
-             target="_blank" aria-label="Share on Facebook">
-            <i class="fa fa-facebook"></i>
-          </a>
-          
-          <!-- Twitter -->
-          <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text=Join%20us%20for%20{{ event.title|urlencode }}" 
-             class="btn btn-outline-info rounded-circle mx-2" 
-             style="width: 45px; height: 45px; padding: 10px 0;" 
-             target="_blank" aria-label="Share on Twitter">
-            <i class="fa fa-twitter"></i>
-          </a>
-          
-          <!-- WhatsApp -->
-          <a href="https://wa.me/?text=Join%20us%20for%20{{ event.title|urlencode }}:%20{{ request.build_absolute_uri }}" 
-             class="btn btn-outline-success rounded-circle mx-2" 
-             style="width: 45px; height: 45px; padding: 10px 0;" 
-             target="_blank" aria-label="Share on WhatsApp">
-            <i class="fa fa-whatsapp"></i>
-          </a>
-          
-          <!-- Email -->
-          <a href="mailto:?subject={{ event.title|urlencode }}&body=Join%20us%20for%20{{ event.title|urlencode }}:%20{{ request.build_absolute_uri }}" 
-             class="btn btn-outline-secondary rounded-circle mx-2" 
-             style="width: 45px; height: 45px; padding: 10px 0;" 
-             aria-label="Share via Email">
-            <i class="fa fa-envelope"></i>
-          </a>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
-</div>
+  <!--End of Event Details Area-->
+  <!-- Social Sharing Section -->
+  <!-- Social Sharing Section -->
+  <div class="container mb-5">
+    <div class="row">
+      <div class="col-12">
+        <div class="social-share-panel text-center mt-5 py-4">
+          <h4 class="mb-4">Share This Event</h4>
+          <div class="d-flex justify-content-center">
+            <!-- Facebook -->
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}"
+               class="btn btn-outline-primary rounded-circle mx-2"
+               style="width: 45px;
+                      height: 45px;
+                      padding: 10px 0"
+               target="_blank"
+               aria-label="Share on Facebook">
+              <i class="fa fa-facebook"></i>
+            </a>
+            <!-- Twitter -->
+            <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text=Join%20us%20for%20{{ event.title|urlencode }}"
+               class="btn btn-outline-info rounded-circle mx-2"
+               style="width: 45px;
+                      height: 45px;
+                      padding: 10px 0"
+               target="_blank"
+               aria-label="Share on Twitter">
+              <i class="fa fa-twitter"></i>
+            </a>
+            <!-- WhatsApp -->
+            <a href="https://wa.me/?text=Join%20us%20for%20{{ event.title|urlencode }}:%20{{ request.build_absolute_uri }}"
+               class="btn btn-outline-success rounded-circle mx-2"
+               style="width: 45px;
+                      height: 45px;
+                      padding: 10px 0"
+               target="_blank"
+               aria-label="Share on WhatsApp">
+              <i class="fa fa-whatsapp"></i>
+            </a>
+            <!-- Email -->
+            <a href="mailto:?subject={{ event.title|urlencode }}&body=Join%20us%20for%20{{ event.title|urlencode }}:%20{{ request.build_absolute_uri }}"
+               class="btn btn-outline-secondary rounded-circle mx-2"
+               style="width: 45px;
+                      height: 45px;
+                      padding: 10px 0"
+               aria-label="Share via Email">
+              <i class="fa fa-envelope"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}

@@ -31,7 +31,7 @@ class DashboardView(PermissionRequiredMixin, View):
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
         notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         # Get recent documents, events, and news
-        published_events = Event.objects.filter(is_published=True).order_by('-date')[:5]
+        published_events = Event.objects.filter(is_published=True).order_by('-created_at')[:5]
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
         recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
         

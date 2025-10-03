@@ -155,13 +155,13 @@
       reader.onload = function(e) {
         img.src = e.target.result;
         img.onload = function() {
-          if (img.width === 600 && img.height === 600) {
+          if (Math.abs(img.width / img.height - 1.5) < 0.01 || Math.abs(img.height / img.width - 1.5) < 0.01) {
             previewContainer.src = img.src;
             previewContainer.style.display = 'block';
             errorContainer.style.display = 'none';
           } else {
             previewContainer.style.display = 'none';
-            errorContainer.textContent = 'Image dimensions must be 600x600 pixels.';
+            errorContainer.textContent = 'Image must have a 3:2 aspect ratio (e.g., 6000×4000 or 3000×2000 pixels).';
             errorContainer.style.display = 'block';
             fileInput.value = '';
           }

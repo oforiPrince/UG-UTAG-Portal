@@ -95,7 +95,7 @@ class Event(models.Model):
     # Date and Time
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
-    start_time = models.TimeField()
+    start_time = models.TimeField(blank=True, null=True)
     end_time = models.TimeField(blank=True, null=True)
     registration_deadline = models.DateTimeField(blank=True, null=True)
     
@@ -151,30 +151,72 @@ class Event(models.Model):
         return self.featured_image.url if self.featured_image else None
     
     def is_past_due(self):
-        if self.end_date:
-            return self.end_date < timezone.now().date()
-        return self.start_date < timezone.now().date()
+        end_date = self.end_date
+        if isinstance(end_date, str):
+            from datetime import date
+            end_date = date.fromisoformat(end_date) if end_date else None
+        if end_date:
+            return end_date < timezone.now().date()
+        start_date = self.start_date
+        if isinstance(start_date, str):
+            from datetime import date
+            start_date = date.fromisoformat(start_date)
+        return start_date < timezone.now().date()
     
     def is_registration_open(self):
         if not self.registration_required:
             return False
         if self.registration_deadline:
             return timezone.now() < self.registration_deadline
-        return self.start_date > timezone.now().date()
+        start_date = self.start_date
+        if isinstance(start_date, str):
+            from datetime import date
+            start_date = date.fromisoformat(start_date)
+        return start_date > timezone.now().date()
     
     def get_status_display(self):
         now = timezone.now()
 
-        # Create datetime objects for start and end by combining date and time
-        start_datetime = timezone.make_aware(
-            datetime.datetime.combine(self.start_date, self.start_time)
-        ) if self.start_date and self.start_time else None
+        # Handle case where fields might be strings (during form processing)
+        start_date = self.start_date
+        if isinstance(start_date, str):
+            from datetime import date
+            start_date = date.fromisoformat(start_date)
+        start_time = self.start_time
+        if isinstance(start_time, str):
+            from datetime import time
+            start_time = time.fromisoformat(start_time) if start_time else None
 
-        end_date = self.end_date or self.start_date
-        end_time = self.end_time or datetime.time(23, 59, 59)  # Default to end of day if no end_time
-        end_datetime = timezone.make_aware(
-            datetime.datetime.combine(end_date, end_time)
-        ) if end_date and end_time else None
+        end_date = self.end_date
+        if isinstance(end_date, str):
+            from datetime import date
+            end_date = date.fromisoformat(end_date) if end_date else None
+        end_time = self.end_time
+        if isinstance(end_time, str):
+            from datetime import time
+            end_time = time.fromisoformat(end_time) if end_time else None
+
+        # Create datetime objects for start and end by combining date and time
+        if start_time:
+            start_datetime = timezone.make_aware(
+                datetime.datetime.combine(start_date, start_time)
+            )
+        else:
+            # For all-day events, start at beginning of start_date
+            start_datetime = timezone.make_aware(
+                datetime.datetime.combine(start_date, datetime.time(0, 0, 0))
+            )
+
+        end_date = end_date or start_date
+        if end_time:
+            end_datetime = timezone.make_aware(
+                datetime.datetime.combine(end_date, end_time)
+            )
+        else:
+            # For all-day events, end at end of end_date
+            end_datetime = timezone.make_aware(
+                datetime.datetime.combine(end_date, datetime.time(23, 59, 59))
+            )
 
         # Determine status based on datetime comparisons
         if self.is_past_due():
@@ -188,9 +230,26 @@ class Event(models.Model):
         return self.status
     
     def clean(self):
-        if self.end_date and self.end_date < self.start_date:
+        start_date = self.start_date
+        if isinstance(start_date, str):
+            from datetime import date
+            start_date = date.fromisoformat(start_date)
+        end_date = self.end_date
+        if isinstance(end_date, str):
+            from datetime import date
+            end_date = date.fromisoformat(end_date) if end_date else None
+        start_time = self.start_time
+        if isinstance(start_time, str):
+            from datetime import time
+            start_time = time.fromisoformat(start_time) if start_time else None
+        end_time = self.end_time
+        if isinstance(end_time, str):
+            from datetime import time
+            end_time = time.fromisoformat(end_time) if end_time else None
+
+        if end_date and end_date < start_date:
             raise ValidationError("End date cannot be before start date")
-        if self.end_time and self.start_date == self.end_date and self.end_time < self.start_time:
+        if end_time and start_date == end_date and end_time < start_time:
             raise ValidationError("End time cannot be before start time on the same day")
         if self.is_online and not self.online_link:
             raise ValidationError("Online events must have an online link")

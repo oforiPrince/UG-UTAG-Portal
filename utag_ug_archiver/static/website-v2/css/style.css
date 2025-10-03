@@ -1115,7 +1115,7 @@ span.arrow > a:after {
 /*  7. Register Area
 /*----------------------------------------*/
 .register-area {
-  background-image: url("../img/banner/1.jpg");
+  background-image: url("../img/banner/ug-image.jpg");
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -1328,7 +1328,7 @@ span.arrow > a:after {
   font-size: 15px;
 }
 .fun-factor-area {
-  background: url("../img/banner/3.jpg");
+  background: url("../img/banner/ug-image.jpg");
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -1677,7 +1677,7 @@ span.gallery-text {
 /*  13. Newsletter Area
 /*----------------------------------------*/
 .newsletter-area {
-  background: rgba(0, 0, 0, 0) url("../img/banner/4.jpg") no-repeat scroll
+  background: rgba(0, 0, 0, 0) url("../img/banner/ug-image.jpg") no-repeat scroll
     center center;
   padding-bottom: 159px;
   padding-top: 233px;
@@ -2060,7 +2060,7 @@ span.gallery-text {
 /*----------------------------------------*/
 
 .fun-factor-area.fun-factor-two {
-  background: rgba(0, 0, 0, 0) url("../img/banner/5.jpg") no-repeat scroll
+  background: rgba(0, 0, 0, 0) url("../img/banner/ug-image.jpg") no-repeat scroll
     center center / cover;
 }
 .fun-factor-area.fun-factor-two:after {
@@ -2323,7 +2323,7 @@ span.gallery-text {
 /*  17.5 Home Three Fun Factor
 /*----------------------------------------*/
 .fun-factor-area.fun-factor-three {
-  background: rgba(0, 0, 0, 0) url("../img/banner/6.jpg") no-repeat scroll
+  background: rgba(0, 0, 0, 0) url("../img/banner/ug-image.jpg") no-repeat scroll
     center center / cover;
 }
 .fun-factor-area.fun-factor-three:after {

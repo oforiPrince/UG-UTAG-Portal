@@ -1,99 +1,151 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 {% block title %}
-{% if Event.pk %}
-      Update
-    {% else %}
-      Create
-    {% endif %}
+  {% if Event.pk %}
+    Update
+  {% else %}
+    Create
+  {% endif %}
 {% endblock title %}
 {% block content %}
-<div class="page-content">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-md-8">
-                <h4 class="card-title">
-                  {% if Event.pk %}
-                    Update Event
-                  {% else %}
-                    Create Event
-                  {% endif %}
-                </h4>
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <h4 class="card-title">
+                    {% if Event.pk %}
+                      Update Event
+                    {% else %}
+                      Create Event
+                    {% endif %}
+                  </h4>
+                </div>
               </div>
+              <form id="EventForm"
+                    class="custom-validation"
+                    method="POST"
+                    enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="title" class="form-label">Event Title</label>
+                  <input type="text"
+                         class="form-control"
+                         id="title"
+                         name="title"
+                         value="{{ context.title }}"
+                         required>
+                </div>
+                <div class="mb-3">
+                  <label for="description" class="form-label">Event Description</label>
+                  <textarea class="form-control" id="description" name="description" rows="10">{{ context.description }}</textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="image" class="form-label">Event Image</label>
+                  <input type="file"
+                         class="form-control"
+                         id="image"
+                         name="image"
+                         onchange="previewImage(this)">
+                  <div class="mt-2 d-flex justify-content-center">
+                    <img id="oldImagePreview"
+                         src="{{ context.featured_image.url }}"
+                         style="max-width: 100%;
+                                max-height: 200px;
+                                margin-right: 10px;
+                                {% if not context.featured_image %}display: none;{% endif %}" />
+                    <img id="newImagePreview"
+                         style="max-width: 100%;
+                                max-height: 200px;
+                                {% if context.featured_image %}display: none;{% endif %}" />
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label for="venue" class="form-label">Event Venue</label>
+                  <input type="text"
+                         class="form-control"
+                         id="venue"
+                         name="venue"
+                         value="{{ context.venue }}"
+                         required>
+                </div>
+                <div class="row">
+                  <div class="mb-3 col-md-6">
+                    <label for="start_date" class="form-label">Event Start Date</label>
+                    <input type="date"
+                           class="form-control"
+                           id="start_date"
+                           name="start_date"
+                           value="{{ context.start_date|date:"Y-m-d" }}"
+                           required>
+                  </div>
+                  <div class="mb-3 col-md-6">
+                    <label for="end_date" class="form-label">Event End Date (Optional)</label>
+                    <input type="date"
+                           class="form-control"
+                           id="end_date"
+                           name="end_date"
+                           value="{{ context.end_date|date:"Y-m-d" }}">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="mb-3 col-md-6">
+                    <label for="start_time" class="form-label">Event Start Time</label>
+                    <input type="time"
+                           class="form-control"
+                           id="start_time"
+                           name="start_time"
+                           value="{{ context.start_time|time:"H:i" }}">
+                  </div>
+                  <div class="mb-3 col-md-6">
+                    <label for="end_time" class="form-label">Event End Time (Optional)</label>
+                    <input type="time"
+                           class="form-control"
+                           id="end_time"
+                           name="end_time"
+                           value="{{ context.end_time|time:"H:i" }}">
+                  </div>
+                </div>
+                <div class="mb-3 form-check">
+                  <input type="checkbox"
+                         class="form-check-input"
+                         id="isPublished"
+                         name="is_published"
+                         {% if context.is_published %}checked{% endif %}>
+                  <label class="form-check-label" for="isPublished">
+                    Published
+                    <small class="text-success">
+                      (Check this box if you want to publish the event and make it visible to the public.)
+                    </small>
+                  </label>
+                </div>
+                <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+              </form>
             </div>
-            <form id="EventForm" class="custom-validation" method="POST" enctype="multipart/form-data">
-              {% csrf_token %}
-              <div class="mb-3">
-                <label for="title" class="form-label">Event Title</label>
-                <input type="text" class="form-control" id="title" name="title" value="{{ context.title }}" required>
-              </div>
-              
-              <div class="mb-3">
-                <label for="description" class="form-label">Event Description</label>
-                <textarea class="form-control" id="description" name="description" rows="10">{{ context.description }}</textarea>
-              </div>
-
-              <div class="mb-3">
-                <label for="image" class="form-label">Event Image</label>
-                <input type="file" class="form-control" id="image" name="image" onchange="previewImage(this)">
-                <div class="mt-2 d-flex justify-content-center">
-                  <img id="oldImagePreview" src="{{ context.image.url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not context.image %}display: none;{% endif %}" />
-                  <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if context.image %}display: none;{% endif %}" />
-                </div>
-              </div>
-              
-              <div class="mb-3">
-                <label for="venue" class="form-label">Event Venue</label>
-                <input type="text" class="form-control" id="venue" name="venue" value="{{ context.venue }}" required>
-              </div>
-
-              <div class="row">
-
-                <div class="mb-3 col-md-6">
-                  <label for="date" class="form-label">Event Date</label>
-                  <input type="date" class="form-control" id="date" name="date" value="{{ context.date|date:"Y-m-d" }}" required>
-                </div>
-                
-                <div class="mb-3 col-md-6">
-                  <label for="time" class="form-label">Event Time</label>
-                  <input type="time" class="form-control" id="time" name="time" value="{{ context.time|time:"H:i" }}" required>
-                </div>
-              </div>
-              
-
-              <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if context.is_published %}checked{% endif %}>
-                <label class="form-check-label" for="isPublished">
-                  Published
-                  <small class="text-success">
-                    (Check this box if you want to publish the event and make it visible to the public.)
-                  </small>
-                </label>
-              </div>
-
-              <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-            </form>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 {% endblock %}
 {% block my_styles %}
- <!-- DataTables -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-
- <!-- Responsive datatable examples -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
+  <!-- DataTables -->
+  <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
+  <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
+  <!-- Responsive datatable examples -->
+  <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
 {% endblock my_styles %}
 {% block my_scripts %}
-    <script>
+  <script>
       // JavaScript for previewing image
       function previewImage(input) {
         var oldImagePreview = document.getElementById('oldImagePreview');
@@ -113,29 +165,24 @@
           oldImagePreview.style.display = 'inline-block';
         }
       }
-    </script>
-
-    <!-- Required datatable js -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
-
-    <!-- Responsive examples -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
-
-    <!-- Datatable init js -->
-    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
-
-    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
-    
-    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
-
-    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-    <script>
+  </script>
+  <!-- Required datatable js -->
+  <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+  <!-- Responsive examples -->
+  <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+  <!-- Datatable init js -->
+  <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+  <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js"
+          referrerpolicy="origin"></script>
+  <script>
       tinymce.init({
           selector: '#description',
           plugins: 'lists link image',
           toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
       });
-    </script>
+  </script>
 {% endblock my_scripts %}

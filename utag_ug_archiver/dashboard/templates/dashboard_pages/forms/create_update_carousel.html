@@ -1,166 +1,221 @@
-{% extends 'base/dashboard_base.html' %}
-{% load static %}
-{% block title %}
-{% if carousel_slide.pk %}
-    Update Carousel Slide
-{% else %}
-    Create Carousel Slide
-{% endif %}
-{% endblock title %}
-
-{% block content %}
+{% extends 'base/dashboard_base.html' %} {% load static %} {% block title %} {%
+if carousel_slide.pk %} Update Carousel Slide {% else %} Create Carousel Slide
+{% endif %} {% endblock title %} {% block content %}
 <div class="page-content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h4 class="card-title">
-                                    {% if carousel_slide.pk %}
-                                        Update Carousel Slide
-                                    {% else %}
-                                        Create Carousel Slide
-                                    {% endif %}
-                                </h4>
-                            </div>
-                        </div>
-                        <form id="carouselSlideForm" class="custom-validation" method="POST" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label for="title" class="form-label">Slide Title</label>
-                                <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
-                            </div>
-                        
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
-                                <textarea class="form-control" id="description" name="description" rows="4">{{ initial_data.description }}</textarea>
-                            </div>
-
-                            <div class="row">
-                                <div class="mb-3 col-md-8">
-                                    <label for="image" class="form-label">Slide Image</label>
-                                    <input type="file" class="form-control" id="image" name="image" onchange="previewAndValidateImage(this)">
-                                    <div id="imageError" class="text-danger"></div>
-                                    <div class="mt-2 d-flex justify-content-center">
-                                        <img id="oldImagePreview" src="{{ initial_data.get_image_url }}" style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.image %}display: none;{% endif %}" />
-                                        <img id="newImagePreview" style="max-width: 100%; max-height: 200px; {% if initial_data.image %}display: none;{% endif %}" />
-                                    </div>
-                                </div>
-                            
-                                <div class="mb-3 col-md-4">
-                                    <label for="order" class="form-label">Slide Order</label>
-                                    <input type="number" class="form-control" id="order" name="order" value="{{ initial_data.order }}">
-                                </div>
-                            </div>
-
-                        
-                        
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if initial_data.is_published %}checked{% endif %}>
-                                <label class="form-check-label" for="isPublished">
-                                    Published
-                                    <small class="text-success">
-                                        (Check this box if you want to publish the slide and make it visible to the public.)
-                                    </small>
-                                </label>
-                            </div>
-                        
-                            <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-                        </form>
-                        
-                    </div>
-                </div>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <h4 class="card-title">
+                  {% if carousel_slide.pk %} Update Carousel Slide {% else %}
+                  Create Carousel Slide {% endif %}
+                </h4>
+              </div>
             </div>
+            <form
+              id="carouselSlideForm"
+              class="custom-validation"
+              method="POST"
+              enctype="multipart/form-data"
+            >
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="title" class="form-label">Slide Title</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="title"
+                  name="title"
+                  value="{{ initial_data.title }}"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea
+                  class="form-control"
+                  id="description"
+                  name="description"
+                  rows="4"
+                >
+{{ initial_data.description }}</textarea
+                >
+              </div>
+
+              <div class="row">
+                <div class="mb-3 col-md-8">
+                  <label for="image" class="form-label">Slide Image</label>
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="image"
+                    name="image"
+                    onchange="previewAndValidateImage(this)"
+                  />
+                  <div id="imageError" class="text-danger"></div>
+                  <div class="mt-2 d-flex justify-content-center">
+                    <img
+                      id="oldImagePreview"
+                      src="{{ initial_data.get_image_url }}"
+                      style="max-width: 100%; max-height: 200px; margin-right: 10px; {% if not initial_data.image %}display: none;{% endif %}"
+                    />
+                    <img
+                      id="newImagePreview"
+                      style="max-width: 100%; max-height: 200px; {% if initial_data.image %}display: none;{% endif %}"
+                    />
+                  </div>
+                </div>
+
+                <div class="mb-3 col-md-4">
+                  <label for="order" class="form-label">Slide Order</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="order"
+                    name="order"
+                    value="{{ initial_data.order }}"
+                  />
+                </div>
+              </div>
+
+              <div class="mb-3 form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="isPublished"
+                  name="is_published"
+                  {%
+                  if
+                  initial_data.is_published
+                  %}checked{%
+                  endif
+                  %}
+                />
+                <label class="form-check-label" for="isPublished">
+                  Published
+                  <small class="text-success">
+                    (Check this box if you want to publish the slide and make it
+                    visible to the public.)
+                  </small>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                class="btn btn-primary waves-effect waves-light me-1"
+              >
+                Submit
+              </button>
+            </form>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %}
+{% endblock %} {% block my_styles %}
+<!-- DataTables -->
+<link
+  href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}"
+  rel="stylesheet"
+  type="text/css"
+/>
 
-{% block my_styles %}
-    <!-- DataTables -->
-    <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-    <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-
-    <!-- Responsive datatable examples -->
-    <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-    <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-{% endblock my_styles %}
-
-{% block my_scripts %}
+<!-- Responsive datatable examples -->
+<link
+  href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}"
+  rel="stylesheet"
+  type="text/css"
+/>
+<!-- Select2 CSS -->
+<link
+  href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+  rel="stylesheet"
+/>
+{% endblock my_styles %} {% block my_scripts %}
 <script>
-    function previewAndValidateImage(input) {
-        var oldImagePreview = document.getElementById('oldImagePreview');
-        var newImagePreview = document.getElementById('newImagePreview');
-        var imageError = document.getElementById('imageError');
-        imageError.textContent = ''; // Clear any previous error messages
+  function previewAndValidateImage(input) {
+    var oldImagePreview = document.getElementById("oldImagePreview");
+    var newImagePreview = document.getElementById("newImagePreview");
+    var imageError = document.getElementById("imageError");
+    imageError.textContent = ""; // Clear any previous error messages
 
-        if (input.files && input.files[0]) {
-            var file = input.files[0];
+    if (input.files && input.files[0]) {
+      var file = input.files[0];
 
-            // Check if the file is an image
-            if (!file.type.startsWith('image/')) {
-                imageError.textContent = 'Please upload a valid image file.';
-                input.value = ''; // Clear the input if not an image
-                newImagePreview.src = '';
-                newImagePreview.style.display = 'none';
-                oldImagePreview.style.display = 'inline-block';
-                return;
-            }
+      // Check if the file is an image
+      if (!file.type.startsWith("image/")) {
+        imageError.textContent = "Please upload a valid image file.";
+        input.value = ""; // Clear the input if not an image
+        newImagePreview.src = "";
+        newImagePreview.style.display = "none";
+        oldImagePreview.style.display = "inline-block";
+        return;
+      }
 
-            // Optional: Check file size (e.g., max 2MB)
-            var maxSize = 2 * 1024 * 1024; // 2MB in bytes
-            if (file.size > maxSize) {
-                imageError.textContent = 'File size must be less than 2MB.';
-                input.value = ''; // Clear the input if file is too large
-                newImagePreview.src = '';
-                newImagePreview.style.display = 'none';
-                oldImagePreview.style.display = 'inline-block';
-                return;
-            }
+      // Optional: Check file size (e.g., max 2MB)
+      var maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        imageError.textContent = "File size must be less than 2MB.";
+        input.value = ""; // Clear the input if file is too large
+        newImagePreview.src = "";
+        newImagePreview.style.display = "none";
+        oldImagePreview.style.display = "inline-block";
+        return;
+      }
 
-            // Preview the image
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                newImagePreview.src = e.target.result;
-                newImagePreview.style.display = 'inline-block';
-                oldImagePreview.style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        } else {
-            newImagePreview.src = '';
-            newImagePreview.style.display = 'none';
-            oldImagePreview.style.display = 'inline-block';
-        }
+      // Preview the image
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        newImagePreview.src = e.target.result;
+        newImagePreview.style.display = "inline-block";
+        oldImagePreview.style.display = "none";
+      };
+      reader.readAsDataURL(file);
+    } else {
+      newImagePreview.src = "";
+      newImagePreview.style.display = "none";
+      oldImagePreview.style.display = "inline-block";
     }
+  }
 </script>
 
+<!-- Required datatable js -->
+<script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
 
-    <!-- Required datatable js -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+<!-- Responsive examples -->
+<script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
 
-    <!-- Responsive examples -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+<!-- Datatable init js -->
+<script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
 
-    <!-- Datatable init js -->
-    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
 
-    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
-    
-    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+<script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
 
-    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-    <script>
-        tinymce.init({
-            selector: '#description',
-            plugins: 'lists link image',
-            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent',
-        });
-    </script>
+<script
+  src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js"
+  referrerpolicy="origin"
+></script>
+<script>
+  tinymce.init({
+    selector: "#description",
+    plugins: "lists link image",
+    toolbar:
+      "undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent",
+  });
+</script>
 {% endblock my_scripts %}
