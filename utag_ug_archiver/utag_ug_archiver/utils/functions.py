@@ -32,8 +32,8 @@ def send_credentials_email(user, raw_password):
             email_subject = 'Account Created'
             from_email = settings.EMAIL_HOST_USER
             email_body = render_to_string('emails/account_credentials.html', {
-                'first_name': user.first_name,
-                'last_name': user.last_name,
+                'other_name': getattr(user, 'other_name', ''),
+                'surname': getattr(user, 'surname', ''),
                 'email': user.email,
                 'password': raw_password
             })
@@ -91,7 +91,7 @@ def process_bulk_admins(request, file):
         "Title": "title",
         "First Name": "first_name",
         "Other Name": "other_name",
-        "Last Name": "last_name",
+        "Last Name": "surname",
         "Gender": "gender",
         "Email": "email"
     }
@@ -108,9 +108,8 @@ def process_bulk_admins(request, file):
                 email=admin.email,
                 defaults={
                     'title': admin.title,
-                    'first_name': admin.first_name,
                     'other_name': admin.other_name,
-                    'last_name': admin.last_name,
+                    'surname': getattr(admin, 'surname', admin.last_name if hasattr(admin, 'last_name') else ''),
                     'gender': admin.gender,
                     'password': make_password(raw_password),
                     'created_from_dashboard': True,
@@ -158,7 +157,7 @@ def process_bulk_members(request, file):
         "Title": "title",
         "First Name": "first_name",
         "Other Name": "other_name",
-        "Last Name": "last_name",
+        "Last Name": "surname",
         "Gender": "gender",
         "Email": "email",
         "Phone Number": "phone_number",
@@ -177,9 +176,8 @@ def process_bulk_members(request, file):
                 email=member.email,
                 defaults={
                     'title': member.title,
-                    'first_name': member.first_name,
                     'other_name': member.other_name,
-                    'last_name': member.last_name,
+                    'surname': getattr(member, 'surname', member.last_name if hasattr(member, 'last_name') else ''),
                     'gender': member.gender,
                     'phone_number': member.phone_number,
                     'department': member.department,

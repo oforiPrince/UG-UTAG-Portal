@@ -137,15 +137,7 @@
                          value="{{ executive.date_appointed|date:'Y-m-d' }}" />
                 </div>
               </div>
-              <div class="col-md-6">
-                <label class="form-label">Date Ended</label>
-                <div class="input-group" id="datepicker3_{{ executive.id }}">
-                  <input type="date"
-                         class="form-control"
-                         name="date_ended"
-                         {% if executive.date_ended %}value="{{ executive.date_ended|date:'Y-m-d' }}"{% endif %} />
-                </div>
-              </div>
+              <!-- Date Ended removed: expiry is computed automatically -->
             </div>
             <hr class="mt-4 mb-4">
             <div class="mb-3">
@@ -175,11 +167,7 @@
 {% endfor %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Initialize datepickers for each executive
-    {% for executive in executive_officers %}
-      $('#datepicker2_{{executive.id}}').datepicker();
-      $('#datepicker3_{{executive.id}}').datepicker();
-    {% endfor %}
+    // Using native HTML5 date inputs; no JS initialization required
   });
 
   function previewImage(event, executiveId) {

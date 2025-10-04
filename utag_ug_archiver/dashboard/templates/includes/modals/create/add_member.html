@@ -1,28 +1,22 @@
 <!-- Modal for Add -->
-<div
-  class="modal fade bs-example-modal-lg"
-  id="addModal"
-  tabindex="-1"
-  aria-labelledby="addModalLabel"
-  aria-hidden="true"
->
+<div class="modal fade bs-example-modal-lg"
+     id="addModal"
+     tabindex="-1"
+     aria-labelledby="addModalLabel"
+     aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="addModalLabel">Add New Member</h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form
-          class="custom-validation"
-          action="{% url 'dashboard:create_member' %}"
-          method="POST"
-        >
+        <form class="custom-validation"
+              action="{% url 'dashboard:create_member' %}"
+              method="POST">
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
@@ -40,42 +34,25 @@
             </div>
           </div>
           <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="id_first_name">First Name</label>
-              <div>
-                <input
-                  type="text"
-                  id="id_first_name"
-                  class="form-control"
-                  required
-                  name="first_name"
-                  placeholder="Enter your first name"
-                />
-              </div>
-            </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 mb-3">
               <label class="form-label" for="id_other_name">Other Name</label>
               <div>
-                <input
-                  type="text"
-                  id="id_other_name"
-                  class="form-control"
-                  name="other_name"
-                  placeholder="Enter your other name"
-                />
+                <input type="text"
+                       id="id_other_name"
+                       class="form-control"
+                       name="other_name"
+                       placeholder="Enter your other name" />
               </div>
             </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="id_last_name">Last Name</label>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_surname">Surname</label>
               <div>
-                <input
-                  type="text"
-                  id="id_last_name"
-                  class="form-control"
-                  required
-                  name="last_name"
-                  placeholder="Enter your last name"
-                />
+                <input type="text"
+                       id="id_surname"
+                       class="form-control"
+                       required
+                       name="surname"
+                       placeholder="Enter your surname" />
               </div>
             </div>
           </div>
@@ -83,85 +60,65 @@
             <label class="form-label">Gender</label>
             <div>
               <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="gender"
-                  id="gender_male"
-                  value="Male"
-                  required
-                />
+                <input class="form-check-input"
+                       type="radio"
+                       name="gender"
+                       id="gender_male"
+                       value="Male"
+                       required />
                 <label class="form-check-label" for="gender_male">Male</label>
               </div>
               <div class="form-check form-check-inline">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="gender"
-                  id="gender_female"
-                  value="Female"
-                  required
-                />
-                <label class="form-check-label" for="gender_female"
-                  >Female</label
-                >
+                <input class="form-check-input"
+                       type="radio"
+                       name="gender"
+                       id="gender_female"
+                       value="Female"
+                       required />
+                <label class="form-check-label" for="gender_female">Female</label>
               </div>
             </div>
           </div>
-          
           <div class="row">
             <div class="col-md-4 mb-3">
               <label class="form-label" for="id_email">Email</label>
               <div>
-                <input
-                  type="email"
-                  id="id_email"
-                  class="form-control"
-                  required
-                  name="email"
-                  placeholder="Enter a valid email"
-                  data-parsley-type="email"
-                />
+                <input type="email"
+                       id="id_email"
+                       class="form-control"
+                       required
+                       name="email"
+                       placeholder="Enter a valid email"
+                       data-parsley-type="email" />
               </div>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label" for="id_phone_number">Phone Number</label>
               <div>
-                <input
-                  type="tel"
-                  id="id_phone_number"
-                  class="form-control"
-                  required
-                  name="phone_number"
-                  placeholder="Enter your phone number"
-                />
+                <input type="tel"
+                       id="id_phone_number"
+                       class="form-control"
+                       required
+                       name="phone_number"
+                       placeholder="Enter your phone number" />
               </div>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label" for="id_department">Department</label>
               <div>
-                <input
-                  type="text"
-                  id="id_department"
-                  class="form-control"
-                  required
-                  name="department"
-                  placeholder="Enter your department"
-                />
+                <input type="text"
+                       id="id_department"
+                       class="form-control"
+                       required
+                       name="department"
+                       placeholder="Enter your department" />
               </div>
             </div>
           </div>
           <div class="mb-0 text-end">
             <div>
-              <button
-                type="submit"
-                class="btn btn-primary waves-effect waves-light me-1"
-              >
-                Submit
-              </button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                Close
-              </button>
+              <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
           </div>
         </form>

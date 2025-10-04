@@ -28,7 +28,7 @@ class AdminListView(PermissionRequiredMixin, View):
     @method_decorator(MustLogin)
     def get(self, request):
         # Fetch users
-        users = User.objects.filter(groups__name='Admin').order_by('first_name')
+        users = User.objects.filter(groups__name='Admin').order_by('surname')
         
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
@@ -59,9 +59,9 @@ class AdminCreateView(PermissionRequiredMixin, View):
     @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
-        first_name = request.POST.get('first_name')
-        other_name = request.POST.get('other_name')
-        last_name = request.POST.get('last_name')
+        # primary fields: other_name and surname; accept legacy first_name/last_name
+        other_name = request.POST.get('other_name') or request.POST.get('first_name')
+        surname = request.POST.get('surname') or request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone')
@@ -79,9 +79,8 @@ class AdminCreateView(PermissionRequiredMixin, View):
                 # Create user
                 admin = User.objects.create(
                     title=title,
-                    first_name=first_name,
                     other_name=other_name,
-                    last_name=last_name,
+                    surname=surname,
                     gender=gender,
                     email=email,
                     phone_number=phone_number,
@@ -109,9 +108,9 @@ class UserUpdateView(PermissionRequiredMixin, View):
     def post(self,request):
         id = request.POST.get('user_id')
         title = request.POST.get('title')
-        first_name = request.POST.get('first_name')
-        other_name = request.POST.get('other_name')
-        last_name = request.POST.get('last_name')
+        # accept legacy keys but work with other_name + surname
+        other_name = request.POST.get('other_name') or request.POST.get('first_name')
+        surname = request.POST.get('surname') or request.POST.get('last_name')
         email = request.POST.get('email')
         is_active = request.POST.get('is_active')
         gender = request.POST.get('gender')
@@ -121,14 +120,11 @@ class UserUpdateView(PermissionRequiredMixin, View):
         user = User.objects.get(id=id)
         if user.email != email:
             user.email = email
-        if user.first_name != first_name:
-            user.first_name = first_name
-            
+        # remove first_name field handling; update other_name and surname
         if user.other_name != other_name:
             user.other_name = other_name
-            
-        if user.last_name != last_name:
-            user.last_name = last_name
+        if getattr(user, 'surname', None) != surname:
+            user.surname = surname
             
         if user.title != title:
             user.title = title
@@ -166,9 +162,9 @@ class MemberCreateView(PermissionRequiredMixin, View):
     @method_decorator(MustLogin)
     def post(self, request):
         title = request.POST.get('title')
-        first_name = request.POST.get('first_name')
-        other_name = request.POST.get('other_name')
-        last_name = request.POST.get('last_name')
+        # prefer other_name + surname; accept legacy first_name/last_name
+        other_name = request.POST.get('other_name') or request.POST.get('first_name')
+        surname = request.POST.get('surname') or request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
@@ -185,9 +181,8 @@ class MemberCreateView(PermissionRequiredMixin, View):
                 # Create user
                 member = User.objects.create(
                     title=title,
-                    first_name=first_name,
                     other_name=other_name,
-                    last_name=last_name,
+                    surname=surname,
                     gender=gender,
                     email=email,
                     phone_number=phone_number,

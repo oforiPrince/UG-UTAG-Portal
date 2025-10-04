@@ -1,118 +1,157 @@
 <!-- Modal for User Details -->
 {% load static %}
 {% for user in users %}
-<div
-  class="modal fade bs-example-modal-lg"
-  id="userModal_{{user.id}}"
-  tabindex="-1"
-  aria-labelledby="userModal_{{user.id}}"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="userModal_{{user.id}}Label">
-          {{user.get_short_name}}'s Detail
-        </h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <div class="container">
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <div class="card">
-                <div class="card-body text-center">
-                  <img src="{% if user.profile_pic %} {{user.get_profile_pic_url}} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="{{user.first_name}}" class="rounded-circle p-1 bg-primary" width="110">
-                  <div class="mt-3">
-                    <h4>{{user.get_full_name}}</h4>
-                    <p class="mb-1">
-                      {% for group in user.groups.all %}
-                        {{ group.name }}
-                        {% if not forloop.last %}, {% endif %}
-                      {% endfor %}
-                    </p>
+  <div class="modal fade bs-example-modal-lg"
+       id="userModal_{{ user.id }}"
+       tabindex="-1"
+       aria-labelledby="userModal_{{ user.id }}"
+       aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="userModal_{{ user.id }}Label">{{ user.get_short_name }}'s Detail</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="container">
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <img src="{% if user.profile_pic %} {{ user.get_profile_pic_url }} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}"
+                         alt="{{ user.surname }} {{ user.other_name }}"
+                         class="rounded-circle p-1 bg-primary"
+                         width="110">
+                    <div class="mt-3">
+                      <h4>{{ user.get_full_name }}</h4>
+                      <p class="mb-1">
+                        {% for group in user.groups.all %}
+                          {{ group.name }}
+                          {% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="col-md-8">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Title:</strong> {{user.title}}</p>
+              <div class="col-md-8">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Title:</strong> {{ user.title }}
+                    </p>
+                  </div>
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Other Name:</strong> {{ user.other_name }}
+                    </p>
+                  </div>
                 </div>
-                <div class="col-md-6">
-                  <p><strong>First Name:</strong> {{user.first_name}}</p>
+                {% if user.other_name %}
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Other Name:</strong> {{ user.other_name }}
+                      </p>
+                    </div>
+                  </div>
+                {% endif %}
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Surname:</strong> {{ user.surname }}
+                    </p>
+                  </div>
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Email:</strong> {{ user.email }}
+                    </p>
+                  </div>
                 </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Phone:</strong> {{ user.phone_number }}
+                    </p>
+                  </div>
+                  <div class="col-md-6">
+                    <p>
+                      <strong>Department:</strong> {{ user.department }}
+                    </p>
+                  </div>
+                </div>
+                {% if user.executive_position %}
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Position:</strong> {{ user.executive_position }}
+                      </p>
+                    </div>
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Date Appointed:</strong> {{ user.date_appointed|date:'d M, Y' }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Expiry Date:</strong>
+                        {% if user.expiry_date %}
+                          {{ user.expiry_date|date:'d M, Y' }}
+                        {% else %}
+                          {{ user.date_ended|default:'N/A' }}
+                        {% endif %}
+                      </p>
+                    </div>
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Status:</strong>
+                        {% if user.executive_status %}
+                          {{ user.executive_status }}
+                        {% else %}
+                          N/A
+                        {% endif %}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Facebook Profile:</strong> <a href="{{ user.fb_profile_url }}"
+    target="_blank"
+    aria-label="Facebook profile">{{ user.fb_profile_url }}</a>
+                      </p>
+                    </div>
+                    <div class="col-md-6">
+                      <p>
+                        <strong>Twitter Profile:</strong> <a href="{{ user.twitter_profile_url }}"
+    target="_blank"
+    aria-label="Twitter profile">{{ user.twitter_profile_url }}</a>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p>
+                        <strong>LinkedIn Profile:</strong> <a href="{{ user.linkedin_profile_url }}"
+    target="_blank"
+    aria-label="LinkedIn profile">{{ user.linkedin_profile_url }}</a>
+                      </p>
+                    </div>
+                  </div>
+                {% endif %}
               </div>
-              {% if user.other_name %}
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Other Name:</strong> {{user.other_name}}</p>
-                </div>
-              </div>
-              {% endif %}
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Last Name:</strong> {{user.last_name}}</p>
-                </div>
-                <div class="col-md-6">
-                  <p><strong>Email:</strong> {{user.email}}</p>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Phone:</strong> {{user.phone_number}}</p>
-                </div>
-                <div class="col-md-6">
-                  <p><strong>Department:</strong> {{user.department}}</p>
-                </div>
-              </div>
-              {% if user.executive_position %}
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Position:</strong> {{user.executive_position}}</p>
-                </div>
-                <div class="col-md-6">
-                  <p><strong>Date Appointed:</strong> {{user.date_appointed}}</p>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Date Ended:</strong> {{user.date_ended}}</p>
-                </div>
-                <div class="col-md-6">
-                  <p><strong>Status:</strong> {% if user.is_active_executive %} Active Executive {% else %} Inactive Executive {% endif %}</p>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>Facebook Profile:</strong> <a href="{{user.fb_profile_url}}" target="_blank">{{user.fb_profile_url}}</a></p>
-                </div>
-                <div class="col-md-6">
-                  <p><strong>Twitter Profile:</strong> <a href="{{user.twitter_profile_url}}" target="_blank">{{user.twitter_profile_url}}</a></p>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <p><strong>LinkedIn Profile:</strong> <a href="{{user.linkedin_profile_url}}" target="_blank">{{user.linkedin_profile_url}}</a></p>
-                </div>
-              </div>
-              {% endif %}
             </div>
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Close
-        </button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 {% endfor %}

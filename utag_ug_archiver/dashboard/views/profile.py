@@ -33,9 +33,9 @@ class ProfileView(View):
     def post(self, request):
         user = request.user
         title = request.POST.get('title')
-        first_name = request.POST.get('first_name')
+        # use other_name and surname only
         other_name = request.POST.get('other_name')
-        last_name = request.POST.get('last_name')
+        surname = request.POST.get('surname')
         phone = request.POST.get('phone')
         current_password = request.POST.get('current_password')
         password = request.POST.get('password')
@@ -44,12 +44,11 @@ class ProfileView(View):
         # Update user details
         if user.title != title:
             user.title = title
-        if user.first_name != first_name:
-            user.first_name = first_name
+        # store names using other_name and surname
         if user.other_name != other_name:
             user.other_name = other_name
-        if user.last_name != last_name:
-            user.last_name = last_name
+        if getattr(user, 'surname', None) != surname:
+            user.surname = surname
 
         if user.phone_number != phone:
             user.phone_number = phone

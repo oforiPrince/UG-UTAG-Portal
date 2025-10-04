@@ -50,10 +50,10 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-sm-3">
-                                <h6 class="mb-0">First Name</h6>
+                                <h6 class="mb-0">Surname</h6>
                             </div>
                             <div class="col-sm-9">
-                                <input type="text" class="form-control" name="first_name" value="{{request.user.first_name}}" />
+                                <input type="text" class="form-control" name="surname" value="{{request.user.surname}}" />
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -62,14 +62,6 @@
                             </div>
                             <div class="col-sm-9">
                                 <input type="text" class="form-control" name="other_name" value="{{ request.user.other_name|default_if_none:'' }}" />
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-sm-3">
-                                <h6 class="mb-0">Last Name</h6>
-                            </div>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" name="last_name" value="{{request.user.last_name}}" />
                             </div>
                         </div>
                         <div class="row mb-3">

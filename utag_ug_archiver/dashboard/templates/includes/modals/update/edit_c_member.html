@@ -63,9 +63,7 @@
                 <option value="President"
                         {% if executive.position.name == 'President' %}selected{% endif %}>President</option>
                 <option value="Vice President"
-                        {% if executive.position.name == 'Vice President' %}selected{% endif %}>
-                  Vice President
-                </option>
+                        {% if executive.position.name == 'Vice President' %}selected{% endif %}>Vice President</option>
                 <option value="Secretary"
                         {% if executive.position.name == 'Secretary' %}selected{% endif %}>Secretary</option>
                 <option value="Treasurer"
@@ -108,30 +106,20 @@
             <div class="mb-3">
               <label class="form-label">Date Appointed</label>
               <div class="input-group" id="datepicker2">
-                <input type="text"
+                <input type="date"
                        class="form-control"
-                       placeholder="dd M, yyyy"
-                       data-date-format="dd M, yyyy"
-                       data-date-container="#datepicker2"
-                       data-provide="datepicker"
-                       data-date-autoclose="true"
                        name="date_appointed"
-                       value="{{ executive.date_appointed|date:'d M, Y' }}" />
+                       value="{{ executive.date_appointed|date:'Y-m-d' }}" />
                 <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
               </div>
             </div>
             <div class="mb-3">
               <label class="form-label">Date Ended</label>
               <div class="input-group" id="datepicker3">
-                <input type="text"
+                <input type="date"
                        class="form-control"
-                       placeholder="dd M, yyyy"
-                       data-date-format="dd M, yyyy"
-                       data-date-container="#datepicker3"
-                       data-provide="datepicker"
-                       data-date-autoclose="true"
                        name="date_ended"
-                       {% if executive.date_ended %}value="{{ executive.date_ended }}"{% endif %} />
+                       {% if executive.date_ended %}value="{{ executive.date_ended|date:'Y-m-d' }}"{% endif %} />
                 <span class="input-group-text"><i class="mdi mdi-calendar"></i></span>
               </div>
             </div>
@@ -162,11 +150,7 @@
   }
 </style>
 <script>
-  // Your existing script for datepicker initialization (if needed)
-  document.addEventListener("DOMContentLoaded", function () {
-    $('#datepicker2').datepicker();
-    $('#datepicker3').datepicker();
-  });
+  // No JS datepicker initialization needed; using native HTML5 date inputs now
 
   function previewImage(event, executiveId) {
     var file = event.target.files[0];

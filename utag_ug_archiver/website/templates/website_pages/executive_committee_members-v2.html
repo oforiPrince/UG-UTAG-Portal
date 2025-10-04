@@ -1,62 +1,79 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
-{% block title %}Executive Committee Members{% endblock title %}
+{% block title %}
+    Executive Committee Members
+{% endblock title %}
 {% block content %}
-<!--Breadcrumb Banner Area Start-->
-<div class="breadcrumb-banner-area teachers">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="breadcrumb-text">
-                    <h1 class="text-center">Executive Committee Members</h1>
-                    <div class="breadcrumb-bar">
-                        <ul class="breadcrumb">
-                            <li><a href="{% url 'website:index' %}">Home</a></li>
-                            <li>Executive Committee Members</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!--End of Breadcrumb Banner Area-->
-<!--Teacher Fullwidth Area Start-->
-<div class="teacher-fullwidth-area section-padding">
-    <div class="container">
-        <div class="row">
-            {% for executive in executives %}
-            <div class="col-lg-4 col-md-4 col-sm-6 col-12">
-                <div class="single-teachers-column text-center">
-                    <div class="teachers-image-column">
-                        <a href="#">
-                            <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}" alt="Executive Officer"> 
-                        </a>
-                    </div>
-                    <div class="teacher-column-carousel-text">
-                        <h4>{{ executive.get_full_name }}</h4>
-                        <span>{{ executive.executive_position }}</span>
-                        <p>{{ executive.bio|default:"" }}</p>
-                        <div class="social-links">
-                            {% if executive.fb_profile_url %}
-                            <a href="{{ executive.fb_profile_url }}"><i class="fa fa-facebook"></i></a>
-                            {% endif %}
-                            {% if executive.email %}
-                            <a href="mailto:{{ executive.email }}"><i class="fa fa-google-plus"></i></a>
-                            {% endif %}
-                            {% if executive.twitter_profile_url %}
-                            <a href="{{ executive.twitter_profile_url }}"><i class="fa fa-twitter"></i></a>
-                            {% endif %}
-                            {% if executive.linkedin_profile_url %}
-                            <a href="{{ executive.linkedin_profile_url }}"><i class="fa fa-linkedin"></i></a>
-                            {% endif %}
+    <!--Breadcrumb Banner Area Start-->
+    <div class="breadcrumb-banner-area teachers">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="breadcrumb-text">
+                        <h1 class="text-center">Executive Committee Members</h1>
+                        <div class="breadcrumb-bar">
+                            <ul class="breadcrumb">
+                                <li>
+                                    <a href="{% url 'website:index' %}">Home</a>
+                                </li>
+                                <li>Executive Committee Members</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
         </div>
     </div>
-</div>
-<!--End of Teacher Fullwidth Area-->
+    <!--End of Breadcrumb Banner Area-->
+    <!--Teacher Fullwidth Area Start-->
+    <div class="teacher-fullwidth-area section-padding">
+        <div class="container">
+            <div class="row">
+                {% for executive in executives %}
+                    <div class="col-lg-4 col-md-4 col-sm-6 col-12">
+                        <div class="single-teachers-column text-center">
+                            <div class="teachers-image-column">
+                                <a href="#">
+                                    <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
+                                         alt="Executive Officer">
+                                </a>
+                            </div>
+                            <div class="teacher-column-carousel-text">
+                                <h4>{{ executive.get_full_name }}</h4>
+                                <span>{{ executive.executive_position }}</span>
+                                {% if executive.executive_status %}
+                                    <div>
+                                        <strong>Status:</strong> {{ executive.executive_status }}
+                                    </div>
+                                {% endif %}
+                                {% if executive.expiry_date %}
+                                    <div>
+                                        <strong>Expiry Date:</strong> {{ executive.expiry_date|date:'d M, Y' }}
+                                    </div>
+                                {% endif %}
+                                <p>{{ executive.bio|default:"" }}</p>
+                                <div class="social-links">
+                                    {% if executive.fb_profile_url %}
+                                        <a href="{{ executive.fb_profile_url }}" aria-label="Facebook profile"><i class="fa fa-facebook"></i></a>
+                                    {% endif %}
+                                    {% if executive.email %}
+                                        <a href="mailto:{{ executive.email }}" aria-label="Email"><i class="fa fa-google-plus"></i></a>
+                                    {% endif %}
+                                    {% if executive.twitter_profile_url %}
+                                        <a href="{{ executive.twitter_profile_url }}"
+                                           aria-label="Twitter profile"><i class="fa fa-twitter"></i></a>
+                                    {% endif %}
+                                    {% if executive.linkedin_profile_url %}
+                                        <a href="{{ executive.linkedin_profile_url }}"
+                                           aria-label="LinkedIn profile"><i class="fa fa-linkedin"></i></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!--End of Teacher Fullwidth Area-->
 {% endblock content %}

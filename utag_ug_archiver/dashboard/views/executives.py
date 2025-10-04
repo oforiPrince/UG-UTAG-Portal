@@ -16,6 +16,18 @@ from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
 
+
+def _parse_date(value):
+    """Try parsing YYYY-MM-DD first (HTML5 date), then 'dd Mon, yyyy'. Returns a date or raises ValueError."""
+    if not value:
+        raise ValueError('No date')
+    try:
+        # ISO date from input[type=date]
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except Exception:
+        # fallback to 'dd Mon, yyyy'
+        return datetime.strptime(value, "%d %b, %Y").date()
+
 #For Executives
 class ExecutiveMembersView(PermissionRequiredMixin,View):
     template_name = 'dashboard_pages/executive_members.html'
@@ -46,9 +58,9 @@ class NewExecutiveMemberCreateView(View):
     def post(self, request):
         # Extract fields from POST request
         title = request.POST.get('title')
-        first_name = request.POST.get('first_name')
-        other_name = request.POST.get('other_name')
-        last_name = request.POST.get('last_name')
+        # legacy support: accept 'first_name' but primary fields are 'other_name' and 'surname'
+        other_name = request.POST.get('other_name') or request.POST.get('first_name')
+        surname = request.POST.get('surname') or request.POST.get('last_name')
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone')
@@ -85,12 +97,18 @@ class NewExecutiveMemberCreateView(View):
         #     messages.info(request, 'Invalid date format! Use "dd Mon, yyyy".')
         #     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+        # parse date appointed string -> date object (accept ISO or 'dd Mon, yyyy')
+        try:
+            date_appointed = _parse_date(date_appointed_str)
+        except Exception:
+            messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
         # Create User
         member = User.objects.create(
             title=title,
-            first_name=first_name,
             other_name=other_name,
-            last_name=last_name,
+            surname=surname,
             gender=gender,
             email=email,
             phone_number=phone_number,
@@ -100,7 +118,7 @@ class NewExecutiveMemberCreateView(View):
             fb_profile_url=fb_username,        # Set social media URLs
             twitter_profile_url=twitter_username,
             linkedin_profile_url=linkedin_username,
-            date_appointed=date_appointed_str,
+            date_appointed=date_appointed,
             is_active_executive=True,          # Mark as active executive
         )
         # Add to executive group
@@ -149,14 +167,30 @@ class ExistingExecutiveMemberCreateView(View):
         #     messages.info(request, 'Invalid date format! Use "dd Mon, yyyy".')
         #     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+        # parse date_appointed (accept ISO or 'dd Mon, yyyy')
+        try:
+            parsed_date = _parse_date(date_appointed)
+        except Exception:
+            messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
         # Update member to executive
+        # If the member was previously an executive but inactive, increment terms
+        was_executive_before = bool(member.executive_position or member.date_appointed or member.date_ended)
+        was_active_before = member.is_active_executive
+
         member.executive_position = position
         member.fb_profile_url = fb_username
         member.twitter_profile_url = twitter_username
         member.linkedin_profile_url = linkedin_username
-        member.date_appointed = date_appointed
+        member.date_appointed = parsed_date
         member.executive_image = executive_image
         member.is_active_executive = True
+
+        if was_executive_before and not was_active_before:
+            # This is a reappointment — increase the executive_terms count
+            member.executive_terms = (member.executive_terms or 1) + 1
+
         member.save()
         
         # Add to executive group
@@ -173,7 +207,7 @@ class UpdateExecutiveMemberView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
-        date_ended = request.POST.get('date_ended')
+        # date_ended removed; expiry is computed automatically
         active = request.POST.get('active')
         executive_image = request.FILES.get('image')
         
@@ -188,15 +222,24 @@ class UpdateExecutiveMemberView(View):
         if not date_appointed:
             messages.info(request, 'Date appointed is required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        # parse date_appointed (accept ISO or 'dd Mon, yyyy')
+        try:
+            parsed_appointed = _parse_date(date_appointed)
+        except Exception:
+            messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update the executive officer's details
         executive.executive_position = position
         executive.fb_profile_url = fb_username
         executive.twitter_profile_url = twitter_username
         executive.linkedin_profile_url = linkedin_username
-        executive.date_appointed = date_appointed
-        executive.date_ended = date_ended if date_ended else None
+        executive.date_appointed = parsed_appointed
+        # If reactivating an inactive executive, increment their terms
+        was_active_before = executive.is_active_executive
         executive.is_active_executive = True if active == 'on' else False
+        if not was_active_before and executive.is_active_executive:
+            executive.executive_terms = (executive.executive_terms or 1) + 1
         if executive_image:
             executive.executive_image = executive_image
         executive.save()

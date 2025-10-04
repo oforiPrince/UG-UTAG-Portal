@@ -1,168 +1,139 @@
 {% for user in users %}
-<div
-  class="modal fade bs-example-modal-lg"
-  id="editUserModal_{{user.id}}"
-  tabindex="-1"
-  aria-labelledby="editUserModal_{{user.id}}"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editUserModal_{{user.id}}Label">Edit User</h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <form
-          class="custom-validation"
-          action="{% url 'dashboard:update_user' %}"
-          method="POST"
-        >
-          {% csrf_token %}
-          <input type="hidden" name="user_id" value="{{user.id}}" />
-          <div class="mb-3">
-            <label class="form-label" for="id_title">Title</label>
-            <div>
-              <select id="id_title" class="form-control" required name="title">
-                <option value="" selected disabled>Select a title</option>
-                <option value="Prof." {% if user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
-                <option value="Prof. (Mrs.)" {% if user.title == 'Prof. (Mrs.)' %}selected{% endif %}>Prof. (Mrs.)</option>
-                <option value="Dr." {% if user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
-                <option value="Dr. (Alhaji)" {% if user.title == 'Dr. (Alhaji)' %}selected{% endif %}>Dr. (Alhaji)</option>
-                <option value="Mr." {% if user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
-                <option value="Mrs." {% if user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
-                <option value="Ms." {% if user.title == 'Ms.' %}selected{% endif %}>Ms.</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="id_first_name">First Name</label>
+  <div class="modal fade bs-example-modal-lg"
+       id="editUserModal_{{ user.id }}"
+       tabindex="-1"
+       aria-labelledby="editUserModal_{{ user.id }}"
+       aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editUserModal_{{ user.id }}Label">Edit User</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form class="custom-validation"
+                action="{% url 'dashboard:update_user' %}"
+                method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" value="{{ user.id }}" />
+            <div class="mb-3">
+              <label class="form-label" for="id_title">Title</label>
               <div>
-                <input
-                  type="text"
-                  id="id_first_name"
-                  class="form-control"
-                  required
-                  name="first_name"
-                  placeholder="Enter your first name"
-                  value="{{user.first_name}}"
-                />
-              </div>
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="id_other_name">Other Name</label>
-              <div>
-                <input
-                  type="text"
-                  id="id_other_name"
-                  class="form-control"
-                  name="other_name"
-                  placeholder="Enter your other name"
-                  value="{{user.other_name}}"
-                />
-              </div>
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label" for="id_last_name">Last Name</label>
-              <div>
-                <input
-                  type="text"
-                  id="id_last_name"
-                  class="form-control"
-                  required
-                  name="last_name"
-                  placeholder="Enter your last name"
-                  value="{{user.last_name}}"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label" for="id_gender">Gender</label>
-              <div>
-                <select id="id_gender" class="form-control" required name="gender">
-                  <option value="" selected disabled>Select gender</option>
-                  <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
-                  <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+                <select id="id_title" class="form-control" required name="title">
+                  <option value="" selected disabled>Select a title</option>
+                  <option value="Prof." {% if user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                  <option value="Prof. (Mrs.)"
+                          {% if user.title == 'Prof. (Mrs.)' %}selected{% endif %}>Prof. (Mrs.)</option>
+                  <option value="Dr." {% if user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                  <option value="Dr. (Alhaji)"
+                          {% if user.title == 'Dr. (Alhaji)' %}selected{% endif %}>Dr. (Alhaji)</option>
+                  <option value="Mr." {% if user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                  <option value="Mrs." {% if user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                  <option value="Ms." {% if user.title == 'Ms.' %}selected{% endif %}>Ms.</option>
                 </select>
               </div>
             </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label" for="id_email">Email</label>
-              <div>
-                <input
-                  type="email"
-                  id="id_email"
-                  class="form-control"
-                  required
-                  name="email"
-                  placeholder="Enter a valid email"
-                  data-parsley-type="email"
-                  value="{{user.email}}"
-                />
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_other_name">Other Name</label>
+                <div>
+                  <input type="text"
+                         id="id_other_name"
+                         class="form-control"
+                         name="other_name"
+                         placeholder="Enter your other name"
+                         value="{{ user.other_name }}" />
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_surname">Surname</label>
+                <div>
+                  <input type="text"
+                         id="id_surname"
+                         class="form-control"
+                         required
+                         name="surname"
+                         placeholder="Enter your surname"
+                         value="{{ user.surname }}" />
+                </div>
               </div>
             </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label" for="id_phone_number">Phone Number</label>
-              <div>
-                <input
-                  type="tel"
-                  id="id_phone_number"
-                  class="form-control"
-                  required
-                  name="phone_number"
-                  placeholder="Enter your phone number"
-                  value="{{user.phone_number}}"
-                />
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_gender">Gender</label>
+                <div>
+                  <select id="id_gender" class="form-control" required name="gender">
+                    <option value="" selected disabled>Select gender</option>
+                    <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_email">Email</label>
+                <div>
+                  <input type="email"
+                         id="id_email"
+                         class="form-control"
+                         required
+                         name="email"
+                         placeholder="Enter a valid email"
+                         data-parsley-type="email"
+                         value="{{ user.email }}" />
+                </div>
               </div>
             </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label" for="id_department">Department</label>
-              <div>
-                <input
-                  type="text"
-                  id="id_department"
-                  class="form-control"
-                  required
-                  name="department"
-                  placeholder="Enter your department"
-                  value="{{user.department}}"
-                />
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_phone_number">Phone Number</label>
+                <div>
+                  <input type="tel"
+                         id="id_phone_number"
+                         class="form-control"
+                         required
+                         name="phone_number"
+                         placeholder="Enter your phone number"
+                         value="{{ user.phone_number }}" />
+                </div>
               </div>
-            </div>          
-          </div>
-          <input class="form-check form-switch" type="checkbox" id="switch6" name="is_active" switch="primary" {% if user.is_active %} checked {% endif %}>
-                                        <label class="form-label" for="switch6" data-on-label="Yes" data-off-label="No"></label>
-          
-          <div class="mb-0 text-end">
-            <div>
-              <button
-                type="submit"
-                class="btn btn-primary waves-effect waves-light me-1"
-              >
-                Submit
-              </button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                Close
-              </button>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="id_department">Department</label>
+                <div>
+                  <input type="text"
+                         id="id_department"
+                         class="form-control"
+                         required
+                         name="department"
+                         placeholder="Enter your department"
+                         value="{{ user.department }}" />
+                </div>
+              </div>
             </div>
-          </div>
-        </form>
+            <input class="form-check form-switch"
+                   type="checkbox"
+                   id="switch6"
+                   name="is_active"
+                   switch="primary"
+                   {% if user.is_active %}checked{% endif %}>
+            <label class="form-label"
+                   for="switch6"
+                   data-on-label="Yes"
+                   data-off-label="No"></label>
+            <div class="mb-0 text-end">
+              <div>
+                <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<script>
+  <script>
   document.addEventListener("DOMContentLoaded", function () {
     const passwordChoice = document.querySelectorAll(
       '[name="password_choice"]'
@@ -194,6 +165,6 @@
       choice.addEventListener("change", togglePasswordFields);
     });
   });
-</script>
-<!-- Modal for Add -->
+  </script>
+  <!-- Modal for Add -->
 {% endfor %}

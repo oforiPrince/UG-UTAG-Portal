@@ -42,8 +42,8 @@ def send_credentials_email(sender, instance, created, **kwargs):
             email_subject = 'Account Created'
             from_email = settings.EMAIL_HOST_USER
             email_body = render_to_string('emails/account_credentials.html', {
-                'first_name': instance.first_name,
-                'last_name': instance.last_name,
+                'surname': instance.surname,
+                'other_name': instance.other_name,
                 'email': instance.email,
                 'password': password
             })
