@@ -41,7 +41,7 @@
                             <div class="teacher-column-carousel-text">
                                 <h4>{{ executive.get_full_name }}</h4>
                                 <span>{{ executive.executive_position }}</span>
-                                {% if executive.executive_status %}
+                                <!-- {% if executive.executive_status %}
                                     <div>
                                         <strong>Status:</strong> {{ executive.executive_status }}
                                     </div>
@@ -51,7 +51,7 @@
                                         <strong>Expiry Date:</strong> {{ executive.expiry_date|date:'d M, Y' }}
                                     </div>
                                 {% endif %}
-                                <p>{{ executive.bio|default:"" }}</p>
+                                <p>{{ executive.bio|default:"" }}</p> -->
                                 <div class="social-links">
                                     {% if executive.fb_profile_url %}
                                         <a href="{{ executive.fb_profile_url }}" aria-label="Facebook profile"><i class="fa fa-facebook"></i></a>

@@ -1,0 +1,123 @@
+/*
+  Typography Overrides for v2
+  Goal: Slightly increase font sizes across all v2 templates with minimal risk.
+  Notes:
+  - Uses root font-size scaling for broad coverage, with small responsive steps.
+  - Adds gentle bumps to headings, paragraphs, nav links, and buttons.
+  - Loaded after the main v2 stylesheet to override defaults.
+*/
+
+/* Base scaling */
+
+:root {
+  font-size: 16.2px; /* ~+1.25% on mobile */
+}
+
+@media (min-width: 768px) {
+  :root {
+    font-size: 16.6px; /* ~+4% on tablets and up */
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    font-size: 16.9px; /* ~+5.6% on large screens */
+  }
+}
+
+body {
+  font-size: 1rem; /* inherits from :root */
+  line-height: 1.65; /* slightly reduced for balance */
+}
+
+/* Headings: keep hierarchy, gently bump sizes */
+body h1 {
+  font-size: 2.05rem;
+  line-height: 1.2;
+}
+
+body h2 {
+  font-size: 1.78rem;
+  line-height: 1.25;
+}
+
+body h3 {
+  font-size: 1.52rem;
+  line-height: 1.3;
+}
+
+body h4 {
+  font-size: 1.28rem;
+  line-height: 1.35;
+}
+
+body h5 {
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+body h6 {
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+/* Body copy */
+body p,
+body li {
+  font-size: 1rem;
+}
+
+small,
+.text-small {
+  font-size: 0.88rem;
+}
+
+/* Navigation and buttons */
+nav a,
+.navbar a,
+.menu a,
+.main-menu a,
+.site-nav a {
+  font-size: 0.98rem;
+}
+
+.btn,
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.button {
+  font-size: 0.98rem;
+}
+
+/* Forms */
+label,
+input,
+select,
+textarea {
+  font-size: 0.98rem;
+}
+
+/* Utility: ensure meta/UI text remains legible */
+.badge,
+.label,
+.meta,
+.muted {
+  font-size: 0.93rem;
+}
+
+/* Section title descriptions */
+.section-title p {
+  font-size: 1.05rem;
+}
+
+/* Event date overlays */
+.class-date {
+  font-size: 0.75rem !important;
+}
+
+/* Event schedule links */
+.class-schedule .post__category-links,
+.class-schedule .post__comment-link {
+  font-size: 0.71rem !important;
+}
