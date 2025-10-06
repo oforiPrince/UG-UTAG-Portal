@@ -13,7 +13,7 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.http import HttpResponseRedirect
-from accounts.models import User
+from accounts.models import User, School, College, Department
 from dashboard.models import Announcement, Document, Notification
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, send_credentials_email
 
@@ -48,6 +48,9 @@ class AdminListView(PermissionRequiredMixin, View):
             'has_add_permission': request.user.has_perm('accounts.add_admin'),
             'has_change_permission': request.user.has_perm('accounts.change_admin'),
             'has_delete_permission': request.user.has_perm('accounts.delete_admin'),
+            'schools': School.objects.all(),
+            'colleges': College.objects.all(),
+            'departments': Department.objects.all(),
         }
         
         # Render the template
@@ -65,6 +68,9 @@ class AdminCreateView(PermissionRequiredMixin, View):
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone')
+        school_id = request.POST.get('school')
+        college_id = request.POST.get('college')
+        department_id = request.POST.get('department')
 
         password_length = 12
         raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
@@ -84,6 +90,9 @@ class AdminCreateView(PermissionRequiredMixin, View):
                     gender=gender,
                     email=email,
                     phone_number=phone_number,
+                    school_id=school_id if school_id else None,
+                    college_id=college_id if college_id else None,
+                    department_id=department_id if department_id else None,
                     password=make_password(raw_password),
                     created_by=request.user,
                     created_from_dashboard=True,
@@ -115,7 +124,9 @@ class UserUpdateView(PermissionRequiredMixin, View):
         is_active = request.POST.get('is_active')
         gender = request.POST.get('gender')
         phone_number = request.POST.get('phone_number')
-        department = request.POST.get('department')
+        school_id = request.POST.get('school')
+        college_id = request.POST.get('college')
+        department_id = request.POST.get('department')
         
         user = User.objects.get(id=id)
         if user.email != email:
@@ -135,8 +146,14 @@ class UserUpdateView(PermissionRequiredMixin, View):
         if user.phone_number != phone_number:
             user.phone_number = phone_number
             
-        if user.department != department:
-            user.department = department
+        if user.school_id != (school_id if school_id else None):
+            user.school_id = school_id if school_id else None
+            
+        if user.college_id != (college_id if college_id else None):
+            user.college_id = college_id if college_id else None
+            
+        if user.department_id != (department_id if department_id else None):
+            user.department_id = department_id if department_id else None
             
         if user.is_active != is_active:
             user.is_active = is_active
@@ -168,7 +185,9 @@ class MemberCreateView(PermissionRequiredMixin, View):
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone_number')
-        department = request.POST.get('department')
+        school_id = request.POST.get('school')
+        college_id = request.POST.get('college')
+        department_id = request.POST.get('department')
         password_length = 12
         raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
         
@@ -186,7 +205,9 @@ class MemberCreateView(PermissionRequiredMixin, View):
                     gender=gender,
                     email=email,
                     phone_number=phone_number,
-                    department=department,
+                    school_id=school_id if school_id else None,
+                    college_id=college_id if college_id else None,
+                    department_id=department_id if department_id else None,
                     password=make_password(raw_password),
                     created_by=request.user,
                     created_from_dashboard=True,
@@ -253,7 +274,7 @@ class MemberListView(PermissionRequiredMixin, View):
     @method_decorator(MustLogin)
     def get(self, request):
         # Fetch users
-        users = User.objects.filter(groups__name='Member').order_by('first_name')
+        users = User.objects.filter(groups__name='Member').order_by('surname', 'other_name')
         
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
@@ -273,6 +294,9 @@ class MemberListView(PermissionRequiredMixin, View):
             'has_add_permission': request.user.has_perm('accounts.add_member'),
             'has_change_permission': request.user.has_perm('accounts.change_member'),
             'has_delete_permission': request.user.has_perm('accounts.delete_member'),
+            'schools': School.objects.all(),
+            'colleges': College.objects.all(),
+            'departments': Department.objects.all(),
         }
         
         # Render the template
