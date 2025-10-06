@@ -4,30 +4,30 @@
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <title>
-        University of Ghana - UTAG
-        {% block title %} | Home {% endblock title %}
+      University of Ghana - UTAG
+      {% block title %}
+        | Home
+      {% endblock title %}
     </title>
     <meta name="description" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {% load static %}
     <!-- favicon
 		============================================ -->
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'website-v2/img/logo.png' %}" />
-
+    <link rel="shortcut icon"
+          type="image/x-icon"
+          href="{% static 'website-v2/img/logo.png' %}" />
     <!-- Google Fonts
 		============================================ -->
-    <link
-      href="https://fonts.googleapis.com/css?family=Poppins:400,300,500,600,700"
-      rel="stylesheet"
-      type="text/css"
-    />
-
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,300,500,600,700"
+          rel="stylesheet"
+          type="text/css" />
     <!-- Style CSS
 		============================================ -->
     <link rel="stylesheet" href="{% static 'website-v2/style.css' %}" />
     <!-- Typography overrides for v2 -->
-    <link rel="stylesheet" href="{% static 'website-v2/css/typography-overrides.css' %}" />
-
+    <link rel="stylesheet"
+          href="{% static 'website-v2/css/typography-overrides.css' %}" />
     <!-- Modernizr JS
 		============================================ -->
     <script src="{% static 'website-v2/js/vendor/modernizr-2.8.3.min.js' %}"></script>
@@ -37,82 +37,63 @@
     {% include 'includes/header-v2.html' %}
     <!--End of Header Area-->
     <!-- Content Start -->
-        {% block content %}
-          
-        {% endblock content %}
-     <!-- Content End -->
+    {% block content %}
+    {% endblock content %}
+    <!-- Content End -->
     <!--Footer Area Start-->
     {% include 'includes/footer-v2.html' %}
     <!--End of Footer Area-->
-
     <!-- jquery
 		============================================ -->
     <script src="{% static 'website-v2/js/vendor/jquery-1.12.3.min.js' %}"></script>
-
     <!-- Popper JS
 		============================================ -->
     <script src="{% static 'website-v2/js/popper.js' %}"></script>
-
     <!-- bootstrap JS
 		============================================ -->
     <script src="{% static 'website-v2/js/bootstrap.min.js' %}"></script>
-
     <!-- bootstrap Toggle JS
 		============================================ -->
     <script src="{% static 'website-v2/js/bootstrap-toggle.min.js' %}"></script>
-
     <!-- nivo slider js
 		============================================ -->
     <script src="{% static 'website-v2/lib/nivo-slider/js/jquery.nivo.slider.js' %}"></script>
     <script src="{% static 'website-v2/lib/nivo-slider/home.js' %}"></script>
-
     <!-- wow JS
 		============================================ -->
     <script src="{% static 'website-v2/js/wow.min.js' %}"></script>
-
     <!-- meanmenu JS
 		============================================ -->
     <script src="{% static 'website-v2/js/jquery.meanmenu.js' %}"></script>
-
     <!-- Owl carousel JS
 		============================================ -->
     <script src="{% static 'website-v2/js/owl.carousel.min.js' %}"></script>
-
     <!-- Countdown JS
 		============================================ -->
     <script src="{% static 'website-v2/js/jquery.countdown.min.js' %}"></script>
-
     <!-- scrollUp JS
 		============================================ -->
     <script src="{% static 'website-v2/js/jquery.scrollUp.min.js' %}"></script>
-
     <!-- Waypoints JS
 		============================================ -->
     <script src="{% static 'website-v2/js/waypoints.min.js' %}"></script>
-
     <!-- Counterup JS
 		============================================ -->
     <script src="{% static 'website-v2/js/jquery.counterup.min.js' %}"></script>
-
     <!-- Slick JS
 		============================================ -->
     <script src="{% static 'website-v2/js/slick.min.js' %}"></script>
-
     <!-- Mix It Up JS
 		============================================ -->
     <script src="{% static 'website-v2/js/jquery.mixitup.js' %}"></script>
-
     <!-- Venubox JS
 		============================================ -->
     <script src="{% static 'website-v2/js/venobox.min.js' %}"></script>
-
     <!-- plugins JS
 		============================================ -->
     <script src="{% static 'website-v2/js/plugins.js' %}"></script>
-
     <!-- Google Map js
-		============================================ -->
-
+============================================ -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMDaJTeAidmIzHlfOnilEE7VpBlHk_TUU"></script>
     <script src="https://www.google.com/jsapi"></script>
     <script>
@@ -248,7 +229,6 @@
 
       google.maps.event.addDomListener(window, "load", initialize);
     </script>
-
     <!-- main JS
 		============================================ -->
     <script src="{% static 'website-v2/js/main.js' %}"></script>
