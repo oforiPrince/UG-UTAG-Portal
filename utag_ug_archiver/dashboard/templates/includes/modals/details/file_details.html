@@ -5,12 +5,12 @@
          id="documentDetailModal_{{ document.id }}"
          tabindex="-1"
          role="dialog"
-         aria-labelledby="documentDetailModal_{{ document.id }}Label"
+         aria-labelledby="documentDetailModalTitle_{{ document.id }}"
          aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">{{ document.title }}</h5>
+                    <h5 id="documentDetailModalTitle_{{ document.id }}" class="modal-title">Document Details - {{ document.title }}</h5>
                     <button type="button"
                             class="btn-close"
                             data-bs-dismiss="modal"
@@ -71,14 +71,18 @@
                                                 <a href="{{ file.file.url }}" target="_blank">
                                                     <img src="{{ file.file.url }}"
                                                          class="img-fluid"
-                                                         alt="{{ file.file.name }}">
+                                                         alt="{{ file.file.name }}"
+                                                         width="160"
+                                                         height="120">
                                                 </a>
                                             {% else %}
                                                 <!-- Display generic document icon for non-image files -->
                                                 <a href="{{ file.file.url }}" target="_blank">
                                                     <img src="{% static 'dashboard/assets/images/file/generic.png' %}"
                                                          alt="Document Icon"
-                                                         class="img-fluid">
+                                                         class="img-fluid"
+                                                         width="120"
+                                                         height="120">
                                                 </a>
                                             {% endif %}
                                             <div class="text-center mb-2">

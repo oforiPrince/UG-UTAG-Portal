@@ -1,112 +1,93 @@
 <!-- Modal for News Details -->
-
 {% for news in newss %}
-
-<!-- Modernized Modal for News Details -->
-<div
-    class="modal fade"
-    id="newsModal_{{ news.id }}"
-    tabindex="-1"
-    aria-labelledby="newsModal_{{ news.id }}Label"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="newsModal_{{ news.id }}Label">
-                    {{ news.title }}
-                </h5>
-                <button
-                    type="button"
-                    class="btn-close btn-close-white"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <!-- News Content -->
-                <div class="row">
-                    <!-- Featured Image -->
-                    <div class="col-md-6">
-                        <img
-                            src="{{ news.get_featured_image_url }}"
-                            alt="{{ news.title }}"
-                            class="img-fluid rounded shadow-sm mb-3"
-                        />
-                    </div>
-
-                    <!-- News Details -->
-                    <div class="col-md-6">
-                        <p class="mb-2">
-                            {{ news.content|safe }}
-                        </p>
-                        <p class="mb-2">
-                            <strong>Author:</strong>
-                            {{ news.author.get_full_name }}
-                        </p>
-                        {% if news.tags.exists %}
-                        <p class="mb-2">
-                            <strong>Tags:</strong>
-                            {% for tag in news.tags.all %}
-                                <span class="badge bg-secondary">{{ tag.name }}</span>
-                            {% endfor %}
-                        </p>
-                        {% endif %}
-                        <p class="mb-2">
-                            <strong>Created At:</strong>
-                            {{ news.created_at|date:"F d, Y" }}
-                        </p>
-                        <p class="mb-2">
-                            <strong>Updated At:</strong>
-                            {{ news.updated_at|date:"F d, Y" }}
-                        </p>
-                    </div>
+    <!-- Modernized Modal for News Details -->
+    <div class="modal fade"
+         id="newsModal_{{ news.id }}"
+         tabindex="-1"
+         aria-labelledby="newsModal_{{ news.id }}Label"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="newsModal_{{ news.id }}Label">News Details — {{ news.title }}</h5>
+                    <button type="button"
+                            class="btn-close btn-close-white"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
                 </div>
-
-                <!-- Attachments -->
-                {% if news.attached_documents.exists %}
-                <hr />
-                <h5 class="text-secondary"><i class="fa fa-file"></i> Attachments</h5>
-                <ul class="list-group">
-                    {% for document in news.attached_documents.all %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ document.name }}
-                        <a href="{{ document.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
-                            <i class="fa fa-download"></i> Download
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-
-                <!-- Citations -->
-                {% if news.citations.exists %}
-                <hr />
-                <h5 class="text-secondary"><i class="fa fa-book"></i> Citations</h5>
-                <ol class="ps-3">
-                    {% for citation in news.citations.all %}
-                    <li>
-                        <a href="{{ citation.url }}" target="_blank" rel="noopener">
-                            {{ citation.source_name }}
-                        </a> - {{ citation.description }}
-                    </li>
-                    {% endfor %}
-                </ol>
-                {% endif %}
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    Close
-                </button>
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <!-- News Content -->
+                    <div class="row">
+                        <!-- Featured Image -->
+                        <div class="col-md-6">
+                            <img src="{{ news.get_featured_image_url }}"
+                                 alt="{{ news.title }}"
+                                 class="img-fluid rounded shadow-sm mb-3" />
+                        </div>
+                        <!-- News Details -->
+                        <div class="col-md-6">
+                            <p class="mb-2">{{ news.content|safe }}</p>
+                            <p class="mb-2">
+                                <strong>Author:</strong>
+                                {{ news.author.get_full_name }}
+                            </p>
+                            {% if news.tags.exists %}
+                                <p class="mb-2">
+                                    <strong>Tags:</strong>
+                                    {% for tag in news.tags.all %}<span class="badge bg-secondary">{{ tag.name }}</span>{% endfor %}
+                                </p>
+                            {% endif %}
+                            <p class="mb-2">
+                                <strong>Created At:</strong>
+                                {{ news.created_at|date:"F d, Y" }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Updated At:</strong>
+                                {{ news.updated_at|date:"F d, Y" }}
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Attachments -->
+                    {% if news.attached_documents.exists %}
+                        <hr />
+                        <h5 class="text-secondary">
+                            <i class="fa fa-file"></i> Attachments
+                        </h5>
+                        <ul class="list-group">
+                            {% for document in news.attached_documents.all %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ document.name }}
+                                    <a href="{{ document.file.url }}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       target="_blank">
+                                        <i class="fa fa-download"></i> Download
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <!-- Citations -->
+                    {% if news.citations.exists %}
+                        <hr />
+                        <h5 class="text-secondary">
+                            <i class="fa fa-book"></i> Citations
+                        </h5>
+                        <ol class="ps-3">
+                            {% for citation in news.citations.all %}
+                                <li>
+                                    <a href="{{ citation.url }}" target="_blank" rel="noopener">{{ citation.source_name }}</a> - {{ citation.description }}
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% endif %}
+                </div>
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-    
 {% endfor %}

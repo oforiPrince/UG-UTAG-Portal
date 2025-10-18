@@ -12,7 +12,7 @@
             action="{% url 'dashboard:gallery_add' %}">
         {% csrf_token %}
         <div class="modal-header">
-          <h5 class="modal-title" id="addGalleryModalLabel">Create New Image Gallery</h5>
+          <h5 class="modal-title" id="addGalleryModalLabel">Create Gallery</h5>
           <button type="button"
                   class="btn-close"
                   data-bs-dismiss="modal"
@@ -68,7 +68,7 @@
         {% csrf_token %}
         <input type="hidden" name="gallery_id" id="gallery_id">
         <div class="modal-header">
-          <h5 class="modal-title" id="uploadImagesModalLabel">Upload Images — Add to Gallery</h5>
+          <h5 class="modal-title" id="uploadImagesModalLabel">Upload Images to Gallery</h5>
           <button type="button"
                   class="btn-close"
                   data-bs-dismiss="modal"
@@ -97,7 +97,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="galleryModalLabel_{{ gallery.id }}">Gallery Overview — {{ gallery.title }}</h5>
+          <h5 class="modal-title" id="galleryModalLabel_{{ gallery.id }}">Gallery Details — {{ gallery.title }}</h5>
           <button type="button"
                   class="btn-close"
                   data-bs-dismiss="modal"
@@ -145,16 +145,16 @@
   </div>
   <!-- Edit Gallery Modal -->
   <div class="modal fade"
-       id="editGalleryModal"
+       id="editGalleryModal_{{ gallery.id }}"
        tabindex="-1"
-       aria-labelledby="editGalleryModalLabel"
+       aria-labelledby="editGalleryModalLabel_{{ gallery.id }}"
        aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form id="editGalleryForm">
           {% csrf_token %}
           <div class="modal-header">
-            <h5 class="modal-title" id="editGalleryModalLabel">Edit Gallery Information</h5>
+            <h5 class="modal-title" id="editGalleryModalLabel_{{ gallery.id }}">Edit Gallery</h5>
             <button type="button"
                     class="btn-close"
                     data-bs-dismiss="modal"
@@ -194,14 +194,14 @@
   </div>
   <!-- View Gallery Modal -->
   <div class="modal fade"
-       id="viewGalleryModal"
+       id="viewGalleryModal_{{ gallery.id }}"
        tabindex="-1"
-       aria-labelledby="viewGalleryModalLabel"
+       aria-labelledby="viewGalleryModalLabel_{{ gallery.id }}"
        aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="viewGalleryModalLabel">Gallery Overview</h5>
+          <h5 class="modal-title" id="viewGalleryModalLabel_{{ gallery.id }}">Gallery Details</h5>
           <button type="button"
                   class="btn-close"
                   data-bs-dismiss="modal"
