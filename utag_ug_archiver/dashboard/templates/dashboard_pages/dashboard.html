@@ -21,9 +21,7 @@
                         <div class="header-content">
                             <h6 class="page-title">Dashboard</h6>
                             <ol class="breadcrumb m-0">
-                                <li class="breadcrumb-item">
-                                    <i class="ri-home-line me-1"></i>Home
-                                </li>
+                                <li class="breadcrumb-item">Home</li>
                                 <li class="breadcrumb-item active">
                                     Welcome to UG-UTAG
                                     {% if user.is_authenticated %}
@@ -349,7 +347,7 @@
                                                         </td>
                                                         <td class="text-muted">{{ document.date|date:'M d, Y' }}</td>
                                                         <td>
-                                                            <span class="badge badge-soft-secondary">{{ document.uploaded_by.get_short_name }}</span>
+                                                            <span class="badge badge-soft-secondary">{{ document.uploaded_by_name }}</span>
                                                         </td>
                                                         <td>
                                                             {% if document.category == 'external' %}

@@ -33,7 +33,7 @@
                   <div class="col-md-4">
                     <div class="float-end d-none d-md-block">
                       <a class="btn btn-primary" href="{% url 'dashboard:create_event' %}">
-                        <i class="mdi mdi-plus-circle me-1"></i> New
+                        <i class="mdi mdi-plus-circle me-1"></i> Add Event
                       </a>
                     </div>
                   </div>
@@ -72,17 +72,27 @@
                                height="60" />
                         </td>
                         <td>{{ event.title }}</td>
-                        <td>{{ event.date |date:"d M Y" }}</td>
-                        <td>{{ event.time }}</td>
+                        <td>{{ event.start_date |date:"d M Y" }}</td>
+                        <td>
+                          {% if event.start_time %}
+                            {% if event.end_time %}
+                              {{ event.start_time|time:"H:i" }} - {{ event.end_time|time:"H:i" }}
+                            {% else %}
+                              {{ event.start_time|time:"H:i" }}
+                            {% endif %}
+                          {% else %}
+                            All day
+                          {% endif %}
+                        </td>
                         <td>{{ event.venue }}</td>
                         <td>{{ event.created_by }}</td>
                         <td>{{ event.created_at |date:"d M Y" }}</td>
                         <td>{{ event.updated_at |date:"d M Y" }}</td>
-                        {% if event.is_published and not event.is_pas_due %}
+                        {% if event.is_published and not event.is_past_due %}
                           <td>
                             <span class="badge bg-success">Upcoming</span>
                           </td>
-                        {% elif event.is_published and event.is_pas_due %}
+                        {% elif event.is_published and event.is_past_due %}
                           <td>
                             <span class="badge bg-danger">Past Due</span>
                           </td>

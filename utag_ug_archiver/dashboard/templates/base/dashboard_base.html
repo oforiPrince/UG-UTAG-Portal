@@ -1,76 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
-    {% load static %}
-    <head>
-        <meta charset="utf-8">
-        <title>Dashboard -
-            {% block title %}{% endblock %}
-        </title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta content="Premium Multipurpose Admin & Dashboard Template"
-              name="description">
-        <meta content="Themesbrand" name="author">
-        <!-- App favicon -->
-        <link rel="shortcut icon"
-              href="{% static 'dashboard/assets/images/utag_ug.png' %}">
-        <!-- Bootstrap Css -->
-        <link href="{% static 'dashboard/assets/css/bootstrap.min.css' %}"
-              id="bootstrap-style"
-              rel="stylesheet"
-              type="text/css">
-        <!-- Icons Css -->
-        <link href="{% static 'dashboard/assets/css/icons.min.css' %}"
-              rel="stylesheet"
-              type="text/css">
-        <!-- Remix Icon (used across dashboard for icon glyphs) -->
-        <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css"
-              rel="stylesheet">
-        <!-- App Css-->
-        <link href="{% static 'dashboard/assets/css/app.min.css' %}"
-              id="app-style"
-              rel="stylesheet"
-              type="text/css">
-        <!-- Select2 CSS -->
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-              rel="stylesheet"
-              type="text/css">
-        {% block my_styles %}
-        {% endblock my_styles %}
-        <!-- TinyMCE CSS -->
-        <link href="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/skins/ui/oxide/content.min.css"
-              rel="stylesheet">
-        <style>/* Custom styles for TinyMCE if needed */</style>
-    </head>
-    <body data-sidebar="dark">
-        <div id="layout-wrapper">
-            {% include "includes/dash_header.html" %}
-            {% include "includes/dash_sidebar.html" %}
-            <!-- ============================================================== -->
-            <!-- Start right Content here -->
-            <!-- ============================================================== -->
-            <div class="main-content">
-                {% block content %}
-                {% endblock content %}
-                {% include "includes/dash_footer.html" %}
+      {% load static %}
+      <head>
+            <meta charset="utf-8">
+            <title>Dashboard -
+                  {% block title %}{% endblock %}
+            </title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta content="Premium Multipurpose Admin & Dashboard Template"
+                  name="description">
+            <meta content="Themesbrand" name="author">
+            <!-- App favicon -->
+            <link rel="shortcut icon"
+                  href="{% static 'dashboard/assets/images/utag_ug.png' %}">
+            <!-- Bootstrap Css -->
+            <link href="{% static 'dashboard/assets/css/bootstrap.min.css' %}"
+                  id="bootstrap-style"
+                  rel="stylesheet"
+                  type="text/css">
+            <!-- Icons Css -->
+            <link href="{% static 'dashboard/assets/css/icons.min.css' %}"
+                  rel="stylesheet"
+                  type="text/css">
+            <!-- Remix Icon (used across dashboard for icon glyphs) -->
+            <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css"
+                  rel="stylesheet">
+            <!-- App Css-->
+            <link href="{% static 'dashboard/assets/css/app.min.css' %}"
+                  id="app-style"
+                  rel="stylesheet"
+                  type="text/css">
+            <!-- Select2 CSS -->
+            <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+                  rel="stylesheet"
+                  type="text/css">
+            {% block my_styles %}
+            {% endblock my_styles %}
+            <!-- TinyMCE CSS -->
+            <link href="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/skins/ui/oxide/content.min.css"
+                  rel="stylesheet">
+            <style>/* Custom styles for TinyMCE if needed */</style>
+      </head>
+      <body data-sidebar="dark">
+            <div id="layout-wrapper">
+                  {% include "includes/dash_header.html" %}
+                  {% include "includes/dash_sidebar.html" %}
+                  <!-- ============================================================== -->
+                  <!-- Start right Content here -->
+                  <!-- ============================================================== -->
+                  <div class="main-content">
+                        {% block content %}
+                        {% endblock content %}
+                        {% include "includes/dash_footer.html" %}
+                  </div>
+                  <!-- end main content-->
             </div>
-            <!-- end main content-->
-        </div>
-        <!-- END layout-wrapper -->
-        <!-- JAVASCRIPT -->
-        <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script>
-        <script src="{% static 'dashboard/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-        <script src="{% static 'dashboard/assets/libs/metismenu/metisMenu.min.js' %}"></script>
-        <script src="{% static 'dashboard/assets/libs/simplebar/simplebar.min.js' %}"></script>
-        <script src="{% static 'dashboard/assets/libs/node-waves/waves.min.js' %}"></script>
-        <script src="{% static 'dashboard/assets/js/app.js' %}"></script>
-        <!-- Select2 JS -->
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <script>
+            <!-- END layout-wrapper -->
+            <!-- JAVASCRIPT -->
+            <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script>
+            <script src="{% static 'dashboard/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+            <script src="{% static 'dashboard/assets/libs/metismenu/metisMenu.min.js' %}"></script>
+            <script src="{% static 'dashboard/assets/libs/simplebar/simplebar.min.js' %}"></script>
+            <script src="{% static 'dashboard/assets/libs/node-waves/waves.min.js' %}"></script>
+            <script src="{% static 'dashboard/assets/js/app.js' %}"></script>
+            <!-- Select2 JS -->
+            <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+            <script>
         $(document).ready(function() {
             $('.select2').select2();
         });
-        </script>
-        {% block my_scripts %}
-        {% endblock my_scripts %}
-    </body>
+            </script>
+            {% block my_scripts %}
+            {% endblock my_scripts %}
+      </body>
 </html>
