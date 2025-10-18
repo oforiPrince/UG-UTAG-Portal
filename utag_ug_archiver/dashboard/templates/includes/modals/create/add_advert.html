@@ -1,81 +1,110 @@
 <!-- Modal for Advert Creation -->
-<div class="modal fade bs-example-modal-lg" id="createAdvertModal" tabindex="-1" aria-labelledby="createAdvertModalLabel" aria-hidden="true">
+<div class="modal fade bs-example-modal-lg"
+     id="createAdvertModal"
+     tabindex="-1"
+     aria-labelledby="createAdvertModalLabel"
+     aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-      <div class="modal-content">
-          <div class="modal-header">
-              <h5 class="modal-title" id="createAdvertModalLabel">Create Advertisement</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-              <form class="advertForm" enctype="multipart/form-data" action="{% url 'dashboard:create_advert' %}" method="POST">
-                  {% csrf_token %}
-                  <div class="form-group mb-3">
-                      <label for="imageInput">Image (900x250 or 300x250 pixels)</label>
-                      <input type="file" class="form-control" id="imageInput" name="image" accept="image/*" onchange="validateImage()">
-                      <span id="errorMessage" style="color: red;"></span>
-                  </div>
-                  <div class="mb-3" id="imagePreviewContainer" style="display: none;">
-                      <h5>Image Preview</h5>
-                      <img id="imagePreview" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px;">
-                  </div>
-                  <div class="row">
-                    <div class="form-group col-md-6 mb-3">
-                      <label for="advertiserSelect">Advertiser</label>
-                      <select class="form-control" id="advertiserSelect" name="advertiser_id" required>
-                          <option value="">Select an Advertiser</option>
-                          {% for advertiser in advertisers %}
-                          <option value="{{ advertiser.id }}">{{ advertiser.company_name }}</option>
-                          {% endfor %}
-                      </select>
-                  </div>
-                  <div class="form-group col-md-6 mb-3">
-                      <label for="planSelect">Plan</label>
-                      <select class="form-control" id="planSelect" name="plan_id" required onchange="updateAvailablePositions()">
-                          <option value="">Select a Plan</option>
-                          {% for plan in plans %}
-                          <option value="{{ plan.id }}" data-positions="{{ plan.positions }}">{{ plan.name }}</option>
-                          {% endfor %}
-                      </select>
-                  </div>
-                  </div>
-                  <div class="row">
-                    <div class="form-group col-md-6 mb-3">
-                      <label for="positionSelect">Position</label>
-                      <select class="form-control" id="positionSelect" name="position" required>
-                          <option value="">Select a Position</option>
-                      </select>
-                  </div>
-                  <div class="form-group col-md-6 mb-3">
-                      <label for="targetUrlInput">Target URL</label>
-                      <input type="url" class="form-control" id="targetUrlInput" name="target_url">
-                  </div>
-                  </div>
-                  <div class="row">
-                    <div class="form-group col-md-6 mb-3">
-                      <label for="startDateInput">Start Date</label>
-                      <input type="date" class="form-control" id="startDateInput" name="start_date" required>
-                  </div>
-                  <div class="form-group col-md-6 mb-3">
-                      <label for="statusSelect">Status</label>
-                      <select class="form-control" id="statusSelect" name="status" required>
-                          <option value="DRAFT">Draft</option>
-                          <option value="PUBLISHED" selected>Published</option>
-                          <option value="EXPIRED">Expired</option>
-                      </select>
-                  </div>
-                  </div>
-                  <div class="mt-3 text-end">
-                      <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
-                      <button  type="button" class="btn btn-secondary waves-effect" data-bs-dismiss="modal">
-                        Close
-                      </button>
-                  </div>
-              </form>
-          </div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createAdvertModalLabel">Publish Advertisement — Submission Form</h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"></button>
       </div>
+      <div class="modal-body">
+        <form class="advertForm"
+              enctype="multipart/form-data"
+              action="{% url 'dashboard:create_advert' %}"
+              method="POST">
+          {% csrf_token %}
+          <div class="form-group mb-3">
+            <label for="imageInput">Image (900x250 or 300x250 pixels)</label>
+            <input type="file"
+                   class="form-control"
+                   id="imageInput"
+                   name="image"
+                   accept="image/*"
+                   onchange="validateImage()">
+            <span id="errorMessage" style="color: red;"></span>
+          </div>
+          <div class="mb-3" id="imagePreviewContainer" style="display: none;">
+            <h5>Image Preview</h5>
+            <img id="imagePreview"
+                 src="#"
+                 alt="Image Preview"
+                 style="max-width: 100%;
+                        max-height: 200px">
+          </div>
+          <div class="row">
+            <div class="form-group col-md-6 mb-3">
+              <label for="advertiserSelect">Advertiser</label>
+              <select class="form-control"
+                      id="advertiserSelect"
+                      name="advertiser_id"
+                      required>
+                <option value="">Select an Advertiser</option>
+                {% for advertiser in advertisers %}
+                  <option value="{{ advertiser.id }}">{{ advertiser.company_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group col-md-6 mb-3">
+              <label for="planSelect">Plan</label>
+              <select class="form-control"
+                      id="planSelect"
+                      name="plan_id"
+                      required
+                      onchange="updateAvailablePositions()">
+                <option value="">Select a Plan</option>
+                {% for plan in plans %}
+                  <option value="{{ plan.id }}" data-positions="{{ plan.positions }}">{{ plan.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group col-md-6 mb-3">
+              <label for="positionSelect">Position</label>
+              <select class="form-control" id="positionSelect" name="position" required>
+                <option value="">Select a Position</option>
+              </select>
+            </div>
+            <div class="form-group col-md-6 mb-3">
+              <label for="targetUrlInput">Target URL</label>
+              <input type="url" class="form-control" id="targetUrlInput" name="target_url">
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group col-md-6 mb-3">
+              <label for="startDateInput">Start Date</label>
+              <input type="date"
+                     class="form-control"
+                     id="startDateInput"
+                     name="start_date"
+                     required>
+            </div>
+            <div class="form-group col-md-6 mb-3">
+              <label for="statusSelect">Status</label>
+              <select class="form-control" id="statusSelect" name="status" required>
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED" selected>Published</option>
+                <option value="EXPIRED">Expired</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3 text-end">
+            <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+            <button type="button"
+                    class="btn btn-secondary waves-effect"
+                    data-bs-dismiss="modal">Close</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
-
 <script>
 // Function to dynamically update positions based on selected plan
 function updateAvailablePositions() {

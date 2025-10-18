@@ -1,69 +1,107 @@
 <!-- Add Gallery Modal -->
-<div class="modal fade" id="addGalleryModal" tabindex="-1" aria-labelledby="addGalleryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form id="addGalleryForm" method="post" enctype="multipart/form-data" action="{% url 'dashboard:gallery_add' %}">
-          {% csrf_token %}
-          <div class="modal-header">
-            <h5 class="modal-title" id="addGalleryModalLabel">Add New Gallery</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade"
+     id="addGalleryModal"
+     tabindex="-1"
+     aria-labelledby="addGalleryModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="addGalleryForm"
+            method="post"
+            enctype="multipart/form-data"
+            action="{% url 'dashboard:gallery_add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="addGalleryModalLabel">Create New Image Gallery</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="galleryTitle" class="form-label">Gallery Title</label>
+            <input type="text"
+                   class="form-control"
+                   id="galleryTitle"
+                   name="title"
+                   maxlength="255"
+                   required>
           </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="galleryTitle" class="form-label">Gallery Title</label>
-              <input type="text" class="form-control" id="galleryTitle" name="title" maxlength="255" required>
-            </div>
-            <div class="mb-3">
-              <label for="galleryDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="galleryDescription" name="description" rows="3"></textarea>
-            </div>
-            <div class="mb-3 form-check">
-              <input type="checkbox" class="form-check-input" id="galleryIsActive" name="is_active" checked>
-              <label class="form-check-label" for="galleryIsActive">Is Active</label>
-            </div>
+          <div class="mb-3">
+            <label for="galleryDescription" class="form-label">Description</label>
+            <textarea class="form-control"
+                      id="galleryDescription"
+                      name="description"
+                      rows="3"></textarea>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Save Gallery</button>
+          <div class="mb-3 form-check">
+            <input type="checkbox"
+                   class="form-check-input"
+                   id="galleryIsActive"
+                   name="is_active"
+                   checked>
+            <label class="form-check-label" for="galleryIsActive">Is Active</label>
           </div>
-        </form>
-      </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Gallery</button>
+        </div>
+      </form>
     </div>
   </div>
-  
-  <!-- Upload Images Modal -->
-  <div class="modal fade" id="uploadImagesModal" tabindex="-1" aria-labelledby="uploadImagesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form id="uploadImagesForm" class="dropzone" method="post" enctype="multipart/form-data" action="{% url 'dashboard:gallery_upload_images' %}">
-          {% csrf_token %}
-          <input type="hidden" name="gallery_id" id="gallery_id">
-          <div class="modal-header">
-            <h5 class="modal-title" id="uploadImagesModalLabel">Upload Images to Gallery</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<!-- Upload Images Modal -->
+<div class="modal fade"
+     id="uploadImagesModal"
+     tabindex="-1"
+     aria-labelledby="uploadImagesModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="uploadImagesForm"
+            class="dropzone"
+            method="post"
+            enctype="multipart/form-data"
+            action="{% url 'dashboard:gallery_upload_images' %}">
+        {% csrf_token %}
+        <input type="hidden" name="gallery_id" id="gallery_id">
+        <div class="modal-header">
+          <h5 class="modal-title" id="uploadImagesModalLabel">Upload Images — Add to Gallery</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="galleryImages" class="form-label">Upload Images</label>
+            <div id="dropzone" class="dropzone"></div>
           </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="galleryImages" class="form-label">Upload Images</label>
-              <div id="dropzone" class="dropzone"></div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          </div>
-        </form>
-      </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </form>
     </div>
   </div>
-  
-  <!-- View Gallery Details Modal -->
-  {% for gallery in galleries %}
-  <div class="modal fade" id="galleryModal_{{ gallery.id }}" tabindex="-1" aria-labelledby="galleryModalLabel_{{ gallery.id }}" aria-hidden="true">
+</div>
+<!-- View Gallery Details Modal -->
+{% for gallery in galleries %}
+  <div class="modal fade"
+       id="galleryModal_{{ gallery.id }}"
+       tabindex="-1"
+       aria-labelledby="galleryModalLabel_{{ gallery.id }}"
+       aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="galleryModalLabel_{{ gallery.id }}">Gallery Details: {{ gallery.title }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="galleryModalLabel_{{ gallery.id }}">Gallery Overview — {{ gallery.title }}</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
@@ -82,17 +120,19 @@
             <strong>Images:</strong>
             <div class="row">
               {% for image in gallery.images.all %}
-              <div class="col-md-4">
-                <div class="card">
-                  <img src="{{ image.image.url }}" class="card-img-top img-fluid rounded" alt="{{ image.caption }}">
-                  <div class="card-body">
-                    <p class="card-text">{{ image.caption|default:"No Caption" }}</p>
-                    <p class="text-muted small">Uploaded on {{ image.uploaded_at|date:"d M Y" }}</p>
+                <div class="col-md-4">
+                  <div class="card">
+                    <img src="{{ image.image.url }}"
+                         class="card-img-top img-fluid rounded"
+                         alt="{{ image.caption }}">
+                    <div class="card-body">
+                      <p class="card-text">{{ image.caption|default:"No Caption" }}</p>
+                      <p class="text-muted small">Uploaded on {{ image.uploaded_at|date:"d M Y" }}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
               {% empty %}
-              <p class="text-muted">No images available for this gallery.</p>
+                <p class="text-muted">No images available for this gallery.</p>
               {% endfor %}
             </div>
           </div>
@@ -103,65 +143,81 @@
       </div>
     </div>
   </div>
-
-    <!-- Edit Gallery Modal -->
-    <div class="modal fade" id="editGalleryModal" tabindex="-1" aria-labelledby="editGalleryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <form id="editGalleryForm">
-              {% csrf_token %}
-              <div class="modal-header">
-                <h5 class="modal-title" id="editGalleryModalLabel">Edit Gallery</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- Edit Gallery Modal -->
+  <div class="modal fade"
+       id="editGalleryModal"
+       tabindex="-1"
+       aria-labelledby="editGalleryModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="editGalleryForm">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="editGalleryModalLabel">Edit Gallery Information</h5>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="gallery_id" id="editGalleryId">
+            <div class="mb-3">
+              <label for="editGalleryTitle" class="form-label">Title</label>
+              <input type="text"
+                     class="form-control"
+                     id="editGalleryTitle"
+                     name="title"
+                     required>
+            </div>
+            <div class="mb-3">
+              <label for="editGalleryDescription" class="form-label">Description</label>
+              <textarea class="form-control"
+                        id="editGalleryDescription"
+                        name="description"
+                        rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Images</label>
+              <div id="galleryImages" class="row">
+                <!-- Images will be loaded dynamically -->
               </div>
-              <div class="modal-body">
-                <input type="hidden" name="gallery_id" id="editGalleryId">
-                <div class="mb-3">
-                  <label for="editGalleryTitle" class="form-label">Title</label>
-                  <input type="text" class="form-control" id="editGalleryTitle" name="title" required>
-                </div>
-                <div class="mb-3">
-                  <label for="editGalleryDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="editGalleryDescription" name="description" rows="3"></textarea>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Images</label>
-                  <div id="galleryImages" class="row">
-                    <!-- Images will be loaded dynamically -->
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-              </div>
-            </form>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <!-- View Gallery Modal -->
+  <div class="modal fade"
+       id="viewGalleryModal"
+       tabindex="-1"
+       aria-labelledby="viewGalleryModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewGalleryModalLabel">Gallery Overview</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h5 id="viewGalleryTitle"></h5>
+          <p id="viewGalleryDescription"></p>
+          <div id="viewGalleryImages" class="row g-3">
+            <!-- Images will be loaded dynamically here -->
           </div>
         </div>
-    </div>
-
-    <!-- View Gallery Modal -->
-    <div class="modal fade" id="viewGalleryModal" tabindex="-1" aria-labelledby="viewGalleryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="viewGalleryModalLabel">Gallery Details</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <h5 id="viewGalleryTitle"></h5>
-              <p id="viewGalleryDescription"></p>
-              <div id="viewGalleryImages" class="row g-3">
-                <!-- Images will be loaded dynamically here -->
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
-      
-      
-  {% endfor %}
-  
+    </div>
+  </div>
+{% endfor %}

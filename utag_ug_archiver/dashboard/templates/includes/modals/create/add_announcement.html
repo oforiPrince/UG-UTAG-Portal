@@ -1,57 +1,65 @@
 <!-- Announcement Modal -->
-<div class="modal fade bs-example-modal-lg" id="addAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="addAnnouncementModalLabel" aria-hidden="true">
+<div class="modal fade bs-example-modal-lg"
+     id="addAnnouncementModal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="addAnnouncementModalLabel"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addAnnouncementModalLabel">Create Announcement</h5>
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal"
-                    aria-label="Close"
-                ></button>
+                <h5 class="modal-title" id="addAnnouncementModalLabel">Publish Announcement — Create</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form method="POST" action="{% url 'dashboard:create_announcement' %}">
                     {% csrf_token %}
                     <div class="form-group mb-3">
                         <label for="announcement_title">Title</label>
-                        <input type="text" class="form-control" id="announcement_title" name="title" required>
+                        <input type="text"
+                               class="form-control"
+                               id="announcement_title"
+                               name="title"
+                               required>
                     </div>
                     <div class="row mb-3">
                         <div class="form-group col-md-6">
                             <label for="announcement_target">Target</label>
                             <select class="form-control" id="announcement_target" name="target" required>
-                                {% for key, value in TARGET_CHOICES %}
-                                <option value="{{ key }}">{{ value }}</option>
-                                {% endfor %}
+                                {% for key, value in TARGET_CHOICES %}<option value="{{ key }}">{{ value }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="form-group col-md-6">
                             <label for="announcement_status">Status</label>
                             <select class="form-control" id="announcement_status" name="status" required>
-                                {% for key, value in STATUS_CHOICES %}
-                                <option value="{{ key }}">{{ value }}</option>
-                                {% endfor %}
+                                {% for key, value in STATUS_CHOICES %}<option value="{{ key }}">{{ value }}</option>{% endfor %}
                             </select>
                         </div>
                     </div>
-                    <div class="form-group mb-3" id="target_groups_section" style="display: none;">
+                    <div class="form-group mb-3"
+                         id="target_groups_section"
+                         style="display: none">
                         <label for="announcement_target_groups">Target Groups</label>
-                        <select class="form-control" id="announcement_target_groups" name="target_groups" multiple>
-                            {% for group in all_groups %}
-                            <option value="{{ group.id }}">{{ group.name }}</option>
-                            {% endfor %}
+                        <select class="form-control"
+                                id="announcement_target_groups"
+                                name="target_groups"
+                                multiple>
+                            {% for group in all_groups %}<option value="{{ group.id }}">{{ group.name }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="form-group mb-3">
                         <label for="announcement_content">Content</label>
-                        <textarea class="form-control" id="announcement_content" name="content" rows="5" required></textarea>
+                        <textarea class="form-control"
+                                  id="announcement_content"
+                                  name="content"
+                                  rows="5"
+                                  required></textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            Close
-                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
                 </form>
@@ -59,7 +67,6 @@
         </div>
     </div>
 </div>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         var targetSelect = document.getElementById("announcement_target");

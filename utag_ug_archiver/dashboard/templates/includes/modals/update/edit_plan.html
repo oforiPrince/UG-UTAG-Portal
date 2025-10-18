@@ -1,55 +1,80 @@
 {% for plan in plans %}
-<!-- Edit Advert Plan Modal for {{ plan.name }} -->
-<div class="modal fade" id="editAdvertPlanModal_{{ plan.id }}" tabindex="-1" role="dialog" aria-labelledby="editAdvertPlanModalLabel_{{ plan.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editAdvertPlanModalLabel_{{ plan.id }}">Edit Advert Plan - {{ plan.name }}</h5>
-                <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-                ></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST" action="{% url 'dashboard:update_plan' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="plan_id" value="{{ plan.id }}">
-                    <div class="form-group mb-3">
-                        <label for="editPlanName_{{ plan.id }}">Name</label>
-                        <input type="text" class="form-control" id="editPlanName_{{ plan.id }}" name="name" value="{{ plan.name }}" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editPlanDescription_{{ plan.id }}">Description</label>
-                        <textarea class="form-control" id="editPlanDescription_{{ plan.id }}" name="description" rows="3" required>{{ plan.description }}</textarea>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editPlanPrice_{{ plan.id }}">Price</label>
-                        <input type="number" class="form-control" id="editPlanPrice_{{ plan.id }}" name="price" value="{{ plan.price }}" step="0.01" required>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="form-group col-md-6">
-                            <label for="editPlanDuration_{{ plan.id }}">Duration (in days)</label>
-                            <input type="number" class="form-control" id="editPlanDuration_{{ plan.id }}" name="duration_in_days" value="{{ plan.duration_in_days }}" required>
+    <!-- Edit Advert Plan Modal for {{ plan.name }} -->
+    <div class="modal fade"
+         id="editAdvertPlanModal_{{ plan.id }}"
+         tabindex="-1"
+         role="dialog"
+         aria-labelledby="editAdvertPlanModalLabel_{{ plan.id }}"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editAdvertPlanModalLabel_{{ plan.id }}">Edit Advertisement Plan — {{ plan.name }}</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'dashboard:update_plan' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                        <div class="form-group mb-3">
+                            <label for="editPlanName_{{ plan.id }}">Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="editPlanName_{{ plan.id }}"
+                                   name="name"
+                                   value="{{ plan.name }}"
+                                   required>
                         </div>
-                        <div class="form-group col-md-6">
-                            <label for="editPlanStatus_{{ plan.id }}">Status</label>
-                            <select class="form-control" id="editPlanStatus_{{ plan.id }}" name="status" required>
-                                <option value="active" {% if plan.status == 'active' %} selected {% endif %}>Active</option>
-                                <option value="inactive" {% if plan.status == 'inactive' %} selected {% endif %}>Inactive</option>
-                            </select>
+                        <div class="form-group mb-3">
+                            <label for="editPlanDescription_{{ plan.id }}">Description</label>
+                            <textarea class="form-control"
+                                      id="editPlanDescription_{{ plan.id }}"
+                                      name="description"
+                                      rows="3"
+                                      required>{{ plan.description }}</textarea>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            Close
-                          </button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
+                        <div class="form-group mb-3">
+                            <label for="editPlanPrice_{{ plan.id }}">Price</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="editPlanPrice_{{ plan.id }}"
+                                   name="price"
+                                   value="{{ plan.price }}"
+                                   step="0.01"
+                                   required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="form-group col-md-6">
+                                <label for="editPlanDuration_{{ plan.id }}">Duration (in days)</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="editPlanDuration_{{ plan.id }}"
+                                       name="duration_in_days"
+                                       value="{{ plan.duration_in_days }}"
+                                       required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="editPlanStatus_{{ plan.id }}">Status</label>
+                                <select class="form-control"
+                                        id="editPlanStatus_{{ plan.id }}"
+                                        name="status"
+                                        required>
+                                    <option value="active" {% if plan.status == 'active' %}selected{% endif %}>Active</option>
+                                    <option value="inactive"
+                                            {% if plan.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endfor %}

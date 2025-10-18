@@ -1,0 +1,516 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+{% block title %}Messages - UTAG Portal{% endblock %}
+{% block my_styles %}
+    {{ block.super }}
+    <style>
+    /* ========================================
+       SIMPLIFIED 2-SCREEN CHAT INTERFACE
+       ======================================== */
+    
+    /* Main Container */
+    .utag-message-page {
+        background: #f8f9fa;
+        min-height: calc(100vh - 160px);
+        padding: 20px;
+    }
+
+    .utag-chats-container {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    /* Header - Simplified with ONE action button */
+    .utag-chats-header {
+        background: #128C7E;
+        color: white;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .utag-chats-header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Single New Message Button */
+    .utag-new-btn {
+        background: white;
+        color: #128C7E;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .utag-new-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Search */
+    .utag-search-bar {
+        padding: 16px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .utag-search-input {
+        width: 100%;
+        padding: 12px 16px 12px 40px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%23999" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" /></svg>') no-repeat 12px center;
+    }
+
+    .utag-search-input:focus {
+        outline: none;
+        border-color: #128C7E;
+        box-shadow: 0 0 0 3px rgba(18,140,126,0.1);
+    }
+
+    /* Chat List */
+    .utag-chats-list {
+        overflow-y: auto;
+        max-height: calc(100vh - 350px);
+    }
+
+    .utag-chat-item {
+        display: flex;
+        align-items: center;
+        padding: 16px 20px;
+        gap: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s;
+    }
+
+    .utag-chat-item:hover {
+        background: #f8f9fa;
+    }
+
+    .utag-chat-item:last-child {
+        border-bottom: none;
+    }
+
+    .utag-chat-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #128C7E, #25D366);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .utag-chat-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .utag-chat-avatar.group {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        font-size: 24px;
+    }
+
+    .utag-chat-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .utag-chat-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 4px;
+    }
+
+    .utag-chat-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: #212529;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .utag-chat-time {
+        font-size: 12px;
+        color: #6c757d;
+        white-space: nowrap;
+        margin-left: 8px;
+    }
+
+    .utag-chat-item.unread .utag-chat-time {
+        color: #128C7E;
+        font-weight: 500;
+    }
+
+    .utag-chat-preview-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .utag-chat-last-message {
+        font-size: 14px;
+        color: #6c757d;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .utag-chat-item.unread .utag-chat-last-message {
+        color: #212529;
+        font-weight: 500;
+    }
+
+    .utag-chat-badge {
+        background: #25D366;
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        min-width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .utag-chat-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #6c757d;
+        font-weight: 500;
+        margin-right: 6px;
+    }
+
+    /* Empty State */
+    .utag-empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .utag-empty-state i {
+        font-size: 64px;
+        color: #dee2e6;
+        margin-bottom: 16px;
+    }
+
+    .utag-empty-state h3 {
+        font-size: 18px;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .utag-empty-state p {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Modal for new chat/group */
+    .utag-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .utag-modal.active {
+        display: flex;
+    }
+
+    .utag-modal-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .utag-modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .utag-modal-header h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .utag-modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .utag-modal-close:hover {
+        background: #f8f9fa;
+    }
+
+    .utag-modal-body {
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .utag-modal-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .utag-modal-tab {
+        padding: 12px 20px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #6c757d;
+        transition: all 0.2s;
+    }
+
+    .utag-modal-tab.active {
+        color: #128C7E;
+        border-bottom-color: #128C7E;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .utag-message-page {
+            padding: 0;
+        }
+
+        .utag-chats-container {
+            border-radius: 0;
+            max-height: 100vh;
+        }
+
+        .utag-chats-header {
+            padding: 16px;
+        }
+
+        .utag-chats-header h1 {
+            font-size: 18px;
+        }
+
+        .utag-chat-item {
+            padding: 12px 16px;
+        }
+    }
+    </style>
+{% endblock my_styles %}
+{% block content %}
+    <div class="utag-message-page">
+        <div class="utag-chats-container">
+            <!-- Header -->
+            <div class="utag-chats-header">
+                <h1>Messages</h1>
+                <div class="utag-header-actions">
+                    <button class="utag-btn" onclick="openNewChatModal()">
+                        <i class="mdi mdi-plus"></i>
+                        <span>New</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Search -->
+            <div class="utag-search-bar">
+                <input type="text"
+                       class="utag-search-input"
+                       placeholder="Search messages..."
+                       id="chat-search">
+            </div>
+            <!-- Chat List -->
+            {% if chats %}
+                <div class="utag-chats-list">
+                    {% for chat in chats %}
+                        <a href="{{ chat.url }}"
+                           class="utag-chat-item {% if chat.unread_count %}unread{% endif %}"
+                           data-chat-name="{{ chat.name|lower }}"
+                           data-chat-type="{{ chat.type }}">
+                            <div class="utag-chat-avatar {% if chat.type == 'group' %}group{% endif %}">
+                                {% if chat.avatar %}
+                                    <img src="{{ chat.avatar }}" alt="{{ chat.name }}" width="50" height="50">
+                                {% else %}
+                                    {{ chat.avatar_initial }}
+                                {% endif %}
+                            </div>
+                            <div class="utag-chat-info">
+                                <div class="utag-chat-header-row">
+                                    <h3 class="utag-chat-name">
+                                        {% if chat.type == 'group' %}
+                                            <span class="utag-chat-type-badge">
+                                                <i class="mdi mdi-account-group"></i> Group
+                                            </span>
+                                        {% endif %}
+                                        {{ chat.name }}
+                                    </h3>
+                                    {% if chat.last_message %}<span class="utag-chat-time">{{ chat.last_message.created_at|date:"H:i" }}</span>{% endif %}
+                                </div>
+                                <div class="utag-chat-preview-row">
+                                    {% if chat.last_message %}
+                                        <p class="utag-chat-last-message">
+                                            {% if chat.type == 'group' %}<strong>{{ chat.last_message.sender.get_full_name }}:</strong>{% endif %}
+                                            {{ chat.last_message.plaintext|truncatechars:60 }}
+                                        </p>
+                                    {% else %}
+                                        <p class="utag-chat-last-message">No messages yet</p>
+                                    {% endif %}
+                                    {% if chat.unread_count %}<span class="utag-chat-badge">{{ chat.unread_count }}</span>{% endif %}
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="utag-empty-state">
+                    <i class="mdi mdi-message-text-outline"></i>
+                    <h3>No conversations yet</h3>
+                    <p>Start a new chat with UTAG members</p>
+                    <button class="utag-btn" onclick="openNewChatModal()">
+                        <i class="mdi mdi-plus"></i>
+                        Start Conversation
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- New Chat/Group Modal -->
+    <div class="utag-modal" id="new-chat-modal">
+        <div class="utag-modal-content">
+            <div class="utag-modal-header">
+                <h2>New Conversation</h2>
+                <button class="utag-modal-close" onclick="closeNewChatModal()">
+                    <i class="mdi mdi-close"></i>
+                </button>
+            </div>
+            <div class="utag-modal-body">
+                <div class="utag-modal-tabs">
+                    <button class="utag-modal-tab active" onclick="showModalTab('direct')">
+                        <i class="mdi mdi-account"></i> Direct Chat
+                    </button>
+                    {% if can_create_groups %}
+                        <button class="utag-modal-tab" onclick="showModalTab('group')">
+                            <i class="mdi mdi-account-group"></i> New Group
+                        </button>
+                    {% endif %}
+                </div>
+                <div id="modal-content">
+                    <p class="text-center">
+                        <a href="{% url 'chat:thread_start' %}" class="btn btn-primary">
+                            <i class="mdi mdi-message-plus"></i> Start Direct Chat
+                        </a>
+                    </p>
+                    {% if can_create_groups %}
+                        <p class="text-center">
+                            <a href="{% url 'chat:group_create' %}" class="btn btn-success">
+                                <i class="mdi mdi-account-group"></i> Create Group
+                            </a>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+{% block my_scripts %}
+    {{ block.super }}
+    <script>
+    // Search functionality
+    document.getElementById('chat-search').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const chatItems = document.querySelectorAll('.utag-chat-item');
+        
+        chatItems.forEach(function(item) {
+            const chatName = item.getAttribute('data-chat-name');
+            if (chatName && chatName.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Modal functions
+    function openNewChatModal() {
+        document.getElementById('new-chat-modal').classList.add('active');
+    }
+
+    function closeNewChatModal() {
+        document.getElementById('new-chat-modal').classList.remove('active');
+    }
+
+    function showModalTab(tab) {
+        // Handle tab switching in modal
+        const tabs = document.querySelectorAll('.utag-modal-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('new-chat-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeNewChatModal();
+        }
+    });
+    </script>
+{% endblock my_scripts %}

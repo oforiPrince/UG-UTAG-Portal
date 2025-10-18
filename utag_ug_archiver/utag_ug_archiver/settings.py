@@ -38,9 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'adverts',
     'accounts',
     'dashboard',
+    'chat',
     'gallery',
     'website',
     
@@ -68,7 +70,7 @@ ROOT_URLCONF = 'utag_ug_archiver.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['/templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,6 +84,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'utag_ug_archiver.wsgi.application'
+ASGI_APPLICATION = 'utag_ug_archiver.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.environ.get('REDIS_URL', 'redis://localhost:6379/1')],
+        },
+    },
+}
 
 
 # Database

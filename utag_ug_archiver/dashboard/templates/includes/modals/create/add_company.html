@@ -1,21 +1,37 @@
 <!-- Create Advertising Company Modal -->
-<div class="modal fade" id="createAdvertisingCompanyModal" tabindex="-1" role="dialog" aria-labelledby="createAdvertisingCompanyModalLabel" aria-hidden="true">
+<div class="modal fade"
+     id="createAdvertisingCompanyModal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="createAdvertisingCompanyModalLabel"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createAdvertisingCompanyModalLabel">Create Advertising Company</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="createAdvertisingCompanyModalLabel">Register Advertising Company</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form method="POST" action="{% url 'dashboard:create_company' %}">
                     {% csrf_token %}
                     <div class="form-group mb-3">
                         <label for="companyName">Company Name</label>
-                        <input type="text" class="form-control" id="companyName" name="company_name" required>
+                        <input type="text"
+                               class="form-control"
+                               id="companyName"
+                               name="company_name"
+                               required>
                     </div>
                     <div class="form-group mb-3">
                         <label for="contactName">Contact Name</label>
-                        <input type="text" class="form-control" id="contactName" name="contact_name" required>
+                        <input type="text"
+                               class="form-control"
+                               id="contactName"
+                               name="contact_name"
+                               required>
                     </div>
                     <div class="form-group mb-3">
                         <label for="email">Email</label>
@@ -23,7 +39,11 @@
                     </div>
                     <div class="form-group mb-3">
                         <label for="phoneNumber">Phone Number</label>
-                        <input type="tel" class="form-control" id="phoneNumber" name="phone_number" required>
+                        <input type="tel"
+                               class="form-control"
+                               id="phoneNumber"
+                               name="phone_number"
+                               required>
                     </div>
                     <div class="form-group mb-3">
                         <label for="address">Address</label>

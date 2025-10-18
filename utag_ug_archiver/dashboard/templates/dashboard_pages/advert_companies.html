@@ -1,105 +1,136 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
-
-{% block title %}Companies{% endblock title %}
-
-
+{% block title %}
+  Advertising Companies
+{% endblock title %}
 {% block content %}
-<div class="page-content">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-md-8">
-                <h4 class="card-title">Companies</h4>
-              </div>
-              {% if user.is_admin or user.is_superuser %}
-              <div class="col-md-4">
-                <div class="float-end d-none d-md-block">
-                  <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createAdvertisingCompanyModal">
-                    <i class="mdi mdi-plus-circle me-1"></i> Add
-                  </button>
+  <div class="page-content">
+    <div class="container-fluid">
+      <!-- start page title -->
+      <div class="page-title-box">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h6 class="page-title">Advertising Companies</h6>
+            <ol class="breadcrumb m-0">
+              <li class="breadcrumb-item">
+                <a href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+              </li>
+              <li class="breadcrumb-item active" aria-current="page">Advertising Companies</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <!-- end page title -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <h4 class="card-title">Advertising Companies — Directory</h4>
                 </div>
+                {% if user.is_admin or user.is_superuser %}
+                  <div class="col-md-4">
+                    <div class="float-end d-none d-md-block">
+                      <button class="btn btn-primary"
+                              type="button"
+                              data-bs-toggle="modal"
+                              data-bs-target="#createAdvertisingCompanyModal">
+                        <i class="mdi mdi-plus-circle me-1"></i> New
+                      </button>
+                    </div>
+                  </div>
+                {% endif %}
               </div>
-              {% endif %}
-            </div>
-            <div class="mt-3">
-              <table id="datatable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Contact Name</th>
-                    <th>Email</th>
-                    <th>Phone Number</th>
-                    <th>Created By</th>
-                    <th>Created at</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for company in companies %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ company.company_name }}</td>
-                    <td>{{ company.contact_name }}</td>
-                    <td>{{ company.email }}</td>
-                    <td>{{ company.phone_number }}</td>
-                    <td>{{ company.created_by }}</td>
-                    <td>{{ company.created_at|date:"d M Y" }}</td>
-                    <td>
-                      <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#advertisingCompanyDetailsModal_{{ company.id }}" title="View">
-                        <i class="mdi mdi-eye"></i>
-                      </a>
-                      {% if user.is_admin or user.is_superuser%}
-                      <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editAdvertisingCompanyModal_{{ company.id }}" title="Edit">
-                        <i class="mdi mdi-pen"></i>
-                      </a>
-                      <a href="{% url 'dashboard:delete_company' company.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this company?');" title="Delete">
-                        <i class="mdi mdi-delete"></i>
-                      </a>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+              <div class="mt-3">
+                <table id="datatable"
+                       class="table table-bordered dt-responsive nowrap"
+                       style="border-collapse: collapse;
+                              border-spacing: 0;
+                              width: 100%">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Contact Name</th>
+                      <th>Email</th>
+                      <th>Phone Number</th>
+                      <th>Created By</th>
+                      <th>Created at</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for company in companies %}
+                      <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ company.company_name }}</td>
+                        <td>{{ company.contact_name }}</td>
+                        <td>{{ company.email }}</td>
+                        <td>{{ company.phone_number }}</td>
+                        <td>{{ company.created_by }}</td>
+                        <td>{{ company.created_at|date:"d M Y" }}</td>
+                        <td>
+                          <a href="#"
+                             class="btn btn-primary btn-sm"
+                             data-bs-toggle="modal"
+                             data-bs-target="#advertisingCompanyDetailsModal_{{ company.id }}"
+                             title="View">
+                            <i class="mdi mdi-eye"></i>
+                          </a>
+                          {% if user.is_admin or user.is_superuser %}
+                            <a href="#"
+                               class="btn btn-success btn-sm"
+                               data-bs-toggle="modal"
+                               data-bs-target="#editAdvertisingCompanyModal_{{ company.id }}"
+                               title="Edit">
+                              <i class="mdi mdi-pen"></i>
+                            </a>
+                            <a href="{% url 'dashboard:delete_company' company.id %}"
+                               class="btn btn-danger btn-sm"
+                               onclick="return confirm('Are you sure you want to delete this company?');"
+                               title="Delete">
+                              <i class="mdi mdi-delete"></i>
+                            </a>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    {% include 'includes/modals/create/add_company.html' %}
+    {% include 'includes/modals/update/edit_company.html' %}
+    {% include 'includes/modals/details/company_details.html' %}
   </div>
-  {% include 'includes/modals/create/add_company.html' %}
-  {% include 'includes/modals/update/edit_company.html' %}
-  {% include 'includes/modals/details/company_details.html' %}
-</div>
 {% endblock content %}
-
 {% block my_styles %}
- <!-- DataTables -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
-
- <!-- Responsive datatable examples -->
- <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}" rel="stylesheet" type="text/css">
- {% endblock my_styles %}
- 
+  <!-- DataTables -->
+  <link href="{% static 'dashboard/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
+  <link href="{% static 'dashboard/assets/libs/datatables.net-buttons-bs4/css/buttons.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
+  <!-- Responsive datatable examples -->
+  <link href="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/css/responsive.bootstrap4.min.css' %}"
+        rel="stylesheet"
+        type="text/css">
+{% endblock my_styles %}
 {% block my_scripts %}
-    <!-- Required datatable js -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
-
-    <!-- Responsive examples -->
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
-    <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
-
-    <!-- Datatable init js -->
-    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
-
-    <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
-    
-    <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>    
+  <!-- Required datatable js -->
+  <script src="{% static 'dashboard/assets/libs/datatables.net/js/jquery.dataTables.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+  <!-- Responsive examples -->
+  <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
+  <!-- Datatable init js -->
+  <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
+  <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
+  <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
 {% endblock my_scripts %}

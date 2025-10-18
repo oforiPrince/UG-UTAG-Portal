@@ -7,7 +7,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="addModalLabel">Add New Admin</h5>
+        <h5 class="modal-title" id="addModalLabel">Register New Administrator</h5>
         <button type="button"
                 class="btn-close"
                 data-bs-dismiss="modal"
@@ -103,7 +103,7 @@
               </div>
             </div>
           </div>
-          <div class="row">
+          <!-- <div class="row">
             <div class="col-md-4 mb-3">
               <label class="form-label" for="school">School</label>
               <select id="school" class="form-control select2" name="school">
@@ -125,12 +125,11 @@
               <select id="department" class="form-control select2" name="department">
                 <option value="">Select Department</option>
                 {% for department in departments %}
-                  <option value="{{ department.id }}"
-                          data-college="{{ department.college.id }}">{{ department.name }}</option>
+                  <option value="{{ department.id }}" data-college="{{ department.college.id }}">{{ department.name }}</option>
                 {% endfor %}
               </select>
             </div>
-          </div>
+          </div> -->
           <div class="mb-0 text-end">
             <div>
               <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>

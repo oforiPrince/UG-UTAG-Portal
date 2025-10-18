@@ -6,6 +6,9 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User
 from dashboard.models import Event, Document, Announcement, News, Notification
+from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 from adverts.models import Advertisement
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -19,6 +22,55 @@ class DashboardView(PermissionRequiredMixin, View):
         # Counts
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
+        total_announcements = Announcement.objects.filter(status='PUBLISHED').count()
+        
+        # Calculate dynamic percentages for last month comparison
+        now = timezone.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+        last_month_end = current_month_start - timedelta(seconds=1)
+        
+        # Current month counts
+        current_month_documents = Document.objects.filter(
+            category='internal', 
+            created_at__gte=current_month_start
+        ).count()
+        current_month_external = Document.objects.filter(
+            category='external', 
+            created_at__gte=current_month_start
+        ).count()
+        current_month_announcements = Announcement.objects.filter(
+            status='PUBLISHED',
+            created_at__gte=current_month_start
+        ).count()
+        
+        # Last month counts
+        last_month_documents = Document.objects.filter(
+            category='internal', 
+            created_at__gte=last_month_start, 
+            created_at__lte=last_month_end
+        ).count()
+        last_month_external = Document.objects.filter(
+            category='external', 
+            created_at__gte=last_month_start, 
+            created_at__lte=last_month_end
+        ).count()
+        last_month_announcements = Announcement.objects.filter(
+            status='PUBLISHED',
+            created_at__gte=last_month_start, 
+            created_at__lte=last_month_end
+        ).count()
+        
+        # Calculate percentage changes
+        def calculate_percentage_change(current, previous):
+            if previous == 0:
+                return current * 100 if current > 0 else 0
+            return round(((current - previous) / previous) * 100, 1)
+        
+        documents_percentage = calculate_percentage_change(current_month_documents, last_month_documents)
+        external_documents_percentage = calculate_percentage_change(current_month_external, last_month_external)
+        announcements_percentage = calculate_percentage_change(current_month_announcements, last_month_announcements)
+
         # get executives, members, admins, and secretaries
         total_executives = User.objects.filter(groups__name='Executive', is_active_executive=True).count()
         total_members = User.objects.filter(groups__name='Member').count()
@@ -33,14 +85,32 @@ class DashboardView(PermissionRequiredMixin, View):
         # Get recent documents, events, and news
         published_events = Event.objects.filter(is_published=True).order_by('-created_at')[:5]
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
-        recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
+
+        # Get recent documents based on user role
+        if 'Admin' in user_groups:
+            # Admins see all documents
+            recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
+        elif 'Executive' in user_groups:
+            # Executives see internal and external documents
+            recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
+        else:
+            # Members see only internal documents that are visible to everyone or their groups
+            user_groups_queryset = user_groups
+            recent_added_documents = Document.objects.filter(
+                models.Q(category='internal') & 
+                (models.Q(visibility='everyone') | models.Q(visible_to_groups__name__in=user_groups_queryset))
+            ).distinct().order_by('-created_at')[:5]
         
         context = {
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
+            'total_announcements': total_announcements,
             'total_executives': total_executives,
             'total_members': total_members,
             'total_admins': total_admins,
+            'documents_percentage': documents_percentage,
+            'external_documents_percentage': external_documents_percentage,
+            'announcements_percentage': announcements_percentage,
             'published_events': published_events,
             'published_news': published_news,
             'recent_added_documents': recent_added_documents,

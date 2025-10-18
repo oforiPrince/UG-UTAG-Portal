@@ -1,43 +1,79 @@
 {% for company in companies %}
-<!-- Edit Advertising Company Modal for {{ company.company_name }} -->
-<div class="modal fade" id="editAdvertisingCompanyModal_{{ company.id }}" tabindex="-1" role="dialog" aria-labelledby="editAdvertisingCompanyModalLabel_{{ company.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editAdvertisingCompanyModalLabel_{{ company.id }}">Edit Advertising Company - {{ company.company_name }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST" action="{% url 'dashboard:update_company' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="company_id" value="{{ company.id }}">
-                    <div class="form-group mb-3">
-                        <label for="editCompanyName_{{ company.id }}">Company Name</label>
-                        <input type="text" class="form-control" id="editCompanyName_{{ company.id }}" name="company_name" value="{{ company.company_name }}" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editContactName_{{ company.id }}">Contact Name</label>
-                        <input type="text" class="form-control" id="editContactName_{{ company.id }}" name="contact_name" value="{{ company.contact_name }}" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editEmail_{{ company.id }}">Email</label>
-                        <input type="email" class="form-control" id="editEmail_{{ company.id }}" name="email" value="{{ company.email }}" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editPhoneNumber_{{ company.id }}">Phone Number</label>
-                        <input type="tel" class="form-control" id="editPhoneNumber_{{ company.id }}" name="phone_number" value="{{ company.phone_number }}" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="editAddress_{{ company.id }}">Address</label>
-                        <input type="text" class="form-control" id="editAddress_{{ company.id }}" name="address" value="{{ company.address }}" required>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
+    <!-- Edit Advertising Company Modal for {{ company.company_name }} -->
+    <div class="modal fade"
+         id="editAdvertisingCompanyModal_{{ company.id }}"
+         tabindex="-1"
+         role="dialog"
+         aria-labelledby="editAdvertisingCompanyModalLabel_{{ company.id }}"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"
+                        id="editAdvertisingCompanyModalLabel_{{ company.id }}">
+                        Edit Advertising Company — {{ company.company_name }}
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{% url 'dashboard:update_company' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="company_id" value="{{ company.id }}">
+                        <div class="form-group mb-3">
+                            <label for="editCompanyName_{{ company.id }}">Company Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="editCompanyName_{{ company.id }}"
+                                   name="company_name"
+                                   value="{{ company.company_name }}"
+                                   required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="editContactName_{{ company.id }}">Contact Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="editContactName_{{ company.id }}"
+                                   name="contact_name"
+                                   value="{{ company.contact_name }}"
+                                   required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="editEmail_{{ company.id }}">Email</label>
+                            <input type="email"
+                                   class="form-control"
+                                   id="editEmail_{{ company.id }}"
+                                   name="email"
+                                   value="{{ company.email }}"
+                                   required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="editPhoneNumber_{{ company.id }}">Phone Number</label>
+                            <input type="tel"
+                                   class="form-control"
+                                   id="editPhoneNumber_{{ company.id }}"
+                                   name="phone_number"
+                                   value="{{ company.phone_number }}"
+                                   required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="editAddress_{{ company.id }}">Address</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="editAddress_{{ company.id }}"
+                                   name="address"
+                                   value="{{ company.address }}"
+                                   required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endfor %}
