@@ -3,6 +3,7 @@ from django.db import models
 from accounts.models import User
 import random
 from PIL import Image
+from django.utils.text import slugify
 
 class Advertiser(models.Model):
     company_name = models.CharField(max_length=255)
@@ -34,11 +35,18 @@ class Advertisement(models.Model):
     image_url = models.URLField(blank=True, null=True)
     image = models.ImageField(upload_to=upload_to, blank=True, null=True)
     target_url = models.URLField()
-    position = models.CharField(
-        max_length=20,
-        choices=POSITION_CHOICES,
-        help_text="Select the ad position for this advertisement."
-    )
+    # Legacy single-position field removed. Use `placements` M2M instead.
+    # New richer asset fields
+    desktop_image = models.ImageField(upload_to=upload_to, blank=True, null=True)
+    mobile_image = models.ImageField(upload_to=upload_to, blank=True, null=True)
+    alt_text = models.CharField(max_length=255, blank=True, null=True)
+    cta_text = models.CharField(max_length=80, blank=True, null=True)
+    html_content = models.TextField(blank=True, null=True)
+    impressions_cap = models.PositiveIntegerField(blank=True, null=True)
+    impressions_count = models.PositiveIntegerField(default=0)
+    priority = models.SmallIntegerField(default=0, help_text="Higher value = higher priority when rendering")
+    # Flexible placement relation (recommended)
+    placements = models.ManyToManyField('Placement', blank=True, related_name='adverts')
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
@@ -49,13 +57,24 @@ class Advertisement(models.Model):
     def clicked(self):
         self.clicks += 1
         self.save()
+
+    def increment_impression(self):
+        # Respect cap if set
+        if self.impressions_cap is None or self.impressions_count < self.impressions_cap:
+            self.impressions_count += 1
+            self.save(update_fields=['impressions_count'])
     
     def __str__(self):
         return f"{self.advertiser.company_name} - {self.start_date} to {self.end_date}"
     
     def get_image_url(self):
+        # Prefer desktop -> legacy image -> mobile -> image_url
+        if self.desktop_image:
+            return self.desktop_image.url
         if self.image:
             return self.image.url
+        if self.mobile_image:
+            return self.mobile_image.url
         return self.image_url
     
     def get_image_dimensions(self):
@@ -82,11 +101,7 @@ class Advertisement(models.Model):
         if self.status == "PUBLISHED" and self.start_date and self.plan and self.plan.duration_in_days:
             start_date_obj = datetime.strptime(str(self.start_date), "%Y-%m-%d").date()
             self.end_date = start_date_obj + timedelta(days=self.plan.duration_in_days)
-            
-        # Ensure the position is valid for the selected plan
-        if self.plan and self.position not in self.plan.positions:
-            raise ValueError(f"The position '{self.position}' is not available for the selected plan.")
-
+        
         super().save(*args, **kwargs)
 
 
@@ -106,16 +121,36 @@ class AdvertPlan(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     duration_in_days = models.PositiveIntegerField(blank=True, null=True)
     status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
-    positions = models.CharField(
-        max_length=100,
-        choices=POSITION_CHOICES,
-        blank=True,
-        help_text="Select the positions available for this plan."
-    )
+    # Previously this model stored allowed positions as a CSV string. We moved to Placement model.
+    # Keep description and plan metadata here.
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.name} ({self.status})"
+
+
+class Placement(models.Model):
+    """
+    Represents a placement/slot where adverts can be shown. Examples: 'top', 'sidebar', 'bottom', 'hero', 'footer'.
+    Use a stable key for code/queries and a human friendly name.
+    """
+    key = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    recommended_width = models.PositiveIntegerField(blank=True, null=True)
+    recommended_height = models.PositiveIntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.key})"
+
+    @classmethod
+    def get_or_create_from_key(cls, key):
+        k = slugify(str(key).strip())
+        if not k:
+            return None
+        obj, _ = cls.objects.get_or_create(key=k, defaults={'name': key})
+        return obj
 
 
     

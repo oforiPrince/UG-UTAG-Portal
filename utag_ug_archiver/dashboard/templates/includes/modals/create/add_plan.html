@@ -59,34 +59,15 @@
                                   rows="3"
                                   required></textarea>
                     </div>
-                    <!-- Positions -->
+                    <!-- Placements (comma-separated keys) -->
                     <div class="form-group mb-3">
-                        <label for="positions">Available Positions</label>
-                        <div class="form-check">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   id="position_top"
-                                   name="positions"
-                                   value="top">
-                            <label class="form-check-label" for="position_top">Top</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   id="position_sidebar"
-                                   name="positions"
-                                   value="sidebar">
-                            <label class="form-check-label" for="position_sidebar">Sidebar</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   id="position_bottom"
-                                   name="positions"
-                                   value="bottom">
-                            <label class="form-check-label" for="position_bottom">Bottom</label>
-                        </div>
-                        <small class="form-text text-muted">Select one or more positions for this advert plan.</small>
+                        <label for="placements">Placements (comma-separated)</label>
+                        <input type="text"
+                               class="form-control"
+                               id="placements"
+                               name="placements"
+                               placeholder="hero,sidebar,bottom">
+                        <small class="form-text text-muted">Enter placement keys separated by commas (e.g. hero,sidebar,bottom). Placement records will be created if they don't exist.</small>
                     </div>
                     <!-- Submit Buttons -->
                     <div class="modal-footer">

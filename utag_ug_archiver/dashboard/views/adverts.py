@@ -20,6 +20,9 @@ class AdvertsView(PermissionRequiredMixin, View):
         adverts = Advertisement.objects.all()
         advertisers = Advertiser.objects.all()
         active_plans = AdvertPlan.objects.filter(status='active')
+        # All defined placements to populate modal multi-select
+        from adverts.models import Placement
+        placements = Placement.objects.all()
         
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
@@ -30,6 +33,7 @@ class AdvertsView(PermissionRequiredMixin, View):
             'adverts': adverts,
             'advertisers': advertisers,
             'plans': active_plans,
+            'placements': placements,
             'notification_count': notification_count,
             'notifications': notifications,
         }
@@ -80,9 +84,16 @@ class AdvertCreateView(PermissionRequiredMixin, View):
     def post(self, request):
         # Retrieve form data
         image = request.FILES.get('image')
+        desktop_image = request.FILES.get('desktop_image')
+        mobile_image = request.FILES.get('mobile_image')
         start_date = request.POST.get('start_date')
         plan_id = request.POST.get('plan_id')
-        position = request.POST.get('position')  # Retrieve selected position
+    # Position removed (legacy). Use placements[] (multi-select)
+        placements = request.POST.getlist('placements')
+        alt_text = request.POST.get('alt_text')
+        cta_text = request.POST.get('cta_text')
+        impressions_cap = request.POST.get('impressions_cap')
+        priority = request.POST.get('priority') or 0
         advertiser_id = request.POST.get('advertiser_id')
         status = request.POST.get('status')
         target_url = request.POST.get('target_url')
@@ -95,22 +106,33 @@ class AdvertCreateView(PermissionRequiredMixin, View):
             messages.error(request, 'Invalid Plan or Advertiser.')
             return redirect('dashboard:adverts')
 
-        # Validate position
-        valid_positions = plan.positions.split(',')  # Retrieve allowed positions for the plan
-        if position not in valid_positions:
-            messages.error(request, f"The position '{position}' is not allowed for the selected plan.")
-            return redirect('dashboard:adverts')
+        # No per-plan position restrictions; placements are global. Validate placements format
+        if placements:
+            # ensure list items are non-empty strings
+            placements = [p for p in placements if p and str(p).strip()]
 
         # Create the advertisement
         advert = Advertisement.objects.create(
             image=image,
+            desktop_image=desktop_image,
+            mobile_image=mobile_image,
+            alt_text=alt_text,
+            cta_text=cta_text,
+            impressions_cap=(int(impressions_cap) if impressions_cap else None),
+            priority=int(priority),
             target_url=target_url,
             start_date=start_date,
             plan=plan,
             advertiser=advertiser,
-            position=position,  # Save the selected position
             status=status,
         )
+
+        # Attach placements (create Placement records if necessary)
+        from adverts.models import Placement
+        for pl in placements:
+            placement_obj = Placement.get_or_create_from_key(pl)
+            if placement_obj:
+                advert.placements.add(placement_obj)
 
         # Success message and redirect
         messages.success(request, 'Advert added successfully')
@@ -127,14 +149,31 @@ class AdvertUpdateView(PermissionRequiredMixin, View):
         plan_id = request.POST.get('plan_id')
         advertiser_id = request.POST.get('advertiser_id')
         status = request.POST.get('status')
+        placements = request.POST.getlist('placements')
+        alt_text = request.POST.get('alt_text')
+        cta_text = request.POST.get('cta_text')
+        impressions_cap = request.POST.get('impressions_cap')
+        priority = request.POST.get('priority') or 0
         advert = Advertisement.objects.get(id=advert_id)
         plan= AdvertPlan.objects.get(id=plan_id)
         advertiser = Advertiser.objects.get(id=advertiser_id)
         advert.start_date = start_date
+        advert.alt_text = alt_text
+        advert.cta_text = cta_text
+        advert.impressions_cap = (int(impressions_cap) if impressions_cap else None)
+        advert.priority = int(priority)
         advert.plan = plan
         advert.advertiser = advertiser
         advert.status = status
         advert.save()
+        # Update placements
+        from adverts.models import Placement
+        advert.placements.clear()
+        for pl in placements:
+            placement_obj = Placement.get_or_create_from_key(pl)
+            if placement_obj:
+                advert.placements.add(placement_obj)
+        # ensure save called above after setting fields
         messages.success(request, 'Advert updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
@@ -158,21 +197,21 @@ class AdvertPlanCreateView(PermissionRequiredMixin, View):
         duration_in_days = request.POST.get('duration_in_days')
         status = request.POST.get('status')
         
-        # Get selected positions from checkboxes
-        positions = request.POST.getlist('positions')  # List of selected positions
-        
-        # Join positions into a comma-separated string for storage
-        positions_str = ','.join(positions)
-        
-        # Create the advert plan
+        # Optional: get placement keys from submitted form and ensure the Placement records exist
+        placement_keys = request.POST.getlist('placements')
         plan = AdvertPlan.objects.create(
             name=name,
             description=description,
             price=price,
             duration_in_days=duration_in_days,
             status=status,
-            positions=positions_str
         )
+
+        # create any placement records that were supplied when creating a plan
+        from adverts.models import Placement
+        for pk in placement_keys:
+            pl_obj = Placement.get_or_create_from_key(pk)
+            # nothing else to attach to plan for now; placements are global
         
         messages.success(request, 'Advert plan added successfully')
         return redirect('dashboard:plans')

@@ -305,6 +305,21 @@ body {
 }
 .button-default.button-yellow:hover {
   background: #01004e;
+  color: #ffffff;
+}
+.button-default.button-outline-light {
+  background: transparent;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+}
+.button-default.button-outline-light:hover {
+  background: #ffffff;
+  color: #01004e;
+}
+.button-default.button-sm {
+  font-size: 11px;
+  line-height: 28px;
+  padding: 0 18px;
 }
 /*----------------------------------------*/
 /*  2. Header CSS
@@ -4204,4 +4219,41 @@ span.schedule-time {
   background-color: #fff;
   color: #01004e;
   border-color: rgba(27, 180, 185, 0.7);
+}
+
+/*----------------------------------------*/
+/*  Custom: Adverts Showcase              */
+/*----------------------------------------*/
+.adverts-showcase {
+  background: linear-gradient(135deg, #0a1f44 0%, #122d5c 40%, #1e3a73 100%);
+}
+
+.adverts-showcase .adverts-hero-card {
+  min-height: 360px;
+}
+
+.adverts-showcase .adverts-hero-image {
+  height: 100%;
+  object-fit: cover;
+}
+
+.adverts-showcase .adverts-hero-overlay {
+  background: linear-gradient(180deg, rgba(10, 31, 68, 0.1) 10%, rgba(10, 31, 68, 0.8) 100%);
+}
+
+.adverts-showcase .adverts-card-image {
+  height: 220px;
+  object-fit: cover;
+}
+
+.adverts-showcase .adverts-ratio-cover {
+  overflow: hidden;
+}
+
+.adverts-showcase .adverts-cover-image {
+  object-fit: cover;
+}
+
+.adverts-showcase .adverts-intro-text {
+  max-width: 600px;
 }

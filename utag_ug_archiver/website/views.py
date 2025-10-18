@@ -1,9 +1,12 @@
-from datetime import date
 from django.http import JsonResponse
 import random
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.db.models import Q
+from django.utils import timezone
+from django.core.cache import cache
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from dashboard.models import CarouselSlide, Event, News
 from adverts.models import Advertisement
 from accounts.models import User
@@ -32,33 +35,89 @@ class IndexView(View):
         # Sort the executives based on the custom order
         executives = sorted(executives, key=executive_members_custom_order)
         carousel_slides = CarouselSlide.objects.filter(is_published=True).order_by('order')
-        # Advertisement
-        today = date.today()
+        # Advertisements for homepage showcase
+        today = timezone.now().date()
+        active_adverts = (
+            Advertisement.objects.select_related('advertiser', 'plan')
+            .filter(
+                status='PUBLISHED',
+                start_date__lte=today,
+            )
+            .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+        )
 
-        large_advertisements = []
-        small_advertisements = []
-        
+        # Prefer using placements relation (recommended). Fall back to legacy position field if needed.
+        top_adverts_qs = active_adverts.filter(placements__key='top')
+        sidebar_adverts_qs = active_adverts.filter(placements__key='sidebar')
+        bottom_adverts_qs = active_adverts.filter(placements__key='bottom')
 
-        advertisements = Advertisement.objects.filter(
-            start_date__lte=today,
-            end_date__gte=today
-        ).order_by('created_at')
-        for advert in advertisements:
-            if advert.image_width == 900 and advert.image_height == 250:
-                large_advertisements.append(advert)
-            elif advert.image_width == 300 and advert.image_height == 250:
-                small_advertisements.append(advert)
+        # We rely on placements relation for advert placement filtering.
+
+        top_adverts = top_adverts_qs.order_by('-priority', '-start_date', '-created_at').distinct()[:5]
+        sidebar_adverts = sidebar_adverts_qs.order_by('-priority', '-start_date', '-created_at').distinct()[:6]
+        bottom_adverts = bottom_adverts_qs.order_by('-priority', '-start_date', '-created_at').distinct()[:4]
 
         context = {
             'published_events': published_events,
             'published_news': published_news,
             'executives': executives,
-            'large_advert_images': large_advertisements,
-            'small_advert_images': small_advertisements,
+            'top_adverts': top_adverts,
+            'sidebar_adverts': sidebar_adverts,
+            'bottom_adverts': bottom_adverts,
+            'large_advert_images': top_adverts,
+            'small_advert_images': sidebar_adverts,
             'carousel_slides': carousel_slides,
             'gallery_images': gallery_images,
         }
         return render(request, self.template_name, context)
+    
+class AdClickRedirect(View):
+    """Redirect endpoint that increments clicks then redirects to the advert target."""
+    def get(self, request, pk):
+        advert = Advertisement.objects.filter(pk=pk).first()
+        if not advert:
+            return JsonResponse({'error': 'Advert not found'}, status=404)
+        advert.clicked()
+        # If target is set, redirect; otherwise return JSON
+        if advert.target_url:
+            from django.shortcuts import redirect
+            return redirect(advert.target_url)
+        return JsonResponse({'message': 'click recorded'})
+
+class AdImpressionPing(View):
+    """Endpoint to be called via client-side JS when an advert is visible to increment impression count."""
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def post(self, request, pk):
+        advert = Advertisement.objects.filter(pk=pk).first()
+        if not advert:
+            return JsonResponse({'error': 'Advert not found'}, status=404)
+
+        # Determine requester identity for short-term debounce: prefer session_key, else IP
+        session_key = getattr(request.session, 'session_key', None)
+        if not session_key:
+            # ensure session exists
+            request.session.save()
+            session_key = request.session.session_key
+
+        requester_id = session_key or request.META.get('REMOTE_ADDR', 'anon')
+        cache_key = f"ad_impression:{pk}:{requester_id}"
+
+        # If we've recorded an impression for this requester recently, ignore
+        if cache.get(cache_key):
+            return JsonResponse({'message': 'already recorded recently'}, status=204)
+
+        # Enforce cap
+        if advert.impressions_cap is not None and advert.impressions_count >= advert.impressions_cap:
+            return JsonResponse({'message': 'cap reached', 'impressions': advert.impressions_count}, status=403)
+
+        # Record impression and set short debounce (60s)
+        advert.increment_impression()
+        cache.set(cache_key, 1, timeout=60)
+
+        return JsonResponse({'message': 'impression recorded', 'impressions': advert.impressions_count})
     
 class AboutView(View):
     template_name = 'website_pages/about-v2.html'

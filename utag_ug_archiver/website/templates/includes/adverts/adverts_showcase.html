@@ -1,0 +1,292 @@
+{% comment %}
+Modern adverts showcase section for the homepage.
+Renders available adverts in three segments:
+- Primary hero (first top advert)
+- Additional top adverts
+- Sidebar and bottom adverts as feature cards
+Expects context variables: `top_adverts`, `sidebar_adverts`, `bottom_adverts`.
+Each advert container provides data attributes used by a small IntersectionObserver
+script to POST impressions (`data-impression-url`) and click redirects use the
+server-side redirect route to allow click counting (`website:ad_click_redirect`).
+{% endcomment %}
+{% if top_adverts or sidebar_adverts or bottom_adverts %}
+    {% with hero_ad=top_adverts|first %}
+        <section class="adverts-showcase py-5">
+            <div class="container text-white">
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-8">
+                        <h2 class="fw-bold mb-1">Partner Highlights</h2>
+                        <p class="mb-0 text-white-50">
+                            Discover organisations collaborating with UG-UTAG to create value for our academic community.
+                        </p>
+                        <p class="mx-auto mb-2 adverts-intro-text text-white-50">
+                            Showcase your organisation to a vibrant community of academic professionals. Share your programmes, grants, and tailored services with our members.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <a href="#" class="button-default button-outline-light">Become a Partner</a>
+                    </div>
+                </div>
+                {% if hero_ad %}
+                    <div class="row g-4 align-items-stretch">
+                        <div class="col-lg-7">
+                            <div class="card border-0 shadow-lg h-100 position-relative overflow-hidden adverts-hero-card"
+                                 data-ad-id="{{ hero_ad.pk }}"
+                                 data-impression-url="{% url 'website:ad_impression_ping' hero_ad.pk %}">
+                                <img src="{{ hero_ad.get_image_url }}"
+                                     alt="{{ hero_ad.advertiser.company_name }}"
+                                     class="w-100 adverts-hero-image"
+                                     width="1200"
+                                     height="600">
+                                <div class="card-img-overlay d-flex flex-column justify-content-end adverts-hero-overlay">
+                                    <span class="badge bg-warning text-dark mb-2">Featured Partner</span>
+                                    <h3 class="text-white fw-semibold">{{ hero_ad.advertiser.company_name }}</h3>
+                                    <p class="text-white-50 mb-3">
+                                        {% if hero_ad.plan %}{{ hero_ad.plan.name }}{% endif %}
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-3 text-white-50 small">
+                                        <span><i class="fa fa-calendar me-1"></i>{{ hero_ad.start_date|date:"d M Y" }}
+                                            {% if hero_ad.end_date %}
+                                                - {{ hero_ad.end_date|date:"d M Y" }}
+                                            {% else %}
+                                                · Ongoing
+                                            {% endif %}
+                                        </span>
+                                    <span><i class="fa fa-map-marker me-1"></i>
+                                    {% with first_placement=hero_ad.placements.all|first %}
+                                        {% if first_placement %}{{ first_placement.name }}{% endif %}
+                                    {% endwith %}
+                                </span>
+                            </div>
+                            <div class="mt-3">
+                                <a href="{% url 'website:ad_click_redirect' hero_ad.pk %}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="button-default button-yellow">Visit Partner Site</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card border-0 h-100 bg-transparent">
+                        <div class="card-body p-0 d-flex flex-column justify-content-between h-100">
+                            <div>
+                                <h4 class="fw-bold mb-3 text-white">Why partner with UG-UTAG?</h4>
+                                <ul class="list-unstyled text-white-50 mb-4">
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>Reach a community of academics and researchers.
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>Increase visibility through digital and on-campus channels.
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fa fa-check-circle me-2 text-warning"></i>Build lasting relationships with thought leaders.
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="bg-white rounded-3 p-3 text-dark shadow">
+                                <h5 class="fw-semibold mb-1">Campaign Snapshot</h5>
+                                <p class="small text-muted mb-0">
+                                    Highlight your brand with flexible placements: hero banners, impact stories, and community updates tailored to our audience.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if top_adverts and top_adverts|length > 1 %}
+            <div class="mt-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-semibold mb-0">Featured Placements</h4>
+                    <span class="text-white-50 small">Extra visibility on UG-UTAG digital platforms</span>
+                </div>
+                <div class="row g-4">
+                    {% for ad in top_adverts %}
+                        {% if not forloop.first %}
+                            <div class="col-md-4">
+                                <div class="card advertise-card shadow border-0 h-100"
+                                     data-ad-id="{{ ad.pk }}"
+                                     data-impression-url="{% url 'website:ad_impression_ping' ad.pk %}">
+                                    <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                       target="_blank"
+                                       rel="noopener noreferrer">
+                                        <img src="{{ ad.get_image_url }}"
+                                             alt="{{ ad.advertiser.company_name }}"
+                                             class="img-fluid w-100 rounded-top adverts-card-image"
+                                             width="900"
+                                             height="300">
+                                    </a>
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title mb-1">{{ ad.advertiser.company_name }}</h5>
+                                        <p class="card-text small text-muted mb-2">
+                                            {% if ad.plan %}{{ ad.plan.name }}{% endif %}
+                                        </p>
+                                        <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                           class="button-default button-yellow button-sm"
+                                           target="_blank"
+                                           rel="noopener noreferrer">Learn More</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        {% if sidebar_adverts %}
+            <div class="mt-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-semibold mb-0">Spotlight Partners</h4>
+                    <span class="text-white-50 small">High-impact sidebar placements</span>
+                </div>
+                <div class="row g-4">
+                    {% for ad in sidebar_adverts %}
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow h-100"
+                                 data-ad-id="{{ ad.pk }}"
+                                 data-impression-url="{% url 'website:ad_impression_ping' ad.pk %}">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="ratio ratio-4x3 mb-3 rounded adverts-ratio-cover">
+                                        <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                           target="_blank"
+                                           rel="noopener noreferrer">
+                                            <img src="{{ ad.get_image_url }}"
+                                                 alt="{{ ad.advertiser.company_name }}"
+                                                 class="w-100 h-100 adverts-cover-image"
+                                                 width="600"
+                                                 height="450">
+                                        </a>
+                                    </div>
+                                    <h5 class="fw-semibold">{{ ad.advertiser.company_name }}</h5>
+                                    <p class="text-muted small mb-3">
+                                        {% if ad.plan %}{{ ad.plan.name }}{% endif %}
+                                    </p>
+                                    <div class="mt-auto">
+                                        <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                           class="button-default button-yellow w-100"
+                                           target="_blank"
+                                           rel="noopener noreferrer">Visit Partner</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        {% if bottom_adverts %}
+            <div class="mt-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-semibold mb-0">Community Offers</h4>
+                    <span class="text-white-50 small">Tailored opportunities for our members</span>
+                </div>
+                <div class="row g-4">
+                    {% for ad in bottom_adverts %}
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow h-100"
+                                 data-ad-id="{{ ad.pk }}"
+                                 data-impression-url="{% url 'website:ad_impression_ping' ad.pk %}">
+                                <div class="row g-0 h-100">
+                                    <div class="col-sm-6">
+                                        <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                           target="_blank"
+                                           rel="noopener noreferrer">
+                                            <img src="{{ ad.get_image_url }}"
+                                                 alt="{{ ad.advertiser.company_name }}"
+                                                 class="w-100 h-100 rounded-start adverts-cover-image"
+                                                 width="600"
+                                                 height="400">
+                                        </a>
+                                    </div>
+                                    <div class="col-sm-6 d-flex flex-column p-3">
+                                        <h5 class="fw-semibold">{{ ad.advertiser.company_name }}</h5>
+                                        <p class="text-muted small mb-2">
+                                            {% if ad.plan %}{{ ad.plan.name }}{% endif %}
+                                        </p>
+                                        <p class="text-muted small flex-grow-1">
+                                            Running from {{ ad.start_date|date:"d M Y" }}
+                                            {% if ad.end_date %}
+                                                to {{ ad.end_date|date:"d M Y" }}
+                                            {% else %}
+                                                · Ongoing
+                                            {% endif %}
+                                        </p>
+                                        <a href="{% url 'website:ad_click_redirect' ad.pk %}"
+                                           class="button-default button-yellow button-sm"
+                                           target="_blank"
+                                           rel="noopener noreferrer">Explore Offer</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endwith %}
+{% else %}
+<section class="adverts-showcase py-5">
+    <div class="container text-white text-center">
+        <h2 class="fw-bold mb-3 text-white">Partner with UG-UTAG</h2>
+        <a href="#" class="button-default">Start a Campaign</a>
+    </div>
+</section>
+{% endif %}
+{% comment %} Impression observer: POSTs an impression the first time the advert is viewed in-session. Uses CSRF token from cookie. {% endcomment %}
+<script>
+;(function(){
+    function getCookie(name){
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== ''){
+            const cookies = document.cookie.split(';');
+            for (let i=0;i<cookies.length;i++){
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length+1) === (name + '=')){
+                    cookieValue = decodeURIComponent(cookie.substring(name.length+1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    const observer = new IntersectionObserver(function(entries, obs){
+        entries.forEach(function(entry){
+            if (!entry.isIntersecting) return;
+            const el = entry.target;
+            const adId = el.dataset.adId;
+            const url = el.dataset.impressionUrl;
+            if (!adId || !url) { obs.unobserve(el); return; }
+            // Only send once per session
+            if (sessionStorage.getItem('ad_impressed_' + adId)) { obs.unobserve(el); return; }
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ad: adId })
+            }).then(function(){
+                sessionStorage.setItem('ad_impressed_' + adId, '1');
+            }).catch(function(){
+                // swallow errors silently
+            }).finally(function(){
+                obs.unobserve(el);
+            });
+        });
+    }, { threshold: 0.5 });
+
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('[data-impression-url]').forEach(function(el){
+            const adId = el.dataset.adId;
+            if (!adId) return;
+            if (!sessionStorage.getItem('ad_impressed_' + adId)){
+                observer.observe(el);
+            }
+        });
+    });
+})();
+</script>

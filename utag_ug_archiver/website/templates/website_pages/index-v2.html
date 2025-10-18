@@ -1,379 +1,358 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
 {% block title %}Home{% endblock %}
-
 {% block content %}
-<!--Slider Area Start-->
-<div class="slider-area slider-two-area">
-  <div class="preview-2">
-    <div id="nivoslider" class="slides">
-      <img src="{% static 'website-v2/img/slider/carousel9.jpg' %}" alt=""/>
-      <img src="{% static 'website-v2/img/slider/carousel8.jpg' %}" alt="" />
-    </div>
-  </div>
-</div>
-<!--End of Slider Area-->
-<!--Activity Area Start-->
-<div class="activity-area">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-3 col-md-6 col-sm-6 activity">
-        <div class="single-activity">
-          <div class="single-activity-icon">
-            <i class="fa fa-pencil"></i>
-          </div>
-          <h4>Quality Education</h4>
-          <p>
-            We are committed to defending and promoting academic freedom, ensuring that scholars can pursue research and teaching without undue external interference.
-          </p>
-        </div>
-      </div>
-      <div class="col-lg-3 col-md-6 col-sm-6 activity">
-        <div class="single-activity">
-          <div class="single-activity-icon">
-            <i class="fa fa-rocket"></i>
-          </div>
-          <h4>Teaching & Research</h4>
-          <p>
-            We are committed to advancing teaching and research excellence. We strive to enhance standards for a brighter future through education.
-          </p>
-        </div>
-      </div>
-      <div class="col-lg-3 col-md-6 col-sm-6 activity">
-        <div class="single-activity">
-          <div class="single-activity-icon">
-            <i class="fa fa-users"></i>
-          </div>
-          <h4>Advocate for Membership</h4>
-          <p>
-            We advocate for the needs and concerns of our members to University Management, national leadership, other stakeholders, and the Government.
-          </p>
-        </div>
-      </div>
-      <div class="col-lg-3 col-md-6 col-sm-6 activity">
-        <div class="single-activity">
-          <div class="single-activity-icon">
-            <i class="fa fa-life-ring"></i>
-          </div>
-          <h4>Member Welfare</h4>
-          <p>
-            We prioritize the well-being of our members by securing fair compensation, benefits, and working conditions for a supportive academic environment.
-          </p>
-        </div>
+  <!--Slider Area Start-->
+  <div class="slider-area slider-two-area">
+    <div class="preview-2">
+      <div id="nivoslider" class="slides">
+        <img src="{% static 'website-v2/img/slider/carousel9.jpg' %}" alt="" />
+        <img src="{% static 'website-v2/img/slider/carousel8.jpg' %}" alt="" />
       </div>
     </div>
   </div>
-</div>
-<!--End of Activity Area-->
-<!--Advertise Area Start-->
-<div class="advertise-area text-center section-gray">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <h2>
-          Advertise with Us - Reach a Targeted Academic Audience
-        </h2>
-        <a href="#">Advertise Now</a>
-      </div>
-    </div>
-  </div>
-</div>
-<!--End of Advertise Area-->
-<!--About Skill Area Start-->
-<div class="about-skill-area section-padding">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-6">
-        <div class="about-skill-text wow fadeInLeft" data-wow-duration="1.5s" data-wow-delay="0.2s">
-          <h2>Welcome to UG-UTAG</h2>
-          <span>University of Ghana Branch</span>
-          <p>
-            The University of Ghana Branch of the University Teachers Association of Ghana (UG-UTAG) is a dynamic organization dedicated to representing the teaching and research staff of the University of Ghana. Our primary purpose is to champion the academic, professional, and economic welfare of our members, thereby fostering an environment of excellence for the entire academic community. We actively engage with university management and national stakeholders to negotiate for fair conditions of service, protect academic freedom, and ensure the provision of adequate resources for teaching and research. UG-UTAG serves as a unified voice for our members, advocating for policies that enhance the quality of higher education and uphold the values of scholarly inquiry and community service.
-          </p>
-          <div class="mb-2">
-            <a href="#" class="button-default">Know More</a>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="skill-image wow fadeInRight" data-wow-duration="1.5s" data-wow-delay="0.2s">
-          <img src="{% static 'website-v2/img/banner/about_bg.png' %}" alt="" />
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<!--End of About Skill Area-->
-
-{% if published_events %}
-  <!--Events Area Start-->
-<div class="class-area section-padding">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="section-title-wrapper title-yellow">
-          <div class="section-title">
-            <h3>Our Events</h3>
+  <!--End of Slider Area-->
+  <!--Activity Area Start-->
+  <div class="activity-area">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-3 col-md-6 col-sm-6 activity">
+          <div class="single-activity">
+            <div class="single-activity-icon">
+              <i class="fa fa-pencil"></i>
+            </div>
+            <h4>Quality Education</h4>
             <p>
-              Discover our latest events and activities designed to enrich the academic and social experience of our members.
+              We are committed to defending and promoting academic freedom, ensuring that scholars can pursue research and teaching without undue external interference.
             </p>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="class-carousel carousel-style-one owl-carousel">
-      {% for event in published_events %}
-      <div class="single-class">
-          <div class="single-class-image">
-              <a href="{% url 'website:events_detail' slug=event.event_slug %}">
-                  <img src="{{ event.get_featured_image_url }}" alt="{{ event.title }}" class="img-fluid rounded shadow" />
-                  <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
-              </a>
-          </div>
-          <div class="single-class-text">
-              <div class="class-des">
-                  <h4><a href="{% url 'website:events_detail' slug=event.event_slug %}">{{ event.title }}</a></h4>
-                  <p>{{ event.description|truncatechars:100|safe }}</p>
-              </div>
-              <div class="class-schedule">
-                  <span class="post__category-links">
-                      <i class="fa fa-map-marker"></i>
-                      {{ event.venue }}
-                  </span>
-                  <span class="post__comment-link">
-                      <i class="fa fa-calendar"></i>
-                      {{ event.start_date|date:"d M, Y" }} {% if event.end_date %} - {{ event.end_date|date:"d M, Y" }}{% endif %}
-                  </span>
-              </div>
-          </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-<!--End of Events Area-->
-{% endif %}
-
-<!-- Gallery has 4 images -->
-
-{% if gallery_images and gallery_images|length == 4 %}
-<!--Gallery Fullwidth Area start-->
-<div class="gallery-area gallery-fullwidth section-gray section-padding">
-  <div class="section-title-wrapper title-yellow">
-    <div class="section-title">
-      <h3>Our Gallery</h3>
-      <p>
-        Explore our vibrant gallery showcasing the diverse activities and events that enrich the lives of our members and the academic community.
-      </p>
-    </div>
-  </div>
-  <div class="gallery-wrapper">
-    <div class="row no-gutters">
-      {% for image in gallery_images %}
-      <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover">
-        <div class="overlay-effect sea-green-overlay">
-          <a href="#"><img src="{{ image.get_absolute_url }}" alt="" /></a>
-          <div class="gallery-hover-effect">
-            <a class="gallery-icon venobox" href="{{ image.get_absolute_url }}"
-              ><i class="fa fa-image"></i
-            ></a>
-            <span class="gallery-text">
-              {{ image.caption|default:"" }}
-            </span>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  <div class="view-gallery text-center">
-    <h4>More Photos from <span>Our Gallery!</span></h4>
-    <a href="{% url 'website:gallery' %}" class="button-default">View Now</a>
-  </div>
-</div>
-<!--End of Gallery Fullwidth Area-->
- {% endif %}
-  
-
-<!--Teachers Large Carousel Area Start-->
-<div class="teachers-column-carousel-area section-padding">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="section-title-wrapper">
-          <div class="section-title">
-            <h3>Our Executive Officers</h3>
+        <div class="col-lg-3 col-md-6 col-sm-6 activity">
+          <div class="single-activity">
+            <div class="single-activity-icon">
+              <i class="fa fa-rocket"></i>
+            </div>
+            <h4>Teaching & Research</h4>
             <p>
-              Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG, advocating for the rights and welfare of our members.
+              We are committed to advancing teaching and research excellence. We strive to enhance standards for a brighter future through education.
             </p>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="teachers-column-carousel carousel-style-one owl-carousel">
-      {% for executive in executives %}
-      <div class="single-teachers-column text-center">
-        <div class="teachers-image-column">
-          <a href="#">
-              <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}" alt="Executive Officer"> 
-          </a>
-        </div>
-        <div class="teacher-column-carousel-text">
-            <h4>{{ executive.get_full_name }}</h4>
-            <span>{{ executive.executive_position }}</span>
-            <p>{{ executive.bio|default:"" }}</p>
-            <div class="social-links">
-                {% if executive.fb_profile_url %}
-                <a href="{{ executive.fb_profile_url }}"><i class="fa fa-facebook"></i></a>
-                {% endif %}
-                {% if executive.email %}
-                <a href="mailto:{{ executive.email }}"><i class="fa fa-google-plus"></i></a>
-                {% endif %}
-                {% if executive.twitter_profile_url %}
-                <a href="{{ executive.twitter_profile_url }}"><i class="fa fa-twitter"></i></a>
-                {% endif %}
-                {% if executive.linkedin_profile_url %}
-                <a href="{{ executive.linkedin_profile_url }}"><i class="fa fa-linkedin"></i></a>
-                {% endif %}
-            </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-<!--End of Teachers Large Carousel Area-->
-<!--Aim Start-->
-<div class="service-area section-padding">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="section-title-wrapper">
-          <div class="section-title">
-            <h3>Our Aim</h3>
-            <p>
-              We are dedicated to advancing the interests and welfare of our members and the university community.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-lg-4 col-md-4 col-12">
-        <div class="single-service-item-wrapper">
-          <div class="single-service-item">
-            <div class="single-service-text">
-              <h4>Promote Welfare</h4>
-              <p>
-                To promote the welfare of UG Teachers by seeking the improvement of their working conditions and facilities.
-              </p>
-            </div>
-            <div class="single-service-icon">
-              <i class="fa fa-heartbeat"></i>
-            </div>
-          </div>
-          <div class="single-service-item">
-            <div class="single-service-text">
-              <h4>Foster Unity</h4>
-              <p>
-                To promote actions of common interests among UG Teachers and foster a spirit of unity and mutual support.
-              </p>
-            </div>
-            <div class="single-service-icon">
+        <div class="col-lg-3 col-md-6 col-sm-6 activity">
+          <div class="single-activity">
+            <div class="single-activity-icon">
               <i class="fa fa-users"></i>
             </div>
+            <h4>Advocate for Membership</h4>
+            <p>
+              We advocate for the needs and concerns of our members to University Management, national leadership, other stakeholders, and the Government.
+            </p>
           </div>
-          <div class="single-service-item">
-            <div class="single-service-text">
-              <h4>Improve Communication</h4>
-              <p>
-                To improve communication channels and relations among stakeholders within and outside the University Community.
-              </p>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6 activity">
+          <div class="single-activity">
+            <div class="single-activity-icon">
+              <i class="fa fa-life-ring"></i>
             </div>
-            <div class="single-service-icon">
-              <i class="fa fa-comments-o"></i>
+            <h4>Member Welfare</h4>
+            <p>
+              We prioritize the well-being of our members by securing fair compensation, benefits, and working conditions for a supportive academic environment.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--End of Activity Area-->
+  <!--Partner Showcase-->
+  {% include 'includes/adverts/adverts_showcase.html' %}
+  <!--End Partner Showcase-->
+  <!--About Skill Area Start-->
+  <div class="about-skill-area section-padding">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-6">
+          <div class="about-skill-text wow fadeInLeft"
+               data-wow-duration="1.5s"
+               data-wow-delay="0.2s">
+            <h2>Welcome to UG-UTAG</h2>
+            <span>University of Ghana Branch</span>
+            <p>
+              The University of Ghana Branch of the University Teachers Association of Ghana (UG-UTAG) is a dynamic organization dedicated to representing the teaching and research staff of the University of Ghana. Our primary purpose is to champion the academic, professional, and economic welfare of our members, thereby fostering an environment of excellence for the entire academic community. We actively engage with university management and national stakeholders to negotiate for fair conditions of service, protect academic freedom, and ensure the provision of adequate resources for teaching and research. UG-UTAG serves as a unified voice for our members, advocating for policies that enhance the quality of higher education and uphold the values of scholarly inquiry and community service.
+            </p>
+            <div class="mb-2">
+              <a href="#" class="button-default">Know More</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="skill-image wow fadeInRight"
+               data-wow-duration="1.5s"
+               data-wow-delay="0.2s">
+            <img src="{% static 'website-v2/img/banner/about_bg.png' %}" alt="" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--End of About Skill Area-->
+  {% if published_events %}
+    <!--Events Area Start-->
+    <div class="class-area section-padding">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="section-title-wrapper title-yellow">
+              <div class="section-title">
+                <h3>Our Events</h3>
+                <p>Discover our latest events and activities designed to enrich the academic and social experience of our members.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="class-carousel carousel-style-one owl-carousel">
+          {% for event in published_events %}
+            <div class="single-class">
+              <div class="single-class-image">
+                <a href="{% url 'website:events_detail' slug=event.event_slug %}">
+                  <img src="{{ event.get_featured_image_url }}"
+                       alt="{{ event.title }}"
+                       class="img-fluid rounded shadow" />
+                  <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
+                </a>
+              </div>
+              <div class="single-class-text">
+                <div class="class-des">
+                  <h4>
+                    <a href="{% url 'website:events_detail' slug=event.event_slug %}">{{ event.title }}</a>
+                  </h4>
+                  <p>{{ event.description|truncatechars:100|safe }}</p>
+                </div>
+                <div class="class-schedule">
+                  <span class="post__category-links">
+                    <i class="fa fa-map-marker"></i>
+                    {{ event.venue }}
+                  </span>
+                  <span class="post__comment-link">
+                    <i class="fa fa-calendar"></i>
+                    {{ event.start_date|date:"d M, Y" }}
+                    {% if event.end_date %}- {{ event.end_date|date:"d M, Y" }}{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <!--End of Events Area-->
+  {% endif %}
+  <!-- Gallery has 4 images -->
+  {% if gallery_images and gallery_images|length == 4 %}
+    <!--Gallery Fullwidth Area start-->
+    <div class="gallery-area gallery-fullwidth section-gray section-padding">
+      <div class="section-title-wrapper title-yellow">
+        <div class="section-title">
+          <h3>Our Gallery</h3>
+          <p>
+            Explore our vibrant gallery showcasing the diverse activities and events that enrich the lives of our members and the academic community.
+          </p>
+        </div>
+      </div>
+      <div class="gallery-wrapper">
+        <div class="row no-gutters">
+          {% for image in gallery_images %}
+            <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover">
+              <div class="overlay-effect sea-green-overlay">
+                <a href="#">
+                  <img src="{{ image.get_absolute_url }}" alt="" />
+                </a>
+                <div class="gallery-hover-effect">
+                  <a class="gallery-icon venobox" href="{{ image.get_absolute_url }}"><i class="fa fa-image"></i></a>
+                  <span class="gallery-text">{{ image.caption|default:"" }}</span>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="view-gallery text-center">
+        <h4>
+          More Photos from <span>Our Gallery!</span>
+        </h4>
+        <a href="{% url 'website:gallery' %}" class="button-default">View Now</a>
+      </div>
+    </div>
+    <!--End of Gallery Fullwidth Area-->
+  {% endif %}
+  <!--Teachers Large Carousel Area Start-->
+  <div class="teachers-column-carousel-area section-padding">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="section-title-wrapper">
+            <div class="section-title">
+              <h3>Our Executive Officers</h3>
+              <p>
+                Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG, advocating for the rights and welfare of our members.
+              </p>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-lg-4 col-md-4 col-12">
-        <div class="service-image">
-          <img src="{% static 'website-v2/img/banner/ug-logo.png' %}" alt="" class="{% static 'website-v2/img-fluid" />
+      <div class="teachers-column-carousel carousel-style-one owl-carousel">
+        {% for executive in executives %}
+          <div class="single-teachers-column text-center">
+            <div class="teachers-image-column">
+              <a href="#">
+                <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
+                     alt="Executive Officer">
+              </a>
+            </div>
+            <div class="teacher-column-carousel-text">
+              <h4>{{ executive.get_full_name }}</h4>
+              <span>{{ executive.executive_position }}</span>
+              <p>{{ executive.bio|default:"" }}</p>
+              <div class="social-links">
+                {% if executive.fb_profile_url %}
+                  <a href="{{ executive.fb_profile_url }}"><i class="fa fa-facebook"></i></a>
+                {% endif %}
+                {% if executive.email %}<a href="mailto:{{ executive.email }}"><i class="fa fa-google-plus"></i></a>{% endif %}
+                {% if executive.twitter_profile_url %}
+                  <a href="{{ executive.twitter_profile_url }}"><i class="fa fa-twitter"></i></a>
+                {% endif %}
+                {% if executive.linkedin_profile_url %}
+                  <a href="{{ executive.linkedin_profile_url }}"><i class="fa fa-linkedin"></i></a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <!--End of Teachers Large Carousel Area-->
+  <!--Aim Start-->
+  <div class="service-area section-padding">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="section-title-wrapper">
+            <div class="section-title">
+              <h3>Our Aim</h3>
+              <p>We are dedicated to advancing the interests and welfare of our members and the university community.</p>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="col-lg-4 col-md-4 col-12">
-        <div class="single-service-item-wrapper">
-          <div class="single-service-item">
-            <div class="single-service-icon">
-              <i class="fa fa-line-chart"></i>
+      <div class="row">
+        <div class="col-lg-4 col-md-4 col-12">
+          <div class="single-service-item-wrapper">
+            <div class="single-service-item">
+              <div class="single-service-text">
+                <h4>Promote Welfare</h4>
+                <p>To promote the welfare of UG Teachers by seeking the improvement of their working conditions and facilities.</p>
+              </div>
+              <div class="single-service-icon">
+                <i class="fa fa-heartbeat"></i>
+              </div>
             </div>
-            <div class="single-service-text">
-              <h4>Advance Academics</h4>
-              <p>
-                To advance teaching, research, and community service, ensuring the highest standards of academic excellence.
-              </p>
+            <div class="single-service-item">
+              <div class="single-service-text">
+                <h4>Foster Unity</h4>
+                <p>To promote actions of common interests among UG Teachers and foster a spirit of unity and mutual support.</p>
+              </div>
+              <div class="single-service-icon">
+                <i class="fa fa-users"></i>
+              </div>
+            </div>
+            <div class="single-service-item">
+              <div class="single-service-text">
+                <h4>Improve Communication</h4>
+                <p>To improve communication channels and relations among stakeholders within and outside the University Community.</p>
+              </div>
+              <div class="single-service-icon">
+                <i class="fa fa-comments-o"></i>
+              </div>
             </div>
           </div>
-          <div class="single-service-item">
-            <div class="single-service-icon">
-              <i class="fa fa-puzzle-piece"></i>
-            </div>
-            <div class="single-service-text">
-              <h4>Pursue Related Aims</h4>
-              <p>
-                To pursue any other aim which is reasonably connected with or incidental to the foregoing aims.
-              </p>
-            </div>
+        </div>
+        <div class="col-lg-4 col-md-4 col-12">
+          <div class="service-image">
+            <img src="{% static 'website-v2/img/banner/ug-logo.png' %}"
+                 alt=""
+                 class="{% static 'website-v2/img-fluid" />
           </div>
-          <div class="single-service-item">
-            <div class="single-service-icon">
-              <i class="fa fa-balance-scale"></i>
+        </div>
+        <div class="col-lg-4 col-md-4 col-12">
+          <div class="single-service-item-wrapper">
+            <div class="single-service-item">
+              <div class="single-service-icon">
+                <i class="fa fa-line-chart"></i>
+              </div>
+              <div class="single-service-text">
+                <h4>Advance Academics</h4>
+                <p>To advance teaching, research, and community service, ensuring the highest standards of academic excellence.</p>
+              </div>
             </div>
-            <div class="single-service-text">
-              <h4>Uphold Academic Freedom</h4>
-              <p>
-                To uphold and defend the principles of academic freedom, ensuring an environment of open inquiry and intellectual growth.
-              </p>
+            <div class="single-service-item">
+              <div class="single-service-icon">
+                <i class="fa fa-puzzle-piece"></i>
+              </div>
+              <div class="single-service-text">
+                <h4>Pursue Related Aims</h4>
+                <p>To pursue any other aim which is reasonably connected with or incidental to the foregoing aims.</p>
+              </div>
+            </div>
+            <div class="single-service-item">
+              <div class="single-service-icon">
+                <i class="fa fa-balance-scale"></i>
+              </div>
+              <div class="single-service-text">
+                <h4>Uphold Academic Freedom</h4>
+                <p>
+                  To uphold and defend the principles of academic freedom, ensuring an environment of open inquiry and intellectual growth.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-<!--End of Aim Area-->
-<!--Fun Factor Area Start-->
-<div class="fun-factor-area fun-factor-two">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-4 col-md-4 col-sm-6 col-6">
-        <div class="single-fun-factor">
-          <div class="fun-factor-icon">
-            <i class="fa fa-users"></i>
+  <!--End of Aim Area-->
+  <!--Fun Factor Area Start-->
+  <div class="fun-factor-area fun-factor-two">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-4 col-md-4 col-sm-6 col-6">
+          <div class="single-fun-factor">
+            <div class="fun-factor-icon">
+              <i class="fa fa-users"></i>
+            </div>
+            <h2><span class="counter">25</span></h2>
+            <span>Lecturers</span>
           </div>
-          <h2><span class="counter">25</span></h2>
-          <span>Lecturers</span>
         </div>
-      </div>
-      <div class="col-lg-4 col-md-4 col-sm-6 col-6">
-        <div class="single-fun-factor">
-          <div class="fun-factor-icon">
-            <i class="fa fa-bank"></i>
+        <div class="col-lg-4 col-md-4 col-sm-6 col-6">
+          <div class="single-fun-factor">
+            <div class="fun-factor-icon">
+              <i class="fa fa-bank"></i>
+            </div>
+            <h2><span class="counter">45</span></h2>
+            <span>Senior Lecturers</span>
           </div>
-          <h2><span class="counter">45</span></h2>
-          <span>Senior Lecturers</span>
         </div>
-      </div>
-      <div class="col-lg-4 col-md-4 col-sm-6 col-6">
-        <div class="single-fun-factor">
-          <div class="fun-factor-icon">
-            <i class="fa fa-user"></i>
+        <div class="col-lg-4 col-md-4 col-sm-6 col-6">
+          <div class="single-fun-factor">
+            <div class="fun-factor-icon">
+              <i class="fa fa-user"></i>
+            </div>
+            <h2><span class="counter">55</span></h2>
+            <span>Professors</span>
           </div>
-          <h2><span class="counter">55</span></h2>
-          <span>Professors</span>
         </div>
-      </div>
-      <!-- <div class="col-lg-3 col-md-3 col-sm-6 col-6">
+        <!-- <div class="col-lg-3 col-md-3 col-sm-6 col-6">
         <div class="single-fun-factor">
           <div class="fun-factor-icon">
             <i class="fa fa-clock-o"></i>
@@ -382,48 +361,48 @@
           <span>Teaching Hours</span>
         </div>
       </div> -->
+      </div>
     </div>
   </div>
-</div>
-<!--End of Fun Factor Area-->
-<!--Blog Area Start-->
-<div class="blog-area blog-two">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="section-title-wrapper title-yellow">
-          <div class="section-title">
-            <h3>Our News</h3>
-            <p>Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.</p>
+  <!--End of Fun Factor Area-->
+  <!--Blog Area Start-->
+  <div class="blog-area blog-two">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="section-title-wrapper title-yellow">
+            <div class="section-title">
+              <h3>Our News</h3>
+              <p>Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="blog-carousel carousel-style-one owl-carousel">
-      {% for news in published_news %}
-      <div class="single-blog-item overlay-hover">
-        <div class="single-blog-image">
-          <div class="overlay-effect">
-            <a href="{% url 'website:news_detail' slug=news.news_slug %}">
-              <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" />
-              <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
-            </a>
+      <div class="blog-carousel carousel-style-one owl-carousel">
+        {% for news in published_news %}
+          <div class="single-blog-item overlay-hover">
+            <div class="single-blog-image">
+              <div class="overlay-effect">
+                <a href="{% url 'website:news_detail' slug=news.news_slug %}">
+                  <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" />
+                  <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
+                </a>
+              </div>
+            </div>
+            <div class="single-blog-text">
+              <h4>
+                <a href="{% url 'website:news_detail' slug=news.news_slug %}">{{ news.title|truncatechars:80 }}</a>
+              </h4>
+              <div class="blog-date">
+                <span><i class="fa fa-calendar"></i>{{ news.created_at|date:"d M, Y" }}</span>
+              </div>
+              <p>{{ news.content|truncatechars:120|safe }}</p>
+              <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
+            </div>
           </div>
-        </div>
-        <div class="single-blog-text">
-          <h4>
-            <a href="{% url 'website:news_detail' slug=news.news_slug %}">{{ news.title|truncatechars:80 }}</a>
-          </h4>
-          <div class="blog-date">
-            <span><i class="fa fa-calendar"></i>{{ news.created_at|date:"d M, Y" }}</span>
-          </div>
-          <p>{{ news.content|truncatechars:120|safe }}</p>
-          <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
-        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
   </div>
-</div>
-<!--End of Blog Area-->
+  <!--End of Blog Area-->
 {% endblock %}
