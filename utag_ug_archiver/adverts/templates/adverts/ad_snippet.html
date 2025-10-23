@@ -1,0 +1,29 @@
+{% comment %}Inclusion snippet used by {% render_ad_slot %}{% endcomment %}
+{% if ad %}
+    <div class="ad-slot ad-slot-{{ ad.slot.key }}">
+        {% if ad.html_content %}
+            {{ ad.html_content|safe }}
+        {% else %}
+            <a href="{% url 'adverts:click' pk=ad.pk %}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="ad-link advertisement-link"
+               data-ad-id="{{ ad.pk }}"
+               data-impression-url="{% url 'adverts:impression' ad.pk %}"
+               aria-label="{{ ad.title }}">
+                {% if ad.get_image_url %}
+                    <img src="{{ ad.get_image_url }}"
+                         alt="{{ ad.title }}"
+                         class="ad-image"
+                         loading="lazy"
+                         {% if ad.slot and ad.slot.width %}width="{{ ad.slot.width }}"{% endif %}
+                         {% if ad.slot and ad.slot.height %}height="{{ ad.slot.height }}"{% endif %} />
+                {% else %}
+                    <div class="ad-placeholder">{{ ad.title }}</div>
+                {% endif %}
+            </a>
+        {% endif %}
+    </div>
+{% else %}
+    <!-- no ad for this slot -->
+{% endif %}

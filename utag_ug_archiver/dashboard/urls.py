@@ -91,14 +91,12 @@ urlpatterns +={
     path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
     path('adverts/update/',views.AdvertUpdateView.as_view(), name='update_advert'),
     path('adverts/delete/<int:advert_id>',views.AdvertDeleteView.as_view(), name='delete_advert'),
-    path('plans',views.AdvertPlansView.as_view(), name='plans'),
-    path('plans/create',views.AdvertPlanCreateView.as_view(), name='create_plan'),
-    path('plans/update/',views.AdvertPlanUpdateView.as_view(), name='update_plan'),
-    path('plans/delete/<int:plan_id>',views.AdvertPlanDeleteView.as_view(), name='delete_plan'),
-    path('companies',views.CompaniesView.as_view(), name='companies'),
-    path('companies/create',views.CompanyCreateView.as_view(), name='create_company'),
-    path('companies/update/',views.CompanyUpdateView.as_view(), name='update_company'),
-    path('companies/delete/<int:company_id>',views.CompanyDeleteView.as_view(), name='delete_company'),
+    path('adverts/orders', views.AdvertOrdersView.as_view(), name='advert_orders'),
+    path('plans',views.PlansView.as_view(), name='plans'),
+    path('plans/create', views.AdvertPlanCreateView.as_view(), name='create_plan'),
+    path('plans/update', views.AdvertPlanUpdateView.as_view(), name='update_plan'),
+    path('plans/delete/<int:plan_id>', views.AdvertPlanDeleteView.as_view(), name='delete_plan'),
+    # Advert plan and company management removed; keep adverts CRUD routes only
 }
 
 #For User Profile management

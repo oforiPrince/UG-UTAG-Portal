@@ -1,29 +1,50 @@
 from django.contrib import admin
-from .models import Placement, Advertisement, AdvertPlan, Advertiser
+from django.contrib.admin.sites import AlreadyRegistered
+from .models import AdSlot, Ad, AdvertPlan, AdvertOrder
 
 
-@admin.register(Placement)
-class PlacementAdmin(admin.ModelAdmin):
-    list_display = ('key', 'name', 'recommended_width', 'recommended_height', 'created_at')
+class AdSlotAdmin(admin.ModelAdmin):
+    list_display = ('key', 'name', 'width', 'height')
     search_fields = ('key', 'name')
-    list_filter = ('created_at',)
 
 
-# @admin.register(Advertiser)
-# class AdvertiserAdmin(admin.ModelAdmin):
-#     list_display = ('company_name', 'contact_name', 'email', 'phone_number')
-#     search_fields = ('company_name', 'contact_name', 'email')
+class AdAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'slot', 'created_by', 'active', 'start', 'end', 'priority', 'impressions', 'clicks')
+    list_filter = ('active', 'slot')
+    search_fields = ('title', 'target_url', 'slot__key')
+    readonly_fields = ('impressions', 'clicks', 'created_at', 'updated_at')
+    raw_id_fields = ('created_by',)
+    fieldsets = (
+        (None, {'fields': ('slot', 'title', 'image', 'html_content', 'target_url', 'created_by')}),
+        ('Scheduling', {'fields': ('active', 'start', 'end', 'priority')}),
+        ('Stats', {'fields': ('impressions', 'clicks', 'created_at', 'updated_at')}),
+    )
 
 
-@admin.register(AdvertPlan)
 class AdvertPlanAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'duration_in_days', 'status')
+    list_display = ('name', 'price', 'duration_in_days', 'created_by', 'status', 'created_at')
+    list_filter = ('status',)
     search_fields = ('name',)
+    raw_id_fields = ('created_by',)
 
 
-@admin.register(Advertisement)
-class AdvertisementAdmin(admin.ModelAdmin):
-    list_display = ('advertiser', 'plan', 'start_date', 'end_date', 'status', 'priority')
-    search_fields = ('advertiser__company_name', 'target_url')
-    list_filter = ('status', 'plan')
+class AdvertOrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'plan', 'ad', 'status', 'paid', 'created_at')
+    list_filter = ('status', 'paid')
+    search_fields = ('user__username', 'plan__name')
+    raw_id_fields = ('user', 'ad')
+
+
+for model, admin_class in (
+    (AdSlot, AdSlotAdmin),
+    (Ad, AdAdmin),
+    (AdvertPlan, AdvertPlanAdmin),
+    (AdvertOrder, AdvertOrderAdmin),
+):
+    try:
+        admin.site.register(model, admin_class)
+    except AlreadyRegistered:
+        # Safe to ignore; autoreloader may re-import admin modules during development
+        pass
+
 

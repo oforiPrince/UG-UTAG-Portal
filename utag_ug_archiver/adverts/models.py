@@ -1,182 +1,223 @@
-from datetime import datetime, timedelta
 from django.db import models
-from accounts.models import User
-import random
-from PIL import Image
-from django.utils.text import slugify
+from django.utils import timezone
+from django.conf import settings
 
-class Advertiser(models.Model):
-    company_name = models.CharField(max_length=255)
-    contact_name = models.CharField(max_length=255)
-    email = models.EmailField()
-    phone_number = models.CharField(max_length=20)
-    address = models.CharField(max_length=255)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
+def ad_upload_to(instance, filename):
+    # store in media/advertisement_images/<slot_key>/<filename>
+    slot = getattr(instance, 'slot', None)
+    key = slot.key if slot else 'general'
+    return f"advertisement_images/{key}/{filename}"
+
+# Backwards-compatible alias for older migrations that imported `upload_to`
 def upload_to(instance, filename):
-    # Define the path to store the uploaded image
-    return f"advertisement_images/{instance.advertiser.company_name}/{filename}"
+    return ad_upload_to(instance, filename)
 
-class Advertisement(models.Model):
-    STATUS_CHOICES = (
-        ('DRAFT', 'Draft'),
-        ('PUBLISHED', 'Published'),
-        ('EXPIRED', 'Expired'),
-    )
-    POSITION_CHOICES = (
-        ('top', 'Top'),
-        ('sidebar', 'Sidebar'),
-        ('bottom', 'Bottom'),
-    )
-    advertiser = models.ForeignKey(Advertiser, on_delete=models.CASCADE)
-    plan = models.ForeignKey('AdvertPlan', on_delete=models.SET_NULL, blank=True, null=True)
-    image_url = models.URLField(blank=True, null=True)
-    image = models.ImageField(upload_to=upload_to, blank=True, null=True)
-    target_url = models.URLField()
-    # Legacy single-position field removed. Use `placements` M2M instead.
-    # New richer asset fields
-    desktop_image = models.ImageField(upload_to=upload_to, blank=True, null=True)
-    mobile_image = models.ImageField(upload_to=upload_to, blank=True, null=True)
-    alt_text = models.CharField(max_length=255, blank=True, null=True)
-    cta_text = models.CharField(max_length=80, blank=True, null=True)
+
+class AdSlot(models.Model):
+    """A named placement on the site where ads can be displayed.
+
+    Examples: header_728x90, sidebar_300x250, footer_banner.
+    The `key` is used in templates and template tags to fetch the correct slot.
+    """
+    key = models.SlugField(max_length=64, unique=True)
+    name = models.CharField(max_length=120)
+    width = models.PositiveIntegerField(blank=True, null=True)
+    height = models.PositiveIntegerField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['key']
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.key})"
+
+
+class Ad(models.Model):
+    """A simple, modern ad model.
+
+    Fields:
+    - slot: which AdSlot this ad belongs to
+    - image: optional image to show
+    - html_content: optional rich html for advanced creatives
+    - target_url: where clicks should go
+    - active / start / end: scheduling
+    - priority: higher shows first when multiple active
+    - impressions, clicks: counters
+    """
+    slot = models.ForeignKey(AdSlot, on_delete=models.CASCADE, related_name='ads')
+    title = models.CharField(max_length=140, blank=True)
+    image = models.ImageField(upload_to=ad_upload_to, blank=True, null=True)
     html_content = models.TextField(blank=True, null=True)
-    impressions_cap = models.PositiveIntegerField(blank=True, null=True)
-    impressions_count = models.PositiveIntegerField(default=0)
-    priority = models.SmallIntegerField(default=0, help_text="Higher value = higher priority when rendering")
-    # Flexible placement relation (recommended)
-    placements = models.ManyToManyField('Placement', blank=True, related_name='adverts')
-    start_date = models.DateField()
-    end_date = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    target_url = models.URLField(blank=True, null=True)
+
+    active = models.BooleanField(default=True)
+    start = models.DateTimeField(blank=True, null=True)
+    end = models.DateTimeField(blank=True, null=True)
+    priority = models.SmallIntegerField(default=0, help_text='Higher number = higher priority')
+
+    impressions = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    clicks = models.PositiveIntegerField(default=0)
-    
-    def clicked(self):
-        self.clicks += 1
-        self.save()
+    # Who uploaded/created this ad (optional for backward compatibility)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_ads')
 
-    def increment_impression(self):
-        # Respect cap if set
-        if self.impressions_cap is None or self.impressions_count < self.impressions_cap:
-            self.impressions_count += 1
-            self.save(update_fields=['impressions_count'])
-    
-    def __str__(self):
-        return f"{self.advertiser.company_name} - {self.start_date} to {self.end_date}"
-    
+    class Meta:
+        ordering = ['-priority', '-created_at']
+
+    def __str__(self) -> str:
+        return self.title or f"Ad #{self.pk} ({self.slot.key})"
+
+    def is_live(self) -> bool:
+        """Return True if the ad should be displayed now."""
+        if not self.active:
+            return False
+        now = timezone.now()
+        if self.start and now < self.start:
+            return False
+        if self.end and now > self.end:
+            return False
+        return True
+
+    @property
     def get_image_url(self):
-        # Prefer desktop -> legacy image -> mobile -> image_url
-        if self.desktop_image:
-            return self.desktop_image.url
-        if self.image:
-            return self.image.url
-        if self.mobile_image:
-            return self.mobile_image.url
-        return self.image_url
-    
+        """Safe image URL accessor for templates; returns None when missing."""
+        try:
+            if self.image and hasattr(self.image, 'url'):
+                return self.image.url
+        except Exception:
+            return None
+        return None
+
+    @property
     def get_image_dimensions(self):
-        if self.image:
-            with Image.open(self.image) as img:
-                return img.width, img.height
-        return None, None
-    
-    @property
-    def image_width(self):
-        width, _ = self.get_image_dimensions()
-        return width
+        """Return (width, height) if available, else (None, None)."""
+        try:
+            if self.image and hasattr(self.image, 'width') and hasattr(self.image, 'height'):
+                return (self.image.width, self.image.height)
+        except Exception:
+            pass
+        return (None, None)
 
-    @property
-    def image_height(self):
-        _, height = self.get_image_dimensions()
-        return height
+    def get_status_display(self):
+        """Return a human readable status based on active flag and dates."""
+        now = timezone.now()
+        if not self.active:
+            return 'Draft'
+        if self.end and self.end < now:
+            return 'Expired'
+        if self.start and self.start > now:
+            return 'Scheduled'
+        return 'Published'
 
-    def save(self, *args, **kwargs):
-        # If an image is provided via image_url, clear the image field
-        if self.image_url:
-            self.image = None
-        # Calculate the end date based on the selected plan
-        if self.status == "PUBLISHED" and self.start_date and self.plan and self.plan.duration_in_days:
-            start_date_obj = datetime.strptime(str(self.start_date), "%Y-%m-%d").date()
-            self.end_date = start_date_obj + timedelta(days=self.plan.duration_in_days)
-        
-        super().save(*args, **kwargs)
+    def click(self):
+        # use F() expression to avoid race conditions
+        from django.db.models import F
+
+        self.__class__.objects.filter(pk=self.pk).update(clicks=F('clicks') + 1)
+
+    def impression(self):
+        from django.db.models import F
+        # single atomic increment
+        self.__class__.objects.filter(pk=self.pk).update(impressions=F('impressions') + 1)
 
 
 class AdvertPlan(models.Model):
+    """Minimal Advertisement Plan model for pricing and duration catalog.
+    Moved from `dashboard.models` to centralize adverts-related models in the
+    `adverts` app.
+    """
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('inactive', 'Inactive'),
     )
-    POSITION_CHOICES = (
-        ('top', 'Top'),
-        ('sidebar', 'Sidebar'),
-        ('bottom', 'Bottom'),
-    )
 
-    name = models.CharField(max_length=255, unique=True, blank=True, null=True)
-    description = models.TextField()
-    price = models.DecimalField(max_digits=8, decimal_places=2)
-    duration_in_days = models.PositiveIntegerField(blank=True, null=True)
-    status = models.CharField(max_length=255, choices=STATUS_CHOICES, default='active')
-    # Previously this model stored allowed positions as a CSV string. We moved to Placement model.
-    # Keep description and plan metadata here.
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.status})"
-
-
-class Placement(models.Model):
-    """
-    Represents a placement/slot where adverts can be shown. Examples: 'top', 'sidebar', 'bottom', 'hero', 'footer'.
-    Use a stable key for code/queries and a human friendly name.
-    """
-    key = models.SlugField(max_length=50, unique=True)
-    name = models.CharField(max_length=120)
-    description = models.TextField(blank=True, null=True)
-    recommended_width = models.PositiveIntegerField(blank=True, null=True)
-    recommended_height = models.PositiveIntegerField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.key})"
-
-    @classmethod
-    def get_or_create_from_key(cls, key):
-        k = slugify(str(key).strip())
-        if not k:
-            return None
-        obj, _ = cls.objects.get_or_create(key=k, defaults={'name': key})
-        return obj
-
-
-    
-
-class Payment(models.Model):
-    PAYMENT_STATUS_CHOICES = (
-        ('Paid', 'Paid'),
-        ('Yet to Pay', 'Yet to Pay'),
-    )
-    PAYMENT_METHOD_CHOICES = (
-        ('Cash', 'Cash'),
-    )
-    def generate_transaction_id():
-        return str(random.randint(1000000000, 9999999999))
-    
-    transaction_id = models.CharField(max_length=10, unique=True, blank=True, null=True)
-    advertiser = models.ForeignKey(Advertiser, on_delete=models.CASCADE)
-    plan = models.ForeignKey(AdvertPlan, on_delete=models.CASCADE, related_name='plan')
-    advert = models.ForeignKey(Advertisement, on_delete=models.SET_NULL, blank=True, null=True, related_name='payment')
-    payment_date = models.DateField(blank=True, null=True)
-    amount = models.DecimalField(max_digits=8, decimal_places=2)
-    payment_method = models.CharField(max_length=255, choices=PAYMENT_METHOD_CHOICES, default='Cash')
-    payment_status = models.CharField(max_length=255, choices=PAYMENT_STATUS_CHOICES, default='Yet to Pay')
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    duration_in_days = models.PositiveIntegerField(default=30)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    def save(self, *args, **kwargs):
-        self.transaction_id = Payment.generate_transaction_id()
-        super(Payment, self).save(*args, **kwargs)
+    # Who created/defined this plan
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_advert_plans')
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def uploaded_by_name(self):
+        """Return a human friendly name for the uploader or 'N/A' if missing."""
+        user = getattr(self, 'created_by', None)
+        if not user:
+            return 'N/A'
+        # Prefer full name if available
+        try:
+            full_name = user.get_full_name()
+        except Exception:
+            full_name = None
+        if full_name:
+            return full_name
+        # Fallback to username or string representation
+        return getattr(user, 'username', str(user))
+
+    @property
+    def category_label(self):
+        """Return human readable category label."""
+        try:
+            return self.get_category_display()
+        except Exception:
+            return getattr(self, 'category', 'N/A')
+
+    @property
+    def status_label(self):
+        """Return human readable status label."""
+        try:
+            return self.get_status_display()
+        except Exception:
+            return self.status or 'N/A'
+
+
+class AdvertOrder(models.Model):
+    """Record of a user registering/purchasing an advert plan.
+
+    - user: who placed the order (required)
+    - plan: the AdvertPlan purchased
+    - ad: optional Ad object (if the user uploaded or selected an ad at registration)
+    - created_at: time of registration
+    - status: workflow status (pending, active, cancelled)
+    - paid: whether payment is complete
+    - start_date / end_date: computed or set to represent the active window
+    """
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('active', 'Active'),
+        ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='advert_orders')
+    plan = models.ForeignKey(AdvertPlan, on_delete=models.PROTECT, related_name='orders')
+    ad = models.ForeignKey(Ad, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    paid = models.BooleanField(default=False)
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Order #{self.pk} - {self.user} -> {self.plan.name} ({self.status})"
+
+    def activate(self):
+        """Mark order active and set start/end dates based on plan duration if not set."""
+        if not self.start_date:
+            self.start_date = timezone.now().date()
+        if not self.end_date and self.plan and self.plan.duration_in_days:
+            self.end_date = self.start_date + timezone.timedelta(days=self.plan.duration_in_days)
+        self.status = 'active'
+        self.paid = True
+        self.save(update_fields=['start_date', 'end_date', 'status', 'paid'])
+

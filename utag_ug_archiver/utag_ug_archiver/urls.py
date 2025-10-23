@@ -25,6 +25,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),  # new
     path('dashboard/', include('dashboard.urls')),  # new
     path('chat/', include('chat.urls')),
+    path('adverts/', include('adverts.urls')),
     path('tinymce/', include('tinymce.urls')),
 ]
 

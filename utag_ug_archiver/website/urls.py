@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.shortcuts import redirect
 app_name = 'website'
 urlpatterns = [
     path('', views.IndexView.as_view(), name='index'),
@@ -12,7 +13,6 @@ urlpatterns = [
     path('executive_officers/', views.ExecutiveOfficersView.as_view(), name='executive_officers'),
     path('executive_committee_members/', views.ExecutiveCommitteeMembersView.as_view(), name='executive_committee_members'),
     path('gallery/', views.GalleryView.as_view(), name='gallery'),
-    path('add_click/<int:pk>/', views.AddClick.as_view(), name='add_click'),
-    path('ad/redirect/<int:pk>/', views.AdClickRedirect.as_view(), name='ad_click_redirect'),
-    path('ad/impression/<int:pk>/', views.AdImpressionPing.as_view(), name='ad_impression_ping'),
+    # Legacy click endpoint: redirect to adverts app click view for backward compatibility
+    path('add_click/<int:pk>/', lambda request, pk: redirect('adverts:click', pk=pk), name='add_click'),
 ]

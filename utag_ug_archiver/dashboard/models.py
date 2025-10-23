@@ -439,39 +439,8 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
-    
-    @property
-    def uploaded_by_name(self):
-        """Return a human friendly name for the uploader or 'N/A' if missing."""
-        user = self.uploaded_by
-        if not user:
-            return 'N/A'
-        # Prefer full name if available
-        try:
-            full_name = user.get_full_name()
-        except Exception:
-            full_name = None
-        if full_name:
-            return full_name
-        # Fallback to username or string representation
-        return getattr(user, 'username', str(user))
 
-    @property
-    def category_label(self):
-        """Return human readable category label."""
-        try:
-            return self.get_category_display()
-        except Exception:
-            return self.category or 'N/A'
 
-    @property
-    def status_label(self):
-        """Return human readable status label."""
-        try:
-            return self.get_status_display()
-        except Exception:
-            return self.status or 'N/A'
-    
 class CarouselSlide(models.Model):
     title = models.CharField(max_length=255, blank=True, null=True)
     description = models.TextField(blank=True, null=True)

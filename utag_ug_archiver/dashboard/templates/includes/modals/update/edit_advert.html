@@ -33,48 +33,37 @@
                         <!-- Current Image -->
                         <div class="mb-3 existingImageContainer">
                             <h5>Current Image</h5>
-                            <img class="existingImage"
-                                 src="{{ ad.image.url }}"
-                                 alt="Current Image"
-                                 style="max-width: 100%;
-                                        max-height: 200px">
+                            {% if ad.image %}
+                                <img class="existingImage img-fluid"
+                                     src="{{ ad.get_image_url }}"
+                                     alt="Current Image"
+                                     width="600"
+                                     height="200"
+                                     loading="lazy" />
+                            {% else %}
+                                <div class="alert alert-secondary">No image uploaded for this advert.</div>
+                            {% endif %}
                         </div>
                         <!-- New Image Preview -->
-                        <div class="mb-3 newImagePreviewContainer" style="display: none;">
+                        <div class="mb-3 newImagePreviewContainer d-none">
                             <h5>New Image Preview</h5>
-                            <img class="newImagePreview"
+                            <img class="newImagePreview img-fluid"
                                  src="#"
                                  alt="New Image Preview"
-                                 style="max-width: 100%;
-                                        max-height: 200px">
+                                 width="600"
+                                 height="200"
+                                 loading="lazy" />
                         </div>
-                        <!-- Advertiser -->
+                        <!-- Title -->
                         <div class="form-group mb-3">
-                            <label for="advertiserSelect_{{ ad.id }}">Advertiser</label>
-                            <select class="form-control"
-                                    id="advertiserSelect_{{ ad.id }}"
-                                    name="advertiser_id"
-                                    required>
-                                <option value="">Select an Advertiser</option>
-                                {% for advertiser in advertisers %}
-                                    <option value="{{ advertiser.id }}"
-                                            {% if ad.advertiser.id == advertiser.id %}selected{% endif %}>
-                                        {{ advertiser.company_name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            <label for="titleInput_{{ ad.id }}">Title / CTA</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="titleInput_{{ ad.id }}"
+                                   name="title"
+                                   value="{{ ad.title }}">
                         </div>
-                        <!-- Plan -->
-                        <div class="form-group mb-3">
-                            <label for="planSelect_{{ ad.id }}">Plan</label>
-                            <select class="form-control" id="planSelect_{{ ad.id }}" name="plan_id">
-                                <option value="">Select a Plan</option>
-                                {% for plan in plans %}
-                                    <option value="{{ plan.id }}"
-                                            {% if ad.plan.id == plan.id %}selected{% endif %}>{{ plan.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        <!-- Alt Text removed -->
                         <!-- Target URL -->
                         <div class="form-group mb-3">
                             <label for="targetUrlInput_{{ ad.id }}">Target URL</label>
@@ -91,7 +80,38 @@
                                    class="form-control"
                                    id="startDateInput_{{ ad.id }}"
                                    name="start_date"
-                                   value="{{ ad.start_date|date:'Y-m-d' }}">
+                                   value="{{ ad.start|date:'Y-m-d' }}">
+                        </div>
+                        <!-- End Date -->
+                        <div class="form-group mb-3">
+                            <label for="endDateInput_{{ ad.id }}">End Date</label>
+                            <input type="date"
+                                   class="form-control"
+                                   id="endDateInput_{{ ad.id }}"
+                                   name="end_date"
+                                   value="{{ ad.end|date:'Y-m-d' }}">
+                        </div>
+                        <!-- Placements -->
+                        <div class="form-group mb-3">
+                            <label for="placementsSelect_{{ ad.id }}">Placements</label>
+                            <select class="form-select"
+                                    id="placementsSelect_{{ ad.id }}"
+                                    name="placements"
+                                    multiple>
+                                {% for pl in placements %}
+                                    <option value="{{ pl.key }}"
+                                            {% if pl.key == ad.slot.key %}selected{% endif %}>{{ pl.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Priority -->
+                        <div class="form-group mb-3">
+                            <label for="priorityInput_{{ ad.id }}">Priority</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="priorityInput_{{ ad.id }}"
+                                   name="priority"
+                                   value="{{ ad.priority }}">
                         </div>
                         <!-- Status -->
                         <div class="form-group mb-3">
@@ -100,10 +120,12 @@
                                     id="statusSelect_{{ ad.id }}"
                                     name="status"
                                     required>
-                                <option value="DRAFT" {% if ad.status == 'DRAFT' %}selected{% endif %}>Draft</option>
-                                <option value="PUBLISHED"
-                                        {% if ad.status == 'PUBLISHED' %}selected{% endif %}>Published</option>
-                                <option value="EXPIRED" {% if ad.status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                                {% with status=ad.get_status_display %}
+                                    <option value="DRAFT" {% if status == 'Draft' %}selected{% endif %}>Draft</option>
+                                    <option value="PUBLISHED" {% if status == 'Published' %}selected{% endif %}>Published</option>
+                                    <option value="EXPIRED" {% if status == 'Expired' %}selected{% endif %}>Expired</option>
+                                    <option value="SCHEDULED" {% if status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                                {% endwith %}
                             </select>
                         </div>
                         <!-- Submit Buttons -->

@@ -1,13 +1,22 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load ads_tags %}
 {% block title %}Home{% endblock %}
 {% block content %}
   <!--Slider Area Start-->
   <div class="slider-area slider-two-area">
     <div class="preview-2">
       <div id="nivoslider" class="slides">
-        <img src="{% static 'website-v2/img/slider/carousel9.jpg' %}" alt="" />
-        <img src="{% static 'website-v2/img/slider/carousel8.jpg' %}" alt="" />
+        <img src="{% static 'website-v2/img/slider/carousel9.jpg' %}"
+             alt="UG-UTAG carousel slide"
+             width="1920"
+             height="500"
+             loading="lazy" />
+        <img src="{% static 'website-v2/img/slider/carousel8.jpg' %}"
+             alt="UG-UTAG carousel slide"
+             width="1920"
+             height="500"
+             loading="lazy" />
       </div>
     </div>
   </div>
@@ -64,9 +73,14 @@
     </div>
   </div>
   <!--End of Activity Area-->
-  <!--Partner Showcase-->
-  {% include 'includes/adverts/adverts_showcase.html' %}
-  <!--End Partner Showcase-->
+  <!--Advert Showcase-->
+  <!-- Show advert here -->
+  <div class="container my-4">
+    <div class="row">
+      <div class="col-12 text-center">{% render_ad_slot 'top' %}</div>
+    </div>
+  </div>
+  <!--End Advert Showcase-->
   <!--About Skill Area Start-->
   <div class="about-skill-area section-padding">
     <div class="container">
@@ -89,7 +103,11 @@
           <div class="skill-image wow fadeInRight"
                data-wow-duration="1.5s"
                data-wow-delay="0.2s">
-            <img src="{% static 'website-v2/img/banner/about_bg.png' %}" alt="" />
+            <img src="{% static 'website-v2/img/banner/about_bg.png' %}"
+                 alt="About UG-UTAG banner"
+                 width="800"
+                 height="450"
+                 loading="lazy" />
           </div>
         </div>
       </div>
@@ -117,7 +135,10 @@
                 <a href="{% url 'website:events_detail' slug=event.event_slug %}">
                   <img src="{{ event.get_featured_image_url }}"
                        alt="{{ event.title }}"
-                       class="img-fluid rounded shadow" />
+                       class="img-fluid rounded shadow"
+                       width="600"
+                       height="360"
+                       loading="lazy" />
                   <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
                 </a>
               </div>
@@ -164,11 +185,20 @@
           {% for image in gallery_images %}
             <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover">
               <div class="overlay-effect sea-green-overlay">
-                <a href="#">
-                  <img src="{{ image.get_absolute_url }}" alt="" />
+                <a href="#"
+                   title="Open image"
+                   aria-label="{{ image.caption|default:'Gallery image' }}">
+                  <img src="{{ image.get_absolute_url }}"
+                       alt="{{ image.caption|default:'Gallery image' }}"
+                       width="400"
+                       height="300"
+                       loading="lazy" />
                 </a>
                 <div class="gallery-hover-effect">
-                  <a class="gallery-icon venobox" href="{{ image.get_absolute_url }}"><i class="fa fa-image"></i></a>
+                  <a class="gallery-icon venobox"
+                     href="{{ image.get_absolute_url }}"
+                     title="View image"
+                     aria-label="View image: {{ image.caption|default:'Gallery image' }}"><i class="fa fa-image"></i></a>
                   <span class="gallery-text">{{ image.caption|default:"" }}</span>
                 </div>
               </div>
@@ -185,6 +215,12 @@
     </div>
     <!--End of Gallery Fullwidth Area-->
   {% endif %}
+  <!-- Sidebar ad slot (small ad) -->
+  <div class="container my-3">
+    <div class="row">
+      <div class="col-12 col-md-3">{% render_ad_slot 'sidebar' %}</div>
+    </div>
+  </div>
   <!--Teachers Large Carousel Area Start-->
   <div class="teachers-column-carousel-area section-padding">
     <div class="container">
@@ -204,9 +240,14 @@
         {% for executive in executives %}
           <div class="single-teachers-column text-center">
             <div class="teachers-image-column">
-              <a href="#">
+              <a href="#"
+                 title="View executive profile"
+                 aria-label="View profile of {{ executive.get_full_name }}">
                 <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
-                     alt="Executive Officer">
+                     alt="Executive Officer: {{ executive.get_full_name }}"
+                     width="200"
+                     height="200"
+                     loading="lazy">
               </a>
             </div>
             <div class="teacher-column-carousel-text">
@@ -215,14 +256,24 @@
               <p>{{ executive.bio|default:"" }}</p>
               <div class="social-links">
                 {% if executive.fb_profile_url %}
-                  <a href="{{ executive.fb_profile_url }}"><i class="fa fa-facebook"></i></a>
+                  <a href="{{ executive.fb_profile_url }}"
+                     title="Facebook profile"
+                     aria-label="Facebook profile of {{ executive.get_full_name }}"><i class="fa fa-facebook"></i></a>
                 {% endif %}
-                {% if executive.email %}<a href="mailto:{{ executive.email }}"><i class="fa fa-google-plus"></i></a>{% endif %}
+                {% if executive.email %}
+                  <a href="mailto:{{ executive.email }}"
+                     title="Send email"
+                     aria-label="Send email to {{ executive.get_full_name }}"><i class="fa fa-google-plus"></i></a>
+                {% endif %}
                 {% if executive.twitter_profile_url %}
-                  <a href="{{ executive.twitter_profile_url }}"><i class="fa fa-twitter"></i></a>
+                  <a href="{{ executive.twitter_profile_url }}"
+                     title="Twitter profile"
+                     aria-label="Twitter profile of {{ executive.get_full_name }}"><i class="fa fa-twitter"></i></a>
                 {% endif %}
                 {% if executive.linkedin_profile_url %}
-                  <a href="{{ executive.linkedin_profile_url }}"><i class="fa fa-linkedin"></i></a>
+                  <a href="{{ executive.linkedin_profile_url }}"
+                     title="LinkedIn profile"
+                     aria-label="LinkedIn profile of {{ executive.get_full_name }}"><i class="fa fa-linkedin"></i></a>
                 {% endif %}
               </div>
             </div>
@@ -280,8 +331,11 @@
         <div class="col-lg-4 col-md-4 col-12">
           <div class="service-image">
             <img src="{% static 'website-v2/img/banner/ug-logo.png' %}"
-                 alt=""
-                 class="{% static 'website-v2/img-fluid" />
+                 alt="University of Ghana logo"
+                 class="img-fluid"
+                 width="300"
+                 height="150"
+                 loading="lazy" />
           </div>
         </div>
         <div class="col-lg-4 col-md-4 col-12">
@@ -330,7 +384,9 @@
             <div class="fun-factor-icon">
               <i class="fa fa-users"></i>
             </div>
-            <h2><span class="counter">25</span></h2>
+            <h2>
+              <span class="counter">25</span>
+            </h2>
             <span>Lecturers</span>
           </div>
         </div>
@@ -339,7 +395,9 @@
             <div class="fun-factor-icon">
               <i class="fa fa-bank"></i>
             </div>
-            <h2><span class="counter">45</span></h2>
+            <h2>
+              <span class="counter">45</span>
+            </h2>
             <span>Senior Lecturers</span>
           </div>
         </div>
@@ -348,7 +406,9 @@
             <div class="fun-factor-icon">
               <i class="fa fa-user"></i>
             </div>
-            <h2><span class="counter">55</span></h2>
+            <h2>
+              <span class="counter">55</span>
+            </h2>
             <span>Professors</span>
           </div>
         </div>
@@ -373,7 +433,9 @@
           <div class="section-title-wrapper title-yellow">
             <div class="section-title">
               <h3>Our News</h3>
-              <p>Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.</p>
+              <p>
+                Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.
+              </p>
             </div>
           </div>
         </div>
@@ -384,7 +446,11 @@
             <div class="single-blog-image">
               <div class="overlay-effect">
                 <a href="{% url 'website:news_detail' slug=news.news_slug %}">
-                  <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" />
+                  <img src="{{ news.get_featured_image_url }}"
+                       alt="{{ news.title }}"
+                       width="400"
+                       height="250"
+                       loading="lazy" />
                   <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
                 </a>
               </div>
@@ -405,4 +471,10 @@
     </div>
   </div>
   <!--End of Blog Area-->
+  <!-- Bottom ad slot (footer area) -->
+  <div class="container my-4">
+    <div class="row">
+      <div class="col-12 text-center">{% render_ad_slot 'bottom' %}</div>
+    </div>
+  </div>
 {% endblock %}

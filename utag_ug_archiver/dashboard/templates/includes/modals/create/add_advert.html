@@ -17,156 +17,142 @@
         </button>
       </div>
       <div class="modal-body">
-        <form class="advertForm row gx-4 gy-3"
+        <form id="createAdvertForm"
+              class="advertForm row gx-4 gy-3"
               enctype="multipart/form-data"
               action="{% url 'dashboard:create_advert' %}"
               method="post"
               novalidate>
           {% csrf_token %}
-          <!-- Left: form fields -->
           <div class="col-lg-8">
-            <div class="card mb-3 shadow-none border-0">
-              <div class="card-body p-0">
-                <div class="mb-3">
-                  <label class="form-label" for="advertiserSelect">Advertiser</label>
-                  <select class="form-select"
-                          id="advertiserSelect"
-                          name="advertiser_id"
-                          required>
-                    <option value="">Select an Advertiser</option>
-                    {% for advertiser in advertisers %}
-                      <option value="{{ advertiser.id }}">{{ advertiser.company_name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="planSelect">Plan</label>
-                    <select class="form-select" id="planSelect" name="plan_id" required>
-                      <option value="">Select a Plan</option>
-                      {% for plan in plans %}<option value="{{ plan.id }}">{{ plan.name }}</option>{% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="placementsSelect">Placements</label>
-                    <select class="form-select"
-                            id="placementsSelect"
-                            name="placements"
-                            multiple
-                            aria-describedby="placementsHelp">
-                      {% for pl in placements %}
-                        {% with w=pl.recommended_width h=pl.recommended_height %}
-                          <option value="{{ pl.key }}"
-                                  data-width="{{ w|default_if_none:'' }}"
-                                  data-height="{{ h|default_if_none:'' }}">
-                            {{ pl.name }}
-                            {% if w and h %}— {{ w }}×{{ h }}{% endif %}
-                          </option>
-                        {% endwith %}
-                      {% endfor %}
-                    </select>
-                    <div id="placementsHelp" class="form-text">
-                      Hold command/ctrl to select multiple. Recommended sizes shown when available.
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="desktopImageInput">Desktop Image</label>
-                    <input type="file"
-                           class="form-control"
-                           id="desktopImageInput"
-                           name="desktop_image"
-                           accept="image/*"
-                           aria-describedby="desktopHelp">
-                    <div id="desktopHelp" class="form-text">
-                      Recommended: <span id="desktopRecommended">1200×600</span>
-                    </div>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="mobileImageInput">Mobile Image</label>
-                    <input type="file"
-                           class="form-control"
-                           id="mobileImageInput"
-                           name="mobile_image"
-                           accept="image/*"
-                           aria-describedby="mobileHelp">
-                    <div id="mobileHelp" class="form-text">
-                      Recommended: <span id="mobileRecommended">600×400</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="altTextInput">Alt Text</label>
-                    <input type="text"
-                           class="form-control"
-                           id="altTextInput"
-                           name="alt_text"
-                           maxlength="255">
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="ctaTextInput">CTA Text</label>
-                    <input type="text"
-                           class="form-control"
-                           id="ctaTextInput"
-                           name="cta_text"
-                           maxlength="80">
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label" for="impressionsCap">Impressions Cap</label>
-                    <input type="number"
-                           min="0"
-                           class="form-control"
-                           id="impressionsCap"
-                           name="impressions_cap">
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label" for="priorityInput">Priority</label>
-                    <input type="number"
-                           class="form-control"
-                           id="priorityInput"
-                           name="priority"
-                           value="0">
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label" for="targetUrlInput">Target URL</label>
-                    <input type="url" class="form-control" id="targetUrlInput" name="target_url">
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="startDateInput">Start Date</label>
-                    <input type="date"
-                           class="form-control"
-                           id="startDateInput"
-                           name="start_date"
-                           required>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label" for="statusSelect">Status</label>
-                    <select class="form-select" id="statusSelect" name="status" required>
-                      <option value="DRAFT">Draft</option>
-                      <option value="PUBLISHED" selected>Published</option>
-                      <option value="EXPIRED">Expired</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                  <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fa fa-save me-2" aria-hidden="true"></i> Create Ad
-                  </button>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-lg"
-                          data-bs-dismiss="modal">Cancel</button>
-                </div>
+            <!-- Left column: form fields -->
+            <div class="mb-3">
+              <label class="form-label" for="placementsTiles">Placements</label>
+              <div id="placementsTiles"
+                   class="d-flex flex-wrap gap-2"
+                   aria-describedby="placementsHelp">
+                {% for pl in placements %}
+                  {% if pl.key == 'top' or pl.key == 'bottom' %}
+                    {% with w=pl.recommended_width h=pl.recommended_height %}
+                      <label class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                             title="{{ pl.name }}">
+                        <input type="radio"
+                               name="slot"
+                               value="{{ pl.key }}"
+                               data-width="{{ w|default_if_none:'' }}"
+                               data-height="{{ h|default_if_none:'' }}"
+                               class="form-check-input me-2 placement-checkbox">
+                        <div class="text-start">
+                          <div class="fw-semibold small">{{ pl.name }}</div>
+                          <div class="small text-muted">
+                            {% if w and h %}
+                              {{ w }}×{{ h }}
+                            {% else %}
+                              Flexible
+                            {% endif %}
+                          </div>
+                        </div>
+                      </label>
+                    {% endwith %}
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <div id="placementsHelp" class="form-text">
+                Select a placement by clicking a tile. Recommended size shown when available.
               </div>
             </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="desktopImageInput">Desktop Image</label>
+                <input type="file"
+                       class="form-control"
+                       id="desktopImageInput"
+                       name="image"
+                       accept="image/*"
+                       aria-describedby="desktopHelp">
+                <div id="desktopHelp" class="form-text">
+                  Recommended: <span id="desktopRecommended">1200×600</span>
+                </div>
+                <div id="desktopFilename" class="small text-muted mt-1">No file chosen</div>
+              </div>
+              <!-- mobile image input removed (not stored in model) -->
+            </div>
+            <!-- Title (maps to Ad.title) -->
+            <div class="mb-3">
+              <label class="form-label" for="titleInput">Title</label>
+              <input type="text"
+                     class="form-control"
+                     id="titleInput"
+                     name="title"
+                     maxlength="140"
+                     placeholder="Short ad title (optional)">
+            </div>
+            <div class="row">
+              <!-- alt_text input removed -->
+              <!-- CTA text removed (not stored on Ad model) -->
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="htmlContentInput">HTML Content (optional)</label>
+              <textarea class="form-control"
+                        id="htmlContentInput"
+                        name="html_content"
+                        rows="4"
+                        placeholder="Optional raw HTML for rich creatives; will be used instead of image if provided."></textarea>
+            </div>
+            <div class="row">
+              <div class="col-12 mb-3">
+                <label class="form-label" for="planSelect">Advert Plan (optional)</label>
+                <select id="planSelect" name="plan_id" class="form-select">
+                  <option value="">-- choose a plan (optional) --</option>
+                  {% for plan in plans %}
+                    <option value="{{ plan.id }}"
+                            data-price="{{ plan.price }}"
+                            data-duration="{{ plan.duration_in_days }}">
+                      {{ plan.name }} — {{ plan.price }} USD / {{ plan.duration_in_days }} days
+                    </option>
+                  {% empty %}
+                    <option value="">No active plans</option>
+                  {% endfor %}
+                </select>
+                <div id="planInfo" class="small text-muted mt-1">Choose a plan to link this advert to an order.</div>
+              </div>
+            </div>
+            <div id="errorMessage" class="text-danger small mb-2" aria-live="polite"></div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="priorityInput">Priority</label>
+                <input type="number"
+                       class="form-control"
+                       id="priorityInput"
+                       name="priority"
+                       value="0">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="targetUrlInput">Target URL</label>
+                <input type="url" class="form-control" id="targetUrlInput" name="target_url">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="startDateInput">Start Date</label>
+                <input type="date"
+                       class="form-control"
+                       id="startDateInput"
+                       name="start_date">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="statusSelect">Status</label>
+                <select class="form-select" id="statusSelect" name="status">
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED" selected>Published</option>
+                  <option value="EXPIRED">Expired</option>
+                </select>
+              </div>
+            </div>
+            <!-- actions moved to modal-footer -->
           </div>
-          <!-- Right: preview and helpers -->
           <div class="col-lg-4">
+            <!-- Right column: preview & helpers -->
             <div class="card shadow-sm">
               <div class="card-body text-center">
                 <h6 class="card-title mb-2">Preview & Info</h6>
@@ -183,13 +169,16 @@
                        height="160">
                   <div class="small text-muted">Sample view (desktop)</div>
                 </div>
+                <div class="mb-2">
+                  <div class="h6 mb-0" id="previewTitle">Ad title will appear here</div>
+                </div>
                 <div class="row g-2">
                   <div class="col-12">
                     <div class="small text-start mb-1">Selected placements</div>
                     <div id="selectedPlacements"
                          class="d-flex flex-wrap gap-1 justify-content-center"></div>
                   </div>
-                  <div class="col-6">
+                  <div class="col-12">
                     <div class="small text-muted">Desktop preview</div>
                     <img id="desktopPreview"
                          class="img-fluid img-thumbnail"
@@ -197,15 +186,6 @@
                          alt="Desktop preview"
                          width="260"
                          height="140">
-                  </div>
-                  <div class="col-6">
-                    <div class="small text-muted">Mobile preview</div>
-                    <img id="mobilePreview"
-                         class="img-fluid img-thumbnail"
-                         src=""
-                         alt="Mobile preview"
-                         width="120"
-                         height="200">
                   </div>
                 </div>
                 <div id="imagePlacementWarning"
@@ -215,142 +195,220 @@
               </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+        <!-- Modal footer: actions -->
+        <div class="modal-footer border-0 bg-white mt-3">
+          <div class="w-100 d-flex justify-content-end gap-2">
+            <button type="button"
+                    class="btn btn-secondary btn-sm"
+                    data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="createAdvertSubmit">
+              <i class="fa fa-save me-2" aria-hidden="true"></i> Create Ad
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 <script>
-// Initialize handlers after DOM ready
-document.addEventListener('DOMContentLoaded', function() {
-  // keep legacy validator
-});
+// Initialize the advert modal JS only when the modal is shown. Scope all queries to the modal/form to
+// avoid running on pages that don't include the modal and to prevent double initialization.
+(function(){
+  function initAdvertModal(modal) {
+    if (!modal) return;
+    const form = modal.querySelector('#createAdvertForm');
+    if (!form) return;
 
-function validateImage() {
-  var input = document.getElementById('imageInput');
-  if (!input) return;
-  var file = input.files[0];
-  var errorMessage = document.getElementById('errorMessage');
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var img = new Image();
-    img.src = e.target.result;
-    img.onload = function() {
-      var width = this.width;
-      var height = this.height;
-      if ((width === 900 && height === 250) || (width === 300 && height === 250)) {
-        if (errorMessage) errorMessage.textContent = '';
-      } else {
-        if (errorMessage) errorMessage.textContent = 'Image must be exactly 900x250 or 300x250 pixels.';
-        input.value = '';
+  const placementInputs = Array.from(form.querySelectorAll('.placement-checkbox'));
+    const recommendedSizeEl = form.querySelector('#recommendedSize');
+  const desktopInput = form.querySelector('#desktopImageInput');
+  const desktopPreview = form.querySelector('#desktopPreview');
+    const selectedPlacements = form.querySelector('#selectedPlacements');
+    const imagePlacementWarning = form.querySelector('#imagePlacementWarning');
+    const errorMessage = form.querySelector('#errorMessage');
+
+    const placementsRequireDesktop = new Set(['top','hero','bottom']);
+    const fallbackSizes = {
+      top: {w:1200, h:600},
+      sidebar: {w:600, h:450},
+      bottom: {w:900, h:300},
+      hero: {w:1200, h:600},
+      footer: {w:1200, h:200}
+    };
+
+    function updateRecommendedAndUI() {
+      const selectedOptions = placementInputs.filter(cb => cb.checked).map(cb => ({
+        value: cb.value,
+        dataset: cb.dataset,
+        text: cb.closest('label') ? cb.closest('label').innerText.trim() : cb.value
+      }));
+      if (selectedOptions.length === 0) {
+        if (recommendedSizeEl) recommendedSizeEl.textContent = '—';
+        if (selectedPlacements) selectedPlacements.innerHTML = '';
+        if (imagePlacementWarning) imagePlacementWarning.classList.add('d-none');
+        return;
       }
-    };
-  };
-  reader.readAsDataURL(file);
-}
 
-// Enhanced placements preview & upload validation + live previews
-document.addEventListener('DOMContentLoaded', function() {
-  const placementsSelect = document.getElementById('placementsSelect');
-  const recommendedSizeEl = document.getElementById('recommendedSize');
-  const desktopInput = document.getElementById('desktopImageInput');
-  const mobileInput = document.getElementById('mobileImageInput');
-  const desktopPreview = document.getElementById('desktopPreview');
-  const mobilePreview = document.getElementById('mobilePreview');
-  const selectedPlacements = document.getElementById('selectedPlacements');
-  const imagePlacementWarning = document.getElementById('imagePlacementWarning');
+      if (selectedPlacements) selectedPlacements.innerHTML = '';
+      selectedOptions.forEach(o => {
+        const span = document.createElement('span');
+        span.className = 'badge bg-secondary text-white me-1';
+        span.textContent = o.text;
+        selectedPlacements.appendChild(span);
+      });
 
-  const placementsRequireDesktop = new Set(['top','hero','bottom']);
-  const fallbackSizes = {
-    top: {w:1200, h:600},
-    sidebar: {w:600, h:450},
-    bottom: {w:900, h:300},
-    hero: {w:1200, h:600},
-    footer: {w:1200, h:200}
-  };
+      const first = selectedOptions.find(o => o.dataset && o.dataset.width && o.dataset.height) || selectedOptions[0];
+      let w = first.dataset && first.dataset.width ? parseInt(first.dataset.width, 10) : (fallbackSizes[first.value] && fallbackSizes[first.value].w);
+      let h = first.dataset && first.dataset.height ? parseInt(first.dataset.height, 10) : (fallbackSizes[first.value] && fallbackSizes[first.value].h);
+      if (recommendedSizeEl) recommendedSizeEl.textContent = (w && h) ? w + ' × ' + h : '—';
+      // expose the currently-required size on the form for validation
+      if (form) {
+        if (w && h) {
+          form.dataset.requiredWidth = w;
+          form.dataset.requiredHeight = h;
+        } else {
+          delete form.dataset.requiredWidth;
+          delete form.dataset.requiredHeight;
+        }
+      }
 
-  function updateRecommendedAndUI() {
-    if (!placementsSelect) return;
-    const selectedOptions = Array.from(placementsSelect.selectedOptions);
-    if (selectedOptions.length === 0) {
-      recommendedSizeEl.textContent = '—';
-      selectedPlacements.innerHTML = '';
-      imagePlacementWarning.classList.add('d-none');
-      return;
+  const selectedKeys = selectedOptions.map(o => o.value);
+  checkImageMismatch(selectedKeys);
+
+      if (desktopPreview && !(desktopInput && desktopInput.files && desktopInput.files.length > 0)) {
+        const thumbPath = getThumbnailPath(selectedKeys[0], 'desktop');
+        desktopPreview.src = thumbPath;
+        desktopPreview.classList.remove('d-none');
+      }
+      // mobile preview removed
     }
 
-    // show badges
-    selectedPlacements.innerHTML = '';
-    selectedOptions.forEach(o => {
-      const span = document.createElement('span');
-      span.className = 'badge bg-secondary text-white';
-      span.textContent = o.text;
-      selectedPlacements.appendChild(span);
+    function checkImageMismatch(selectedKeys) {
+      const requiresDesktop = selectedKeys.some(k => placementsRequireDesktop.has(k));
+      const hasDesktop = desktopInput && desktopInput.files && desktopInput.files.length > 0;
+      if (requiresDesktop && !hasDesktop) {
+        if (imagePlacementWarning) {
+          imagePlacementWarning.textContent = 'Selected placement(s) typically require a large/desktop image. Please upload a desktop image for best quality.';
+          imagePlacementWarning.classList.remove('d-none');
+        }
+      } else if (imagePlacementWarning) {
+        imagePlacementWarning.classList.add('d-none');
+        imagePlacementWarning.textContent = '';
+      }
+    }
+
+    function previewFile(input, imgEl) {
+      if (!input || !imgEl) return;
+      const file = input.files && input.files[0];
+      if (!file) {
+        imgEl.src = '';
+        imgEl.classList.add('d-none');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imgEl.src = e.target.result;
+        imgEl.classList.remove('d-none');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function validateImageInput(input) {
+      if (!input) return true;
+      const file = input.files && input.files[0];
+      const submitBtn = form.querySelector('#createAdvertSubmit');
+      if (!file) {
+        // no file means nothing to validate; enable submit
+        if (errorMessage) errorMessage.textContent = '';
+        if (submitBtn) submitBtn.disabled = false;
+        return true;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+          const width = this.width;
+          const height = this.height;
+          let reqW = form && form.dataset && form.dataset.requiredWidth ? parseInt(form.dataset.requiredWidth, 10) : null;
+          let reqH = form && form.dataset && form.dataset.requiredHeight ? parseInt(form.dataset.requiredHeight, 10) : null;
+          // If no required size available, accept any image but warn
+          if (reqW && reqH) {
+            const ok = (width === reqW && height === reqH);
+            if (!ok) {
+              if (errorMessage) errorMessage.textContent = 'Image must be exactly ' + reqW + '×' + reqH + ' pixels for the selected placement.';
+              if (submitBtn) submitBtn.disabled = true;
+              return false;
+            }
+          }
+          // all good
+          if (errorMessage) errorMessage.textContent = '';
+          if (submitBtn) submitBtn.disabled = false;
+          return true;
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    var THUMBNAIL_BASE = "{% static 'dashboard/assets/sample_images/thumbnails/' %}";
+    function getThumbnailPath(key, kind) {
+      if (!key) return "{% static 'dashboard/assets/sample_images/placement_sample.svg' %}";
+      return THUMBNAIL_BASE + 'placement_' + key + '_' + kind + '.svg';
+    }
+
+    
+    // wire placement inputs (radio tiles)
+    placementInputs.forEach(function(cb){ cb.addEventListener('change', updateRecommendedAndUI); });
+    if (desktopInput) desktopInput.addEventListener('change', function() { previewFile(this, desktopPreview); updateRecommendedAndUI(); validateImageInput(this); });
+
+  var desktopFilename = form.querySelector('#desktopFilename');
+  var titleInput = form.querySelector('#titleInput');
+  var previewTitle = form.querySelector('#previewTitle');
+
+  if (desktopInput) desktopInput.addEventListener('change', function() { if (desktopFilename) desktopFilename.textContent = this.files && this.files[0] ? this.files[0].name : 'No file chosen'; });
+  if (titleInput) titleInput.addEventListener('input', function() { if (previewTitle) previewTitle.textContent = this.value || 'Ad title will appear here'; });
+
+    // initial run in case of pre-filled
+    updateRecommendedAndUI();
+  }
+
+  const modalEl = document.getElementById('createAdvertModal');
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function() {
+      if (modalEl.dataset.advertInit === '1') return;
+      initAdvertModal(modalEl);
+      modalEl.dataset.advertInit = '1';
     });
-
-    const first = selectedOptions.find(o => o.dataset.width && o.dataset.height) || selectedOptions[0];
-    let w = first.dataset.width || (fallbackSizes[first.value] && fallbackSizes[first.value].w);
-    let h = first.dataset.height || (fallbackSizes[first.value] && fallbackSizes[first.value].h);
-    recommendedSizeEl.textContent = (w && h) ? `${w} × ${h}` : '—';
-
-    // check mismatch
-    const selectedKeys = selectedOptions.map(o => o.value);
-    checkImageMismatch(selectedKeys);
-    // update thumbnail previews when no files chosen
-    if (desktopPreview && !(desktopInput && desktopInput.files && desktopInput.files.length > 0)) {
-      const thumbPath = getThumbnailPath(selectedKeys[0], 'desktop');
-      desktopPreview.src = thumbPath;
-      desktopPreview.classList.remove('d-none');
-    }
-    if (mobilePreview && !(mobileInput && mobileInput.files && mobileInput.files.length > 0)) {
-      const thumbPathM = getThumbnailPath(selectedKeys[0], 'mobile');
-      mobilePreview.src = thumbPathM;
-      mobilePreview.classList.remove('d-none');
-    }
+    modalEl.addEventListener('hidden.bs.modal', function() {
+      // minimal cleanup so preview doesn't linger
+      const form = modalEl.querySelector('#createAdvertForm');
+      if (!form) return;
+  const desktopPreview = form.querySelector('#desktopPreview');
+      const errorMessage = form.querySelector('#errorMessage');
+      const imagePlacementWarning = form.querySelector('#imagePlacementWarning');
+      if (desktopPreview) { desktopPreview.src = ''; desktopPreview.classList.add('d-none'); }
+  if (errorMessage) errorMessage.textContent = '';
+  if (imagePlacementWarning) { imagePlacementWarning.classList.add('d-none'); imagePlacementWarning.textContent = ''; }
+    });
   }
-
-  function checkImageMismatch(selectedKeys) {
-    const requiresDesktop = selectedKeys.some(k => placementsRequireDesktop.has(k));
-    const hasDesktop = desktopInput && desktopInput.files && desktopInput.files.length > 0;
-    const hasMobile = mobileInput && mobileInput.files && mobileInput.files.length > 0;
-    if (requiresDesktop && !hasDesktop && hasMobile) {
-      imagePlacementWarning.textContent = 'Selected placement(s) typically require a large/desktop image. You have provided only a mobile image — consider uploading a desktop image for better quality.';
-      imagePlacementWarning.classList.remove('d-none');
-    } else {
-      imagePlacementWarning.classList.add('d-none');
-      imagePlacementWarning.textContent = '';
-    }
-  }
-
-  function previewFile(input, imgEl) {
-    if (!input || !imgEl) return;
-    const file = input.files && input.files[0];
-    if (!file) {
-      imgEl.src = '';
-      imgEl.classList.add('d-none');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      imgEl.src = e.target.result;
-      imgEl.classList.remove('d-none');
-    };
-    reader.readAsDataURL(file);
-  }
-
-  const THUMBNAIL_BASE = "{% static 'dashboard/assets/sample_images/thumbnails/' %}";
-  function getThumbnailPath(key, kind) {
-    // kind: 'desktop' or 'mobile'
-    if (!key) return "{% static 'dashboard/assets/sample_images/placement_sample.svg' %}";
-    return THUMBNAIL_BASE + `placement_${key}_${kind}.svg`;
-  }
-
-  if (placementsSelect) placementsSelect.addEventListener('change', updateRecommendedAndUI);
-  if (desktopInput) desktopInput.addEventListener('change', function() { previewFile(this, desktopPreview); updateRecommendedAndUI(); });
-  if (mobileInput) mobileInput.addEventListener('change', function() { previewFile(this, mobilePreview); updateRecommendedAndUI(); });
-
-  // initial run in case of pre-filled
-  updateRecommendedAndUI();
-});
+})();
+</script>
+<script>
+  // small plan select preview
+  document.addEventListener('DOMContentLoaded', function(){
+    var planSelect = document.getElementById('planSelect');
+    var planInfo = document.getElementById('planInfo');
+    if (!planSelect) return;
+    planSelect.addEventListener('change', function(){
+      var opt = planSelect.options[planSelect.selectedIndex];
+      if (!opt || !opt.value) {
+        planInfo.textContent = 'Choose a plan to link this advert to an order.';
+        return;
+      }
+      var price = opt.dataset.price || 'N/A';
+      var duration = opt.dataset.duration || 'N/A';
+      planInfo.textContent = 'Selected: ' + opt.text + ' — Price: ' + price + ' — Duration: ' + duration + ' days';
+    });
+  });
 </script>

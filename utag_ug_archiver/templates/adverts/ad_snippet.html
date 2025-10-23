@@ -1,0 +1,24 @@
+{% comment %}Simple ad snippet. Expects `ad` in context.{% endcomment %}
+{% if ad %}
+    <div class="ad-slot ad-slot-{{ ad.slot.key }} text-center">
+        {% if ad.html_content %}
+            {{ ad.html_content|safe }}
+        {% elif ad.image %}
+            <a href="{% url 'adverts:click' ad.pk %}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="ad-link">
+                <img src="{{ ad.image.url }}"
+                     alt="{{ ad.title }}"
+                     class="ad-image mx-auto d-block"
+                     loading="lazy"
+                     {% if ad.slot and ad.slot.width %}width="{{ ad.slot.width }}"{% endif %}
+                     {% if ad.slot and ad.slot.height %}height="{{ ad.slot.height }}"{% endif %} />
+            </a>
+        {% elif ad.target_url %}
+            <a href="{% url 'adverts:click' ad.pk %}"
+               target="_blank"
+               rel="noopener noreferrer">{{ ad.title|default:'Visit sponsor' }}</a>
+        {% endif %}
+    </div>
+{% endif %}

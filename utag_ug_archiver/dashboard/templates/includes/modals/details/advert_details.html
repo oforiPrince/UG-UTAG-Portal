@@ -10,7 +10,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="advertDetailsModal_{{ ad.id }}Label">
-            Advertisement Details — {{ ad.advertiser.company_name }}
+            Advertisement Details — {{ ad.title|default:ad.slot.name }}
           </h5>
           <button type="button"
                   class="btn-close"
@@ -29,21 +29,18 @@
           <div class="row">
             <div class="col-md-6">
               <p>
-                <strong>Advertiser:</strong> {{ ad.advertiser.company_name }}
-              </p>
-              <p>
-                <strong>Plan:</strong> {{ ad.plan.name }}
+                <strong>Placement:</strong> {{ ad.slot.name }} ({{ ad.slot.key }})
               </p>
               <p>
                 <strong>Target URL:</strong> <a href="{{ ad.target_url }}" target="_blank">{{ ad.target_url }}</a>
               </p>
               <p>
-                <strong>Start Date:</strong> {{ ad.start_date }}
+                <strong>Start Date:</strong> {{ ad.start }}
               </p>
               <p>
                 <strong>End Date:</strong>
-                {% if ad.end_date %}
-                  {{ ad.end_date }}
+                {% if ad.end %}
+                  {{ ad.end }}
                 {% else %}
                   N/A
                 {% endif %}
@@ -76,9 +73,5 @@
       </div>
     </div>
   </div>
-  <script>
-    $(document).ready(function() {
-      $('#advertDetailsModal_{{ad.id}}').modal('show');
-    });
-  </script>
+  {# Modal will be shown via the trigger on the adverts table; do not auto-show on page load #}
 {% endfor %}

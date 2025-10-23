@@ -2,7 +2,7 @@ from celery import shared_task
 from datetime import datetime
 from django.utils import timezone
 from dashboard.models import Event
-from adverts.models import Advertisement
+from adverts.models import Ad
 
 @shared_task
 def update_event_statuses():
@@ -34,15 +34,11 @@ def update_event_statuses():
 @shared_task
 def update_advert_statuses():
     """Mark expired advertisements"""
-    today = timezone.now().date()
-    
-    # Find published ads that have passed their end date
-    expired_ads = Advertisement.objects.filter(
-        status='PUBLISHED', 
-        end_date__lt=today
-    )
-    
+    now = timezone.now()
+
+    # Deactivate ads that have an end datetime in the past
+    expired_ads = Ad.objects.filter(active=True, end__isnull=False, end__lt=now)
     count = expired_ads.count()
-    expired_ads.update(status='EXPIRED')
-    
-    return f"{count} advertisements marked as expired"
+    expired_ads.update(active=False)
+
+    return f"{count} adverts deactivated"
