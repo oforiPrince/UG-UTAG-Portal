@@ -27,7 +27,7 @@ ENV DJANGO_SETTINGS_MODULE=utag_ug_archiver.settings
 
 EXPOSE 8000
 
-# USER app  # Removed to allow entrypoint to chown volumes as root before switching to app
+USER app
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "utag_ug_archiver.wsgi:application", "--bind", "0.0.0.0:8000"]
