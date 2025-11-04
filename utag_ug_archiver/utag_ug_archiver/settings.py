@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -157,7 +158,13 @@ def _database_from_env():
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
-    DATABASES = {'default': _database_from_url(database_url)}
+    if DEBUG:
+        # Stick with SQLite (or DB_* overrides) during development even if DATABASE_URL is present for easier onboarding
+        DATABASES = {'default': _database_from_env()}
+    elif database_url:
+        DATABASES = {'default': _database_from_url(database_url)}
+    else:
+        DATABASES = {'default': _database_from_env()}
 else:
     DATABASES = {'default': _database_from_env()}
 
@@ -206,6 +213,11 @@ STATICFILES_DIRS = [
 ]
 # static root
 STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
+
+# Use WhiteNoise to serve static files directly from Gunicorn in simple deployments
+STATICFILES_STORAGE = os.environ.get(
+    'DJANGO_STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage'
+)
 
 
 MEDIA_URL = os.environ.get('MEDIA_URL', '/media/')
