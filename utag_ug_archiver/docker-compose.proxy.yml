@@ -28,7 +28,7 @@ services:
       - .env
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-localhost}
-      CERTBOT_EMAIL: ${CERTBOT_EMAIL:-admin@example.com}
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:-princeofori723@gmail.com}
     volumes:
       - certbot_etc:/etc/letsencrypt
       - certbot_var:/var/lib/letsencrypt
