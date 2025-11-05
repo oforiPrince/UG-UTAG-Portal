@@ -4,6 +4,10 @@ server {
 
     server_name ${NGINX_SERVER_NAME};
 
+    # Allow larger uploads on HTTP as well so redirects or preflight requests
+    # on port 80 don't reject larger bodies before the HTTPS redirect.
+    client_max_body_size 20M;
+
     # Allow ACME challenge (Let's Encrypt) to validate domain before redirecting
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
