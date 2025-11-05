@@ -18,6 +18,8 @@ services:
       - certbot_etc:/etc/letsencrypt
       - certbot_var:/var/lib/letsencrypt
       - certbot_www:/var/www/certbot
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     restart: unless-stopped
 
   certbot:
