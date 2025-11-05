@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+env/
+venv/
+.env
+.env.*
+
+# SQLite database
+db.sqlite3
+
+# Django collected static and uploaded media
+staticfiles/
+media/
+app/staticfiles/
+app/media/
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
