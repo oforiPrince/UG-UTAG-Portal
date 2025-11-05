@@ -35,11 +35,13 @@ class LoginView(View):
             # Fetch and print the user's groups
             user_groups = user.groups.values_list('name', flat=True)
             
-            # Check if user belongs to the required groups
-            required_groups = {'Admin','Executive', 'Member'}
+            # Check if user belongs to the required groups OR is staff/superuser
+            required_groups = {'Admin', 'Executive', 'Member'}
             user_groups_set = set(user_groups)
-            
-            if user_groups_set & required_groups:  # Check if there's any intersection
+
+            # allow access if user is in any of the required groups, or is_staff/is_superuser
+            has_group = bool(user_groups_set & required_groups)
+            if has_group or getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
                 # Check if the user has the permission to access the dashboard
                 if user.has_perm('accounts.view_dashboard'):
                     login(request, user)
