@@ -66,17 +66,17 @@
                         <td>{{ document.date |date:"d M Y" }}</td>
                         <td>{{ document.sender }}</td>
                         <td>{{ document.receiver }}</td>
-                        <td>{{ document.uploaded_by_name }}</td>
+                        <td>{{ document.uploaded_by_name|default:"-" }}</td>
                         <!-- <td>0</td> -->
                         <td>{{ document.created_at |date:"d M Y" }}</td>
                         <td>{{ document.updated_at |date:"d M Y" }}</td>
                         <td class="text-center">
                           <span class="badge {% if document.category == 'external' %}bg-info{% else %}bg-primary{% endif %}">
-                            {{ document.category_label }}
+                            {{ document.category_label|default:document.get_category_display|default:"N/A" }}
                           </span>
                         </td>
                         <td>
-                          <span class="badge bg-success">{{ document.status_label }}</span>
+                          <span class="badge bg-success">{{ document.status_label|default:document.get_status_display|default:"N/A" }}</span>
                         </td>
                         <td>
                           <a href="#"

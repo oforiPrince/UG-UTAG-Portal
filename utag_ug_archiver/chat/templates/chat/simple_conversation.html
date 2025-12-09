@@ -637,8 +637,8 @@
             </div>
             <!-- Messages Area -->
             <div class="messages-area" id="messagesArea">
-                {% if messages %}
-                    {% for message in messages %}
+                {% if message_list %}
+                    {% for message in message_list %}
                         <div class="message {% if message.sender == request.user %}sent{% else %}received{% endif %}">
                             <div class="message-content">
                                 {% if chat_type == 'group' and message.sender != request.user %}

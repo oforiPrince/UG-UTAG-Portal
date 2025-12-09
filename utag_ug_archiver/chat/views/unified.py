@@ -37,7 +37,7 @@ class UnifiedConversationView(LoginRequiredMixin, View):
             context.update({
                 'thread': thread,
                 'other_user': other_user,
-                'messages': thread.messages.select_related('sender').prefetch_related('attachments').order_by('created_at'),
+                'message_list': thread.messages.select_related('sender').prefetch_related('attachments').order_by('created_at'),
                 'form': DirectMessageForm(),
             })
             
@@ -53,7 +53,7 @@ class UnifiedConversationView(LoginRequiredMixin, View):
             
             context.update({
                 'group': group,
-                'messages': group.messages.select_related('sender').prefetch_related('attachments').order_by('created_at'),
+                'message_list': group.messages.select_related('sender').prefetch_related('attachments').order_by('created_at'),
                 'form': GroupMessageForm(),
             })
         
@@ -115,7 +115,6 @@ class UnifiedConversationView(LoginRequiredMixin, View):
                         }
                     })
                 
-                messages.success(request, 'Message sent.')
                 return render(request, self.template_name, self.get_context(request, chat_type, pk))
             
             if is_ajax:
@@ -170,7 +169,6 @@ class UnifiedConversationView(LoginRequiredMixin, View):
                         }
                     })
                 
-                messages.success(request, 'Message sent.')
                 return render(request, self.template_name, self.get_context(request, chat_type, pk))
             
             if is_ajax:

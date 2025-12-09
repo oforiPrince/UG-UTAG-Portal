@@ -440,6 +440,22 @@ class Document(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def category_label(self):
+        """Human-friendly category label used across dashboard templates."""
+        return self.get_category_display() if self.category else ''
+
+    @property
+    def status_label(self):
+        return self.get_status_display() if self.status else ''
+
+    @property
+    def uploaded_by_name(self):
+        if not self.uploaded_by:
+            return 'System'
+        full_name = self.uploaded_by.get_full_name()
+        return full_name or self.uploaded_by.get_username() or str(self.uploaded_by)
+
 
 class CarouselSlide(models.Model):
     title = models.CharField(max_length=255, blank=True, null=True)

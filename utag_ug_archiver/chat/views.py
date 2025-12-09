@@ -112,10 +112,6 @@ class ThreadStartView(LoginRequiredMixin, View):
                 message = Message(thread=thread, sender=request.user)
                 message.set_plaintext(message_text)
                 message.save()
-            if created:
-                messages.success(request, 'Chat thread created successfully.')
-            else:
-                messages.info(request, 'You already had a conversation with this member. We took you there.')
             return redirect('chat:thread_detail', pk=thread.pk)
         return render(request, self.template_name, {'form': form})
 
@@ -181,7 +177,6 @@ class ThreadDetailView(LoginRequiredMixin, View):
             message = Message(thread=thread, sender=request.user)
             message.set_plaintext(form.cleaned_data['body'])
             message.save()
-            messages.success(request, 'Message sent.')
             return redirect(reverse('chat:thread_detail', kwargs={'pk': thread.pk}))
         
         context = {
@@ -225,7 +220,6 @@ class GroupCreateView(LoginRequiredMixin, View):
         if form.is_valid():
             group = ChatGroup.objects.create(name=form.cleaned_data['name'], created_by=request.user)
             GroupMembership.objects.create(group=group, user=request.user, added_by=request.user)
-            messages.success(request, 'Group created. Add members to get started.')
             return redirect('chat:group_detail', pk=group.pk)
         return render(request, self.template_name, {'form': form})
 
@@ -264,7 +258,6 @@ class GroupDetailView(LoginRequiredMixin, View):
             message.set_plaintext(form.cleaned_data['body'])
             message.save()
             message.read_by.add(request.user)
-            messages.success(request, 'Message shared with the group.')
             return redirect(reverse('chat:group_detail', kwargs={'pk': group.pk}))
         member_form = GroupMemberAddForm(group) if group.can_manage_members(request.user) else None
         context = {
@@ -294,6 +287,5 @@ class GroupMemberAddView(LoginRequiredMixin, View):
         if form.is_valid():
             user = form.cleaned_data['user']
             GroupMembership.objects.create(group=self.group, user=user, added_by=request.user)
-            messages.success(request, f'{user.get_full_name()} added to the group.')
             return redirect('chat:group_detail', pk=self.group.pk)
         return render(request, self.template_name, {'form': form, 'group': self.group})
