@@ -1,4 +1,26 @@
 services:
+  db:
+    image: postgres:16
+    env_file:
+      - .env
+    environment:
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -13,6 +35,7 @@ services:
       - media_volume:/app/media
     depends_on:
       - redis
+      - db
     restart: unless-stopped
 
   worker:
@@ -27,6 +50,7 @@ services:
       RUN_COLLECTSTATIC: "0"
     depends_on:
       - redis
+      - db
     restart: unless-stopped
 
   beat:
@@ -41,6 +65,7 @@ services:
       RUN_COLLECTSTATIC: "0"
     depends_on:
       - redis
+      - db
     restart: unless-stopped
 
   redis:
@@ -54,3 +79,4 @@ volumes:
   static_volume:
   media_volume:
   redis_data:
+  postgres_data:
