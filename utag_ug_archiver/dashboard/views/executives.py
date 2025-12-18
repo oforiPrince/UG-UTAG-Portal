@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from accounts.models import User
+from accounts.models import User, School, College, Department
 from dashboard.models import Announcement, Notification
 from utag_ug_archiver.utils.constants import executive_committee_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
@@ -42,6 +42,11 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         # Get all members
         members = User.objects.all()
 
+        # Get schools, colleges, and departments
+        schools = School.objects.all()
+        colleges = College.objects.all()
+        departments = Department.objects.all()
+
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
         notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
@@ -49,6 +54,9 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         context = {
             'executive_officers': executive_officers,
             'members': members,
+            'schools': schools,
+            'colleges': colleges,
+            'departments': departments,
             'notifications': notifications,
             'notification_count': notification_count,
         }
@@ -64,6 +72,9 @@ class NewExecutiveMemberCreateView(View):
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone')
+        department_id = request.POST.get('department')
+        school_id = request.POST.get('school')
+        college_id = request.POST.get('college')
 
         # Fields for executive
         position_name = request.POST.get('position')
@@ -112,6 +123,9 @@ class NewExecutiveMemberCreateView(View):
             gender=gender,
             email=email,
             phone_number=phone_number,
+            department_id=department_id,
+            school_id=school_id,
+            college_id=college_id,
             password=make_password(password),
             executive_position=position_name,  # Set executive position
             executive_image = executive_image,

@@ -127,6 +127,44 @@
               </div>
             </div>
           </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label class="form-label" for="id_department_exec">Department</label>
+              <div>
+                <select id="id_department_exec"
+                        class="form-select select2"
+                        required
+                        name="department">
+                  <option value="" selected disabled>Select a department</option>
+                  {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_school_exec">School</label>
+              <div>
+                <select id="id_school_exec" class="form-select select2" name="school">
+                  <option value="" selected disabled>Select a school</option>
+                  {% for school in schools %}
+                    <option value="{{ school.id }}">{{ school.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_college_exec">College</label>
+              <div>
+                <select id="id_college_exec" class="form-select select2" name="college">
+                  <option value="" selected disabled>Select a college</option>
+                  {% for college in colleges %}
+                    <option value="{{ college.id }}">{{ college.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
           <div class="mb-3">
             <label class="form-label" for="id_position">Position</label>
             <select id="id_position" class="form-control select2" required name="position">
