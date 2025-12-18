@@ -46,7 +46,7 @@
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
             <div>
-              <select id="id_title" class="form-control" required name="title">
+              <select id="id_title" class="form-control select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
                 <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
@@ -129,7 +129,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label" for="id_position">Position</label>
-            <select id="id_position" class="form-control" required name="position">
+            <select id="id_position" class="form-control select2" required name="position">
               <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
               <option value="Vice President">Vice President</option>
@@ -200,6 +200,13 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Select2
+    $('#newMemberModal').on('shown.bs.modal', function () {
+      $(this).find('select.select2').select2({
+        dropdownParent: $('#newMemberModal')
+      });
+    });
+
     function previewImage(event, previewId, errorId) {
       var file = event.target.files[0];
       var reader = new FileReader();

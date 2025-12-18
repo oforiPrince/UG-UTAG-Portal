@@ -31,9 +31,9 @@
                                    value="{{ announcement.title }}">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="edit_announcement_target_group">Target Group</label>
-                            <select id="edit_announcement_target_group"
-                                    class="form-control"
+                            <label class="form-label" for="edit_announcement_target_group_{{ announcement.id }}">Target Group</label>
+                            <select id="edit_announcement_target_group_{{ announcement.id }}"
+                                    class="form-control select2"
                                     required
                                     name="target_group">
                                 <option value="ALL"
@@ -49,9 +49,9 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="edit_announcement_status">Status</label>
-                            <select id="edit_announcement_status"
-                                    class="form-control"
+                            <label class="form-label" for="edit_announcement_status_{{ announcement.id }}">Status</label>
+                            <select id="edit_announcement_status_{{ announcement.id }}"
+                                    class="form-control select2"
                                     required
                                     name="status">
                                 <option value="DRAFT"
@@ -84,3 +84,12 @@
         </div>
     </div>
 {% endfor %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        $('[id^="editAnnouncementModal_"]').on('shown.bs.modal', function () {
+            $(this).find('select.select2').select2({
+                dropdownParent: $(this)
+            });
+        });
+    });
+</script>

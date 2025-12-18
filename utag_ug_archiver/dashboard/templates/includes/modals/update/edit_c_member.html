@@ -57,8 +57,8 @@
                      onchange="previewImage(event, '{{ executive.id }}')">
             </div>
             <div class="mb-3">
-              <label class="form-label" for="id_title">Position</label>
-              <select id="id_title" class="form-control" required name="position">
+              <label class="form-label" for="id_title_{{ executive.id }}">Position</label>
+              <select id="id_title_{{ executive.id }}" class="form-control select2" required name="position">
                 <option value="" selected disabled>Select a title</option>
                 <option value="President"
                         {% if executive.position.name == 'President' %}selected{% endif %}>President</option>
@@ -133,6 +133,15 @@
     </div>
   </div>
 {% endfor %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    $('[id^="editOfficerModal_"]').on('shown.bs.modal', function () {
+      $(this).find('select.select2').select2({
+        dropdownParent: $(this)
+      });
+    });
+  });
+</script>
 <style>
   .image-preview {
     display: block;

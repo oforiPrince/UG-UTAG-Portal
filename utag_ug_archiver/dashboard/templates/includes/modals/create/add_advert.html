@@ -102,7 +102,7 @@
             <div class="row">
               <div class="col-12 mb-3">
                 <label class="form-label" for="planSelect">Advert Plan (optional)</label>
-                <select id="planSelect" name="plan_id" class="form-select">
+                <select id="planSelect" name="plan_id" class="form-select select2">
                   <option value="">-- choose a plan (optional) --</option>
                   {% for plan in plans %}
                     <option value="{{ plan.id }}"
@@ -142,7 +142,7 @@
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label" for="statusSelect">Status</label>
-                <select class="form-select" id="statusSelect" name="status">
+                <select class="form-select select2" id="statusSelect" name="status">
                   <option value="DRAFT">Draft</option>
                   <option value="PUBLISHED" selected>Published</option>
                   <option value="EXPIRED">Expired</option>
@@ -376,6 +376,11 @@
   const modalEl = document.getElementById('createAdvertModal');
   if (modalEl) {
     modalEl.addEventListener('shown.bs.modal', function() {
+      // Initialize Select2
+      $('#planSelect, #statusSelect').select2({
+        dropdownParent: $('#createAdvertModal')
+      });
+
       if (modalEl.dataset.advertInit === '1') return;
       initAdvertModal(modalEl);
       modalEl.dataset.advertInit = '1';

@@ -94,7 +94,7 @@
                         <!-- Placements -->
                         <div class="form-group mb-3">
                             <label for="placementsSelect_{{ ad.id }}">Placements</label>
-                            <select class="form-select"
+                            <select class="form-select select2"
                                     id="placementsSelect_{{ ad.id }}"
                                     name="placements"
                                     multiple>
@@ -116,7 +116,7 @@
                         <!-- Status -->
                         <div class="form-group mb-3">
                             <label for="statusSelect_{{ ad.id }}">Status</label>
-                            <select class="form-control"
+                            <select class="form-control select2"
                                     id="statusSelect_{{ ad.id }}"
                                     name="status"
                                     required>
@@ -139,3 +139,12 @@
         </div>
     </div>
 {% endfor %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        $('[id^="editAdvertisementsModal_"]').on('shown.bs.modal', function () {
+            $(this).find('select.select2').select2({
+                dropdownParent: $(this)
+            });
+        });
+    });
+</script>

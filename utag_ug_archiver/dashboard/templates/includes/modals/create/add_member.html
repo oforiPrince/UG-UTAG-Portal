@@ -21,7 +21,7 @@
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
             <div>
-              <select id="id_title" class="form-control" required name="title">
+              <select id="id_title" class="form-select select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
                 <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
@@ -155,6 +155,13 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Select2 elements inside the modal
+    $('#addMemberModal').on('shown.bs.modal', function () {
+      $('#id_title, #id_department, #id_school, #id_college').select2({
+        dropdownParent: $('#addMemberModal')
+      });
+    });
+
     const passwordChoice = document.querySelectorAll(
       '[name="password_choice"]'
     );

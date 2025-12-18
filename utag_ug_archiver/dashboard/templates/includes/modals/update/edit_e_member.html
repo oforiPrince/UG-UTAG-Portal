@@ -22,7 +22,7 @@
             <input type="hidden" name="executive_id" value="{{ executive.id }}">
             <div class="mb-3">
               <label class="form-label">Select a member</label>
-              <select class="form-control" id="member" name="member_id">
+              <select class="form-control select2" id="member_{{ executive.id }}" name="member_id">
                 <option value="">Select a member</option>
                 {% for member in members %}
                   <option value="{{ member.id }}"
@@ -34,7 +34,7 @@
             <div class="mb-3">
               <label class="form-label" for="id_title_{{ executive.id }}">Position</label>
               <select id="id_title_{{ executive.id }}"
-                      class="form-control"
+                      class="form-control select2"
                       required
                       name="position">
                 <option value="" selected disabled>Select a title</option>
@@ -165,6 +165,15 @@
     </div>
   </div>
 {% endfor %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    $('[id^="editOfficerModal_"]').on('shown.bs.modal', function () {
+      $(this).find('select.select2').select2({
+        dropdownParent: $(this)
+      });
+    });
+  });
+</script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // Using native HTML5 date inputs; no JS initialization required

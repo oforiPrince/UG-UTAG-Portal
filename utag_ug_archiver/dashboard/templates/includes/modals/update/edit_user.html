@@ -20,9 +20,9 @@
             {% csrf_token %}
             <input type="hidden" name="user_id" value="{{ user.id }}" />
             <div class="mb-3">
-              <label class="form-label" for="id_title">Title</label>
+              <label class="form-label" for="id_title_{{ user.id }}">Title</label>
               <div>
-                <select id="id_title" class="form-control" required name="title">
+                <select id="id_title_{{ user.id }}" class="form-control select2" required name="title">
                   <option value="" selected disabled>Select a title</option>
                   <option value="Prof." {% if user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
                   <option value="Prof. (Mrs.)"
@@ -63,9 +63,9 @@
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label" for="id_gender">Gender</label>
+                <label class="form-label" for="id_gender_{{ user.id }}">Gender</label>
                 <div>
-                  <select id="id_gender" class="form-control" required name="gender">
+                  <select id="id_gender_{{ user.id }}" class="form-control select2" required name="gender">
                     <option value="" selected disabled>Select gender</option>
                     <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
                     <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
@@ -100,9 +100,9 @@
                 </div>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="form-label" for="id_department">Department</label>
+                <label class="form-label" for="id_department_{{ user.id }}">Department</label>
                 <div>
-                  <select id="id_department"
+                  <select id="id_department_{{ user.id }}"
                           class="form-control select2"
                           required
                           name="department">
@@ -119,9 +119,9 @@
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label" for="id_school">School</label>
+                <label class="form-label" for="id_school_{{ user.id }}">School</label>
                 <div>
-                  <select id="id_school" class="form-control select2" name="school">
+                  <select id="id_school_{{ user.id }}" class="form-control select2" name="school">
                     <option value="">Select a school</option>
                     {% for school in schools %}
                       <option value="{{ school.id }}"
@@ -133,9 +133,9 @@
                 </div>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="form-label" for="id_college">College</label>
+                <label class="form-label" for="id_college_{{ user.id }}">College</label>
                 <div>
-                  <select id="id_college" class="form-control select2" name="college">
+                  <select id="id_college_{{ user.id }}" class="form-control select2" name="college">
                     <option value="">Select a college</option>
                     {% for college in colleges %}
                       <option value="{{ college.id }}"
@@ -203,3 +203,12 @@
   </script>
   <!-- Modal for Add -->
 {% endfor %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    $('[id^="editUserModal_"]').on('shown.bs.modal', function () {
+      $(this).find('select.select2').select2({
+        dropdownParent: $(this)
+      });
+    });
+  });
+</script>
