@@ -2,6 +2,57 @@
 {% load static %}
 {% load ads_tags %}
 {% block title %}Home{% endblock %}
+{% block extra_head %}
+  <style>
+    /* Image Performance Optimizations */
+    img {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      max-width: 100%;
+      height: auto;
+    }
+    
+    /* Lazy loading placeholder */
+    img[loading="lazy"] {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* Optimize carousel images */
+    .single-class-image img,
+    .single-blog-image img,
+    .gallery-wrapper img {
+      will-change: transform;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+    
+    /* Prevent layout shift */
+    .single-class-image,
+    .single-blog-image,
+    .teachers-image-column {
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+    
+    .teachers-image-column img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* Optimize font loading */
+    body {
+      font-display: swap;
+    }
+  </style>
+{% endblock extra_head %}
 {% block content %}
   <!--Slider Area Start-->
   <div class="slider-area slider-two-area">
@@ -11,12 +62,15 @@
              alt="UG-UTAG carousel slide"
              width="1920"
              height="500"
-             loading="lazy" />
+             loading="eager"
+             fetchpriority="high"
+             decoding="async" />
         <img src="{% static 'website-v2/img/slider/carousel8.jpg' %}"
              alt="UG-UTAG carousel slide"
              width="1920"
              height="500"
-             loading="lazy" />
+             loading="lazy"
+             decoding="async" />
       </div>
     </div>
   </div>
@@ -73,14 +127,6 @@
     </div>
   </div>
   <!--End of Activity Area-->
-  <!--Advert Showcase-->
-  <!-- Show advert here -->
-  <div class="container my-4">
-    <div class="row">
-      <div class="col-12 text-center">{% render_ad_slot 'top' %}</div>
-    </div>
-  </div>
-  <!--End Advert Showcase-->
   <!--About Skill Area Start-->
   <div class="about-skill-area section-padding">
     <div class="container">
@@ -107,14 +153,16 @@
                  alt="About UG-UTAG banner"
                  width="800"
                  height="450"
-                 loading="lazy" />
+                 loading="lazy"
+                 decoding="async"
+                 style="max-width: 100%; height: auto;" />
           </div>
         </div>
       </div>
     </div>
   </div>
   <!--End of About Skill Area-->
-  {% if published_events %}
+  {% if published_events and published_events|length > 0 %}
     <!--Events Area Start-->
     <div class="class-area section-padding">
       <div class="container">
@@ -138,7 +186,9 @@
                        class="img-fluid rounded shadow"
                        width="600"
                        height="360"
-                       loading="lazy" />
+                       loading="lazy"
+                       decoding="async"
+                       style="object-fit: cover; max-width: 100%; height: auto;" />
                   <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
                 </a>
               </div>
@@ -192,7 +242,9 @@
                        alt="{{ image.caption|default:'Gallery image' }}"
                        width="400"
                        height="300"
-                       loading="lazy" />
+                       loading="lazy"
+                       decoding="async"
+                       style="object-fit: cover; width: 100%; height: 100%;" />
                 </a>
                 <div class="gallery-hover-effect">
                   <a class="gallery-icon venobox"
@@ -215,29 +267,24 @@
     </div>
     <!--End of Gallery Fullwidth Area-->
   {% endif %}
-  <!-- Sidebar ad slot (small ad) -->
-  <div class="container my-3">
-    <div class="row">
-      <div class="col-12 col-md-3">{% render_ad_slot 'sidebar' %}</div>
-    </div>
-  </div>
-  <!--Teachers Large Carousel Area Start-->
-  <div class="teachers-column-carousel-area section-padding">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-12">
-          <div class="section-title-wrapper">
-            <div class="section-title">
-              <h3>Our Executive Officers</h3>
-              <p>
-                Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG, advocating for the rights and welfare of our members.
-              </p>
+  {% if executives and executives|length > 0 %}
+    <!--Teachers Large Carousel Area Start-->
+    <div class="teachers-column-carousel-area section-padding">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="section-title-wrapper">
+              <div class="section-title">
+                <h3>Our Executive Officers</h3>
+                <p>
+                  Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG, advocating for the rights and welfare of our members.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="teachers-column-carousel carousel-style-one owl-carousel">
-        {% for executive in executives %}
+        <div class="teachers-column-carousel carousel-style-one owl-carousel">
+          {% for executive in executives %}
           <div class="single-teachers-column text-center">
             <div class="teachers-image-column">
               <a href="#"
@@ -247,7 +294,9 @@
                      alt="Executive Officer: {{ executive.get_full_name }}"
                      width="200"
                      height="200"
-                     loading="lazy">
+                     loading="lazy"
+                     decoding="async"
+                     style="object-fit: cover; width: 100%; height: auto; max-width: 200px;" />
               </a>
             </div>
             <div class="teacher-column-carousel-text">
@@ -278,11 +327,12 @@
               </div>
             </div>
           </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       </div>
     </div>
-  </div>
-  <!--End of Teachers Large Carousel Area-->
+    <!--End of Teachers Large Carousel Area-->
+  {% endif %}
   <!--Aim Start-->
   <div class="service-area section-padding">
     <div class="container">
@@ -335,7 +385,9 @@
                  class="img-fluid"
                  width="300"
                  height="150"
-                 loading="lazy" />
+                 loading="lazy"
+                 decoding="async"
+                 style="max-width: 100%; height: auto;" />
           </div>
         </div>
         <div class="col-lg-4 col-md-4 col-12">
@@ -375,6 +427,216 @@
     </div>
   </div>
   <!--End of Aim Area-->
+  <style>
+    /* Fix logo centering - horizontally and vertically */
+    .service-area .col-md-4:nth-child(2) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .service-image {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 100%;
+      padding: 20px 0;
+    }
+    
+    .service-image img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+    
+    /* Fix hover description visibility - allow full expansion */
+    .single-service-item {
+      min-height: 90px !important;
+      height: auto !important;
+      overflow: visible !important;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .single-service-item:hover {
+      height: auto !important;
+      min-height: 90px !important;
+      padding-bottom: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .single-service-text {
+      overflow: visible !important;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+    }
+    
+    .single-service-text > p {
+      display: none;
+      margin-top: 10px;
+      margin-bottom: 0;
+      line-height: 1.7;
+      color: #555;
+      font-size: 13px;
+      padding: 0 8px;
+      word-wrap: break-word;
+      overflow: visible;
+      white-space: normal;
+      text-align: inherit;
+      max-width: 100%;
+    }
+    
+    .single-service-item:hover .single-service-text > p {
+      display: block !important;
+      animation: fadeIn 0.3s ease;
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Ensure wrapper doesn't clip content */
+    .single-service-item-wrapper {
+      overflow: visible !important;
+      position: relative;
+    }
+    
+    /* Adjust for left column - ensure text area is wide enough */
+    .service-area .col-md-4:first-child .single-service-text {
+      overflow: visible !important;
+      padding-right: 112px;
+      text-align: right;
+    }
+    
+    .service-area .col-md-4:first-child .single-service-item:hover .single-service-text {
+      padding-right: 112px;
+    }
+    
+    /* Adjust for right column - ensure text area is wide enough */
+    .service-area .col-md-4:last-child .single-service-text {
+      overflow: visible !important;
+      padding-left: 112px;
+      text-align: left;
+    }
+    
+    .service-area .col-md-4:last-child .single-service-item:hover .single-service-text {
+      padding-left: 112px;
+    }
+    
+    /* Make sure icons stay in place on hover */
+    .single-service-item:hover .single-service-icon {
+      position: absolute;
+      top: 0;
+    }
+    
+    .service-area .col-md-4:first-child .single-service-item:hover .single-service-icon {
+      right: 0;
+    }
+    
+    .service-area .col-md-4:last-child .single-service-item:hover .single-service-icon {
+      left: 0;
+      right: auto;
+    }
+    
+    /* Ensure service area container allows overflow */
+    .service-area .row {
+      overflow: visible;
+    }
+    
+    .service-area .container {
+      overflow: visible;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 991px) {
+      .service-image {
+        margin: 30px 0;
+        min-height: 200px;
+      }
+      
+      .single-service-item {
+        margin-bottom: 50px;
+      }
+      
+      .service-area .col-md-4:first-child .single-service-text,
+      .service-area .col-md-4:last-child .single-service-text {
+        padding-left: 112px;
+        padding-right: 0;
+        text-align: left;
+      }
+    }
+    
+    @media (max-width: 767px) {
+      .service-image {
+        min-height: 150px;
+      }
+    }
+    
+    /* Performance: Optimize image loading */
+    img[loading="lazy"] {
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    img[loading="lazy"].loaded {
+      opacity: 1;
+    }
+    
+    /* Prevent cumulative layout shift */
+    .single-class-image,
+    .single-blog-image,
+    .teachers-image-column,
+    .gallery-wrapper .single-items {
+      min-height: 200px;
+      background: #f5f5f5;
+    }
+    
+    /* Optimize carousel performance */
+    .owl-carousel .owl-item {
+      will-change: transform;
+      backface-visibility: hidden;
+    }
+  </style>
+  <script>
+    // Lazy load images with intersection observer for better performance
+    document.addEventListener('DOMContentLoaded', function() {
+      const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+      
+      if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver(function(entries, observer) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              const img = entry.target;
+              img.classList.add('loaded');
+              observer.unobserve(img);
+            }
+          });
+        });
+        
+        lazyImages.forEach(function(img) {
+          imageObserver.observe(img);
+        });
+      } else {
+        // Fallback for older browsers
+        lazyImages.forEach(function(img) {
+          img.classList.add('loaded');
+        });
+      }
+    });
+  </script>
   <!--Fun Factor Area Start-->
   <div class="fun-factor-area fun-factor-two">
     <div class="container">
@@ -425,23 +687,24 @@
     </div>
   </div>
   <!--End of Fun Factor Area-->
-  <!--Blog Area Start-->
-  <div class="blog-area blog-two">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-12">
-          <div class="section-title-wrapper title-yellow">
-            <div class="section-title">
-              <h3>Our News</h3>
-              <p>
-                Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.
-              </p>
+  {% if published_news and published_news|length > 0 %}
+    <!--Blog Area Start-->
+    <div class="blog-area blog-two">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="section-title-wrapper title-yellow">
+              <div class="section-title">
+                <h3>Our News</h3>
+                <p>
+                  Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="blog-carousel carousel-style-one owl-carousel">
-        {% for news in published_news %}
+        <div class="blog-carousel carousel-style-one owl-carousel">
+          {% for news in published_news %}
           <div class="single-blog-item overlay-hover">
             <div class="single-blog-image">
               <div class="overlay-effect">
@@ -450,7 +713,9 @@
                        alt="{{ news.title }}"
                        width="400"
                        height="250"
-                       loading="lazy" />
+                       loading="lazy"
+                       decoding="async"
+                       style="object-fit: cover; width: 100%; height: auto;" />
                   <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
                 </a>
               </div>
@@ -466,15 +731,10 @@
               <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
             </div>
           </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       </div>
     </div>
-  </div>
-  <!--End of Blog Area-->
-  <!-- Bottom ad slot (footer area) -->
-  <div class="container my-4">
-    <div class="row">
-      <div class="col-12 text-center">{% render_ad_slot 'bottom' %}</div>
-    </div>
-  </div>
+    <!--End of Blog Area-->
+  {% endif %}
 {% endblock %}

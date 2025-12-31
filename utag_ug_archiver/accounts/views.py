@@ -45,6 +45,10 @@ class LoginView(View):
                 # Check if the user has the permission to access the dashboard
                 if user.has_perm('accounts.view_dashboard'):
                     login(request, user)
+                    # Check if user must change password
+                    if user.must_change_password:
+                        messages.info(request, 'Please change your password to continue.')
+                        return redirect('accounts:change_password_required')
                     messages.success(request, 'Logged in successfully')
                     return redirect('dashboard:dashboard')
                 else:
@@ -112,6 +116,51 @@ class PasswordResetConfirmView(View):
             user = None
         return render(request, 'password_reset_confirm_invalid.html')
         
+
+class ChangePasswordRequiredView(View):
+    """View for forced password change on first login."""
+    template_name = 'change_password_required.html'
+    
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        
+        if not request.user.must_change_password:
+            return redirect('dashboard:dashboard')
+        
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        
+        if not request.user.must_change_password:
+            return redirect('dashboard:dashboard')
+        
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if not new_password or not confirm_password:
+            messages.error(request, 'Both password fields are required.')
+            return render(request, self.template_name)
+        
+        if new_password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, self.template_name)
+        
+        if len(new_password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+            return render(request, self.template_name)
+        
+        # Update password and clear must_change_password flag
+        user = request.user
+        user.set_password(new_password)
+        user.must_change_password = False
+        user.save()
+        
+        messages.success(request, 'Password changed successfully. Please login again.')
+        logout(request)
+        return redirect('accounts:login')
 
 class LogoutView(View):
     def get(self,request):

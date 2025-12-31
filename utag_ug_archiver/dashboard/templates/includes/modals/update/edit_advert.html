@@ -22,12 +22,13 @@
                         <input type="hidden" name="advert_id" value="{{ ad.id }}">
                         <!-- Image Input -->
                         <div class="form-group mb-3">
-                            <label for="imageInput_{{ ad.id }}">Image (900x300 or 300x300 pixels)</label>
+                            <label for="imageInput_{{ ad.id }}">New Image (optional)</label>
                             <input type="file"
                                    class="form-control imageInput"
                                    id="imageInput_{{ ad.id }}"
                                    name="image"
                                    accept="image/*">
+                            <small class="form-text text-muted">Leave empty to keep current image. Recommended size based on selected slot.</small>
                             <span class="errorMessage text-danger"></span>
                         </div>
                         <!-- Current Image -->
@@ -47,13 +48,44 @@
                         <!-- New Image Preview -->
                         <div class="mb-3 newImagePreviewContainer d-none">
                             <h5>New Image Preview</h5>
-                            <img class="newImagePreview img-fluid"
+                            <img class="newImagePreview img-fluid rounded shadow-sm"
                                  src="#"
                                  alt="New Image Preview"
                                  width="600"
                                  height="200"
-                                 loading="lazy" />
+                                 loading="lazy"
+                                 style="max-width: 100%; height: auto;" />
                         </div>
+                        <script>
+                            // Image preview for edit modal
+                            (function() {
+                                var modalId = 'editAdvertisementsModal_{{ ad.id }}';
+                                var modal = document.getElementById(modalId);
+                                if (!modal) return;
+                                
+                                modal.addEventListener('shown.bs.modal', function() {
+                                    var imageInput = modal.querySelector('#imageInput_{{ ad.id }}');
+                                    var previewContainer = modal.querySelector('.newImagePreviewContainer');
+                                    var previewImg = modal.querySelector('.newImagePreview');
+                                    
+                                    if (imageInput && previewContainer && previewImg) {
+                                        imageInput.addEventListener('change', function(e) {
+                                            var file = e.target.files[0];
+                                            if (file) {
+                                                var reader = new FileReader();
+                                                reader.onload = function(e) {
+                                                    previewImg.src = e.target.result;
+                                                    previewContainer.classList.remove('d-none');
+                                                };
+                                                reader.readAsDataURL(file);
+                                            } else {
+                                                previewContainer.classList.add('d-none');
+                                            }
+                                        });
+                                    }
+                                });
+                            })();
+                        </script>
                         <!-- Title -->
                         <div class="form-group mb-3">
                             <label for="titleInput_{{ ad.id }}">Title / CTA</label>
@@ -91,18 +123,28 @@
                                    name="end_date"
                                    value="{{ ad.end|date:'Y-m-d' }}">
                         </div>
-                        <!-- Placements -->
+                        <!-- Slot (single selection) -->
                         <div class="form-group mb-3">
-                            <label for="placementsSelect_{{ ad.id }}">Placements</label>
+                            <label for="slotSelect_{{ ad.id }}">Placement Slot</label>
                             <select class="form-select select2"
-                                    id="placementsSelect_{{ ad.id }}"
-                                    name="placements"
-                                    multiple>
+                                    id="slotSelect_{{ ad.id }}"
+                                    name="slot"
+                                    required>
                                 {% for pl in placements %}
                                     <option value="{{ pl.key }}"
-                                            {% if pl.key == ad.slot.key %}selected{% endif %}>{{ pl.name }}</option>
+                                            {% if pl.key == ad.slot.key %}selected{% endif %}>{{ pl.name }} ({{ pl.key }})</option>
                                 {% endfor %}
                             </select>
+                        </div>
+                        <!-- HTML Content -->
+                        <div class="form-group mb-3">
+                            <label for="htmlContentInput_{{ ad.id }}">HTML Content (optional)</label>
+                            <textarea class="form-control"
+                                      id="htmlContentInput_{{ ad.id }}"
+                                      name="html_content"
+                                      rows="4"
+                                      placeholder="Optional raw HTML for rich creatives; will be used instead of image if provided.">{{ ad.html_content|default:'' }}</textarea>
+                            <small class="form-text text-muted">If provided, HTML content will be displayed instead of the image.</small>
                         </div>
                         <!-- Priority -->
                         <div class="form-group mb-3">
@@ -111,7 +153,10 @@
                                    class="form-control"
                                    id="priorityInput_{{ ad.id }}"
                                    name="priority"
-                                   value="{{ ad.priority }}">
+                                   value="{{ ad.priority }}"
+                                   min="0"
+                                   max="100">
+                            <small class="form-text text-muted">Higher priority ads are shown first when multiple ads are active for the same slot.</small>
                         </div>
                         <!-- Status -->
                         <div class="form-group mb-3">

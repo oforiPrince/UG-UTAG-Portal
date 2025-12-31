@@ -8,11 +8,11 @@
        SIMPLIFIED 2-SCREEN CHAT INTERFACE
        ======================================== */
     
-    /* Main Container */
+    /* Main Container - Match dashboard pages */
     .utag-message-page {
-        background: #f8f9fa;
+        background: transparent;
         min-height: calc(100vh - 160px);
-        padding: 20px;
+        padding: 0;
     }
 
     .utag-chats-container {
@@ -20,8 +20,8 @@
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        max-width: 1000px;
-        margin: 0 auto;
+        max-width: 100%;
+        margin: 0;
     }
 
     /* Header - Simplified with ONE action button */
@@ -84,7 +84,7 @@
     .utag-search-input:focus {
         outline: none;
         border-color: #01004e;
-        box-shadow: 0 0 0 3px rgba(18,140,126,0.1);
+        box-shadow: 0 0 0 3px rgba(1, 0, 78, 0.1);
     }
 
     /* Chat List */
@@ -117,7 +117,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #01004e, #25D366);
+        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -196,7 +196,7 @@
     }
 
     .utag-chat-badge {
-        background: #25D366;
+        background: #01004e;
         color: white;
         font-size: 12px;
         font-weight: 600;
@@ -341,8 +341,8 @@
         }
 
         .utag-chats-container {
-            border-radius: 0;
-            max-height: 100vh;
+            border-radius: 12px;
+            max-height: calc(100vh - 160px);
         }
 
         .utag-chats-header {
@@ -360,8 +360,10 @@
     </style>
 {% endblock my_styles %}
 {% block content %}
-    <div class="utag-message-page">
-        <div class="utag-chats-container">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="utag-message-page">
+                <div class="utag-chats-container">
             <!-- Header -->
             <div class="utag-chats-header">
                 <h1>Messages</h1>
@@ -432,6 +434,8 @@
                     </button>
                 </div>
             {% endif %}
+                </div>
+            </div>
         </div>
     </div>
     <!-- New Chat/Group Modal -->

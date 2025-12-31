@@ -17,6 +17,7 @@ urlpatterns += [
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
+    path('account_management/check-staff-id/', views.CheckStaffIdView.as_view(), name='check_staff_id'),
 ]
 #For executive management
 urlpatterns += [
@@ -53,7 +54,7 @@ urlpatterns += [
     path('galleries/', views.GalleryListView.as_view(), name='gallery'),
     path('galleries/add/', views.GalleryCreateView.as_view(), name='gallery_add'),
     path('galleries/upload-images/', views.ImageUploadView.as_view(), name='gallery_upload_images'),
-    path('galleries/delete/<int:gallery_id>/', views.delete_gallery, name='gallery_delete'),
+    path('galleries/delete/<int:gallery_id>/', views.DeleteGalleryView.as_view(), name='gallery_delete'),
     path('galleries/edit/<int:gallery_id>/', views.EditGalleryView.as_view(), name='gallery_edit'),
     path('galleries/view/<int:gallery_id>/', views.ViewGalleryDetails.as_view(), name='gallery_view'),
     path('images/delete/<int:image_id>/', views.DeleteImageView.as_view(), name='image_delete'),

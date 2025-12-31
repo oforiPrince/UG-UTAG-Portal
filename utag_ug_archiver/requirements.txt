@@ -19,6 +19,7 @@ Django==4.2.6
 django-autoslug==1.9.9
 django-celery-beat==2.8.1
 django-import-export==3.3.3
+django-redis==5.4.0
 django-timezone-field==7.1
 django-tinymce==4.1.0
 djlint==1.36.4

@@ -121,13 +121,21 @@ class AdvertCreateView(PermissionRequiredMixin, View):
             if placements:
                 first = placements[0]
 
-        # Only allow top or bottom placements for now
-        allowed = {'top', 'bottom'}
+        # Allow header, footer placements (professional academic standard)
+        allowed = {'header', 'footer', 'top', 'bottom', 'sidebar'}
         if first and first in allowed:
-            slot_obj, _ = AdSlot.objects.get_or_create(key=first, defaults={'name': first})
+            slot_names = {
+                'header': 'Header Banner',
+                'footer': 'Footer Banner',
+                'top': 'Top Banner',
+                'bottom': 'Bottom Banner',
+                'sidebar': 'Sidebar'
+            }
+            slot_name = slot_names.get(first, first.capitalize())
+            slot_obj, _ = AdSlot.objects.get_or_create(key=first, defaults={'name': slot_name})
         else:
-            # fallback to top slot by default
-            slot_obj, _ = AdSlot.objects.get_or_create(key='top', defaults={'name': 'Top'})
+            # fallback to header slot by default (most professional)
+            slot_obj, _ = AdSlot.objects.get_or_create(key='header', defaults={'name': 'Header Banner', 'width': 970, 'height': 90})
 
         # fallback to any existing AdSlot if none provided; if still none, create a default
         if not slot_obj:
@@ -137,10 +145,13 @@ class AdvertCreateView(PermissionRequiredMixin, View):
 
         # Determine required image size for this slot (prefer explicit slot width/height).
         required_w, required_h = (slot_obj.width, slot_obj.height) if slot_obj else (None, None)
-        # Fallback recommended sizes if slot doesn't define them
+        # Fallback recommended sizes if slot doesn't define them (academic website standards)
         fallback_sizes = {
+            'header': (970, 90),  # Standard header banner for academic sites
+            'footer': (970, 90),  # Standard footer banner
             'top': (1200, 600),
             'bottom': (900, 300),
+            'sidebar': (300, 250),
         }
         if (not required_w or not required_h) and slot_obj and slot_obj.key in fallback_sizes:
             required_w, required_h = fallback_sizes.get(slot_obj.key)
@@ -187,11 +198,11 @@ class AdvertCreateView(PermissionRequiredMixin, View):
 
         # Server-side requirement: if this placement typically needs a desktop image and
         # neither an image nor html_content is provided, reject the create to avoid placeholders.
-        placements_require_desktop = {'top', 'hero', 'bottom'}
+        placements_require_desktop = {'header', 'footer', 'top', 'hero', 'bottom'}
         image_present = bool(processed_image_bytes) or bool(image)
         if slot_obj and slot_obj.key in placements_require_desktop and not image_present and not html_content:
-            messages.error(request, 'Selected placement requires a desktop image or HTML creative. Please upload an image.')
-            logger.warning('Advert create failed: missing required desktop image for slot=%s', slot_obj.key)
+            messages.error(request, 'Selected placement requires an image or HTML creative. Please upload an image.')
+            logger.warning('Advert create failed: missing required image for slot=%s', slot_obj.key)
             return redirect('dashboard:adverts')
 
         # Create advert without relying on passing file directly to create() to avoid file-pointer issues
@@ -380,7 +391,25 @@ class AdvertUpdateView(PermissionRequiredMixin, View):
         advert.title = request.POST.get('title') or advert.title
         advert.priority = int(priority)
         advert.target_url = target_url or advert.target_url
+        html_content = request.POST.get('html_content')
+        if html_content is not None:
+            advert.html_content = html_content.strip() if html_content.strip() else None
         advert.active = (status == 'PUBLISHED') if status else advert.active
+        
+        # Handle image update if provided
+        image = request.FILES.get('image')
+        if image:
+            try:
+                from django.core.files.base import ContentFile
+                image.seek(0)
+                content = image.read()
+                image_name = getattr(image, 'name', None) or f'ad_{advert.pk}.img'
+                advert.image.save(image_name, ContentFile(content), save=False)
+                logger.info('Updated image for advert id=%s', advert.pk)
+            except Exception as e:
+                logger.exception('Failed to update image for advert id=%s: %s', advert.pk, e)
+                messages.warning(request, 'Image update failed, but other changes were saved.')
+        
         advert.save()
 
         # Update slot if placements provided (or slot key via new UI)
@@ -390,8 +419,16 @@ class AdvertUpdateView(PermissionRequiredMixin, View):
             chosen = slot_key.strip()
         elif placements:
             chosen = placements[0]
-        if chosen in {'top', 'bottom'}:
-            slot_obj, _ = AdSlot.objects.get_or_create(key=chosen, defaults={'name': chosen.capitalize()})
+        if chosen in {'header', 'footer', 'top', 'bottom', 'sidebar'}:
+            slot_names = {
+                'header': 'Header Banner',
+                'footer': 'Footer Banner',
+                'top': 'Top Banner',
+                'bottom': 'Bottom Banner',
+                'sidebar': 'Sidebar'
+            }
+            slot_name = slot_names.get(chosen, chosen.capitalize())
+            slot_obj, _ = AdSlot.objects.get_or_create(key=chosen, defaults={'name': slot_name})
             advert.slot = slot_obj
             advert.save()
 

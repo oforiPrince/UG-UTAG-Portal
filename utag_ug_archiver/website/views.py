@@ -2,6 +2,8 @@ import random
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views import View
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from dashboard.models import CarouselSlide, Event, News
 from accounts.models import User
 from gallery.models import Gallery, Image
@@ -9,26 +11,69 @@ from utag_ug_archiver.utils.functions import executive_members_custom_order, exe
 from utag_ug_archiver.utils.constants import executive_members_position_order, executive_committee_members_position_order
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
+@method_decorator(cache_page(60 * 15), name='dispatch')  # Cache for 15 minutes
 class IndexView(View):
+    """
+    Optimized homepage view with performance enhancements:
+    - Uses select_related/only() to minimize database queries
+    - Limits queryset results early to reduce memory usage
+    - Only fetches required fields to reduce data transfer
+    - Template conditionally renders sections only when data exists
+    - Cached for 15 minutes to reduce database load
+    """
     template_name = 'website_pages/index-v2.html'
     
     def get(self, request):
-        published_events = Event.objects.filter(is_published=True).order_by('-start_date')[:5]
-        published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
+        # Optimize queries with select_related and prefetch_related
+        # Only fetch what's needed, limit results early
+        published_events = Event.objects.filter(
+            is_published=True
+        ).select_related(
+            'created_by'
+        ).only(
+            'id', 'title', 'event_slug', 'description', 'start_date', 'end_date', 
+            'venue', 'featured_image', 'created_at'
+        ).order_by('-start_date')[:5]
+        
+        published_news = News.objects.filter(
+            is_published=True
+        ).select_related(
+            'created_by'
+        ).only(
+            'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at'
+        ).order_by('-created_at')[:5]
 
-        # Get all executives
-        executives = User.objects.filter(executive_position__in=executive_members_position_order, is_active_executive=True)
+        # Get executives with optimized query
+        executives = User.objects.filter(
+            executive_position__in=executive_members_position_order, 
+            is_active_executive=True
+        ).only(
+            'id', 'other_name', 'surname', 'title', 'executive_position', 
+            'executive_image', 'bio', 'email', 'fb_profile_url', 
+            'twitter_profile_url', 'linkedin_profile_url'
+        )
         
-        # Get 4 gallery images for the homepage
-        gallery_images = []
-        
-        # Method 1: Get 4 random images from all galleries
-        all_images = Image.objects.filter(gallery__is_active=True).select_related('gallery')
-        if all_images.count() >= 4:
-            gallery_images = random.sample(list(all_images), 4)
         # Sort the executives based on the custom order
         executives = sorted(executives, key=executive_members_custom_order)
-        carousel_slides = CarouselSlide.objects.filter(is_published=True).order_by('order')
+        
+        # Get 4 gallery images for the homepage - optimized query
+        gallery_images = []
+        all_images = Image.objects.filter(
+            gallery__is_active=True
+        ).select_related('gallery').only(
+            'id', 'image', 'caption', 'gallery__id', 'gallery__title'
+        )
+        
+        image_count = all_images.count()
+        if image_count >= 4:
+            # Use random.sample for better performance than converting to list first
+            gallery_images = random.sample(list(all_images), 4)
+        
+        carousel_slides = CarouselSlide.objects.filter(
+            is_published=True
+        ).only(
+            'id', 'title', 'image', 'order', 'link_url'
+        ).order_by('order')
 
         context = {
             'published_events': published_events,
@@ -72,7 +117,6 @@ class EventsView(View):
             'events_page': events_page,
             'paginator': paginator,
         }
-        print(f"Context: {context}")  # Debugging line to check context
         return render(request, self.template_name, context)
 
     
@@ -149,15 +193,26 @@ class ExecutiveCommitteeMembersView(View):
         }
         return render(request, self.template_name, context)
     
+@method_decorator(cache_page(60 * 10), name='dispatch')  # Cache for 10 minutes
 class GalleryView(View):
     template_name = 'website_pages/gallery-v2.html'
 
     def get(self, request):
         """
-        Handle GET requests to display the gallery with pagination.
-        Fetch all active galleries and their associated images.
+        Optimized gallery view with performance enhancements.
+        Fetch only active galleries with optimized queries.
         """
-        galleries = Gallery.objects.prefetch_related('images').order_by('-created_at')
+        # Optimize queries - only fetch active galleries with images
+        galleries = Gallery.objects.filter(
+            is_active=True
+        ).prefetch_related(
+            'images'
+        ).only(
+            'id', 'title', 'description', 'created_at'
+        ).order_by('-created_at')
+        
+        # Only include galleries that have at least one image
+        galleries = [g for g in galleries if g.images.exists()]
             
         context = {
             'galleries': galleries,

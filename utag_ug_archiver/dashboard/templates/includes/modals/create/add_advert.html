@@ -32,33 +32,73 @@
                    class="d-flex flex-wrap gap-2"
                    aria-describedby="placementsHelp">
                 {% for pl in placements %}
-                  {% if pl.key == 'top' or pl.key == 'bottom' %}
-                    {% with w=pl.recommended_width h=pl.recommended_height %}
-                      <label class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
-                             title="{{ pl.name }}">
-                        <input type="radio"
-                               name="slot"
-                               value="{{ pl.key }}"
-                               data-width="{{ w|default_if_none:'' }}"
-                               data-height="{{ h|default_if_none:'' }}"
-                               class="form-check-input me-2 placement-checkbox">
-                        <div class="text-start">
-                          <div class="fw-semibold small">{{ pl.name }}</div>
-                          <div class="small text-muted">
-                            {% if w and h %}
-                              {{ w }}×{{ h }}
-                            {% else %}
-                              Flexible
+                  {% if pl.key == 'header' or pl.key == 'footer' or pl.key == 'top' or pl.key == 'bottom' or pl.key == 'sidebar' %}
+                    {% with w=pl.width h=pl.height %}
+                      {% if not w %}
+                        {% if pl.key == 'header' or pl.key == 'footer' %}
+                          {% with w=970 h=90 %}
+                            <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                                   title="{{ pl.name }} - Recommended for academic websites">
+                              <input type="radio"
+                                     name="slot"
+                                     value="{{ pl.key }}"
+                                     data-width="{{ w }}"
+                                     data-height="{{ h }}"
+                                     class="form-check-input me-2 placement-checkbox">
+                              <div class="text-start">
+                                <div class="fw-semibold small">{{ pl.name }}</div>
+                                <div class="small text-muted">{{ w }}×{{ h }}px</div>
+                                {% if pl.key == 'header' or pl.key == 'footer' %}
+                                  <div class="small text-success"><i class="fa fa-check-circle"></i> Recommended</div>
+                                {% endif %}
+                              </div>
+                            </label>
+                          {% endwith %}
+                        {% else %}
+                          <label class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                                 title="{{ pl.name }}">
+                            <input type="radio"
+                                   name="slot"
+                                   value="{{ pl.key }}"
+                                   data-width="{{ w|default_if_none:'' }}"
+                                   data-height="{{ h|default_if_none:'' }}"
+                                   class="form-check-input me-2 placement-checkbox">
+                            <div class="text-start">
+                              <div class="fw-semibold small">{{ pl.name }}</div>
+                              <div class="small text-muted">
+                                {% if w and h %}
+                                  {{ w }}×{{ h }}px
+                                {% else %}
+                                  Flexible
+                                {% endif %}
+                              </div>
+                            </div>
+                          </label>
+                        {% endif %}
+                      {% else %}
+                        <label class="btn btn-outline-{% if pl.key == 'header' or pl.key == 'footer' %}primary{% else %}secondary{% endif %} btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                               title="{{ pl.name }}{% if pl.key == 'header' or pl.key == 'footer' %} - Recommended for academic websites{% endif %}">
+                          <input type="radio"
+                                 name="slot"
+                                 value="{{ pl.key }}"
+                                 data-width="{{ w }}"
+                                 data-height="{{ h }}"
+                                 class="form-check-input me-2 placement-checkbox">
+                          <div class="text-start">
+                            <div class="fw-semibold small">{{ pl.name }}</div>
+                            <div class="small text-muted">{{ w }}×{{ h }}px</div>
+                            {% if pl.key == 'header' or pl.key == 'footer' %}
+                              <div class="small text-success"><i class="fa fa-check-circle"></i> Recommended</div>
                             {% endif %}
                           </div>
-                        </div>
-                      </label>
+                        </label>
+                      {% endif %}
                     {% endwith %}
                   {% endif %}
                 {% endfor %}
               </div>
               <div id="placementsHelp" class="form-text">
-                Select a placement by clicking a tile. Recommended size shown when available.
+                <strong>Academic Website Best Practices:</strong> Header and Footer banners are recommended for professional academic websites. They are non-intrusive and maintain content readability.
               </div>
             </div>
             <div class="row">
@@ -230,11 +270,12 @@
 
     const placementsRequireDesktop = new Set(['top','hero','bottom']);
     const fallbackSizes = {
+      header: {w:970, h:90},  // Academic website standard
+      footer: {w:970, h:90},  // Academic website standard
       top: {w:1200, h:600},
-      sidebar: {w:600, h:450},
+      sidebar: {w:300, h:250},
       bottom: {w:900, h:300},
-      hero: {w:1200, h:600},
-      footer: {w:1200, h:200}
+      hero: {w:1200, h:600}
     };
 
     function updateRecommendedAndUI() {

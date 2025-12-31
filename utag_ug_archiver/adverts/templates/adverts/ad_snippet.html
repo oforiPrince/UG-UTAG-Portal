@@ -1,8 +1,45 @@
 {% comment %}Inclusion snippet used by {% render_ad_slot %}{% endcomment %}
+{% load static %}
 {% if ad %}
-    <div class="ad-slot ad-slot-{{ ad.slot.key }}">
+    <div class="ad-slot ad-slot-{{ ad.slot.key }}" data-ad-id="{{ ad.pk }}">
         {% if ad.html_content %}
-            {{ ad.html_content|safe }}
+            <div class="ad-html-content">
+                {{ ad.html_content|safe }}
+            </div>
+            <script>
+                // Track impression for HTML ads
+                (function() {
+                    var adId = {{ ad.pk }};
+                    var impressionUrl = "{% url 'adverts:impression' ad.pk %}";
+                    var tracked = sessionStorage.getItem('ad_impression_' + adId);
+                    
+                    // Get CSRF token from cookie or meta tag
+                    function getCSRFToken() {
+                        var token = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                        if (token) return token;
+                        var cookies = document.cookie.split(';');
+                        for (var i = 0; i < cookies.length; i++) {
+                            var cookie = cookies[i].trim();
+                            if (cookie.startsWith('csrftoken=')) {
+                                return cookie.substring('csrftoken='.length);
+                            }
+                        }
+                        return '';
+                    }
+                    
+                    if (!tracked) {
+                        fetch(impressionUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCSRFToken(),
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }).catch(function() {});
+                        sessionStorage.setItem('ad_impression_' + adId, '1');
+                    }
+                })();
+            </script>
         {% else %}
             <a href="{% url 'adverts:click' pk=ad.pk %}"
                target="_blank"
@@ -10,20 +47,185 @@
                class="ad-link advertisement-link"
                data-ad-id="{{ ad.pk }}"
                data-impression-url="{% url 'adverts:impression' ad.pk %}"
-               aria-label="{{ ad.title }}">
+               aria-label="{{ ad.title|default:'Advertisement' }}">
                 {% if ad.get_image_url %}
                     <img src="{{ ad.get_image_url }}"
-                         alt="{{ ad.title }}"
-                         class="ad-image"
+                         alt="{{ ad.title|default:'Advertisement' }}"
+                         class="ad-image img-fluid"
                          loading="lazy"
+                         decoding="async"
                          {% if ad.slot and ad.slot.width %}width="{{ ad.slot.width }}"{% endif %}
-                         {% if ad.slot and ad.slot.height %}height="{{ ad.slot.height }}"{% endif %} />
+                         {% if ad.slot and ad.slot.height %}height="{{ ad.slot.height }}"{% endif %}
+                         style="max-width: 100%; height: auto; display: block;" />
                 {% else %}
-                    <div class="ad-placeholder">{{ ad.title }}</div>
+                    <div class="ad-placeholder p-3 text-center bg-light border rounded">
+                        <i class="fa fa-image fa-2x text-muted mb-2"></i>
+                        <div class="small text-muted">{{ ad.title|default:'Advertisement' }}</div>
+                    </div>
                 {% endif %}
             </a>
+            <script>
+                // Track impression when ad becomes visible
+                (function() {
+                    var adEl = document.querySelector('.ad-slot[data-ad-id="{{ ad.pk }}"]');
+                    if (!adEl) return;
+                    
+                    var adId = {{ ad.pk }};
+                    var impressionUrl = "{% url 'adverts:impression' ad.pk %}";
+                    var tracked = sessionStorage.getItem('ad_impression_' + adId);
+                    
+                    // Get CSRF token from cookie or meta tag
+                    function getCSRFToken() {
+                        var token = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                        if (token) return token;
+                        var cookies = document.cookie.split(';');
+                        for (var i = 0; i < cookies.length; i++) {
+                            var cookie = cookies[i].trim();
+                            if (cookie.startsWith('csrftoken=')) {
+                                return cookie.substring('csrftoken='.length);
+                            }
+                        }
+                        return '';
+                    }
+                    
+                    if (!tracked && 'IntersectionObserver' in window) {
+                        var observer = new IntersectionObserver(function(entries) {
+                            entries.forEach(function(entry) {
+                                if (entry.isIntersecting) {
+                                    // Ad is visible, track impression
+                                    fetch(impressionUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRFToken': getCSRFToken(),
+                                            'Content-Type': 'application/json'
+                                        },
+                                        credentials: 'same-origin'
+                                    }).catch(function() {});
+                                    sessionStorage.setItem('ad_impression_' + adId, '1');
+                                    observer.unobserve(entry.target);
+                                }
+                            });
+                        }, {
+                            threshold: 0.5 // Track when 50% of ad is visible
+                        });
+                        observer.observe(adEl);
+                    } else if (!tracked) {
+                        // Fallback for browsers without IntersectionObserver
+                        fetch(impressionUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCSRFToken(),
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }).catch(function() {});
+                        sessionStorage.setItem('ad_impression_' + adId, '1');
+                    }
+                })();
+            </script>
         {% endif %}
     </div>
+    <style>
+        /* Professional Academic Ad Styling */
+        .ad-slot {
+            margin: 0;
+            text-align: center;
+            position: relative;
+        }
+        
+        /* Header Banner Ad */
+        .header-ad-wrapper .ad-slot,
+        .ad-slot-header {
+            padding: 8px 0;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        /* Footer Banner Ad */
+        .footer-ad-wrapper .ad-slot,
+        .ad-slot-footer {
+            padding: 12px 0;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            margin-bottom: 0;
+        }
+        
+        /* Advertisement Label for Transparency */
+        .ad-slot::before {
+            content: 'Advertisement';
+            display: block;
+            font-size: 10px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .ad-slot .ad-link {
+            display: inline-block;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+            max-width: 100%;
+        }
+        
+        .ad-slot .ad-link:hover {
+            opacity: 0.85;
+        }
+        
+        .ad-slot .ad-image {
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Header banner sizing (728x90 or 970x90 standard) */
+        .header-ad-wrapper .ad-slot .ad-image {
+            max-height: 90px;
+            width: auto;
+        }
+        
+        /* Footer banner sizing */
+        .footer-ad-wrapper .ad-slot .ad-image {
+            max-height: 100px;
+            width: auto;
+        }
+        
+        /* HTML Content Ads */
+        .ad-slot .ad-html-content {
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-ad-wrapper .ad-slot,
+            .footer-ad-wrapper .ad-slot {
+                padding: 6px 0;
+            }
+            
+            .header-ad-wrapper .ad-slot .ad-image {
+                max-height: 60px;
+            }
+            
+            .footer-ad-wrapper .ad-slot .ad-image {
+                max-height: 80px;
+            }
+        }
+        
+        /* Ensure ads don't break layout */
+        .ad-slot {
+            min-height: 0;
+        }
+        
+        /* Hide placeholder when no ad */
+        .ad-slot:empty {
+            display: none;
+        }
+    </style>
 {% else %}
     <!-- no ad for this slot -->
 {% endif %}

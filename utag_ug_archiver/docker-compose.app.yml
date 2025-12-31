@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
-    command: gunicorn utag_ug_archiver.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn utag_ug_archiver.wsgi:application --config gunicorn_config.py
     ports:
       - "${WEB_PORT:-8000}:8000"
     volumes:
@@ -37,6 +37,11 @@ services:
       - redis
       - db
     restart: unless-stopped
+    environment:
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+      - GUNICORN_WORKER_CLASS=${GUNICORN_WORKER_CLASS:-sync}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-60}
+      - GUNICORN_MAX_REQUESTS=${GUNICORN_MAX_REQUESTS:-1000}
 
   worker:
     build:
