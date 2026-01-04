@@ -49,7 +49,7 @@ class IndexView(View):
             is_active_executive=True
         ).only(
             'id', 'other_name', 'surname', 'title', 'executive_position', 
-            'executive_image', 'bio', 'email', 'fb_profile_url', 
+            'executive_image', 'email', 'fb_profile_url', 
             'twitter_profile_url', 'linkedin_profile_url'
         )
         

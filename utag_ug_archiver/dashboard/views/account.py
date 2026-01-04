@@ -1,6 +1,7 @@
 import logging
 import random
 import string
+import csv
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -12,7 +13,7 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from accounts.models import User, School, College, Department
 from dashboard.models import Announcement, Document, Notification
@@ -288,6 +289,32 @@ class UploadMemberData(PermissionRequiredMixin, View):
         else:
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+class OrgReferenceCSVView(PermissionRequiredMixin, View):
+    """Download a reference CSV of School/College/Department combos."""
+
+    permission_required = 'accounts.view_member'
+
+    @method_decorator(MustLogin)
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="org_units_reference.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['School', 'College', 'Department'])
+
+        departments = (
+            Department.objects.select_related('college__school')
+            .order_by('college__school__name', 'college__name', 'name')
+        )
+
+        for dept in departments:
+            school_name = dept.college.school.name if dept.college and dept.college.school else ''
+            college_name = dept.college.name if dept.college else ''
+            writer.writerow([school_name, college_name, dept.name])
+
+        return response
 
 class MemberListView(PermissionRequiredMixin, View):
     permission_required = 'accounts.view_member'

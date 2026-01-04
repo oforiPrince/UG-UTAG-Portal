@@ -3,7 +3,7 @@ import os
 import secrets
 import random
 import string
-from accounts.models import User
+from accounts.models import User, School, College, Department
 from accounts.signals import send_email_with_retry
 from utag_ug_archiver.utils.constants import executive_members_position_order, executive_committee_members_position_order
 from django.http import HttpResponseRedirect
@@ -42,6 +42,21 @@ def ensure_staff_id(user):
     
     return user.staff_id
 
+
+def _normalize_value(value):
+    """Trim whitespace and turn blank/NaN-like values into None."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        # if value is not a pandas-aware type, ignore
+        pass
+
+    text = str(value).strip()
+    return text if text else None
+
 # Create a custom sorting function based on the order
 def executive_members_custom_order(executive):
     return executive_members_position_order.index(executive.executive_position)
@@ -50,29 +65,32 @@ def executive_committee_members_custom_order(executive):
     return executive_committee_members_position_order.index(executive.executive_position)
 
 
-# Email sending disabled - users now use staff_id as temporary password
-# def send_credentials_email(user, raw_password):
-#         try:
-#             email_subject = 'Account Created'
-#             from_email = settings.EMAIL_HOST_USER
-#             email_body = render_to_string('emails/account_credentials.html', {
-#                 'other_name': getattr(user, 'other_name', ''),
-#                 'surname': getattr(user, 'surname', ''),
-#                 'email': user.email,
-#                 'password': raw_password
-#             })
-#             email = EmailMessage(
-#                 email_subject,
-#                 email_body,
-#                 from_email,
-#                 [user.email]
-#             )
-#             print(f'User email: {user.email} and password: {raw_password}')
-#             email.content_subtype = "html"
-#             send_email_with_retry(email)
-#             print('Email sent')
-#         except Exception as e:
-#             logger.error(f'Error sending email to {user.email}: {e}')
+def send_credentials_email(user, raw_password):
+        """Send account credentials to a user via email.
+
+        This keeps Celery task imports satisfied and reuses the existing
+        retry-aware email helper. If email sending fails, the error is logged.
+        """
+        try:
+            email_subject = 'Account Created'
+            from_email = settings.EMAIL_HOST_USER
+            email_body = render_to_string('emails/account_credentials.html', {
+                'other_name': getattr(user, 'other_name', ''),
+                'surname': getattr(user, 'surname', ''),
+                'email': user.email,
+                'password': raw_password
+            })
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                from_email,
+                [user.email]
+            )
+            email.content_subtype = "html"
+            send_email_with_retry(email)
+            logger.info('Credentials email queued for %s', user.email)
+        except Exception as e:
+            logger.error(f'Error sending credentials email to {user.email}: {e}')
             
 def send_reset_password_email(user, reset_url):
         try:
@@ -181,11 +199,6 @@ def process_bulk_members(request, file):
         messages.error(request, 'Invalid CSV file. Please ensure it is properly formatted.')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-    # Check for NaN values and fill them or raise an error
-    if df.isnull().values.any():
-        messages.error(request, 'The file contains missing values. Please fill all the required fields.')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    
     rename_columns = {
         "Title": "title",
         "First Name": "first_name",
@@ -194,7 +207,9 @@ def process_bulk_members(request, file):
         "Gender": "gender",
         "Email": "email",
         "Phone Number": "phone_number",
-        "Department": "department"
+        "Department": "department",
+        "College": "college",
+        "School": "school",
     }
     
     # Handle Staff ID if present in CSV
@@ -204,27 +219,71 @@ def process_bulk_members(request, file):
 
     df.rename(columns=rename_columns, inplace=True)
 
+    required_fields = ['title', 'other_name', 'surname', 'gender', 'email', 'department']
+    missing_required_columns = [col for col in required_fields if col not in df.columns]
+    if missing_required_columns:
+        messages.error(request, f"Missing required column(s): {', '.join(missing_required_columns)}. Please use the sample CSV format.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    if df[required_fields].isnull().values.any():
+        messages.error(request, 'The file contains missing values in required columns (Title, Other Name, Last Name, Gender, Email, Department). Please fill them and try again.')
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    unmatched_departments = set()
+    processed = 0
+    skipped = 0
+
     try:
         for member in df.itertuples(index=False):
-            # Get staff_id from CSV if available, otherwise None
-            csv_staff_id = getattr(member, 'staff_id', None) if hasattr(member, 'staff_id') else None
-            
+            # Normalize incoming values
+            title = _normalize_value(getattr(member, 'title', None))
+            other_name = _normalize_value(getattr(member, 'other_name', None)) or _normalize_value(getattr(member, 'first_name', None))
+            surname = _normalize_value(getattr(member, 'surname', None)) or _normalize_value(getattr(member, 'last_name', None))
+            gender = _normalize_value(getattr(member, 'gender', None))
+            email = _normalize_value(getattr(member, 'email', None))
+            phone_number = _normalize_value(getattr(member, 'phone_number', None))
+            dept_name = _normalize_value(getattr(member, 'department', None))
+            college_name = _normalize_value(getattr(member, 'college', None))
+            school_name = _normalize_value(getattr(member, 'school', None))
+            csv_staff_id = _normalize_value(getattr(member, 'staff_id', None)) if hasattr(member, 'staff_id') else None
+
             # Validate staff_id uniqueness if provided
-            if csv_staff_id:
-                if User.objects.filter(staff_id=csv_staff_id).exclude(email=member.email).exists():
-                    logger.warning(f"Staff ID {csv_staff_id} already exists for another user. Skipping {member.email}")
-                    continue
-            
+            if csv_staff_id and User.objects.filter(staff_id=csv_staff_id).exclude(email=email).exists():
+                logger.warning(f"Staff ID {csv_staff_id} already exists for another user. Skipping {email}")
+                skipped += 1
+                continue
+
+            # Resolve department (with optional college/school hints)
+            department_obj = None
+            if dept_name:
+                dept_qs = Department.objects.filter(name__iexact=dept_name)
+                if college_name:
+                    dept_qs = dept_qs.filter(college__name__iexact=college_name)
+                if school_name:
+                    dept_qs = dept_qs.filter(college__school__name__iexact=school_name)
+
+                department_obj = dept_qs.first()
+
+            if not department_obj:
+                unmatched_departments.add(dept_name or 'Unknown department')
+                skipped += 1
+                continue
+
+            college_obj = department_obj.college
+            school_obj = college_obj.school if college_obj else None
+
             # Create or update the user
             user, created = User.objects.update_or_create(
-                email=member.email,
+                email=email,
                 defaults={
-                    'title': member.title,
-                    'other_name': member.other_name,
-                    'surname': getattr(member, 'surname', member.last_name if hasattr(member, 'last_name') else ''),
-                    'gender': member.gender,
-                    'phone_number': member.phone_number,
-                    'department': member.department,
+                    'title': title,
+                    'other_name': other_name,
+                    'surname': surname or '',
+                    'gender': gender,
+                    'phone_number': phone_number,
+                    'department': department_obj,
+                    'college': college_obj,
+                    'school': school_obj,
                     'staff_id': csv_staff_id if csv_staff_id else None,
                     'created_from_dashboard': True,
                     'created_by': request.user,
@@ -240,8 +299,12 @@ def process_bulk_members(request, file):
             
             # Add the user to the Member group
             user.groups.add(Group.objects.get(name='Member'))
+            processed += 1
 
-        messages.success(request, f'{len(df)} member(s) processed successfully!')
+        if processed:
+            messages.success(request, f'{processed} member(s) processed successfully!')
+        if skipped:
+            messages.warning(request, f'{skipped} row(s) skipped because the Department name did not match existing records: {", ".join(sorted(unmatched_departments))}')
     except Exception as e:
         messages.error(request, f'Error during import: {e}')
     

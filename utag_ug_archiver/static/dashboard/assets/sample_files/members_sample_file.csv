@@ -1,2 +1,3 @@
-﻿Title,First Name,Other Name,Last Name,Gender,Email,Phone Number,Department
-Mrs.,Esther,Esi,Nita,Femal,estheresit@gmail.com,559991163,Computer Science
+﻿Title,Other Name,Last Name,Gender,Email,Phone Number,Department,College,School,Staff ID
+Dr.,Akwasi,Mensah,Male,akwasi.mensah@ug.edu.gh,233201234567,Computer Science,College of Basic and Applied Sciences,University of Ghana,CS12345
+Mrs.,Abena,Asante,Female,abena.asante@ug.edu.gh,233241112222,Accounting,University of Ghana Business School,University of Ghana,AC98765
