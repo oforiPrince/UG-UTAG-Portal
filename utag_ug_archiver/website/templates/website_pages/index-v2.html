@@ -63,6 +63,15 @@
       rotate: none;
       animation: none !important;
     }
+
+    /* Executive carousel: remove gray backgrounds */
+    .teachers-column-carousel-area,
+    .teachers-column-carousel,
+    .teachers-column-carousel .owl-stage-outer,
+    .teachers-column-carousel .owl-item,
+    .teachers-column-carousel .single-teachers-column {
+      background: transparent !important;
+    }
   </style>
 {% endblock extra_head %}
 {% block content %}
@@ -302,13 +311,10 @@
               <a href="#"
                  title="View executive profile"
                  aria-label="View profile of {{ executive.get_full_name }}">
-                <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
-                     alt="Executive Officer: {{ executive.get_full_name }}"
-                     width="200"
-                     height="200"
-                     loading="lazy"
-                     decoding="async"
-                     style="object-fit: cover; width: 100%; height: auto; max-width: 200px;" />
+       <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
+         alt="Executive Officer: {{ executive.get_full_name }}"
+         loading="lazy"
+         decoding="async" />
               </a>
             </div>
             <div class="teacher-column-carousel-text">
