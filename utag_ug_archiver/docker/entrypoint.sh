@@ -21,7 +21,12 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
 fi
 
 if [ "${RUN_COLLECTSTATIC:-1}" = "1" ]; then
-    python manage.py collectstatic --noinput
+    python manage.py collectstatic --noinput --clear
+fi
+
+# Clear cache on startup (optional, can be disabled via env var)
+if [ "${CLEAR_CACHE_ON_START:-0}" = "1" ]; then
+    python manage.py shell -c "from django.core.cache import cache; cache.clear()" || true
 fi
 
 exec "$@"

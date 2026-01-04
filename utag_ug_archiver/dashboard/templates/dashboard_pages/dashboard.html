@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}
     {% if user.is_authenticated %}
-        {% if is_admin %}
+        {% if is_admin or user.is_superuser %}
             Admin
         {% elif is_executive %}
             Executive

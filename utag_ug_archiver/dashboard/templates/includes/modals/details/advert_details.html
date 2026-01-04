@@ -35,26 +35,48 @@
                 <strong>Target URL:</strong> <a href="{{ ad.target_url }}" target="_blank">{{ ad.target_url }}</a>
               </p>
               <p>
-                <strong>Start Date:</strong> {{ ad.start }}
+                <strong>Start Date:</strong> {{ ad.start|date:"d M Y, H:i"|default:"Not set" }}
               </p>
               <p>
-                <strong>End Date:</strong>
-                {% if ad.end %}
-                  {{ ad.end }}
+                <strong>End Date:</strong> {{ ad.end|date:"d M Y, H:i"|default:"Not set" }}
+              </p>
+              <p>
+                <strong>Active:</strong>
+                {% if ad.active %}
+                  <span class="badge bg-success">Yes</span>
                 {% else %}
-                  N/A
+                  <span class="badge bg-secondary">No</span>
                 {% endif %}
               </p>
+              {% if ad.html_content %}
+                <p>
+                  <strong>HTML Content:</strong> <span class="badge bg-info">Yes</span>
+                </p>
+              {% endif %}
             </div>
             <div class="col-md-6">
               <p>
                 <strong>Status:</strong> {{ ad.get_status_display }}
               </p>
               <p>
-                <strong>Clicks:</strong> {{ ad.clicks }}
+                <strong>Impressions:</strong> {{ ad.impressions|default:0 }}
               </p>
               <p>
-                <strong>Created At:</strong> {{ ad.created_at }}
+                <strong>Clicks:</strong> {{ ad.clicks|default:0 }}
+              </p>
+              <p>
+                <strong>CTR:</strong>
+                {% if ad.impressions > 0 %}
+                  {% widthratio ad.clicks ad.impressions 100 %}%
+                {% else %}
+                  N/A
+                {% endif %}
+              </p>
+              <p>
+                <strong>Priority:</strong> {{ ad.priority }}
+              </p>
+              <p>
+                <strong>Created At:</strong> {{ ad.created_at|date:"d M Y, H:i" }}
               </p>
               <p>
                 <strong>Updated At:</strong> {{ ad.updated_at }}

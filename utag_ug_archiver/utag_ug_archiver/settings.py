@@ -34,7 +34,17 @@ def _env_list(name: str, default=None):
     return [item.strip() for item in raw.split(',') if item.strip()]
 
 
-ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1']) or ['*']
+# Load allowed hosts from environment. Support either DJANGO_ALLOWED_HOSTS or ALLOWED_HOSTS
+# Value should be a comma separated list, e.g. DJANGO_ALLOWED_HOSTS=197.255.126.246,example.com
+allowed_from_django = _env_list('DJANGO_ALLOWED_HOSTS')
+allowed_from_generic = _env_list('ALLOWED_HOSTS')
+if allowed_from_django:
+    ALLOWED_HOSTS = allowed_from_django
+elif allowed_from_generic:
+    ALLOWED_HOSTS = allowed_from_generic
+else:
+    # sane default for development
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -171,6 +181,10 @@ else:
 conn_max_age = os.environ.get('DB_CONN_MAX_AGE')
 if conn_max_age:
     DATABASES['default']['CONN_MAX_AGE'] = int(conn_max_age)
+else:
+    # Default connection pooling for production
+    if not DEBUG:
+        DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
 
 
 # Password validation
@@ -280,6 +294,101 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
+# Cache Configuration
+try:
+    import django_redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_CACHE_URL', 'redis://localhost:6379/2'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'IGNORE_EXCEPTIONS': True,  # Don't fail if Redis is unavailable
+            },
+            'KEY_PREFIX': 'utag_ug',
+            'TIMEOUT': 300,  # 5 minutes default timeout
+        }
+    }
+except ImportError:
+    # Fallback to local memory cache if django-redis is not installed
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Session caching for better performance
+if not DEBUG:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+# Template caching for production
+if not DEBUG:
+    TEMPLATES[0]['OPTIONS']['loaders'] = [
+        ('django.template.loaders.cached.Loader', [
+            'django.template.loaders.filesystem.Loader',
+            'django.template.loaders.app_directories.Loader',
+        ]),
+    ]
+
+# WhiteNoise configuration for production
+if not DEBUG:
+    WHITENOISE_USE_FINDERS = False
+    WHITENOISE_AUTOREFRESH = False
+    WHITENOISE_MANIFEST_STRICT = True
+    # Add max-age for static files
+    WHITENOISE_MAX_AGE = 31536000  # 1 year
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', default=True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
 csrf_trusted_origins = _env_list('CSRF_TRUSTED_ORIGINS')
 if csrf_trusted_origins:
     CSRF_TRUSTED_ORIGINS = csrf_trusted_origins
+
+# Performance optimizations
+if not DEBUG:
+    # Disable admin documentation in production
+    ADMINS = []
+    
+    # Optimize logging
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'django.db.backends': {
+                'handlers': ['console'],
+                'level': 'WARNING',
+                'propagate': False,
+            },
+        },
+    }

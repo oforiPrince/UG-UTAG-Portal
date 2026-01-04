@@ -23,11 +23,25 @@ class UnifiedConversationView(LoginRequiredMixin, View):
     template_name = 'chat/simple_conversation.html'
 
     def get_context(self, request, chat_type, pk):
-        """Get context data for the conversation"""
+        """Get context data for the conversation
+        Security: Validates chat_type, pk, and user access before returning context
+        """
+        # Security: Validate chat_type
+        if chat_type not in ['direct', 'group']:
+            raise Http404('Invalid chat type')
+        
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid ID')
+        
         context = {'chat_type': chat_type}
         
         if chat_type == 'direct':
             thread = get_object_or_404(ChatThread, pk=pk)
+            
+            # Security: Ensure user is participant
             if not thread.is_participant(request.user):
                 raise Http404('You do not have access to this conversation.')
             
@@ -43,13 +57,15 @@ class UnifiedConversationView(LoginRequiredMixin, View):
             
         elif chat_type == 'group':
             group = get_object_or_404(ChatGroup, pk=pk)
-            if not group.members.filter(id=request.user.id).exists():
+            
+            # Security: Ensure user is a group member
+            if not group.is_member(request.user):
                 raise Http404('You are not a member of this group.')
             
             # Mark messages as read - add user to read_by for unread messages
             unread_messages = group.messages.exclude(sender=request.user).exclude(read_by=request.user)
             for msg in unread_messages:
-                msg.read_by.add(request.user)
+                msg.mark_read_for(request.user)
             
             context.update({
                 'group': group,
@@ -65,41 +81,84 @@ class UnifiedConversationView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request, chat_type, pk):
-        """Handle POST request (sending messages)"""
+        """Handle POST request (sending messages)
+        Security: Validates chat_type, pk, user access, message content, and attachment size
+        """
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        # Security: Validate chat_type
+        if chat_type not in ['direct', 'group']:
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': 'Invalid chat type'}, status=400)
+            raise Http404('Invalid chat type')
+        
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': 'Invalid ID'}, status=400)
+            raise Http404('Invalid ID')
         
         if chat_type == 'direct':
             thread = get_object_or_404(ChatThread, pk=pk)
+            
+            # Security: Ensure user is participant
             if not thread.is_participant(request.user):
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
                 raise Http404('You do not have access to this conversation.')
             
             form = DirectMessageForm(request.POST, request.FILES)
             if form.is_valid():
+                # Security: Validate message length
+                body = form.cleaned_data['body'].strip()
+                if len(body) > 2000:
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'error': 'Message too long'}, status=400)
+                    from django.contrib import messages
+                    messages.error(request, 'Message too long')
+                    return render(request, self.template_name, self.get_context(request, chat_type, pk))
+                
                 message = Message(thread=thread, sender=request.user)
-                message.set_plaintext(form.cleaned_data['body'])
+                message.set_plaintext(body)
                 message.save()
 
-                # handle optional attachment
+                # Security: Handle optional attachment with validation
                 attachment = form.cleaned_data.get('attachment')
                 attachments_info = []
                 if attachment:
-                    # server-side size check
+                    # Security: Server-side size check
                     if isinstance(attachment, UploadedFile) and attachment.size > MAX_ATTACHMENT_SIZE:
                         if is_ajax:
-                            return JsonResponse({'success': False, 'error': 'Attachment too large'}, status=400)
-                        messages.error(request, 'Attachment too large')
+                            return JsonResponse({'success': False, 'error': f'Attachment too large. Maximum size is {MAX_ATTACHMENT_SIZE // (1024*1024)}MB'}, status=400)
+                        from django.contrib import messages
+                        messages.error(request, f'Attachment too large. Maximum size is {MAX_ATTACHMENT_SIZE // (1024*1024)}MB')
                         return render(request, self.template_name, self.get_context(request, chat_type, pk))
-                    att = MessageAttachment(message=message, filename=attachment.name, content_type=attachment.content_type)
-                    data = attachment.read()
-                    att.set_content(data)
-                    att.save()
-                    attachments_info.append({
-                        'id': att.id,
-                        'filename': att.filename,
-                        'size': att.size,
-                        'url': att.download_url(),
-                        'content_type': att.content_type,
-                    })
+                    
+                    # Security: Validate file type (optional - can be enhanced)
+                    # Security: Sanitize filename
+                    import os
+                    safe_filename = os.path.basename(attachment.name)
+                    
+                    try:
+                        att = MessageAttachment(message=message, filename=safe_filename, content_type=attachment.content_type or 'application/octet-stream')
+                        data = attachment.read()
+                        att.set_content(data)
+                        att.save()
+                        attachments_info.append({
+                            'id': att.id,
+                            'filename': att.filename,
+                            'size': att.size,
+                            'url': att.download_url(),
+                            'content_type': att.content_type,
+                        })
+                    except Exception as e:
+                        if is_ajax:
+                            return JsonResponse({'success': False, 'error': 'Failed to save attachment'}, status=500)
+                        from django.contrib import messages
+                        messages.error(request, 'Failed to save attachment')
+                        return render(request, self.template_name, self.get_context(request, chat_type, pk))
                 
                 if is_ajax:
                     return JsonResponse({
@@ -126,34 +185,62 @@ class UnifiedConversationView(LoginRequiredMixin, View):
                 
         elif chat_type == 'group':
             group = get_object_or_404(ChatGroup, pk=pk)
-            if not group.members.filter(id=request.user.id).exists():
+            
+            # Security: Ensure user is a group member
+            if not group.is_member(request.user):
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
                 raise Http404('You are not a member of this group.')
             
             form = GroupMessageForm(request.POST, request.FILES)
             if form.is_valid():
+                # Security: Validate message length
+                body = form.cleaned_data['body'].strip()
+                if len(body) > 2000:
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'error': 'Message too long'}, status=400)
+                    from django.contrib import messages
+                    messages.error(request, 'Message too long')
+                    return render(request, self.template_name, self.get_context(request, chat_type, pk))
+                
                 message = GroupMessage(group=group, sender=request.user)
-                message.set_plaintext(form.cleaned_data['body'])
+                message.set_plaintext(body)
                 message.save()
 
+                # Security: Handle attachments with validation
                 attachments_info = []
                 attachment = form.cleaned_data.get('attachment')
                 if attachment:
+                    # Security: Server-side size check
                     if isinstance(attachment, UploadedFile) and attachment.size > MAX_ATTACHMENT_SIZE:
                         if is_ajax:
-                            return JsonResponse({'success': False, 'error': 'Attachment too large'}, status=400)
-                        messages.error(request, 'Attachment too large')
+                            return JsonResponse({'success': False, 'error': f'Attachment too large. Maximum size is {MAX_ATTACHMENT_SIZE // (1024*1024)}MB'}, status=400)
+                        from django.contrib import messages
+                        messages.error(request, f'Attachment too large. Maximum size is {MAX_ATTACHMENT_SIZE // (1024*1024)}MB')
                         return render(request, self.template_name, self.get_context(request, chat_type, pk))
-                    att = GroupMessageAttachment(message=message, filename=attachment.name, content_type=attachment.content_type)
-                    data = attachment.read()
-                    att.set_content(data)
-                    att.save()
-                    attachments_info.append({
-                        'id': att.id,
-                        'filename': att.filename,
-                        'size': att.size,
-                        'url': att.download_url(),
-                        'content_type': att.content_type,
-                    })
+                    
+                    # Security: Sanitize filename
+                    import os
+                    safe_filename = os.path.basename(attachment.name)
+                    
+                    try:
+                        att = GroupMessageAttachment(message=message, filename=safe_filename, content_type=attachment.content_type or 'application/octet-stream')
+                        data = attachment.read()
+                        att.set_content(data)
+                        att.save()
+                        attachments_info.append({
+                            'id': att.id,
+                            'filename': att.filename,
+                            'size': att.size,
+                            'url': att.download_url(),
+                            'content_type': att.content_type,
+                        })
+                    except Exception as e:
+                        if is_ajax:
+                            return JsonResponse({'success': False, 'error': 'Failed to save attachment'}, status=500)
+                        from django.contrib import messages
+                        messages.error(request, 'Failed to save attachment')
+                        return render(request, self.template_name, self.get_context(request, chat_type, pk))
                 
                 if is_ajax:
                     return JsonResponse({

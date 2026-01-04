@@ -52,11 +52,13 @@
                     <tr>
                       <th>#</th>
                       <th>Image</th>
-                      <th>Title / Slot</th>
+                      <th>Title</th>
                       <th>Placement</th>
                       <th>Start Date</th>
                       <th>End Date</th>
-                      <th>Created At</th>
+                      <th>Impressions</th>
+                      <th>Clicks</th>
+                      <th>CTR</th>
                       <th class="text-center">Status</th>
                       <th>Actions</th>
                     </tr>
@@ -80,10 +82,22 @@
                                  height="60">
                           {% endif %}
                         </td>
-                        <td>{{ ad.title|default:ad.slot.name }}</td>
-                        <td>{{ ad.slot.name }}</td>
-                        <td>{{ ad.start }}</td>
-                        <td>{{ ad.end }}</td>
+                        <td>{{ ad.title|default:"—" }}</td>
+                        <td>
+                          <span class="badge bg-info">{{ ad.slot.name }}</span>
+                          <small class="text-muted d-block">{{ ad.slot.key }}</small>
+                        </td>
+                        <td>{{ ad.start|date:"d M Y"|default:"—" }}</td>
+                        <td>{{ ad.end|date:"d M Y"|default:"—" }}</td>
+                        <td>{{ ad.impressions|default:0 }}</td>
+                        <td>{{ ad.clicks|default:0 }}</td>
+                        <td>
+                          {% if ad.impressions > 0 %}
+                            {% widthratio ad.clicks ad.impressions 100 %}%
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
                         <td>{{ ad.created_at|date:"d M Y" }}</td>
                         <td class="text-center">
                           {% with status=ad.get_status_display %}

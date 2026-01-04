@@ -20,37 +20,36 @@
     box-sizing: border-box;
 }
 
-/* Page Layout */
+/* Page Layout - Match dashboard pages */
 .conversation-page {
-    background: #f0f2f5;
-    /* make room for the fixed dashboard header so it doesn't cover the chat UI */
-    padding: calc(16px + 80px) 16px 16px 16px; /* top padding includes header height */
-    height: calc(100vh - 80px);
+    background: transparent;
+    padding: 0;
+    min-height: calc(100vh - 160px);
 }
 
 .conversation-container {
-    max-width: 1000px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    /* reduce container height to account for header area already added to page padding */
-    height: calc(100% - 80px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    height: calc(100vh - 200px);
+    min-height: 600px;
     display: flex;
     flex-direction: column;
 }
 
 /* Header */
 .conversation-header {
-    background: linear-gradient(135deg, #01004e 0%, #075E54 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
     color: white;
-    padding: 12px 16px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(1, 0, 78, 0.15);
 }
 
 .back-button {
@@ -77,7 +76,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #25D366 0%, #01004e 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
     color: white;
     display: flex;
     align-items: center;
@@ -89,7 +88,7 @@
 }
 
 .chat-avatar.group {
-    background: linear-gradient(135deg, #34B7F1 0%, #0088CC 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
 }
 
 .chat-info {
@@ -252,12 +251,12 @@
 }
 
 .read-receipt {
-    color: #34B7F1;
+    color: #01004e;
     font-size: 14px;
 }
 
 .read-receipt.read {
-    color: #34B7F1;
+    color: #01004e;
 }
 
 .read-receipt.sent {
@@ -357,7 +356,7 @@
 }
 
 .send-button {
-    background: linear-gradient(135deg, #25D366 0%, #01004e 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
     border: none;
     color: white;
     width: 40px;
@@ -374,7 +373,8 @@
 
 .send-button:hover {
     transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(18,140,126,0.3);
+    box-shadow: 0 2px 8px rgba(1, 0, 78, 0.3);
+    background: linear-gradient(135deg, #1a0066 0%, #01004e 100%);
 }
 
 .send-button:disabled {
@@ -403,7 +403,7 @@
 }
 
 .info-header {
-    background: linear-gradient(135deg, #01004e 0%, #075E54 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
     color: white;
     padding: 16px 20px;
     display: flex;
@@ -472,7 +472,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #25D366 0%, #01004e 100%);
+    background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
     color: white;
     display: flex;
     align-items: center;
@@ -520,7 +520,8 @@
     }
 
     .conversation-container {
-        border-radius: 0;
+        border-radius: 12px;
+        height: calc(100vh - 180px);
     }
 
     .message-content {
@@ -600,8 +601,10 @@
     </style>
 {% endblock %}
 {% block content %}
-    <div class="conversation-page">
-        <div class="conversation-container">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="conversation-page">
+                <div class="conversation-container">
             <!-- Header -->
             <div class="conversation-header">
                 <a href="{% url 'chat:thread_list' %}" class="back-button">←</a>
@@ -747,6 +750,8 @@
                 <button type="button" class="attach-button" id="attachBtn">📎</button>
                 <button type="submit" class="send-button" id="sendButton" disabled>➤</button>
             </form>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Info Sidebar (for groups) -->
@@ -814,6 +819,64 @@ function sendMessage(event) {
     
     if (!message) return;
     
+    // Stop typing indicator
+    sendTypingIndicator(false);
+    
+    // Check if we have a file attachment
+    const fileInput = document.getElementById('fileInput');
+    const hasAttachment = fileInput && fileInput.files && fileInput.files[0];
+    
+    // If there's an attachment, use AJAX (WebSocket doesn't support file uploads)
+    // Otherwise, try WebSocket first, fall back to AJAX
+    if (hasAttachment || !chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+        // Use AJAX for file attachments or if WebSocket is not available
+        sendMessageViaAJAX(message, fileInput);
+    } else {
+        // Use WebSocket for text-only messages
+        try {
+            chatSocket.send(JSON.stringify({
+                type: 'message',
+                message: message
+            }));
+            
+            // Clear input immediately (optimistic UI update)
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendButton.disabled = true;
+            
+            // The message will be added to UI when we receive it via WebSocket
+            // But we can add it optimistically here
+            const now = new Date();
+            addMessageToUI({
+                sender: 'me',
+                text: message,
+                time: now.toISOString(),
+                is_read: false,
+                attachments: []
+            });
+            scrollToBottom(true);
+            
+            // Reset file input and preview
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            const preview = document.getElementById('attachmentPreview');
+            if (preview) preview.style.display = 'none';
+            
+            messageInput.focus();
+        } catch (error) {
+            console.error('WebSocket send error:', error);
+            // Fall back to AJAX
+            sendMessageViaAJAX(message, fileInput);
+        }
+    }
+}
+
+// Send message via AJAX (for attachments or WebSocket fallback)
+function sendMessageViaAJAX(message, fileInput) {
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    
     // Disable input while sending
     messageInput.disabled = true;
     sendButton.disabled = true;
@@ -826,7 +889,6 @@ function sendMessage(event) {
     formData.append('body', message);
 
     // Attach file if selected
-    const fileInput = document.getElementById('fileInput');
     if (fileInput && fileInput.files && fileInput.files[0]) {
         formData.append('attachment', fileInput.files[0]);
     }
@@ -847,14 +909,17 @@ function sendMessage(event) {
             messageInput.value = '';
             messageInput.style.height = 'auto';
             
-            // Add message to UI
-            addMessageToUI({
-                sender: 'me',
-                text: data.message.plaintext,
-                time: data.message.created_at,
-                is_read: false,
-                attachments: data.message.attachments || []
-            });
+            // Add message to UI (only if not already added via WebSocket)
+            const messageExists = document.querySelector(`[data-message-id="${data.message.id}"]`);
+            if (!messageExists) {
+                addMessageToUI({
+                    sender: 'me',
+                    text: data.message.plaintext || data.message.body,
+                    time: data.message.created_at,
+                    is_read: false,
+                    attachments: data.message.attachments || []
+                });
+            }
             
             // Scroll to bottom
             scrollToBottom();
@@ -893,14 +958,27 @@ function addMessageToUI(data) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${data.sender === 'me' ? 'sent' : 'received'}`;
     
-    const now = new Date();
-    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
-                    now.getMinutes().toString().padStart(2, '0');
+    // Parse time from ISO string or use current time
+    let timeStr;
+    if (data.time) {
+        const time = new Date(data.time);
+        timeStr = time.getHours().toString().padStart(2, '0') + ':' + 
+                  time.getMinutes().toString().padStart(2, '0');
+    } else {
+        const now = new Date();
+        timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                  now.getMinutes().toString().padStart(2, '0');
+    }
+    
+    // Add message ID if available
+    if (data.id) {
+        messageDiv.setAttribute('data-message-id', data.id);
+    }
     
     messageDiv.innerHTML = `
         <div class="message-content">
             ${data.sender !== 'me' && '{{ chat_type }}' === 'group' ? 
-                `<div class="sender-name">${data.sender_name || 'Member'}</div>` : ''}
+                `<div class="sender-name">${escapeHtml(data.sender_name || 'Member')}</div>` : ''}
             <div class="message-bubble">
                 <div class="message-text">${escapeHtml(data.text)}</div>
                 ${data.attachments && data.attachments.length ? `
@@ -909,22 +987,31 @@ function addMessageToUI(data) {
                             if (a.content_type && a.content_type.startsWith('image/')) {
                                 return `<div class="attachment-image"><img src="${a.url}" style="max-width:220px; max-height:160px; border-radius:6px; display:block;" /></div>`;
                             }
-                            return `<div class="attachment-file"><a href="${a.url}">📎 ${a.filename}</a></div>`;
+                            return `<div class="attachment-file"><a href="${a.url}">📎 ${escapeHtml(a.filename)}</a></div>`;
                         }).join('')}
                     </div>
                 ` : ''}
                 <div class="message-meta">
                     <span class="message-time">${timeStr}</span>
                     ${data.sender === 'me' ? 
-                        `<span class="read-receipt sent">✓</span>` : ''}
+                        `<span class="read-receipt ${data.is_read ? 'read' : 'sent'}">${data.is_read ? '✓✓' : '✓'}</span>` : ''}
                 </div>
             </div>
         </div>
     `;
     
     // Insert before typing indicator
-    const typingIndicator = messagesArea.querySelector('.typing-indicator').parentElement.parentElement;
-    messagesArea.insertBefore(messageDiv, typingIndicator);
+    const typingIndicator = messagesArea.querySelector('.typing-indicator');
+    if (typingIndicator) {
+        const typingContainer = typingIndicator.closest('.message');
+        if (typingContainer) {
+            messagesArea.insertBefore(messageDiv, typingContainer);
+        } else {
+            messagesArea.appendChild(messageDiv);
+        }
+    } else {
+        messagesArea.appendChild(messageDiv);
+    }
 }
 
 // Escape HTML
@@ -954,6 +1041,128 @@ function toggleInfoSidebar() {
     }
 }
 
+// WebSocket connection for real-time messaging
+let chatSocket = null;
+
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    
+    {% if chat_type == 'group' %}
+    const wsUrl = `${protocol}//${host}/ws/chat/group/{{ group.id }}/`;
+    {% else %}
+    const wsUrl = `${protocol}//${host}/ws/chat/thread/{{ thread.id }}/`;
+    {% endif %}
+    
+    try {
+        chatSocket = new WebSocket(wsUrl);
+        
+        chatSocket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+        
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            
+            if (data.type === 'message') {
+                // Add received message to UI
+                const message = data.message;
+                const isFromMe = message.sender_id === {{ request.user.id }};
+                
+                addMessageToUI({
+                    sender: isFromMe ? 'me' : 'other',
+                    text: message.body || message.plaintext,
+                    time: message.created_at,
+                    is_read: message.read_at !== null,
+                    sender_name: message.sender_name || 'User',
+                    attachments: message.attachments || []
+                });
+                
+                scrollToBottom(true);
+                
+                // Mark as read if it's from me
+                if (isFromMe && message.read_at) {
+                    updateReadReceipt(message.id, true);
+                }
+            } else if (data.type === 'typing') {
+                // Handle typing indicator
+                showTypingIndicator(data.user_name, data.is_typing);
+            } else if (data.type === 'error') {
+                console.error('WebSocket error:', data.error);
+                alert(data.error || 'An error occurred');
+            }
+        };
+        
+        chatSocket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+            // Attempt to reconnect after 3 seconds
+            setTimeout(function() {
+                if (chatSocket.readyState === WebSocket.CLOSED) {
+                    initWebSocket();
+                }
+            }, 3000);
+        };
+        
+        chatSocket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+    } catch (error) {
+        console.warn('WebSocket not available:', error);
+        // Fall back to AJAX-only mode
+    }
+}
+
+// Show/hide typing indicator
+function showTypingIndicator(userName, isTyping) {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = isTyping ? 'block' : 'none';
+        if (isTyping) {
+            scrollToBottom(true);
+        }
+    }
+}
+
+// Send typing indicator via WebSocket
+let typingTimeout;
+function sendTypingIndicator(isTyping) {
+    if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({
+            type: 'typing',
+            is_typing: isTyping
+        }));
+    }
+    
+    // Clear previous timeout
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
+    }
+    
+    // Auto-stop typing indicator after 3 seconds
+    if (isTyping) {
+        typingTimeout = setTimeout(function() {
+            sendTypingIndicator(false);
+        }, 3000);
+    }
+}
+
+// Update read receipt
+function updateReadReceipt(messageId, isRead) {
+    const messages = document.querySelectorAll('.message.sent');
+    messages.forEach(function(msg) {
+        const receipt = msg.querySelector('.read-receipt');
+        if (receipt) {
+            if (isRead) {
+                receipt.classList.add('read');
+                receipt.innerHTML = '✓✓';
+            } else {
+                receipt.classList.remove('read');
+                receipt.innerHTML = '✓';
+            }
+        }
+    });
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     // Scroll to bottom on load
@@ -962,12 +1171,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Focus on input
     document.getElementById('messageInput').focus();
     
+    // Initialize WebSocket connection
+    initWebSocket();
+    
     // Mark messages as read
     {% if chat_type == 'group' %}
     markGroupMessagesAsRead();
     {% else %}
     markThreadMessagesAsRead();
     {% endif %}
+    
+    // Add typing indicator to message input
+    const messageInput = document.getElementById('messageInput');
+    let typingTimer;
+    messageInput.addEventListener('input', function() {
+        sendTypingIndicator(true);
+        
+        // Clear previous timer
+        if (typingTimer) {
+            clearTimeout(typingTimer);
+        }
+        
+        // Stop typing indicator after user stops typing for 1 second
+        typingTimer = setTimeout(function() {
+            sendTypingIndicator(false);
+        }, 1000);
+    });
 });
 
 // Attachment handling

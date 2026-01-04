@@ -12,11 +12,11 @@ from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from accounts.models import User, School, College, Department
 from dashboard.models import Announcement, Document, Notification
-from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, send_credentials_email
-
+from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, ensure_staff_id
 from utag_ug_archiver.utils.decorators import MustLogin
 # Configure the logger
 logger = logging.getLogger(__name__)
@@ -71,9 +71,17 @@ class AdminCreateView(PermissionRequiredMixin, View):
         school_id = request.POST.get('school')
         college_id = request.POST.get('college')
         department_id = request.POST.get('department')
+        staff_id = request.POST.get('staff_id', '').strip()
 
-        password_length = 12
-        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+        # Validate staff_id
+        if not staff_id:
+            messages.error(request, 'Staff ID is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        # Check if staff_id already exists
+        if User.objects.filter(staff_id=staff_id).exists():
+            messages.error(request, 'Staff ID already exists. Please use a different Staff ID.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
@@ -93,16 +101,18 @@ class AdminCreateView(PermissionRequiredMixin, View):
                     school_id=school_id if school_id else None,
                     college_id=college_id if college_id else None,
                     department_id=department_id if department_id else None,
-                    password=make_password(raw_password),
+                    staff_id=staff_id,
                     created_by=request.user,
                     created_from_dashboard=True,
+                    must_change_password=True,
                 )
+                
+                # Use staff_id as temporary password
+                admin.password = make_password(staff_id)
+                admin.save(update_fields=['password'])
                 
                 # Add user to Admin group
                 admin.groups.add(Group.objects.get(name='Admin'))
-
-                # Prepare and send the email
-                send_credentials_email(admin, raw_password)
 
                 messages.success(request, 'Admin created successfully!')
         except Exception as e:
@@ -188,8 +198,17 @@ class MemberCreateView(PermissionRequiredMixin, View):
         school_id = request.POST.get('school')
         college_id = request.POST.get('college')
         department_id = request.POST.get('department')
-        password_length = 12
-        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=password_length))
+        staff_id = request.POST.get('staff_id', '').strip()
+
+        # Validate staff_id
+        if not staff_id:
+            messages.error(request, 'Staff ID is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        # Check if staff_id already exists
+        if User.objects.filter(staff_id=staff_id).exists():
+            messages.error(request, 'Staff ID already exists. Please use a different Staff ID.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         
         member_exists = User.objects.filter(email=email).exists()
         if member_exists:
@@ -208,16 +227,18 @@ class MemberCreateView(PermissionRequiredMixin, View):
                     school_id=school_id if school_id else None,
                     college_id=college_id if college_id else None,
                     department_id=department_id if department_id else None,
-                    password=make_password(raw_password),
+                    staff_id=staff_id,
                     created_by=request.user,
                     created_from_dashboard=True,
+                    must_change_password=True,
                 )
+                
+                # Use staff_id as temporary password
+                member.password = make_password(staff_id)
+                member.save(update_fields=['password'])
                 
                 # Add user to Member group
                 member.groups.add(Group.objects.get(name='Member'))
-                
-                # Prepare and send the email
-                send_credentials_email(member, raw_password)
 
                 messages.success(request, 'Member created successfully!')
         except Exception as e:
@@ -301,3 +322,47 @@ class MemberListView(PermissionRequiredMixin, View):
         
         # Render the template
         return render(request, self.template_name, context)
+
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(MustLogin, name='dispatch')
+class CheckStaffIdView(View):
+    """AJAX endpoint to check if staff_id is available."""
+    
+    def get(self, request):
+        """Handle GET requests (for Parsley remote validator)."""
+        staff_id = request.GET.get('staff_id', '').strip()
+        return self._check_staff_id(staff_id)
+    
+    def post(self, request):
+        """Handle POST requests."""
+        staff_id = request.POST.get('staff_id', '').strip()
+        return self._check_staff_id(staff_id)
+    
+    def _check_staff_id(self, staff_id):
+        """Common logic for checking staff_id availability."""
+        if not staff_id:
+            # Return 200 with error message for Parsley
+            return JsonResponse({'available': False, 'message': 'Staff ID is required'}, status=200)
+        
+        # Validate format (4-20 digits)
+        import re
+        if not re.match(r'^[0-9]{4,20}$', staff_id):
+            # Return 200 with error message for Parsley
+            return JsonResponse({
+                'available': False, 
+                'message': 'Staff ID must be 4-20 digits only'
+            }, status=200)
+        
+        # Check if staff_id exists
+        exists = User.objects.filter(staff_id=staff_id).exists()
+        
+        if exists:
+            # Return 200 with false - Parsley treats this as invalid when reverse is true
+            return JsonResponse({
+                'available': False,
+                'message': 'This Staff ID is already taken. Please use a different one.'
+            }, status=200)
+        else:
+            # Return 404 - Parsley treats 404 as "valid" when reverse is true
+            from django.http import HttpResponse
+            return HttpResponse(status=404)
