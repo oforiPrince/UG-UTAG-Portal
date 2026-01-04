@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from dashboard.models import Event, News, Announcement, Document
 from accounts.models import User
-from adverts.models import Advertisement, AdvertPlan, Advertiser, Payment
+from adverts.models import Ad, AdSlot
 
 class Command(BaseCommand):
     help = 'Create groups and assign permissions'
@@ -22,9 +22,11 @@ class Command(BaseCommand):
                 'add_announcement', 'change_announcement', 'delete_announcement', 'view_announcement',
                 'add_document', 'change_document', 'delete_document', 'view_document',
                 'add_advertiser', 'change_advertiser', 'delete_advertiser', 'view_advertiser',
-                'add_advertisement', 'change_advertisement', 'delete_advertisement', 'view_advertisement',
-                'add_advertplan', 'change_advertplan', 'delete_advertplan', 'view_advertplan',
-                'add_payment', 'change_payment', 'delete_payment', 'view_payment',
+                    # Map legacy advertiser/advert permissions to the new Ad/AdSlot model permissions
+                    'add_ad', 'change_ad', 'delete_ad', 'view_ad',
+                    'add_adslot', 'change_adslot', 'delete_adslot', 'view_adslot',
+                    # payment model removed from this simple system; keep if exists
+                    'add_payment', 'change_payment', 'delete_payment', 'view_payment',
                 'add_payment', 'change_payment', 'delete_carouselslide', 'view_carouselslide',
                 
             ],

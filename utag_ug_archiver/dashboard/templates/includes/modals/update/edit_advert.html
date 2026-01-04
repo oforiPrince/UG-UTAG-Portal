@@ -22,59 +22,80 @@
                         <input type="hidden" name="advert_id" value="{{ ad.id }}">
                         <!-- Image Input -->
                         <div class="form-group mb-3">
-                            <label for="imageInput_{{ ad.id }}">Image (900x300 or 300x300 pixels)</label>
+                            <label for="imageInput_{{ ad.id }}">New Image (optional)</label>
                             <input type="file"
                                    class="form-control imageInput"
                                    id="imageInput_{{ ad.id }}"
                                    name="image"
                                    accept="image/*">
+                            <small class="form-text text-muted">Leave empty to keep current image. Recommended size based on selected slot.</small>
                             <span class="errorMessage text-danger"></span>
                         </div>
                         <!-- Current Image -->
                         <div class="mb-3 existingImageContainer">
                             <h5>Current Image</h5>
-                            <img class="existingImage"
-                                 src="{{ ad.image.url }}"
-                                 alt="Current Image"
-                                 style="max-width: 100%;
-                                        max-height: 200px">
+                            {% if ad.image %}
+                                <img class="existingImage img-fluid"
+                                     src="{{ ad.get_image_url }}"
+                                     alt="Current Image"
+                                     width="600"
+                                     height="200"
+                                     loading="lazy" />
+                            {% else %}
+                                <div class="alert alert-secondary">No image uploaded for this advert.</div>
+                            {% endif %}
                         </div>
                         <!-- New Image Preview -->
-                        <div class="mb-3 newImagePreviewContainer" style="display: none;">
+                        <div class="mb-3 newImagePreviewContainer d-none">
                             <h5>New Image Preview</h5>
-                            <img class="newImagePreview"
+                            <img class="newImagePreview img-fluid rounded shadow-sm"
                                  src="#"
                                  alt="New Image Preview"
-                                 style="max-width: 100%;
-                                        max-height: 200px">
+                                 width="600"
+                                 height="200"
+                                 loading="lazy"
+                                 style="max-width: 100%; height: auto;" />
                         </div>
-                        <!-- Advertiser -->
+                        <script>
+                            // Image preview for edit modal
+                            (function() {
+                                var modalId = 'editAdvertisementsModal_{{ ad.id }}';
+                                var modal = document.getElementById(modalId);
+                                if (!modal) return;
+                                
+                                modal.addEventListener('shown.bs.modal', function() {
+                                    var imageInput = modal.querySelector('#imageInput_{{ ad.id }}');
+                                    var previewContainer = modal.querySelector('.newImagePreviewContainer');
+                                    var previewImg = modal.querySelector('.newImagePreview');
+                                    
+                                    if (imageInput && previewContainer && previewImg) {
+                                        imageInput.addEventListener('change', function(e) {
+                                            var file = e.target.files[0];
+                                            if (file) {
+                                                var reader = new FileReader();
+                                                reader.onload = function(e) {
+                                                    previewImg.src = e.target.result;
+                                                    previewContainer.classList.remove('d-none');
+                                                };
+                                                reader.readAsDataURL(file);
+                                            } else {
+                                                previewContainer.classList.add('d-none');
+                                            }
+                                        });
+                                    }
+                                });
+                            })();
+                        </script>
+                        <!-- Title -->
                         <div class="form-group mb-3">
-                            <label for="advertiserSelect_{{ ad.id }}">Advertiser</label>
-                            <select class="form-control"
-                                    id="advertiserSelect_{{ ad.id }}"
-                                    name="advertiser_id"
-                                    required>
-                                <option value="">Select an Advertiser</option>
-                                {% for advertiser in advertisers %}
-                                    <option value="{{ advertiser.id }}"
-                                            {% if ad.advertiser.id == advertiser.id %}selected{% endif %}>
-                                        {{ advertiser.company_name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            <label for="titleInput_{{ ad.id }}">Title / CTA</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="titleInput_{{ ad.id }}"
+                                   name="title"
+                                   value="{{ ad.title }}">
                         </div>
-                        <!-- Plan -->
-                        <div class="form-group mb-3">
-                            <label for="planSelect_{{ ad.id }}">Plan</label>
-                            <select class="form-control" id="planSelect_{{ ad.id }}" name="plan_id">
-                                <option value="">Select a Plan</option>
-                                {% for plan in plans %}
-                                    <option value="{{ plan.id }}"
-                                            {% if ad.plan.id == plan.id %}selected{% endif %}>{{ plan.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        <!-- Alt Text removed -->
                         <!-- Target URL -->
                         <div class="form-group mb-3">
                             <label for="targetUrlInput_{{ ad.id }}">Target URL</label>
@@ -91,19 +112,65 @@
                                    class="form-control"
                                    id="startDateInput_{{ ad.id }}"
                                    name="start_date"
-                                   value="{{ ad.start_date|date:'Y-m-d' }}">
+                                   value="{{ ad.start|date:'Y-m-d' }}">
+                        </div>
+                        <!-- End Date -->
+                        <div class="form-group mb-3">
+                            <label for="endDateInput_{{ ad.id }}">End Date</label>
+                            <input type="date"
+                                   class="form-control"
+                                   id="endDateInput_{{ ad.id }}"
+                                   name="end_date"
+                                   value="{{ ad.end|date:'Y-m-d' }}">
+                        </div>
+                        <!-- Slot (single selection) -->
+                        <div class="form-group mb-3">
+                            <label for="slotSelect_{{ ad.id }}">Placement Slot</label>
+                            <select class="form-select select2"
+                                    id="slotSelect_{{ ad.id }}"
+                                    name="slot"
+                                    required>
+                                {% for pl in placements %}
+                                    <option value="{{ pl.key }}"
+                                            {% if pl.key == ad.slot.key %}selected{% endif %}>{{ pl.name }} ({{ pl.key }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- HTML Content -->
+                        <div class="form-group mb-3">
+                            <label for="htmlContentInput_{{ ad.id }}">HTML Content (optional)</label>
+                            <textarea class="form-control"
+                                      id="htmlContentInput_{{ ad.id }}"
+                                      name="html_content"
+                                      rows="4"
+                                      placeholder="Optional raw HTML for rich creatives; will be used instead of image if provided.">{{ ad.html_content|default:'' }}</textarea>
+                            <small class="form-text text-muted">If provided, HTML content will be displayed instead of the image.</small>
+                        </div>
+                        <!-- Priority -->
+                        <div class="form-group mb-3">
+                            <label for="priorityInput_{{ ad.id }}">Priority</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="priorityInput_{{ ad.id }}"
+                                   name="priority"
+                                   value="{{ ad.priority }}"
+                                   min="0"
+                                   max="100">
+                            <small class="form-text text-muted">Higher priority ads are shown first when multiple ads are active for the same slot.</small>
                         </div>
                         <!-- Status -->
                         <div class="form-group mb-3">
                             <label for="statusSelect_{{ ad.id }}">Status</label>
-                            <select class="form-control"
+                            <select class="form-control select2"
                                     id="statusSelect_{{ ad.id }}"
                                     name="status"
                                     required>
-                                <option value="DRAFT" {% if ad.status == 'DRAFT' %}selected{% endif %}>Draft</option>
-                                <option value="PUBLISHED"
-                                        {% if ad.status == 'PUBLISHED' %}selected{% endif %}>Published</option>
-                                <option value="EXPIRED" {% if ad.status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                                {% with status=ad.get_status_display %}
+                                    <option value="DRAFT" {% if status == 'Draft' %}selected{% endif %}>Draft</option>
+                                    <option value="PUBLISHED" {% if status == 'Published' %}selected{% endif %}>Published</option>
+                                    <option value="EXPIRED" {% if status == 'Expired' %}selected{% endif %}>Expired</option>
+                                    <option value="SCHEDULED" {% if status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                                {% endwith %}
                             </select>
                         </div>
                         <!-- Submit Buttons -->
@@ -117,3 +184,12 @@
         </div>
     </div>
 {% endfor %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        $('[id^="editAdvertisementsModal_"]').on('shown.bs.modal', function () {
+            $(this).find('select.select2').select2({
+                dropdownParent: $(this)
+            });
+        });
+    });
+</script>

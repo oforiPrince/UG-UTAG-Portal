@@ -74,6 +74,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     email_sent = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
+    must_change_password = models.BooleanField(default=False)
     # lookup relations (can be empty for existing users)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')

@@ -21,10 +21,12 @@
           <div class="mb-3">
             <label class="form-label" for="title">Title</label>
             <div>
-              <select id="title" class="form-control" required name="title">
+              <select id="title" class="form-select select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
+                <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
                 <option value="Dr.">Dr.</option>
+                <option value="Dr. (Alhaji)">Dr. (Alhaji)</option>
                 <option value="Mr.">Mr.</option>
                 <option value="Mrs.">Mrs.</option>
                 <option value="Ms.">Ms.</option>
@@ -103,6 +105,28 @@
               </div>
             </div>
           </div>
+          <div class="mb-3">
+            <label class="form-label" for="staff_id">Staff ID</label>
+            <div>
+              <input type="text"
+                     id="staff_id"
+                     class="form-control"
+                     required
+                     name="staff_id"
+                     placeholder="Enter staff ID (4-20 digits)"
+                     pattern="[0-9]{4,20}"
+                     minlength="4"
+                     maxlength="20"
+                     data-parsley-pattern="[0-9]{4,20}"
+                     data-parsley-pattern-message="Staff ID must be 4-20 digits only"
+                     data-parsley-remote="/dashboard/account_management/check-staff-id/"
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#staff_id").val(); } } }'
+                     data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
+                     data-parsley-remote-reverse="true"
+                     title="Staff ID must be 4-20 digits" />
+              <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique.</small>
+            </div>
+          </div>
           <!-- <div class="row">
             <div class="col-md-4 mb-3">
               <label class="form-label" for="school">School</label>
@@ -145,6 +169,13 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Select2 elements inside the modal
+    $('#addAdminModal').on('shown.bs.modal', function () {
+      $('#title').select2({
+        dropdownParent: $('#addAdminModal')
+      });
+    });
+
     const passwordChoice = document.querySelectorAll(
       '[name="password_choice"]'
     );

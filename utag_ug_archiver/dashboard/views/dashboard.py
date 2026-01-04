@@ -10,7 +10,7 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 
-from adverts.models import Advertisement
+from adverts.models import Ad
 from utag_ug_archiver.utils.decorators import MustLogin
 
 class DashboardView(PermissionRequiredMixin, View):
@@ -75,7 +75,8 @@ class DashboardView(PermissionRequiredMixin, View):
         total_executives = User.objects.filter(groups__name='Executive', is_active_executive=True).count()
         total_members = User.objects.filter(groups__name='Member').count()
         total_admins = User.objects.filter(groups__name='Admin').count()
-        active_adverts = Advertisement.objects.filter(status='ACTIVE').order_by('-created_at')[:5]
+        # Use new Ad model; show active ads
+        active_adverts = Ad.objects.filter(active=True).order_by('-created_at')[:5]
 
         # User group membership
         user_groups = request.user.groups.values_list('name', flat=True)

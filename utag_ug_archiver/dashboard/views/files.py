@@ -6,6 +6,14 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.models import Group
 from django.db.models import Q
+from django.core.cache import cache
+import os
+
+# use requests if available for quick HEAD checks, otherwise fall back to urllib
+try:
+    import requests
+except Exception:
+    requests = None
 from dashboard.models import Announcement, Document, File, Notification
 
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -31,6 +39,68 @@ class DocumentsView(View):
             'has_change_permission': request.user.has_perm('dashboard.change_document') or request.user.executive_position=="Secretary",
             'has_delete_permission': request.user.has_perm('dashboard.delete_document') or request.user.executive_position=="Secretary",
         }
+        # Ensure each File has an absolute URL attribute for previewers
+        PREVIEW_CACHE_TTL = 60 * 60  # 1 hour
+        PREVIEWABLE_EXTS = {'.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'}
+
+        def check_url_previewable(url, file_id):
+            """Check whether a given absolute file URL appears publicly previewable.
+
+            Uses a cached result (1 hour TTL) and performs a HEAD request with a
+            very short timeout to avoid slowing page renders. Falls back to
+            urllib if requests isn't available.
+            """
+            cache_key = f"file_previewable:{file_id}"
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return cached
+
+            # Quick safety checks
+            if not url or not url.lower().startswith(('http://', 'https://')):
+                cache.set(cache_key, False, PREVIEW_CACHE_TTL)
+                return False
+
+            try:
+                if requests is not None:
+                    # perform a light HEAD request with short timeout
+                    r = requests.head(url, allow_redirects=True, timeout=2)
+                    ok = (r.status_code >= 200 and r.status_code < 400)
+                else:
+                    # fallback to urllib
+                    from urllib.request import Request, urlopen
+                    req = Request(url, method='HEAD')
+                    resp = urlopen(req, timeout=2)
+                    ok = (200 <= resp.getcode() < 400)
+            except Exception:
+                ok = False
+
+            cache.set(cache_key, ok, PREVIEW_CACHE_TTL)
+            return ok
+
+        for doc in documents:
+            # documents could be a queryset; iterate files for each document
+            for f in getattr(doc, 'files').all():
+                try:
+                    f.absolute_url = request.build_absolute_uri(f.file.url)
+                except Exception:
+                    # If file URL is invalid for any reason, set to relative URL
+                    f.absolute_url = f.file.url if hasattr(f, 'file') else ''
+
+                # Only attempt preview checks for known previewable extensions
+                try:
+                    _, ext = os.path.splitext(getattr(f, 'file').name)
+                    ext = (ext or '').lower()
+                except Exception:
+                    ext = ''
+
+                if ext in PREVIEWABLE_EXTS:
+                    # check and attach boolean flag used by template
+                    f.previewable = check_url_previewable(f.absolute_url, f.id)
+                else:
+                    f.previewable = False
+
+        # Explicitly pass request into context to guarantee availability in templates
+        context['request'] = request
         return render(request, self.template_name, context)
 
     def get_documents(self, user):

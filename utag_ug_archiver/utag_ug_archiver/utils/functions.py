@@ -1,6 +1,8 @@
 import logging
 import os
 import secrets
+import random
+import string
 from accounts.models import User
 from accounts.signals import send_email_with_retry
 from utag_ug_archiver.utils.constants import executive_members_position_order, executive_committee_members_position_order
@@ -19,6 +21,27 @@ def generate_random_password():
     # Generate a random password of 12 characters
     return secrets.token_urlsafe(12)
 
+def ensure_staff_id(user):
+    """Ensure user has a staff_id. Generate one if missing."""
+    if not user.staff_id:
+        existing_ids = set(
+            User.objects.exclude(staff_id__isnull=True)
+            .exclude(staff_id__exact='')
+            .values_list('staff_id', flat=True)
+        )
+        
+        def generate_id():
+            return ''.join(random.choices(string.digits, k=6))
+        
+        staff_id = generate_id()
+        while staff_id in existing_ids:
+            staff_id = generate_id()
+        
+        user.staff_id = staff_id
+        user.save(update_fields=['staff_id'])
+    
+    return user.staff_id
+
 # Create a custom sorting function based on the order
 def executive_members_custom_order(executive):
     return executive_members_position_order.index(executive.executive_position)
@@ -27,28 +50,29 @@ def executive_committee_members_custom_order(executive):
     return executive_committee_members_position_order.index(executive.executive_position)
 
 
-def send_credentials_email(user, raw_password):
-        try:
-            email_subject = 'Account Created'
-            from_email = settings.EMAIL_HOST_USER
-            email_body = render_to_string('emails/account_credentials.html', {
-                'other_name': getattr(user, 'other_name', ''),
-                'surname': getattr(user, 'surname', ''),
-                'email': user.email,
-                'password': raw_password
-            })
-            email = EmailMessage(
-                email_subject,
-                email_body,
-                from_email,
-                [user.email]
-            )
-            print(f'User email: {user.email} and password: {raw_password}')
-            email.content_subtype = "html"
-            send_email_with_retry(email)
-            print('Email sent')
-        except Exception as e:
-            logger.error(f'Error sending email to {user.email}: {e}')
+# Email sending disabled - users now use staff_id as temporary password
+# def send_credentials_email(user, raw_password):
+#         try:
+#             email_subject = 'Account Created'
+#             from_email = settings.EMAIL_HOST_USER
+#             email_body = render_to_string('emails/account_credentials.html', {
+#                 'other_name': getattr(user, 'other_name', ''),
+#                 'surname': getattr(user, 'surname', ''),
+#                 'email': user.email,
+#                 'password': raw_password
+#             })
+#             email = EmailMessage(
+#                 email_subject,
+#                 email_body,
+#                 from_email,
+#                 [user.email]
+#             )
+#             print(f'User email: {user.email} and password: {raw_password}')
+#             email.content_subtype = "html"
+#             send_email_with_retry(email)
+#             print('Email sent')
+#         except Exception as e:
+#             logger.error(f'Error sending email to {user.email}: {e}')
             
 def send_reset_password_email(user, reset_url):
         try:
@@ -95,14 +119,25 @@ def process_bulk_admins(request, file):
         "Gender": "gender",
         "Email": "email"
     }
+    
+    # Handle Staff ID if present in CSV
+    if "Staff ID" in df.columns or "StaffId" in df.columns or "staff_id" in df.columns:
+        staff_id_col = "Staff ID" if "Staff ID" in df.columns else ("StaffId" if "StaffId" in df.columns else "staff_id")
+        rename_columns[staff_id_col] = "staff_id"
 
     df.rename(columns=rename_columns, inplace=True)
 
     try:
         for admin in df.itertuples(index=False):
-            # Generate a random password
-            raw_password = generate_random_password()
-
+            # Get staff_id from CSV if available, otherwise None
+            csv_staff_id = getattr(admin, 'staff_id', None) if hasattr(admin, 'staff_id') else None
+            
+            # Validate staff_id uniqueness if provided
+            if csv_staff_id:
+                if User.objects.filter(staff_id=csv_staff_id).exclude(email=admin.email).exists():
+                    logger.warning(f"Staff ID {csv_staff_id} already exists for another user. Skipping {admin.email}")
+                    continue
+            
             # Create or update the user
             user, created = User.objects.update_or_create(
                 email=admin.email,
@@ -111,23 +146,21 @@ def process_bulk_admins(request, file):
                     'other_name': admin.other_name,
                     'surname': getattr(admin, 'surname', admin.last_name if hasattr(admin, 'last_name') else ''),
                     'gender': admin.gender,
-                    'password': make_password(raw_password),
+                    'staff_id': csv_staff_id if csv_staff_id else None,
                     'created_from_dashboard': True,
                     'created_by': request.user,
                     'is_bulk_creation': True,
+                    'must_change_password': True,
                 }
             )
             
+            # Ensure staff_id exists and use it as temporary password
+            staff_id = ensure_staff_id(user)
+            user.password = make_password(staff_id)
+            user.save(update_fields=['password'])
+            
             # Add the user to the Admin group
             user.groups.add(Group.objects.get(name='Admin'))
-
-            # Save the raw password temporarily
-            user.raw_password = raw_password
-
-            # Send email if user is newly created
-            if created:
-                user.save()  # Ensure the user is saved with the temporary raw password
-                # Email sending handled by signal
 
         messages.success(request, f'{len(df)} admin(s) processed successfully!')
     except Exception as e:
@@ -163,14 +196,25 @@ def process_bulk_members(request, file):
         "Phone Number": "phone_number",
         "Department": "department"
     }
+    
+    # Handle Staff ID if present in CSV
+    if "Staff ID" in df.columns or "StaffId" in df.columns or "staff_id" in df.columns:
+        staff_id_col = "Staff ID" if "Staff ID" in df.columns else ("StaffId" if "StaffId" in df.columns else "staff_id")
+        rename_columns[staff_id_col] = "staff_id"
 
     df.rename(columns=rename_columns, inplace=True)
 
     try:
         for member in df.itertuples(index=False):
-            # Generate a random password
-            raw_password = generate_random_password()
-
+            # Get staff_id from CSV if available, otherwise None
+            csv_staff_id = getattr(member, 'staff_id', None) if hasattr(member, 'staff_id') else None
+            
+            # Validate staff_id uniqueness if provided
+            if csv_staff_id:
+                if User.objects.filter(staff_id=csv_staff_id).exclude(email=member.email).exists():
+                    logger.warning(f"Staff ID {csv_staff_id} already exists for another user. Skipping {member.email}")
+                    continue
+            
             # Create or update the user
             user, created = User.objects.update_or_create(
                 email=member.email,
@@ -181,23 +225,21 @@ def process_bulk_members(request, file):
                     'gender': member.gender,
                     'phone_number': member.phone_number,
                     'department': member.department,
-                    'password': make_password(raw_password),
+                    'staff_id': csv_staff_id if csv_staff_id else None,
                     'created_from_dashboard': True,
                     'created_by': request.user,
                     'is_bulk_creation': True,
+                    'must_change_password': True,
                 }
             )
             
+            # Ensure staff_id exists and use it as temporary password
+            staff_id = ensure_staff_id(user)
+            user.password = make_password(staff_id)
+            user.save(update_fields=['password'])
+            
             # Add the user to the Member group
             user.groups.add(Group.objects.get(name='Member'))
-
-            # Save the raw password temporarily
-            user.raw_password = raw_password
-
-            # Send email if user is newly created
-            if created:
-                user.save()  # Ensure the user is saved with the temporary raw password
-                # Email sending handled by signal
 
         messages.success(request, f'{len(df)} member(s) processed successfully!')
     except Exception as e:

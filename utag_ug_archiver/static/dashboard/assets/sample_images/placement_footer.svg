@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="200" viewBox="0 0 1200 200">
+    <rect width="100%" height="100%" fill="#f8fbff" />
+    <g fill="#2b3a66" font-family="Arial, Helvetica, sans-serif" font-size="32" text-anchor="middle">
+        <text x="600" y="100">Footer (1200x200)</text>
+    </g>
+</svg>

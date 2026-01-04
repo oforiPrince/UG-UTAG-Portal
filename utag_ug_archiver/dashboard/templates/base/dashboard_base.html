@@ -56,6 +56,39 @@
                   <!-- end main content-->
             </div>
             <!-- END layout-wrapper -->
+            <!-- Django messages as top-right toasts -->
+            <div aria-live="polite"
+                 aria-atomic="true"
+                 class="position-fixed"
+                 style="top:1rem;
+                        right:1rem;
+                        z-index:1080">
+                  {% if messages %}
+                        {% for message in messages %}
+                              <div class="toast"
+                                   role="alert"
+                                   aria-live="assertive"
+                                   aria-atomic="true"
+                                   data-bs-delay="5000">
+                                    <div class="toast-header {% if 'success' in message.tags %}bg-success text-white{% elif 'error' in message.tags or 'danger' in message.tags %}bg-danger text-white{% elif 'warning' in message.tags %}bg-warning text-dark{% elif 'info' in message.tags %}bg-info text-dark{% else %}bg-secondary text-white{% endif %}">
+                                          <strong class="me-auto">
+                                                {% if message.tags %}
+                                                      {{ message.tags|title }}
+                                                {% else %}
+                                                      Notice
+                                                {% endif %}
+                                          </strong>
+                                          <small class="text-muted">now</small>
+                                          <button type="button"
+                                                  class="btn-close ms-2 mb-1"
+                                                  data-bs-dismiss="toast"
+                                                  aria-label="Close"></button>
+                                    </div>
+                                    <div class="toast-body">{{ message }}</div>
+                              </div>
+                        {% endfor %}
+                  {% endif %}
+            </div>
             <!-- JAVASCRIPT -->
             <script src="{% static 'dashboard/assets/libs/jquery/jquery.min.js' %}"></script>
             <script src="{% static 'dashboard/assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
@@ -69,6 +102,16 @@
         $(document).ready(function() {
             $('.select2').select2();
         });
+            </script>
+            <script>
+                        // Auto-show any toasts created from Django messages
+                        document.addEventListener('DOMContentLoaded', function () {
+                              var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+                              toastElList.forEach(function (toastEl) {
+                                    var toast = new bootstrap.Toast(toastEl)
+                                    toast.show()
+                              })
+                        })
             </script>
             {% block my_scripts %}
             {% endblock my_scripts %}

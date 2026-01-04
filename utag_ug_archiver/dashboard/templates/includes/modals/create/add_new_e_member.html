@@ -46,7 +46,7 @@
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
             <div>
-              <select id="id_title" class="form-control" required name="title">
+              <select id="id_title" class="form-control select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
                 <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
@@ -128,8 +128,68 @@
             </div>
           </div>
           <div class="mb-3">
+            <label class="form-label" for="id_staff_id_exec">Staff ID</label>
+            <div>
+              <input type="text"
+                     id="id_staff_id_exec"
+                     class="form-control"
+                     required
+                     name="staff_id"
+                     placeholder="Enter staff ID (4-20 digits)"
+                     pattern="[0-9]{4,20}"
+                     minlength="4"
+                     maxlength="20"
+                     data-parsley-pattern="[0-9]{4,20}"
+                     data-parsley-pattern-message="Staff ID must be 4-20 digits only"
+                     data-parsley-remote="/dashboard/account_management/check-staff-id/"
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id_exec").val(); } } }'
+                     data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
+                     data-parsley-remote-reverse="true"
+                     title="Staff ID must be 4-20 digits" />
+              <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique.</small>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label class="form-label" for="id_department_exec">Department</label>
+              <div>
+                <select id="id_department_exec"
+                        class="form-select select2"
+                        required
+                        name="department">
+                  <option value="" selected disabled>Select a department</option>
+                  {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_school_exec">School</label>
+              <div>
+                <select id="id_school_exec" class="form-select select2" name="school">
+                  <option value="" selected disabled>Select a school</option>
+                  {% for school in schools %}
+                    <option value="{{ school.id }}">{{ school.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_college_exec">College</label>
+              <div>
+                <select id="id_college_exec" class="form-select select2" name="college">
+                  <option value="" selected disabled>Select a college</option>
+                  {% for college in colleges %}
+                    <option value="{{ college.id }}">{{ college.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
             <label class="form-label" for="id_position">Position</label>
-            <select id="id_position" class="form-control" required name="position">
+            <select id="id_position" class="form-control select2" required name="position">
               <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
               <option value="Vice President">Vice President</option>
@@ -200,6 +260,13 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Select2
+    $('#newMemberModal').on('shown.bs.modal', function () {
+      $(this).find('select.select2').select2({
+        dropdownParent: $('#newMemberModal')
+      });
+    });
+
     function previewImage(event, previewId, errorId) {
       var file = event.target.files[0];
       var reader = new FileReader();

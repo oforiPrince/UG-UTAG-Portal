@@ -18,21 +18,24 @@ def get_users_list(request):
     """
     API endpoint to get list of users for direct chat or group creation
     Excludes the current user
+    Security: Only returns active users, excludes sensitive information
     """
+    # Security: Only return active users, exclude sensitive fields
     users = User.objects.filter(
         is_active=True
     ).exclude(
         id=request.user.id
-    ).values('id', 'other_name', 'surname', 'title', 'profile_pic')
+    ).select_related('profile_pic').values('id', 'other_name', 'surname', 'title', 'profile_pic')
     
     users_list = []
     for user in users:
+        # Security: Sanitize user data
         users_list.append({
             'id': user['id'],
-            'name': f"{user['other_name']} {user['surname']}",
-            'title': user['title'] or '',
-            'avatar': user['profile_pic'] if user['profile_pic'] else None,
-            'initial': user['other_name'][0].upper() if user['other_name'] else '?'
+            'name': f"{user.get('other_name', '')} {user.get('surname', '')}".strip(),
+            'title': user.get('title') or '',
+            'avatar': user['profile_pic'] if user.get('profile_pic') else None,
+            'initial': (user.get('other_name', '') or '?')[0].upper()
         })
     
     return JsonResponse({'success': True, 'users': users_list})
@@ -44,6 +47,7 @@ def start_direct_chat(request):
     """
     API endpoint to start a direct chat with a user
     Creates thread if doesn't exist, returns URL to chat
+    Security: Validates user exists, is active, and user cannot chat with themselves
     """
     try:
         # Accept JSON body or form-encoded POST
@@ -58,20 +62,24 @@ def start_direct_chat(request):
         if not user_id:
             return JsonResponse({'success': False, 'error': 'User ID required'}, status=400)
         
-        other_user = User.objects.get(id=user_id)
+        # Security: Validate user_id is integer
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid user ID'}, status=400)
         
-        # Check if thread already exists (in either direction)
-        thread = ChatThread.objects.filter(
-            Q(user_one=request.user, user_two=other_user) |
-            Q(user_one=other_user, user_two=request.user)
-        ).first()
+        # Security: Prevent self-chat
+        if user_id == request.user.id:
+            return JsonResponse({'success': False, 'error': 'Cannot start chat with yourself'}, status=400)
         
-        if not thread:
-            # Create new thread
-            thread = ChatThread.objects.create(
-                user_one=request.user,
-                user_two=other_user
-            )
+        # Security: Get user and validate they exist and are active
+        try:
+            other_user = User.objects.get(id=user_id, is_active=True)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found or inactive'}, status=404)
+        
+        # Security: Use get_or_create_thread to ensure proper normalization and encryption
+        thread, created = ChatThread.objects.get_or_create_thread(request.user, other_user)
         
         return JsonResponse({
             'success': True,
@@ -79,10 +87,11 @@ def start_direct_chat(request):
             'redirect_url': f'/chat/thread/{thread.id}/'
         })
         
-    except User.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except ValueError as e:
+        # Handle thread creation errors (e.g., same user on both sides)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': 'An error occurred'}, status=500)
 
 
 @login_required
@@ -91,6 +100,7 @@ def create_group_ajax(request):
     """
     API endpoint to create a group chat with multiple members
     Returns URL to new group chat
+    Security: Validates permissions, sanitizes input, validates member IDs
     """
     try:
         # Accept JSON body or form-encoded POST
@@ -103,29 +113,44 @@ def create_group_ajax(request):
             # If form-encoded, members may be provided as multiple 'members' fields
             member_ids = request.POST.getlist('members') or request.POST.getlist('member_ids')
         
+        # Security: Validate and sanitize group name
         if not group_name:
             return JsonResponse({'success': False, 'error': 'Group name required'}, status=400)
         
+        group_name = group_name.strip()
+        if len(group_name) < 2 or len(group_name) > 120:
+            return JsonResponse({'success': False, 'error': 'Group name must be between 2 and 120 characters'}, status=400)
+        
+        # Security: Check permissions (only executives and staff can create groups)
+        if not ((hasattr(request.user, 'is_executive') and request.user.is_executive()) or request.user.is_staff or request.user.is_superuser):
+            return JsonResponse({'success': False, 'error': 'Permission denied. Only executives can create groups.'}, status=403)
+        
+        # Security: Validate member_ids
         if not member_ids:
             return JsonResponse({'success': False, 'error': 'At least one member required'}, status=400)
         
-        # Check permissions (only executives and staff can create groups)
-        if not ((hasattr(request.user, 'is_executive') and request.user.is_executive) or request.user.is_staff):
-            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
-        
-        # Normalize group name and member ids
-        group_name = group_name.strip()
+        # Security: Normalize and validate member IDs
         try:
             member_ids = list(dict.fromkeys(int(x) for x in member_ids))
-        except Exception:
-            # member_ids might already be integers or malformed; try best-effort
+        except (ValueError, TypeError):
+            # member_ids might be malformed; try best-effort
             cleaned = []
             for mid in member_ids:
                 try:
                     cleaned.append(int(mid))
-                except Exception:
+                except (ValueError, TypeError):
                     continue
             member_ids = list(dict.fromkeys(cleaned))
+        
+        # Security: Remove duplicates and self
+        member_ids = [mid for mid in member_ids if mid != request.user.id]
+        
+        if not member_ids:
+            return JsonResponse({'success': False, 'error': 'At least one other member required'}, status=400)
+        
+        # Security: Limit group size (prevent abuse)
+        if len(member_ids) > 50:
+            return JsonResponse({'success': False, 'error': 'Group cannot have more than 50 members'}, status=400)
 
         # If a group with the same name exists for this creator, return it instead of creating a duplicate
         existing = ChatGroup.objects.filter(name=group_name, created_by=request.user).first()
@@ -162,17 +187,24 @@ def create_group_ajax(request):
             added_by=request.user
         )
         
-        # Add selected members
+        # Security: Add selected members with validation
+        added_count = 0
         for member_id in member_ids:
             try:
-                user = User.objects.get(id=member_id)
-                if user.id != request.user.id:  # Don't add creator twice
+                # Security: Only add active users
+                user = User.objects.get(id=member_id, is_active=True)
+                # Security: Prevent duplicate memberships
+                if not GroupMembership.objects.filter(group=group, user=user).exists():
                     GroupMembership.objects.create(
                         group=group,
                         user=user,
                         added_by=request.user
                     )
+                    added_count += 1
             except User.DoesNotExist:
+                continue
+            except IntegrityError:
+                # Already a member, skip
                 continue
         
         return JsonResponse({
@@ -192,19 +224,25 @@ def create_group_ajax(request):
 def mark_thread_read(request, thread_id):
     """
     Mark all unread messages in a thread as read by the requesting user.
+    Security: Validates thread_id and ensures user is participant
     """
     try:
-        thread = ChatThread.objects.get(pk=thread_id)
-        # ensure participant
+        # Security: Validate thread_id is integer
+        try:
+            thread_id = int(thread_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid thread ID'}, status=400)
+        
+        thread = get_object_or_404(ChatThread, pk=thread_id)
+        
+        # Security: Ensure user is a participant
         if not thread.is_participant(request.user):
             return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
 
         thread.mark_messages_as_read(request.user)
         return JsonResponse({'success': True})
-    except ChatThread.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Thread not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': 'An error occurred'}, status=500)
 
 
 @login_required
@@ -212,93 +250,195 @@ def mark_thread_read(request, thread_id):
 def mark_group_read(request, group_id):
     """
     Mark group messages as read for the requesting user (adds user to read_by for unread group messages).
+    Security: Validates group_id and ensures user is member
     """
     try:
-        group = ChatGroup.objects.get(pk=group_id)
-        if not group.members.filter(id=request.user.id).exists():
+        # Security: Validate group_id is integer
+        try:
+            group_id = int(group_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid group ID'}, status=400)
+        
+        group = get_object_or_404(ChatGroup, pk=group_id)
+        
+        # Security: Ensure user is a member
+        if not group.is_member(request.user):
             return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
 
         unread = group.messages.exclude(sender=request.user).exclude(read_by=request.user)
         for msg in unread:
-            msg.read_by.add(request.user)
+            msg.mark_read_for(request.user)
 
         return JsonResponse({'success': True})
-    except ChatGroup.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Group not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': 'An error occurred'}, status=500)
 
 
 @login_required
 @require_http_methods(["GET"])
 def download_message_attachment(request, attachment_id):
-    """Download and decrypt a direct message attachment, ensure requester is a thread participant."""
-    att = get_object_or_404(MessageAttachment, pk=attachment_id)
-    thread = att.message.thread
-    if not thread.is_participant(request.user):
-        raise Http404('Not found')
-    data = att.get_content()
-    response = HttpResponse(data, content_type=att.content_type or 'application/octet-stream')
-    response['Content-Length'] = str(att.size)
-    # Allow inline viewing for images and PDFs; force download for other types
-    if att.content_type:
-        if att.content_type.startswith('image/') or att.content_type == 'application/pdf':
-            response['Content-Disposition'] = f'inline; filename="{att.filename}"'
+    """
+    Download and decrypt a direct message attachment.
+    Security: Validates attachment_id, ensures requester is thread participant, sanitizes filename
+    """
+    try:
+        # Security: Validate attachment_id is integer
+        try:
+            attachment_id = int(attachment_id)
+        except (ValueError, TypeError):
+            raise Http404('Not found')
+        
+        att = get_object_or_404(MessageAttachment, pk=attachment_id)
+        thread = att.message.thread
+        
+        # Security: Ensure user is a thread participant
+        if not thread.is_participant(request.user):
+            raise Http404('Not found')
+        
+        # Security: Get decrypted content
+        try:
+            data = att.get_content()
+        except Exception:
+            raise Http404('Unable to decrypt attachment')
+        
+        # Security: Sanitize filename to prevent path traversal
+        import os
+        safe_filename = os.path.basename(att.filename)
+        
+        response = HttpResponse(data, content_type=att.content_type or 'application/octet-stream')
+        response['Content-Length'] = str(att.size)
+        
+        # Security: Set appropriate Content-Disposition
+        if att.content_type:
+            if att.content_type.startswith('image/') or att.content_type == 'application/pdf':
+                response['Content-Disposition'] = f'inline; filename="{safe_filename}"'
+            else:
+                response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
         else:
-            response['Content-Disposition'] = f'attachment; filename="{att.filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{att.filename}"'
-    return response
+            response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
+        
+        return response
+    except Http404:
+        raise
+    except Exception:
+        raise Http404('Not found')
 
 
 @login_required
 @require_http_methods(["GET"])
 def download_message_attachment_thumbnail(request, attachment_id):
-    att = get_object_or_404(MessageAttachment, pk=attachment_id)
-    thread = att.message.thread
-    if not thread.is_participant(request.user):
+    """
+    Download thumbnail for a direct message attachment.
+    Security: Validates attachment_id, ensures requester is thread participant
+    """
+    try:
+        # Security: Validate attachment_id is integer
+        try:
+            attachment_id = int(attachment_id)
+        except (ValueError, TypeError):
+            raise Http404('Not found')
+        
+        att = get_object_or_404(MessageAttachment, pk=attachment_id)
+        thread = att.message.thread
+        
+        # Security: Ensure user is a thread participant
+        if not thread.is_participant(request.user):
+            raise Http404('Not found')
+        
+        data = att.get_thumbnail_content()
+        if data is None:
+            raise Http404('Thumbnail not available')
+        
+        response = HttpResponse(data, content_type='image/png')
+        response['Content-Length'] = str(len(data))
+        response['Content-Disposition'] = f'inline; filename="thumbnail.png"'
+        return response
+    except Http404:
+        raise
+    except Exception:
         raise Http404('Not found')
-    data = att.get_thumbnail_content()
-    if data is None:
-        raise Http404('Thumbnail not available')
-    response = HttpResponse(data, content_type='image/png')
-    response['Content-Length'] = str(len(data))
-    response['Content-Disposition'] = f'inline; filename="{att.filename}.png"'
-    return response
 
 
 @login_required
 @require_http_methods(["GET"])
 def download_group_message_attachment(request, attachment_id):
-    att = get_object_or_404(GroupMessageAttachment, pk=attachment_id)
-    group = att.message.group
-    if not group.is_member(request.user):
-        raise Http404('Not found')
-    data = att.get_content()
-    response = HttpResponse(data, content_type=att.content_type or 'application/octet-stream')
-    response['Content-Length'] = str(att.size)
-    # Allow inline viewing for images and PDFs; force download for other types
-    if att.content_type:
-        if att.content_type.startswith('image/') or att.content_type == 'application/pdf':
-            response['Content-Disposition'] = f'inline; filename="{att.filename}"'
+    """
+    Download and decrypt a group message attachment.
+    Security: Validates attachment_id, ensures requester is group member, sanitizes filename
+    """
+    try:
+        # Security: Validate attachment_id is integer
+        try:
+            attachment_id = int(attachment_id)
+        except (ValueError, TypeError):
+            raise Http404('Not found')
+        
+        att = get_object_or_404(GroupMessageAttachment, pk=attachment_id)
+        group = att.message.group
+        
+        # Security: Ensure user is a group member
+        if not group.is_member(request.user):
+            raise Http404('Not found')
+        
+        # Security: Get decrypted content
+        try:
+            data = att.get_content()
+        except Exception:
+            raise Http404('Unable to decrypt attachment')
+        
+        # Security: Sanitize filename
+        import os
+        safe_filename = os.path.basename(att.filename)
+        
+        response = HttpResponse(data, content_type=att.content_type or 'application/octet-stream')
+        response['Content-Length'] = str(att.size)
+        
+        # Security: Set appropriate Content-Disposition
+        if att.content_type:
+            if att.content_type.startswith('image/') or att.content_type == 'application/pdf':
+                response['Content-Disposition'] = f'inline; filename="{safe_filename}"'
+            else:
+                response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
         else:
-            response['Content-Disposition'] = f'attachment; filename="{att.filename}"'
-    else:
-        response['Content-Disposition'] = f'attachment; filename="{att.filename}"'
-    return response
+            response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
+        
+        return response
+    except Http404:
+        raise
+    except Exception:
+        raise Http404('Not found')
 
 
 @login_required
 @require_http_methods(["GET"])
 def download_group_message_attachment_thumbnail(request, attachment_id):
-    att = get_object_or_404(GroupMessageAttachment, pk=attachment_id)
-    group = att.message.group
-    if not group.is_member(request.user):
+    """
+    Download thumbnail for a group message attachment.
+    Security: Validates attachment_id, ensures requester is group member
+    """
+    try:
+        # Security: Validate attachment_id is integer
+        try:
+            attachment_id = int(attachment_id)
+        except (ValueError, TypeError):
+            raise Http404('Not found')
+        
+        att = get_object_or_404(GroupMessageAttachment, pk=attachment_id)
+        group = att.message.group
+        
+        # Security: Ensure user is a group member
+        if not group.is_member(request.user):
+            raise Http404('Not found')
+        
+        data = att.get_thumbnail_content()
+        if data is None:
+            raise Http404('Thumbnail not available')
+        
+        response = HttpResponse(data, content_type='image/png')
+        response['Content-Length'] = str(len(data))
+        response['Content-Disposition'] = f'inline; filename="thumbnail.png"'
+        return response
+    except Http404:
+        raise
+    except Exception:
         raise Http404('Not found')
-    data = att.get_thumbnail_content()
-    if data is None:
-        raise Http404('Thumbnail not available')
-    response = HttpResponse(data, content_type='image/png')
-    response['Content-Length'] = str(len(data))
-    response['Content-Disposition'] = f'inline; filename="{att.filename}.png"'
-    return response

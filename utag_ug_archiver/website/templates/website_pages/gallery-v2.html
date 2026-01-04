@@ -45,10 +45,29 @@
             {% for image in gallery.images.all %}
               <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover mix gallery-{{ gallery.id }}">
                 <div class="overlay-effect sea-green-overlay">
-                  <a href="{{ image.get_absolute_url }}"><img src="{{ image.get_absolute_url }}" alt="{{ image.caption|default:gallery.title }}" /></a>
+                  <a href="{{ image.get_absolute_url }}"
+                     data-gallery="gallery-{{ gallery.id }}"
+                     data-caption="{{ image.caption|default:gallery.title }}">
+                    <img src="{{ image.get_thumbnail_url }}"
+                         alt="{{ image.caption|default:gallery.title }}"
+                         data-src="{{ image.get_absolute_url }}"
+                         class="gallery-image img-fluid"
+                         loading="lazy"
+                         decoding="async"
+                         width="400"
+                         height="300"
+                         style="object-fit: cover; width: 100%; height: 250px;" />
+                  </a>
                   <div class="gallery-hover-effect">
-                    <a class="gallery-icon venobox" href="{{ image.get_absolute_url }}"><i class="fa fa-image"></i></a>
-                    <span class="gallery-text">{{ image.caption|default:"" }}</span>
+                    <a class="gallery-icon venobox"
+                       href="{{ image.get_absolute_url }}"
+                       data-gallery="gallery-{{ gallery.id }}"
+                       data-caption="{{ image.caption|default:gallery.title }}">
+                      <i class="fa fa-image"></i>
+                    </a>
+                    {% if image.caption %}
+                      <span class="gallery-text">{{ image.caption }}</span>
+                    {% endif %}
                   </div>
                 </div>
               </div>
@@ -56,31 +75,128 @@
           {% endfor %}
         {% else %}
           <div class="col-12">
-            <p class="text-center">No galleries are currently available. Please check back later.</p>
+            <div class="text-center py-5">
+              <i class="fa fa-image fa-3x text-muted mb-3"></i>
+              <p class="text-muted">No galleries are currently available. Please check back later.</p>
+            </div>
           </div>
         {% endif %}
       </div>
-      
-      <!-- Pagination removed temporarily -->
     </div>
   </div>
 </div>
 <!--End of Gallery Area-->
 {% endblock content %}
 
+{% block extra_head %}
+  <style>
+    /* Gallery Performance Optimizations */
+    .gallery-image {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+    }
+    
+    .gallery-image.loaded {
+      background: none;
+      opacity: 1;
+    }
+    
+    .single-items {
+      margin-bottom: 20px;
+    }
+    
+    .overlay-effect {
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+    }
+    
+    .overlay-effect:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .gallery-hover-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .overlay-effect:hover .gallery-hover-effect {
+      opacity: 1;
+    }
+    
+    .gallery-text {
+      color: white;
+      margin-top: 10px;
+      text-align: center;
+      padding: 0 15px;
+    }
+  </style>
+{% endblock extra_head %}
 {% block extra_js %}
 <script>
   $(document).ready(function(){
-    // Initialize MixItUp
-    $('.mix-grid').mixItUp({
-      selectors: {
-        target: '.mix',
-        filter: '.filter'
-      },
-      animation: {
-        duration: 300
+    // Initialize MixItUp for filtering
+    if ($('.mix-grid').length && typeof $.fn.mixItUp !== 'undefined') {
+      $('.mix-grid').mixItUp({
+        selectors: {
+          target: '.mix',
+          filter: '.filter'
+        },
+        animation: {
+          duration: 300
+        }
+      });
+    }
+    
+    // Lazy load full-size images when thumbnail is clicked
+    $('.gallery-image').on('click', function() {
+      var $img = $(this);
+      var fullSrc = $img.data('src');
+      if (fullSrc && !$img.hasClass('loaded-full')) {
+        var tempImg = new Image();
+        tempImg.onload = function() {
+          $img.attr('src', fullSrc).addClass('loaded-full');
+        };
+        tempImg.src = fullSrc;
       }
     });
+    
+    // Progressive image loading with Intersection Observer
+    if ('IntersectionObserver' in window) {
+      const imageObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            img.classList.add('loaded');
+            imageObserver.unobserve(img);
+          }
+        });
+      }, {
+        threshold: 0.1
+      });
+      
+      document.querySelectorAll('.gallery-image').forEach(function(img) {
+        imageObserver.observe(img);
+      });
+    } else {
+      // Fallback for older browsers
+      document.querySelectorAll('.gallery-image').forEach(function(img) {
+        img.classList.add('loaded');
+      });
+    }
   });
 </script>
 {% endblock %}

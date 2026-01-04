@@ -1,0 +1,23 @@
+{% comment %}Fallback inclusion snippet for adverts; mirrors adverts/templates/adverts/ad_snippet.html{% endcomment %}
+{% if ad %}
+    <div class="ad-slot ad-slot-{{ ad.slot.key }}">
+        {% if ad.html_content %}
+            {{ ad.html_content|safe }}
+        {% else %}
+            <a href="{% url 'website:ad_click' pk=ad.pk %}"
+               target="_blank"
+               rel="noopener">
+                {% if ad.image %}
+                    <img src="{{ ad.image.url }}"
+                         alt="{{ ad.title }}"
+                         style="max-width:100%;
+                                height:auto" />
+                {% else %}
+                    <div class="ad-placeholder">{{ ad.title }}</div>
+                {% endif %}
+            </a>
+        {% endif %}
+    </div>
+{% else %}
+    <!-- no ad for this slot -->
+{% endif %}

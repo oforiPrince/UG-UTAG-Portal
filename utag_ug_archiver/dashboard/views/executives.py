@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from accounts.models import User
+from accounts.models import User, School, College, Department
 from dashboard.models import Announcement, Notification
 from utag_ug_archiver.utils.constants import executive_committee_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
@@ -42,6 +42,11 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         # Get all members
         members = User.objects.all()
 
+        # Get schools, colleges, and departments
+        schools = School.objects.all()
+        colleges = College.objects.all()
+        departments = Department.objects.all()
+
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
         notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
@@ -49,6 +54,9 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         context = {
             'executive_officers': executive_officers,
             'members': members,
+            'schools': schools,
+            'colleges': colleges,
+            'departments': departments,
             'notifications': notifications,
             'notification_count': notification_count,
         }
@@ -64,6 +72,9 @@ class NewExecutiveMemberCreateView(View):
         gender = request.POST.get('gender')
         email = request.POST.get('email')
         phone_number = request.POST.get('phone')
+        department_id = request.POST.get('department')
+        school_id = request.POST.get('school')
+        college_id = request.POST.get('college')
 
         # Fields for executive
         position_name = request.POST.get('position')
@@ -74,28 +85,26 @@ class NewExecutiveMemberCreateView(View):
         print(date_appointed_str)
         executive_image = request.FILES.get('image')
         print(executive_image)
-        # Handle password
-        if request.POST.get('password_choice') == 'auto':
-            password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-        else:
-            password = request.POST.get('password1')
+        staff_id = request.POST.get('staff_id', '').strip()
 
         # Validation
         if not email or not date_appointed_str:
             messages.info(request, 'Email and date appointed are required!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+        # Validate staff_id
+        if not staff_id:
+            messages.error(request, 'Staff ID is required!')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        # Check if staff_id already exists
+        if User.objects.filter(staff_id=staff_id).exists():
+            messages.error(request, 'Staff ID already exists. Please use a different Staff ID.')
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
         if User.objects.filter(email=email).exists():
             messages.info(request, 'Member already exists!')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-        # Check if date appointed is valid
-        # try:
-        #     date_appointed = datetime.strptime(date_appointed_str, "%d %b, %Y").date()
-        #     print(date_appointed)
-        # except ValueError:
-        #     messages.info(request, 'Invalid date format! Use "dd Mon, yyyy".')
-        #     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # parse date appointed string -> date object (accept ISO or 'dd Mon, yyyy')
         try:
@@ -112,7 +121,10 @@ class NewExecutiveMemberCreateView(View):
             gender=gender,
             email=email,
             phone_number=phone_number,
-            password=make_password(password),
+            department_id=department_id,
+            school_id=school_id,
+            college_id=college_id,
+            staff_id=staff_id,
             executive_position=position_name,  # Set executive position
             executive_image = executive_image,
             fb_profile_url=fb_username,        # Set social media URLs
@@ -120,13 +132,16 @@ class NewExecutiveMemberCreateView(View):
             linkedin_profile_url=linkedin_username,
             date_appointed=date_appointed,
             is_active_executive=True,          # Mark as active executive
+            must_change_password=True,
         )
+        
+        # Use staff_id as temporary password
+        member.password = make_password(staff_id)
+        member.save(update_fields=['password'])
+        
         # Add to executive group
         member.groups.add(Group.objects.get(name='Member'))
         member.groups.add(Group.objects.get(name='Executive'))
-
-        # Send email to admin with password
-        # send_credentials_email(member, password)
 
         messages.success(request, 'Executive Member created successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))

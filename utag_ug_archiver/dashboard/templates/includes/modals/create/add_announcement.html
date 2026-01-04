@@ -28,13 +28,13 @@
                     <div class="row mb-3">
                         <div class="form-group col-md-6">
                             <label for="announcement_target">Target</label>
-                            <select class="form-control" id="announcement_target" name="target" required>
+                            <select class="form-control select2" id="announcement_target" name="target" required>
                                 {% for key, value in TARGET_CHOICES %}<option value="{{ key }}">{{ value }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="form-group col-md-6">
                             <label for="announcement_status">Status</label>
-                            <select class="form-control" id="announcement_status" name="status" required>
+                            <select class="form-control select2" id="announcement_status" name="status" required>
                                 {% for key, value in STATUS_CHOICES %}<option value="{{ key }}">{{ value }}</option>{% endfor %}
                             </select>
                         </div>
@@ -43,7 +43,7 @@
                          id="target_groups_section"
                          style="display: none">
                         <label for="announcement_target_groups">Target Groups</label>
-                        <select class="form-control"
+                        <select class="form-control select2"
                                 id="announcement_target_groups"
                                 name="target_groups"
                                 multiple>
@@ -69,11 +69,17 @@
 </div>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        var targetSelect = document.getElementById("announcement_target");
+        // Initialize Select2
+        $('#addAnnouncementModal').on('shown.bs.modal', function () {
+            $('#announcement_target, #announcement_status, #announcement_target_groups').select2({
+                dropdownParent: $('#addAnnouncementModal')
+            });
+        });
+
         var targetGroupsSection = document.getElementById("target_groups_section");
 
-        targetSelect.addEventListener("change", function() {
-            if (this.value === "specific_groups") {
+        $('#announcement_target').on("change", function() {
+            if ($(this).val() === "specific_groups") {
                 targetGroupsSection.style.display = "block";
             } else {
                 targetGroupsSection.style.display = "none";

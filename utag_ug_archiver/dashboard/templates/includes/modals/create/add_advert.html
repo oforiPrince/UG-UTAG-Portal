@@ -1,163 +1,460 @@
 <!-- Modal for Advert Creation -->
-<div class="modal fade bs-example-modal-lg"
+{% load static %}
+<div class="modal fade"
      id="createAdvertModal"
      tabindex="-1"
      aria-labelledby="createAdvertModalLabel"
      aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
+  <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+    <div class="modal-content shadow-sm border-0">
+      <div class="modal-header bg-white border-0">
         <h5 class="modal-title" id="createAdvertModalLabel">Create Advertisement</h5>
         <button type="button"
-                class="btn-close"
+                class="btn btn-sm btn-light"
                 data-bs-dismiss="modal"
-                aria-label="Close"></button>
+                aria-label="Close">
+          <i class="fa fa-times text-muted" aria-hidden="true"></i>
+        </button>
       </div>
       <div class="modal-body">
-        <form class="advertForm"
+        <form id="createAdvertForm"
+              class="advertForm row gx-4 gy-3"
               enctype="multipart/form-data"
               action="{% url 'dashboard:create_advert' %}"
-              method="POST">
+              method="post"
+              novalidate>
           {% csrf_token %}
-          <div class="form-group mb-3">
-            <label for="imageInput">Image (900x250 or 300x250 pixels)</label>
-            <input type="file"
-                   class="form-control"
-                   id="imageInput"
-                   name="image"
-                   accept="image/*"
-                   onchange="validateImage()">
-            <span id="errorMessage" style="color: red;"></span>
-          </div>
-          <div class="mb-3" id="imagePreviewContainer" style="display: none;">
-            <h5>Image Preview</h5>
-            <img id="imagePreview"
-                 src="#"
-                 alt="Image Preview"
-                 style="max-width: 100%;
-                        max-height: 200px">
-          </div>
-          <div class="row">
-            <div class="form-group col-md-6 mb-3">
-              <label for="advertiserSelect">Advertiser</label>
-              <select class="form-control"
-                      id="advertiserSelect"
-                      name="advertiser_id"
-                      required>
-                <option value="">Select an Advertiser</option>
-                {% for advertiser in advertisers %}
-                  <option value="{{ advertiser.id }}">{{ advertiser.company_name }}</option>
+          <div class="col-lg-8">
+            <!-- Left column: form fields -->
+            <div class="mb-3">
+              <label class="form-label" for="placementsTiles">Placements</label>
+              <div id="placementsTiles"
+                   class="d-flex flex-wrap gap-2"
+                   aria-describedby="placementsHelp">
+                {% for pl in placements %}
+                  {% if pl.key == 'header' or pl.key == 'footer' or pl.key == 'top' or pl.key == 'bottom' or pl.key == 'sidebar' %}
+                    {% with w=pl.width h=pl.height %}
+                      {% if not w %}
+                        {% if pl.key == 'header' or pl.key == 'footer' %}
+                          {% with w=970 h=90 %}
+                            <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                                   title="{{ pl.name }} - Recommended for academic websites">
+                              <input type="radio"
+                                     name="slot"
+                                     value="{{ pl.key }}"
+                                     data-width="{{ w }}"
+                                     data-height="{{ h }}"
+                                     class="form-check-input me-2 placement-checkbox">
+                              <div class="text-start">
+                                <div class="fw-semibold small">{{ pl.name }}</div>
+                                <div class="small text-muted">{{ w }}×{{ h }}px</div>
+                                {% if pl.key == 'header' or pl.key == 'footer' %}
+                                  <div class="small text-success"><i class="fa fa-check-circle"></i> Recommended</div>
+                                {% endif %}
+                              </div>
+                            </label>
+                          {% endwith %}
+                        {% else %}
+                          <label class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                                 title="{{ pl.name }}">
+                            <input type="radio"
+                                   name="slot"
+                                   value="{{ pl.key }}"
+                                   data-width="{{ w|default_if_none:'' }}"
+                                   data-height="{{ h|default_if_none:'' }}"
+                                   class="form-check-input me-2 placement-checkbox">
+                            <div class="text-start">
+                              <div class="fw-semibold small">{{ pl.name }}</div>
+                              <div class="small text-muted">
+                                {% if w and h %}
+                                  {{ w }}×{{ h }}px
+                                {% else %}
+                                  Flexible
+                                {% endif %}
+                              </div>
+                            </div>
+                          </label>
+                        {% endif %}
+                      {% else %}
+                        <label class="btn btn-outline-{% if pl.key == 'header' or pl.key == 'footer' %}primary{% else %}secondary{% endif %} btn-sm d-flex align-items-center gap-2 p-2 placement-tile"
+                               title="{{ pl.name }}{% if pl.key == 'header' or pl.key == 'footer' %} - Recommended for academic websites{% endif %}">
+                          <input type="radio"
+                                 name="slot"
+                                 value="{{ pl.key }}"
+                                 data-width="{{ w }}"
+                                 data-height="{{ h }}"
+                                 class="form-check-input me-2 placement-checkbox">
+                          <div class="text-start">
+                            <div class="fw-semibold small">{{ pl.name }}</div>
+                            <div class="small text-muted">{{ w }}×{{ h }}px</div>
+                            {% if pl.key == 'header' or pl.key == 'footer' %}
+                              <div class="small text-success"><i class="fa fa-check-circle"></i> Recommended</div>
+                            {% endif %}
+                          </div>
+                        </label>
+                      {% endif %}
+                    {% endwith %}
+                  {% endif %}
                 {% endfor %}
-              </select>
+              </div>
+              <div id="placementsHelp" class="form-text">
+                <strong>Academic Website Best Practices:</strong> Header and Footer banners are recommended for professional academic websites. They are non-intrusive and maintain content readability.
+              </div>
             </div>
-            <div class="form-group col-md-6 mb-3">
-              <label for="planSelect">Plan</label>
-              <select class="form-control"
-                      id="planSelect"
-                      name="plan_id"
-                      required
-                      onchange="updateAvailablePositions()">
-                <option value="">Select a Plan</option>
-                {% for plan in plans %}
-                  <option value="{{ plan.id }}" data-positions="{{ plan.positions }}">{{ plan.name }}</option>
-                {% endfor %}
-              </select>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="desktopImageInput">Desktop Image</label>
+                <input type="file"
+                       class="form-control"
+                       id="desktopImageInput"
+                       name="image"
+                       accept="image/*"
+                       aria-describedby="desktopHelp">
+                <div id="desktopHelp" class="form-text">
+                  Recommended: <span id="desktopRecommended">1200×600</span>
+                </div>
+                <div id="desktopFilename" class="small text-muted mt-1">No file chosen</div>
+              </div>
+              <!-- mobile image input removed (not stored in model) -->
             </div>
-          </div>
-          <div class="row">
-            <div class="form-group col-md-6 mb-3">
-              <label for="positionSelect">Position</label>
-              <select class="form-control" id="positionSelect" name="position" required>
-                <option value="">Select a Position</option>
-              </select>
-            </div>
-            <div class="form-group col-md-6 mb-3">
-              <label for="targetUrlInput">Target URL</label>
-              <input type="url" class="form-control" id="targetUrlInput" name="target_url">
-            </div>
-          </div>
-          <div class="row">
-            <div class="form-group col-md-6 mb-3">
-              <label for="startDateInput">Start Date</label>
-              <input type="date"
+            <!-- Title (maps to Ad.title) -->
+            <div class="mb-3">
+              <label class="form-label" for="titleInput">Title</label>
+              <input type="text"
                      class="form-control"
-                     id="startDateInput"
-                     name="start_date"
-                     required>
+                     id="titleInput"
+                     name="title"
+                     maxlength="140"
+                     placeholder="Short ad title (optional)">
             </div>
-            <div class="form-group col-md-6 mb-3">
-              <label for="statusSelect">Status</label>
-              <select class="form-control" id="statusSelect" name="status" required>
-                <option value="DRAFT">Draft</option>
-                <option value="PUBLISHED" selected>Published</option>
-                <option value="EXPIRED">Expired</option>
-              </select>
+            <div class="row">
+              <!-- alt_text input removed -->
+              <!-- CTA text removed (not stored on Ad model) -->
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="htmlContentInput">HTML Content (optional)</label>
+              <textarea class="form-control"
+                        id="htmlContentInput"
+                        name="html_content"
+                        rows="4"
+                        placeholder="Optional raw HTML for rich creatives; will be used instead of image if provided."></textarea>
+            </div>
+            <div class="row">
+              <div class="col-12 mb-3">
+                <label class="form-label" for="planSelect">Advert Plan (optional)</label>
+                <select id="planSelect" name="plan_id" class="form-select select2">
+                  <option value="">-- choose a plan (optional) --</option>
+                  {% for plan in plans %}
+                    <option value="{{ plan.id }}"
+                            data-price="{{ plan.price }}"
+                            data-duration="{{ plan.duration_in_days }}">
+                      {{ plan.name }} — {{ plan.price }} USD / {{ plan.duration_in_days }} days
+                    </option>
+                  {% empty %}
+                    <option value="">No active plans</option>
+                  {% endfor %}
+                </select>
+                <div id="planInfo" class="small text-muted mt-1">Choose a plan to link this advert to an order.</div>
+              </div>
+            </div>
+            <div id="errorMessage" class="text-danger small mb-2" aria-live="polite"></div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="priorityInput">Priority</label>
+                <input type="number"
+                       class="form-control"
+                       id="priorityInput"
+                       name="priority"
+                       value="0">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="targetUrlInput">Target URL</label>
+                <input type="url" class="form-control" id="targetUrlInput" name="target_url">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="startDateInput">Start Date</label>
+                <input type="date"
+                       class="form-control"
+                       id="startDateInput"
+                       name="start_date">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="statusSelect">Status</label>
+                <select class="form-select select2" id="statusSelect" name="status">
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED" selected>Published</option>
+                  <option value="EXPIRED">Expired</option>
+                </select>
+              </div>
+            </div>
+            <!-- actions moved to modal-footer -->
+          </div>
+          <div class="col-lg-4">
+            <!-- Right column: preview & helpers -->
+            <div class="card shadow-sm">
+              <div class="card-body text-center">
+                <h6 class="card-title mb-2">Preview & Info</h6>
+                <div class="mb-2">
+                  <small class="text-muted">Recommended size</small>
+                  <div class="fw-semibold" id="recommendedSize">—</div>
+                </div>
+                <div class="mb-3">
+                  <img id="placementSampleImg"
+                       src="{% static 'dashboard/assets/sample_images/placement_sample.svg' %}"
+                       alt="placement sample"
+                       class="img-fluid img-thumbnail mb-2"
+                       width="280"
+                       height="160">
+                  <div class="small text-muted">Sample view (desktop)</div>
+                </div>
+                <div class="mb-2">
+                  <div class="h6 mb-0" id="previewTitle">Ad title will appear here</div>
+                </div>
+                <div class="row g-2">
+                  <div class="col-12">
+                    <div class="small text-start mb-1">Selected placements</div>
+                    <div id="selectedPlacements"
+                         class="d-flex flex-wrap gap-1 justify-content-center"></div>
+                  </div>
+                  <div class="col-12">
+                    <div class="small text-muted">Desktop preview</div>
+                    <img id="desktopPreview"
+                         class="img-fluid img-thumbnail"
+                         src=""
+                         alt="Desktop preview"
+                         width="260"
+                         height="140">
+                  </div>
+                </div>
+                <div id="imagePlacementWarning"
+                     class="alert alert-warning mt-3 d-none"
+                     role="alert"></div>
+                <div class="mt-3 small text-muted">Tip: Upload both desktop and mobile assets for best results across devices.</div>
+              </div>
             </div>
           </div>
-          <div class="mt-3 text-end">
-            <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Submit</button>
+        </div>
+        <!-- Modal footer: actions -->
+        <div class="modal-footer border-0 bg-white mt-3">
+          <div class="w-100 d-flex justify-content-end gap-2">
             <button type="button"
-                    class="btn btn-secondary waves-effect"
-                    data-bs-dismiss="modal">Close</button>
+                    class="btn btn-secondary btn-sm"
+                    data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="createAdvertSubmit">
+              <i class="fa fa-save me-2" aria-hidden="true"></i> Create Ad
+            </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 <script>
-// Function to dynamically update positions based on selected plan
-function updateAvailablePositions() {
-  var planSelect = document.getElementById('planSelect');
-  var positionSelect = document.getElementById('positionSelect');
-  var selectedPlan = planSelect.options[planSelect.selectedIndex];
-  var positions = selectedPlan.getAttribute('data-positions');
+// Initialize the advert modal JS only when the modal is shown. Scope all queries to the modal/form to
+// avoid running on pages that don't include the modal and to prevent double initialization.
+(function(){
+  function initAdvertModal(modal) {
+    if (!modal) return;
+    const form = modal.querySelector('#createAdvertForm');
+    if (!form) return;
 
-  // Clear existing options in the position dropdown
-  positionSelect.innerHTML = '<option value="">Select a Position</option>';
+  const placementInputs = Array.from(form.querySelectorAll('.placement-checkbox'));
+    const recommendedSizeEl = form.querySelector('#recommendedSize');
+  const desktopInput = form.querySelector('#desktopImageInput');
+  const desktopPreview = form.querySelector('#desktopPreview');
+    const selectedPlacements = form.querySelector('#selectedPlacements');
+    const imagePlacementWarning = form.querySelector('#imagePlacementWarning');
+    const errorMessage = form.querySelector('#errorMessage');
 
-  // Add new options based on the selected plan
-  if (positions) {
-    var positionList = positions.split(',');
-    positionList.forEach(function(position) {
-      var option = document.createElement('option');
-      option.value = position.trim();
-      option.textContent = position.charAt(0).toUpperCase() + position.slice(1);
-      positionSelect.appendChild(option);
+    const placementsRequireDesktop = new Set(['top','hero','bottom']);
+    const fallbackSizes = {
+      header: {w:970, h:90},  // Academic website standard
+      footer: {w:970, h:90},  // Academic website standard
+      top: {w:1200, h:600},
+      sidebar: {w:300, h:250},
+      bottom: {w:900, h:300},
+      hero: {w:1200, h:600}
+    };
+
+    function updateRecommendedAndUI() {
+      const selectedOptions = placementInputs.filter(cb => cb.checked).map(cb => ({
+        value: cb.value,
+        dataset: cb.dataset,
+        text: cb.closest('label') ? cb.closest('label').innerText.trim() : cb.value
+      }));
+      if (selectedOptions.length === 0) {
+        if (recommendedSizeEl) recommendedSizeEl.textContent = '—';
+        if (selectedPlacements) selectedPlacements.innerHTML = '';
+        if (imagePlacementWarning) imagePlacementWarning.classList.add('d-none');
+        return;
+      }
+
+      if (selectedPlacements) selectedPlacements.innerHTML = '';
+      selectedOptions.forEach(o => {
+        const span = document.createElement('span');
+        span.className = 'badge bg-secondary text-white me-1';
+        span.textContent = o.text;
+        selectedPlacements.appendChild(span);
+      });
+
+      const first = selectedOptions.find(o => o.dataset && o.dataset.width && o.dataset.height) || selectedOptions[0];
+      let w = first.dataset && first.dataset.width ? parseInt(first.dataset.width, 10) : (fallbackSizes[first.value] && fallbackSizes[first.value].w);
+      let h = first.dataset && first.dataset.height ? parseInt(first.dataset.height, 10) : (fallbackSizes[first.value] && fallbackSizes[first.value].h);
+      if (recommendedSizeEl) recommendedSizeEl.textContent = (w && h) ? w + ' × ' + h : '—';
+      // expose the currently-required size on the form for validation
+      if (form) {
+        if (w && h) {
+          form.dataset.requiredWidth = w;
+          form.dataset.requiredHeight = h;
+        } else {
+          delete form.dataset.requiredWidth;
+          delete form.dataset.requiredHeight;
+        }
+      }
+
+  const selectedKeys = selectedOptions.map(o => o.value);
+  checkImageMismatch(selectedKeys);
+
+      if (desktopPreview && !(desktopInput && desktopInput.files && desktopInput.files.length > 0)) {
+        const thumbPath = getThumbnailPath(selectedKeys[0], 'desktop');
+        desktopPreview.src = thumbPath;
+        desktopPreview.classList.remove('d-none');
+      }
+      // mobile preview removed
+    }
+
+    function checkImageMismatch(selectedKeys) {
+      const requiresDesktop = selectedKeys.some(k => placementsRequireDesktop.has(k));
+      const hasDesktop = desktopInput && desktopInput.files && desktopInput.files.length > 0;
+      if (requiresDesktop && !hasDesktop) {
+        if (imagePlacementWarning) {
+          imagePlacementWarning.textContent = 'Selected placement(s) typically require a large/desktop image. Please upload a desktop image for best quality.';
+          imagePlacementWarning.classList.remove('d-none');
+        }
+      } else if (imagePlacementWarning) {
+        imagePlacementWarning.classList.add('d-none');
+        imagePlacementWarning.textContent = '';
+      }
+    }
+
+    function previewFile(input, imgEl) {
+      if (!input || !imgEl) return;
+      const file = input.files && input.files[0];
+      if (!file) {
+        imgEl.src = '';
+        imgEl.classList.add('d-none');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imgEl.src = e.target.result;
+        imgEl.classList.remove('d-none');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function validateImageInput(input) {
+      if (!input) return true;
+      const file = input.files && input.files[0];
+      const submitBtn = form.querySelector('#createAdvertSubmit');
+      if (!file) {
+        // no file means nothing to validate; enable submit
+        if (errorMessage) errorMessage.textContent = '';
+        if (submitBtn) submitBtn.disabled = false;
+        return true;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+          const width = this.width;
+          const height = this.height;
+          let reqW = form && form.dataset && form.dataset.requiredWidth ? parseInt(form.dataset.requiredWidth, 10) : null;
+          let reqH = form && form.dataset && form.dataset.requiredHeight ? parseInt(form.dataset.requiredHeight, 10) : null;
+          // If no required size available, accept any image but warn
+          if (reqW && reqH) {
+            const ok = (width === reqW && height === reqH);
+            if (!ok) {
+              if (errorMessage) errorMessage.textContent = 'Image must be exactly ' + reqW + '×' + reqH + ' pixels for the selected placement.';
+              if (submitBtn) submitBtn.disabled = true;
+              return false;
+            }
+          }
+          // all good
+          if (errorMessage) errorMessage.textContent = '';
+          if (submitBtn) submitBtn.disabled = false;
+          return true;
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    var THUMBNAIL_BASE = "{% static 'dashboard/assets/sample_images/thumbnails/' %}";
+    function getThumbnailPath(key, kind) {
+      if (!key) return "{% static 'dashboard/assets/sample_images/placement_sample.svg' %}";
+      return THUMBNAIL_BASE + 'placement_' + key + '_' + kind + '.svg';
+    }
+
+    
+    // wire placement inputs (radio tiles)
+    placementInputs.forEach(function(cb){ cb.addEventListener('change', updateRecommendedAndUI); });
+    if (desktopInput) desktopInput.addEventListener('change', function() { previewFile(this, desktopPreview); updateRecommendedAndUI(); validateImageInput(this); });
+
+  var desktopFilename = form.querySelector('#desktopFilename');
+  var titleInput = form.querySelector('#titleInput');
+  var previewTitle = form.querySelector('#previewTitle');
+
+  if (desktopInput) desktopInput.addEventListener('change', function() { if (desktopFilename) desktopFilename.textContent = this.files && this.files[0] ? this.files[0].name : 'No file chosen'; });
+  if (titleInput) titleInput.addEventListener('input', function() { if (previewTitle) previewTitle.textContent = this.value || 'Ad title will appear here'; });
+
+    // initial run in case of pre-filled
+    updateRecommendedAndUI();
+  }
+
+  const modalEl = document.getElementById('createAdvertModal');
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function() {
+      // Initialize Select2
+      $('#planSelect, #statusSelect').select2({
+        dropdownParent: $('#createAdvertModal')
+      });
+
+      if (modalEl.dataset.advertInit === '1') return;
+      initAdvertModal(modalEl);
+      modalEl.dataset.advertInit = '1';
+    });
+    modalEl.addEventListener('hidden.bs.modal', function() {
+      // minimal cleanup so preview doesn't linger
+      const form = modalEl.querySelector('#createAdvertForm');
+      if (!form) return;
+  const desktopPreview = form.querySelector('#desktopPreview');
+      const errorMessage = form.querySelector('#errorMessage');
+      const imagePlacementWarning = form.querySelector('#imagePlacementWarning');
+      if (desktopPreview) { desktopPreview.src = ''; desktopPreview.classList.add('d-none'); }
+  if (errorMessage) errorMessage.textContent = '';
+  if (imagePlacementWarning) { imagePlacementWarning.classList.add('d-none'); imagePlacementWarning.textContent = ''; }
     });
   }
-}
-
-// Function to validate image dimensions (unchanged)
-function validateImage() {
-  var input = document.getElementById('imageInput');
-  var file = input.files[0];
-  var errorMessage = document.getElementById('errorMessage');
-  var imagePreviewContainer = document.getElementById('imagePreviewContainer');
-  var imagePreview = document.getElementById('imagePreview');
-
-  if (file) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var img = new Image();
-      img.src = e.target.result;
-
-      img.onload = function() {
-        var width = this.width;
-        var height = this.height;
-
-        if ((width === 900 && height === 250) || (width === 300 && height === 250)) {
-          errorMessage.textContent = '';
-          imagePreview.src = e.target.result;
-          imagePreviewContainer.style.display = 'block';
-        } else {
-          errorMessage.textContent = 'Image must be exactly 900x250 or 300x250 pixels.';
-          imagePreviewContainer.style.display = 'none';
-          input.value = '';
-        }
-      };
-    };
-    reader.readAsDataURL(file);
-  }
-}
+})();
+</script>
+<script>
+  // small plan select preview
+  document.addEventListener('DOMContentLoaded', function(){
+    var planSelect = document.getElementById('planSelect');
+    var planInfo = document.getElementById('planInfo');
+    if (!planSelect) return;
+    planSelect.addEventListener('change', function(){
+      var opt = planSelect.options[planSelect.selectedIndex];
+      if (!opt || !opt.value) {
+        planInfo.textContent = 'Choose a plan to link this advert to an order.';
+        return;
+      }
+      var price = opt.dataset.price || 'N/A';
+      var duration = opt.dataset.duration || 'N/A';
+      planInfo.textContent = 'Selected: ' + opt.text + ' — Price: ' + price + ' — Duration: ' + duration + ' days';
+    });
+  });
 </script>

@@ -52,11 +52,13 @@
                     <tr>
                       <th>#</th>
                       <th>Image</th>
-                      <th>Company Name</th>
-                      <th>Plan</th>
+                      <th>Title</th>
+                      <th>Placement</th>
                       <th>Start Date</th>
                       <th>End Date</th>
-                      <th>Created At</th>
+                      <th>Impressions</th>
+                      <th>Clicks</th>
+                      <th>CTR</th>
                       <th class="text-center">Status</th>
                       <th>Actions</th>
                     </tr>
@@ -66,19 +68,49 @@
                       <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>
-                          <img src="{{ ad.get_image_url }}"
-                               alt="{{ ad.advertiser.company_name }}"
-                               class="img-fluid"
-                               width="80"
-                               height="60">
+                          {% if ad.get_image_url %}
+                            <img src="{{ ad.get_image_url }}"
+                                 alt="{{ ad.title }}"
+                                 class="img-fluid"
+                                 width="80"
+                                 height="60">
+                          {% else %}
+                            <img src="{% static 'dashboard/assets/sample_images/placement_sample.svg' %}"
+                                 alt="Advert"
+                                 class="img-fluid"
+                                 width="80"
+                                 height="60">
+                          {% endif %}
                         </td>
-                        <td>{{ ad.advertiser.company_name }}</td>
-                        <td>{{ ad.plan.name }}</td>
-                        <td>{{ ad.start_date }}</td>
-                        <td>{{ ad.end_date }}</td>
+                        <td>{{ ad.title|default:"—" }}</td>
+                        <td>
+                          <span class="badge bg-info">{{ ad.slot.name }}</span>
+                          <small class="text-muted d-block">{{ ad.slot.key }}</small>
+                        </td>
+                        <td>{{ ad.start|date:"d M Y"|default:"—" }}</td>
+                        <td>{{ ad.end|date:"d M Y"|default:"—" }}</td>
+                        <td>{{ ad.impressions|default:0 }}</td>
+                        <td>{{ ad.clicks|default:0 }}</td>
+                        <td>
+                          {% if ad.impressions > 0 %}
+                            {% widthratio ad.clicks ad.impressions 100 %}%
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
                         <td>{{ ad.created_at|date:"d M Y" }}</td>
                         <td class="text-center">
-                          <span class="badge bg-{% if ad.status == 'PUBLISHED' %}success{% elif ad.status == 'EXPIRED' %}warning{% else %}danger{% endif %}">{{ ad.status }}</span>
+                          {% with status=ad.get_status_display %}
+                            {% if status == 'Published' %}
+                              <span class="badge bg-success">Published</span>
+                            {% elif status == 'Expired' %}
+                              <span class="badge bg-warning">Expired</span>
+                            {% elif status == 'Scheduled' %}
+                              <span class="badge bg-info">Scheduled</span>
+                            {% else %}
+                              <span class="badge bg-secondary">Draft</span>
+                            {% endif %}
+                          {% endwith %}
                         </td>
                         <td>
                           <a href="#"

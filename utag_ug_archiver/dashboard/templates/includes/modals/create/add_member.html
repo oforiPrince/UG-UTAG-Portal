@@ -21,7 +21,7 @@
           <div class="mb-3">
             <label class="form-label" for="id_title">Title</label>
             <div>
-              <select id="id_title" class="form-control" required name="title">
+              <select id="id_title" class="form-select select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
                 <option value="Prof.">Prof.</option>
                 <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
@@ -107,11 +107,13 @@
               <label class="form-label" for="id_department">Department</label>
               <div>
                 <select id="id_department"
-                        class="form-control select2"
+                        class="form-select select2"
                         required
                         name="department">
                   <option value="" selected disabled>Select a department</option>
-                  {% for department in departments %}<option value="{{ department.id }}">{{ department.name }}</option>{% endfor %}
+                  {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
@@ -120,20 +122,47 @@
             <div class="col-md-6 mb-3">
               <label class="form-label" for="id_school">School</label>
               <div>
-                <select id="id_school" class="form-control select2" name="school">
-                  <option value="" selected>Select a school</option>
-                  {% for school in schools %}<option value="{{ school.id }}">{{ school.name }}</option>{% endfor %}
+                <select id="id_school" class="form-select select2" name="school">
+                  <option value="" selected disabled>Select a school</option>
+                  {% for school in schools %}
+                    <option value="{{ school.id }}">{{ school.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label" for="id_college">College</label>
               <div>
-                <select id="id_college" class="form-control select2" name="college">
-                  <option value="" selected>Select a college</option>
-                  {% for college in colleges %}<option value="{{ college.id }}">{{ college.name }}</option>{% endfor %}
+                <select id="id_college" class="form-select select2" name="college">
+                  <option value="" selected disabled>Select a college</option>
+                  {% for college in colleges %}
+                    <option value="{{ college.id }}">{{ college.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_staff_id">Staff ID</label>
+            <div>
+              <input type="text"
+                     id="id_staff_id"
+                     class="form-control"
+                     required
+                     name="staff_id"
+                     placeholder="Enter staff ID (4-20 digits)"
+                     pattern="[0-9]{4,20}"
+                     minlength="4"
+                     maxlength="20"
+                     data-parsley-pattern="[0-9]{4,20}"
+                     data-parsley-pattern-message="Staff ID must be 4-20 digits only"
+                     data-parsley-remote="/dashboard/account_management/check-staff-id/"
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id").val(); } } }'
+                     data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
+                     data-parsley-remote-reverse="true"
+                     title="Staff ID must be 4-20 digits" />
+              <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique (4-20 digits).</small>
+              <div id="staff_id_feedback" class="invalid-feedback"></div>
             </div>
           </div>
           <div class="mb-0 text-end">
@@ -149,6 +178,57 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Select2 elements inside the modal
+    $('#addMemberModal').on('shown.bs.modal', function () {
+      $('#id_title, #id_department, #id_school, #id_college').select2({
+        dropdownParent: $('#addMemberModal')
+      });
+      
+      // Initialize Parsley validation
+      $('#addMemberModal form').parsley();
+      
+      // Real-time staff_id validation on blur
+      $('#id_staff_id').on('blur', function() {
+        var staffId = $(this).val().trim();
+        var $input = $(this);
+        var $feedback = $('#staff_id_feedback');
+        
+        if (staffId && /^[0-9]{4,20}$/.test(staffId)) {
+          $.ajax({
+            url: '/dashboard/account_management/check-staff-id/',
+            type: 'GET',
+            data: {
+              staff_id: staffId
+            },
+            dataType: 'json',
+            success: function(response) {
+              if (response.available) {
+                $input.removeClass('is-invalid').addClass('is-valid');
+                $feedback.text('').hide();
+              } else {
+                $input.removeClass('is-valid').addClass('is-invalid');
+                $feedback.text(response.message || 'Staff ID already taken').show();
+              }
+            },
+            error: function(xhr) {
+              // Only show error if it's a validation error, not a 405
+              if (xhr.status === 400 && xhr.responseJSON) {
+                $input.removeClass('is-valid').addClass('is-invalid');
+                $feedback.text(xhr.responseJSON.message || 'Invalid Staff ID').show();
+              } else {
+                $input.removeClass('is-valid is-invalid');
+                $feedback.text('').hide();
+              }
+            }
+          });
+        } else if (staffId) {
+          // Invalid format
+          $input.removeClass('is-valid').addClass('is-invalid');
+          $feedback.text('Staff ID must be 4-20 digits only').show();
+        }
+      });
+    });
+
     const passwordChoice = document.querySelectorAll(
       '[name="password_choice"]'
     );

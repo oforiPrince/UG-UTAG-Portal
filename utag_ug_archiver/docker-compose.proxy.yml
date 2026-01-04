@@ -1,0 +1,52 @@
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    env_file:
+      - .env
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-localhost}
+      WEB_SERVICE_HOST: ${WEB_SERVICE_HOST:-web}
+      WEB_SERVICE_PORT: ${WEB_SERVICE_PORT:-8000}
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - certbot_www:/var/www/certbot
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles:
+      - certbot
+    env_file:
+      - .env
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-localhost}
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:-princeofori723@gmail.com}
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      trap exit TERM
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet || true
+        sleep ${CERTBOT_RENEW_INTERVAL:-43200}
+      done
+    restart: unless-stopped
+    depends_on:
+      - nginx
+
+volumes:
+  certbot_etc:
+  certbot_var:
+  certbot_www:

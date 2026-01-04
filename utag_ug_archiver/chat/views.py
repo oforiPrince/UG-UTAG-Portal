@@ -112,10 +112,6 @@ class ThreadStartView(LoginRequiredMixin, View):
                 message = Message(thread=thread, sender=request.user)
                 message.set_plaintext(message_text)
                 message.save()
-            if created:
-                messages.success(request, 'Chat thread created successfully.')
-            else:
-                messages.info(request, 'You already had a conversation with this member. We took you there.')
             return redirect('chat:thread_detail', pk=thread.pk)
         return render(request, self.template_name, {'form': form})
 
@@ -124,7 +120,15 @@ class ThreadDetailView(LoginRequiredMixin, View):
     template_name = 'chat/thread_detail.html'
 
     def get_thread(self, user, pk):
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid thread ID')
+        
         thread = get_object_or_404(ChatThread, pk=pk)
+        
+        # Security: Ensure user is participant
         if not thread.is_participant(user):
             raise Http404('You do not have access to this conversation.')
         return thread
@@ -136,6 +140,12 @@ class ThreadDetailView(LoginRequiredMixin, View):
             raise Http404('You do not have access to this conversation.') from exc
 
     def get(self, request, pk):
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid thread ID')
+        
         thread = self.get_thread(request.user, pk)
         thread.mark_messages_as_read(request.user)
         form = DirectMessageForm()
@@ -150,8 +160,31 @@ class ThreadDetailView(LoginRequiredMixin, View):
     def post(self, request, pk):
         from django.http import JsonResponse
         
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': 'Invalid thread ID'}, status=400)
+            raise Http404('Invalid thread ID')
+        
         thread = self.get_thread(request.user, pk)
         form = DirectMessageForm(request.POST)
+        
+        # Security: Validate message content
+        if form.is_valid():
+            body = form.cleaned_data['body'].strip()
+            if len(body) > 2000:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'Message too long'}, status=400)
+                from django.contrib import messages
+                messages.error(request, 'Message too long')
+                return render(request, self.template_name, {
+                    'thread': thread,
+                    'form': form,
+                    'message_list': thread.messages.select_related('sender'),
+                    'other_user': self.resolve_other_user(thread, request.user),
+                })
         
         # Handle AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -181,7 +214,6 @@ class ThreadDetailView(LoginRequiredMixin, View):
             message = Message(thread=thread, sender=request.user)
             message.set_plaintext(form.cleaned_data['body'])
             message.save()
-            messages.success(request, 'Message sent.')
             return redirect(reverse('chat:thread_detail', kwargs={'pk': thread.pk}))
         
         context = {
@@ -225,7 +257,6 @@ class GroupCreateView(LoginRequiredMixin, View):
         if form.is_valid():
             group = ChatGroup.objects.create(name=form.cleaned_data['name'], created_by=request.user)
             GroupMembership.objects.create(group=group, user=request.user, added_by=request.user)
-            messages.success(request, 'Group created. Add members to get started.')
             return redirect('chat:group_detail', pk=group.pk)
         return render(request, self.template_name, {'form': form})
 
@@ -234,7 +265,15 @@ class GroupDetailView(LoginRequiredMixin, View):
     template_name = 'chat/group_detail.html'
 
     def get_group(self, user, pk):
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid group ID')
+        
         group = get_object_or_404(ChatGroup, pk=pk)
+        
+        # Security: Ensure user is a group member
         if not group.is_member(user):
             raise Http404('You are not part of this group.')
         return group
@@ -257,14 +296,31 @@ class GroupDetailView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid group ID')
+        
         group = self.get_group(request.user, pk)
         form = GroupMessageForm(request.POST)
         if form.is_valid():
+            # Security: Validate message length
+            body = form.cleaned_data['body'].strip()
+            if len(body) > 2000:
+                from django.contrib import messages
+                messages.error(request, 'Message too long')
+                return render(request, self.template_name, {
+                    'group': group,
+                    'form': form,
+                    'message_list': group.messages.select_related('sender'),
+                    'member_form': GroupMemberAddForm(group) if group.can_manage_members(request.user) else None,
+                })
+            
             message = GroupMessage(group=group, sender=request.user)
-            message.set_plaintext(form.cleaned_data['body'])
+            message.set_plaintext(body)
             message.save()
-            message.read_by.add(request.user)
-            messages.success(request, 'Message shared with the group.')
+            message.mark_read_for(request.user)
             return redirect(reverse('chat:group_detail', kwargs={'pk': group.pk}))
         member_form = GroupMemberAddForm(group) if group.can_manage_members(request.user) else None
         context = {
@@ -280,7 +336,15 @@ class GroupMemberAddView(LoginRequiredMixin, View):
     template_name = 'chat/group_add_member.html'
 
     def dispatch(self, request, pk, *args, **kwargs):
+        # Security: Validate pk is integer
+        try:
+            pk = int(pk)
+        except (ValueError, TypeError):
+            raise Http404('Invalid group ID')
+        
         self.group = get_object_or_404(ChatGroup, pk=pk)
+        
+        # Security: Ensure user can manage members
         if not self.group.can_manage_members(request.user):
             raise Http404('You do not have permission to manage this group.')
         return super().dispatch(request, pk, *args, **kwargs)
@@ -293,7 +357,21 @@ class GroupMemberAddView(LoginRequiredMixin, View):
         form = GroupMemberAddForm(self.group, request.POST)
         if form.is_valid():
             user = form.cleaned_data['user']
+            
+            # Security: Prevent duplicate memberships
+            if GroupMembership.objects.filter(group=self.group, user=user).exists():
+                from django.contrib import messages
+                messages.error(request, 'User is already a member of this group.')
+                return render(request, self.template_name, {'form': form, 'group': self.group})
+            
+            # Security: Only add active users
+            if not user.is_active:
+                from django.contrib import messages
+                messages.error(request, 'Cannot add inactive user to group.')
+                return render(request, self.template_name, {'form': form, 'group': self.group})
+            
             GroupMembership.objects.create(group=self.group, user=user, added_by=request.user)
-            messages.success(request, f'{user.get_full_name()} added to the group.')
+            from django.contrib import messages
+            messages.success(request, f'{user.get_full_name()} has been added to the group.')
             return redirect('chat:group_detail', pk=self.group.pk)
         return render(request, self.template_name, {'form': form, 'group': self.group})

@@ -1,55 +1,27 @@
 <!-- ************************* JS Files ************************* -->
-    {% load static %}
-    <!-- jQuery JS -->
-    <script src="{% static 'website/assets/js/vendor.js' %}"></script>
-
-    <!-- Main JS -->
-    <script src="{% static 'website/assets/js/main.js' %}"></script>
-
-    <!-- REVOLUTION JS FILES -->
-    <script src="{% static 'website/assets/js/jquery.themepunch.tools.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/jquery.themepunch.revolution.min.js' %}"></script>
-
-    <!-- SLIDER REVOLUTION 5.0 EXTENSIONS  (Load Extensions only on Local File Systems !  The following part can be removed on Server for On Demand Loading) -->
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.actions.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.carousel.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.kenburn.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.layeranimation.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.migration.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.navigation.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.parallax.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.slideanims.min.js' %}"></script>
-    <script src="{% static 'website/assets/js/revoulation/revolution.extension.video.min.js' %}"></script>
-
-    <!-- REVOLUTION JS ACTIVATION FILE -->
-    <script src="{% static 'website/assets/js/revoulation.js' %}"></script>
-
-    <!-- Slider -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('.advertisement-link').on('click', function(event) {
-                event.preventDefault();  // Prevent the default link behavior
-    
-                // Extract advertisement ID from the data attribute
-                var adId = $(this).data('ad-id');
-                var $clickedAd = $(this);
-                // Make AJAX request to the AddClick endpoint
-                $.ajax({
-                    type: 'GET',
-                    url: '/add_click/' + adId + '/',  // Replace with your endpoint URL
-                    success: function(data) {
-                        var targetUrl = $clickedAd.attr('href');
-                        window.open(targetUrl, '_blank');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error adding click:', error);
-                    }
-                });
-            });
-        });
-    </script>
+{% load static %}
+<!-- jQuery JS -->
+<script src="{% static 'website/assets/js/vendor.js' %}"></script>
+<!-- Main JS -->
+<script src="{% static 'website/assets/js/main.js' %}"></script>
+<!-- REVOLUTION JS FILES -->
+<script src="{% static 'website/assets/js/jquery.themepunch.tools.min.js' %}"></script>
+<script src="{% static 'website/assets/js/jquery.themepunch.revolution.min.js' %}"></script>
+<!-- SLIDER REVOLUTION 5.0 EXTENSIONS  (Load Extensions only on Local File Systems !  The following part can be removed on Server for On Demand Loading) -->
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.actions.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.carousel.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.kenburn.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.layeranimation.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.migration.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.navigation.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.parallax.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.slideanims.min.js' %}"></script>
+<script src="{% static 'website/assets/js/revoulation/revolution.extension.video.min.js' %}"></script>
+<!-- REVOLUTION JS ACTIVATION FILE -->
+<script src="{% static 'website/assets/js/revoulation.js' %}"></script>
+<!-- Slider -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Advertisement clicks are handled by the adverts app via normal anchor navigation to /adverts/click/<pk>/ -->

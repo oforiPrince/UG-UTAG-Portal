@@ -62,11 +62,19 @@
                       <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>
-                          <img src="{{ slide.image.url }}"
-                               alt="{{ slide.title }}"
-                               class="img-fluid"
-                               width="80"
-                               height="60">
+                          {% if slide.image %}
+                            <img src="{{ slide.image.url }}"
+                                 alt="{{ slide.title }}"
+                                 class="img-fluid"
+                                 width="80"
+                                 height="60">
+                          {% else %}
+                            <img src="{% static 'dashboard/assets/sample_images/placement_sample.svg' %}"
+                                 alt="No image"
+                                 class="img-fluid"
+                                 width="80"
+                                 height="60">
+                          {% endif %}
                         </td>
                         <td>{{ slide.title }}</td>
                         <td>{{ slide.description|safe|truncatechars:20 }}</td>

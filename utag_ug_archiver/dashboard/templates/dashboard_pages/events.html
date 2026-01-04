@@ -65,11 +65,15 @@
                       <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>
-                          <img src="{{ event.featured_image.url }}"
-                               alt="{{ event.name }}"
-                               class="img-fluid"
-                               width="80"
-                               height="60" />
+                          {% if event.featured_image and event.featured_image.name %}
+                            <img src="{{ event.get_featured_image_url }}"
+                                 alt="{{ event.name }}"
+                                 class="img-fluid"
+                                 width="80"
+                                 height="60" />
+                          {% else %}
+                            <span class="text-muted">No image</span>
+                          {% endif %}
                         </td>
                         <td>{{ event.title }}</td>
                         <td>{{ event.start_date |date:"d M Y" }}</td>

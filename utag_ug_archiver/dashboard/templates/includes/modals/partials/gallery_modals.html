@@ -75,9 +75,24 @@
                   aria-label="Close"></button>
         </div>
         <div class="modal-body">
+          <div class="alert alert-info mb-3">
+            <i class="fa fa-info-circle"></i>
+            <strong>Image Optimization:</strong> Images will be automatically optimized and thumbnails generated for faster loading.
+            <br><small>Max file size: 10MB | Supported formats: JPEG, PNG, GIF, WebP</small>
+          </div>
           <div class="mb-3">
-            <label for="galleryImages" class="form-label">Upload Images</label>
+            <label for="galleryImages" class="form-label">Upload Images (Drag & Drop or Click)</label>
             <div id="dropzone" class="dropzone"></div>
+            <div id="uploadProgress" class="mt-3 d-none">
+              <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: 0%"
+                     aria-valuenow="0" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">0%</div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -118,22 +133,34 @@
           </div>
           <div class="mb-3">
             <strong>Images:</strong>
-            <div class="row">
-              {% for image in gallery.images.all %}
-                <div class="col-md-4">
-                  <div class="card">
-                    <img src="{{ image.image.url }}"
-                         class="card-img-top img-fluid rounded"
-                         alt="{{ image.caption }}">
-                    <div class="card-body">
-                      <p class="card-text">{{ image.caption|default:"No Caption" }}</p>
-                      <p class="text-muted small">Uploaded on {{ image.uploaded_at|date:"d M Y" }}</p>
+            <div class="row g-3">
+              {% for image in gallery.images.all|slice:":12" %}
+                <div class="col-md-4 col-sm-6">
+                  <div class="card shadow-sm">
+                    <img src="{{ image.get_thumbnail_url }}"
+                         class="card-img-top img-fluid rounded-top"
+                         alt="{{ image.caption|default:'Gallery image' }}"
+                         style="height: 200px; object-fit: cover;"
+                         loading="lazy">
+                    <div class="card-body p-2">
+                      <p class="card-text small mb-1">{{ image.caption|default:"No Caption"|truncatewords:8 }}</p>
+                      <p class="text-muted small mb-0">{{ image.uploaded_at|date:"d M Y" }}</p>
                     </div>
                   </div>
                 </div>
               {% empty %}
-                <p class="text-muted">No images available for this gallery.</p>
+                <div class="col-12">
+                  <div class="text-center py-4">
+                    <i class="fa fa-image fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No images available for this gallery.</p>
+                  </div>
+                </div>
               {% endfor %}
+              {% if gallery.images.count > 12 %}
+                <div class="col-12 text-center">
+                  <p class="text-muted small">Showing 12 of {{ gallery.images.count }} images</p>
+                </div>
+              {% endif %}
             </div>
           </div>
         </div>

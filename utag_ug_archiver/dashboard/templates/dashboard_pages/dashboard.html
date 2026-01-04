@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}
     {% if user.is_authenticated %}
-        {% if is_admin %}
+        {% if is_admin or user.is_superuser %}
             Admin
         {% elif is_executive %}
             Executive
@@ -401,12 +401,12 @@
                                                         <th scope="row">{{ forloop.counter }}</th>
                                                         <td>
                                                             <div class="d-flex align-items-center">
-                                                                <i class="ri-building-line text-warning me-2"></i>
-                                                                <span class="font-weight-600">{{ ad.advertiser.company_name|truncatechars:20 }}</span>
+                                                                <i class="ri-megaphone-line text-warning me-2"></i>
+                                                                <span class="font-weight-600">{{ ad.title|default:ad.slot.name|truncatechars:20 }}</span>
                                                             </div>
                                                         </td>
-                                                        <td class="text-muted">{{ ad.start_date|date:'M d, Y' }}</td>
-                                                        <td class="text-muted">{{ ad.end_date|date:'M d, Y' }}</td>
+                                                        <td class="text-muted">{{ ad.start|date:'M d, Y' }}</td>
+                                                        <td class="text-muted">{{ ad.end|date:'M d, Y' }}</td>
                                                         <td>
                                                             <span class="badge bg-light text-dark">{{ ad.clicks }} clicks</span>
                                                         </td>
