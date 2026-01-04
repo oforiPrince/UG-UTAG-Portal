@@ -14,6 +14,7 @@ urlpatterns += [
     path('account_management/admins/upload',views.UploadAdminData.as_view(), name='upload_admins'),
     path('account_management/admin/delete/<int:admin_id>',views.AdminDeleteView.as_view(), name='delete_admin'),
     path('account_management/members/upload',views.UploadMemberData.as_view(), name='upload_members'),
+    path('account_management/members/reference-csv',views.OrgReferenceCSVView.as_view(), name='members_reference_csv'),
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
