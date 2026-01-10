@@ -57,7 +57,6 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th>Title</th>
                                             <th>Surname</th>
                                             <th>Other Name(s)</th>
                                             <th>Academic Rank</th>
@@ -136,13 +135,12 @@
                 },
                 columns: [
                     { data: 0, orderable: false },  // # (not orderable)
-                    { data: 1 },                     // Title
-                    { data: 2 },                     // Surname
-                    { data: 3 },                     // Other Name(s)
-                    { data: 4 },                     // Academic Rank
-                    { data: 5 },                     // Email
+                    { data: 1 },                     // Surname
+                    { data: 2 },                     // Other Name(s)
+                    { data: 3 },                     // Academic Rank
+                    { data: 4 },                     // Email
                     {
-                        data: 6,                     // ID (for actions)
+                        data: 5,                     // ID (for actions)
                         render: function(data, type, row) {
                             // Generate action buttons dynamically
                             var memberId = data;

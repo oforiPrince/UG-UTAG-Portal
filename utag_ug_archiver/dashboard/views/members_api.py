@@ -31,21 +31,20 @@ class MembersDataTableAPIView(PermissionRequiredMixin, View):
             order_column = int(request.GET.get('order[0][column]', 1))  # default to column 1 (Title)
             order_dir = request.GET.get('order[0][dir]', 'asc')  # asc or desc
             
-            # Column mapping: match the table columns (only essential fields)
+            # Column mapping: match the table columns (academic focus)
             columns = [
                 'id',                  # 0: #
-                'title',               # 1: Title
-                'surname',             # 2: Surname
-                'other_name',          # 3: Other Name(s)
-                'academic_rank',       # 4: Academic Rank
-                'email',               # 5: Email
+                'surname',             # 1: Surname
+                'other_name',          # 2: Other Name(s)
+                'academic_rank',       # 3: Academic Rank
+                'email',               # 4: Email
             ]
             
             # Build queryset
             queryset = (
                 User.objects.filter(groups__name='Member')
                 .only(
-                    'id', 'title', 'surname', 'other_name', 'academic_rank', 'email'
+                    'id', 'surname', 'other_name', 'academic_rank', 'email'
                 )
             )
             
@@ -79,7 +78,6 @@ class MembersDataTableAPIView(PermissionRequiredMixin, View):
             for i, member in enumerate(members, start=start + 1):
                 data.append([
                     i,  # Row number
-                    member.title or '',
                     member.surname or '',
                     member.other_name or '',
                     member.academic_rank or '',
