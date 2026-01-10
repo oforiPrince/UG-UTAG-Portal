@@ -20,6 +20,7 @@ from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from accounts.models import User, School, College, Department
 from dashboard.models import  Document, Notification
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, ensure_staff_id
@@ -341,8 +342,24 @@ class MemberListView(PermissionRequiredMixin, View):
     template_name = 'dashboard_pages/members.html'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Fetch users
-        users = User.objects.filter(groups__name='Member').order_by('surname', 'other_name')
+        users_qs = (
+            User.objects.filter(groups__name='Member')
+            .select_related('department', 'college', 'school')
+            .order_by('surname', 'other_name')
+            .only(
+                'id', 'title', 'surname', 'other_name', 'gender', 'email', 'phone_number',
+                'department__name', 'college__name', 'school__name'
+            )
+        )
+
+        paginator = Paginator(users_qs, 50)
+        page = request.GET.get('page')
+        try:
+            users_page = paginator.page(page)
+        except PageNotAnInteger:
+            users_page = paginator.page(1)
+        except EmptyPage:
+            users_page = paginator.page(paginator.num_pages)
         
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
@@ -359,6 +376,7 @@ class MemberListView(PermissionRequiredMixin, View):
             'total_external_documents': total_external_documents,
             'notifications': notifications,
             'notification_count': notification_count,
+            'page_obj': users_page,
             'has_add_permission': request.user.has_perm('accounts.add_member'),
             'has_change_permission': request.user.has_perm('accounts.change_member'),
             'has_delete_permission': request.user.has_perm('accounts.delete_member'),
