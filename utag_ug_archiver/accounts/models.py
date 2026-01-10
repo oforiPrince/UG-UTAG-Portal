@@ -85,10 +85,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     staff_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     title = models.CharField(max_length=15, choices=TITLE_CHOICES)
-    academic_rank = models.CharField(max_length=50, blank=True, null=True)
+    academic_rank = models.CharField(max_length=100, blank=True, null=True)
     # first_name removed: use other_name and surname instead
-    other_name = models.CharField(max_length=30)
-    surname = models.CharField(max_length=30)
+    other_name = models.CharField(max_length=100)
+    surname = models.CharField(max_length=100)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     profile_pic = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     email = models.EmailField(unique=True)
