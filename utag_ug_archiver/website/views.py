@@ -192,6 +192,25 @@ class ExecutiveCommitteeMembersView(View):
             'executives': executives,
         }
         return render(request, self.template_name, context)
+
+class ExecutivesListView(View):
+    template_name = 'website_pages/executives_list.html'
+
+    def get(self, request):
+        executives = (
+            User.objects.filter(is_active_executive=True)
+            .select_related('school', 'college', 'department')
+            .order_by('surname', 'other_name')
+        )
+        return render(request, self.template_name, {'executives': executives})
+
+
+class ExecutiveDetailView(View):
+    template_name = 'website_pages/executive_detail.html'
+
+    def get(self, request, pk):
+        exec_user = get_object_or_404(User.objects.select_related('school', 'college', 'department'), pk=pk)
+        return render(request, self.template_name, {'exec': exec_user})
     
 @method_decorator(cache_page(60 * 10), name='dispatch')  # Cache for 10 minutes
 class GalleryView(View):

@@ -1,3 +1,39 @@
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views import View
+
+from accounts.models import User
+from dashboard.forms import ExecutiveBioForm
+
+
+class ExecutiveBioUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    template_name = 'dashboard_pages/executive_bio_edit.html'
+
+    def test_func(self):
+        # Executives and staff can edit their bio; staff can edit any executive via ?user_id=
+        user = self.request.user
+        return getattr(user, 'is_executive', False) or user.is_staff or user.is_superuser
+
+    def get_target_user(self):
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            user_id = self.request.GET.get('user_id')
+            if user_id:
+                return get_object_or_404(User, pk=user_id)
+        return self.request.user
+
+    def get(self, request):
+        target = self.get_target_user()
+        form = ExecutiveBioForm(instance=target)
+        return render(request, self.template_name, {'form': form, 'target': target})
+
+    def post(self, request):
+        target = self.get_target_user()
+        form = ExecutiveBioForm(request.POST, request.FILES, instance=target)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('dashboard:executive_bio_edit') + (f'?user_id={target.pk}' if request.user.is_staff and target.pk != request.user.pk else ''))
+        return render(request, self.template_name, {'form': form, 'target': target})
 from datetime import datetime
 
 from django.contrib.auth.hashers import make_password

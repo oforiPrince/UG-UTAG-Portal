@@ -1,0 +1,56 @@
+{% extends "base/website_base.html" %}
+{% load static %}
+
+{% block title %}{{ exec.surname|title }} {{ exec.other_name|title }} - Executive Profile{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row align-items-start g-4">
+      <div class="col-lg-4">
+        <div class="card shadow-sm">
+          <div class="card-body text-center">
+            {% if exec.profile_pic %}
+              <img src="{{ exec.profile_pic.url }}" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 200px;">
+            {% endif %}
+            <h3 class="mb-0">{{ exec.surname|title }} {{ exec.other_name|title }}</h3>
+            <div class="text-muted">{{ exec.title }}{% if exec.academic_rank %} • {{ exec.academic_rank }}{% endif %}</div>
+            {% if exec.executive_summary %}
+              <p class="mt-3">{{ exec.executive_summary }}</p>
+            {% endif %}
+            <div class="mt-3">
+              {% if exec.linkedin_url %}<a href="{{ exec.linkedin_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">LinkedIn</a>{% endif %}
+              {% if exec.twitter_url %}<a href="{{ exec.twitter_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">Twitter/X</a>{% endif %}
+              {% if exec.personal_website_url %}<a href="{{ exec.personal_website_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">Website</a>{% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="card mt-3 shadow-sm">
+          <div class="card-body">
+            <h6 class="text-uppercase text-muted">Affiliations</h6>
+            <ul class="mb-0">
+              {% if exec.school %}<li>School: {{ exec.school.name }}</li>{% endif %}
+              {% if exec.college %}<li>College: {{ exec.college.name }}</li>{% endif %}
+              {% if exec.department %}<li>Department: {{ exec.department.name }}</li>{% endif %}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h4>Professional Biography</h4>
+            {% if exec.executive_bio %}
+              <div class="prose">
+                {{ exec.executive_bio|linebreaksbr }}
+              </div>
+            {% else %}
+              <p class="text-muted">This executive has not added a full biography yet.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+ </section>
+{% endblock %}

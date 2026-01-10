@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .views.members_api import MembersDataTableAPIView
+from .views.executives import ExecutiveBioUpdateView
 app_name = 'dashboard'
 
 urlpatterns =[
@@ -35,6 +36,7 @@ urlpatterns += [
     # path('executives/committee_members/create',views.ExecutiveCommitteeMemberCreateView.as_view(), name='create_existing_committee_member'),
     # path('executives/committee_members/update/',views.CommitteeMemberUpdateView.as_view(), name='update_committee_member'),
     # path('executives/committee_members/delete/<int:c_member_id>',views.CommitteeMemberDeleteView.as_view(), name='delete_committee_member'),
+    path('executives/bio/edit/', ExecutiveBioUpdateView.as_view(), name='executive_bio_edit'),
 ]
 
 #For event management

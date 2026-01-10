@@ -99,6 +99,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+
+    # Executive bio profile fields
+    executive_summary = models.CharField(max_length=300, blank=True, null=True)
+    executive_bio = models.TextField(blank=True, null=True)
+    linkedin_url = models.URLField(blank=True, null=True)
+    twitter_url = models.URLField(blank=True, null=True)
+    personal_website_url = models.URLField(blank=True, null=True)
     created_from_dashboard = models.BooleanField(default=False)
     created_by = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True)
     is_bulk_creation = models.BooleanField(default=False)

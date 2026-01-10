@@ -32,3 +32,19 @@ class CarouselSlideForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+class ExecutiveBioForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = [
+            'title', 'academic_rank', 'profile_pic',
+            'executive_summary', 'executive_bio',
+            'linkedin_url', 'twitter_url', 'personal_website_url',
+        ]
+        widgets = {
+            'executive_summary': forms.TextInput(attrs={'placeholder': 'Short professional summary (max 300 chars)'}),
+            'executive_bio': forms.Textarea(attrs={'rows': 8, 'placeholder': 'Full professional bio: roles, achievements, publications, leadership, vision.'}),
+            'linkedin_url': forms.URLInput(attrs={'placeholder': 'https://www.linkedin.com/in/...'}),
+            'twitter_url': forms.URLInput(attrs={'placeholder': 'https://x.com/handle'}),
+            'personal_website_url': forms.URLInput(attrs={'placeholder': 'https://your-website.com'}),
+        }

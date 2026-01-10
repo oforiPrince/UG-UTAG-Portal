@@ -1,0 +1,85 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Edit Executive Bio{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Professional Bio</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Title</label>
+              {{ form.title }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Academic Rank</label>
+              {{ form.academic_rank }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Profile Picture</label>
+              {{ form.profile_pic }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Executive Summary</label>
+              {{ form.executive_summary }}
+              <div class="form-text">A concise tagline or professional summary.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Full Bio</label>
+              {{ form.executive_bio }}
+              <div class="form-text">Include roles, achievements, publications, leadership contributions, and vision.</div>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label">LinkedIn</label>
+                {{ form.linkedin_url }}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Twitter/X</label>
+                {{ form.twitter_url }}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Personal Website</label>
+                {{ form.personal_website_url }}
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Bio</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-3">
+        <div class="card-body text-center">
+          {% if target.profile_pic %}
+            <img src="{{ target.profile_pic.url }}" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 160px;">
+          {% else %}
+            <div class="rounded-circle bg-light d-inline-block mb-3" style="width:160px;height:160px;display:flex;align-items:center;justify-content:center;font-size:48px;">{{ target.surname|slice:":1"|upper }}</div>
+          {% endif %}
+          <h5 class="mb-1">{{ target.surname }} {{ target.other_name }}</h5>
+          <div class="text-muted">{{ target.title }}{% if target.academic_rank %} • {{ target.academic_rank }}{% endif %}</div>
+          <div class="mt-2">{{ target.executive_summary }}</div>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-header">Tips</div>
+        <div class="card-body">
+          <ul class="mb-0">
+            <li>Use professional headshots.</li>
+            <li>Highlight leadership and impact.</li>
+            <li>Link to publications and projects.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</div>
+{% endblock %}

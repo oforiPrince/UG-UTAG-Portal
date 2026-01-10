@@ -1,0 +1,40 @@
+{% extends "base/website_base.html" %}
+{% load static %}
+
+{% block title %}Executive Profiles{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col-12 text-center">
+        <h2 class="fw-bold">Executive Profiles</h2>
+        <p class="text-muted">Meet the leadership team driving our mission forward.</p>
+      </div>
+    </div>
+    <div class="row g-4">
+      {% for u in executives %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+          {% if u.profile_pic %}
+            <img src="{{ u.profile_pic.url }}" class="card-img-top" alt="{{ u.surname }} {{ u.other_name }}">
+          {% endif %}
+          <div class="card-body">
+            <h5 class="card-title mb-0">{{ u.surname|title }} {{ u.other_name|title }}</h5>
+            <div class="text-muted mb-2">{{ u.title }}{% if u.academic_rank %} • {{ u.academic_rank }}{% endif %}</div>
+            {% if u.executive_summary %}
+              <p class="card-text">{{ u.executive_summary }}</p>
+            {% endif %}
+            <a href="{% url 'executive_detail' u.pk %}" class="btn btn-outline-primary btn-sm">View Profile</a>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <div class="alert alert-info">No executive profiles available.</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+ </section>
+{% endblock %}
