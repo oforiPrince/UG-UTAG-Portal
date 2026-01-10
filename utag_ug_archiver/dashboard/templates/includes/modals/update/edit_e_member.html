@@ -22,12 +22,8 @@
             <input type="hidden" name="executive_id" value="{{ executive.id }}">
             <div class="mb-3">
               <label class="form-label">Select a member</label>
-              <select class="form-control select2" id="member_{{ executive.id }}" name="member_id">
-                <option value="">Select a member</option>
-                {% for member in members %}
-                  <option value="{{ member.id }}"
-                          {% if executive.id == member.id %}selected{% endif %}>{{ member.get_full_name }}</option>
-                {% endfor %}
+              <select class="form-control select2 member-search" id="member_{{ executive.id }}" name="member_id">
+                <option value="{{ executive.id }}" selected>{{ executive.get_full_name }}</option>
               </select>
             </div>
             <hr class="mt-4 mb-4">

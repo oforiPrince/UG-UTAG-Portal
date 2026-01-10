@@ -1,8 +1,11 @@
 from celery import shared_task
-from datetime import datetime
+import datetime
 from django.utils import timezone
 from dashboard.models import Event
 from adverts.models import Ad
+
+# Bulk import tasks
+from .tasks_bulk_import import import_members_from_upload  # noqa: F401
 
 @shared_task
 def update_event_statuses():

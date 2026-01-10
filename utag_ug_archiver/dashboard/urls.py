@@ -18,6 +18,7 @@ urlpatterns += [
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
+    path('account_management/member-search', views.MemberSearchView.as_view(), name='member_search'),
     path('account_management/check-staff-id/', views.CheckStaffIdView.as_view(), name='check_staff_id'),
 ]
 #For executive management

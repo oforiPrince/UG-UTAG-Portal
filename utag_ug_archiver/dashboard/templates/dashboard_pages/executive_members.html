@@ -167,4 +167,42 @@
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script>
+            (function($) {
+                function initMemberSelect($el) {
+                    const $modal = $el.closest('.modal');
+                    $el.select2({
+                        dropdownParent: $modal.length ? $modal : $(document.body),
+                        placeholder: 'Search member by name, email, or staff ID',
+                        minimumInputLength: 2,
+                        allowClear: true,
+                        ajax: {
+                            url: '/dashboard/account_management/member-search',
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                return { q: params.term };
+                            },
+                            processResults: function (data) {
+                                return data;
+                            }
+                        }
+                    });
+                }
+
+                $(document).ready(function() {
+                    $('.member-search').each(function() {
+                        initMemberSelect($(this));
+                    });
+
+                    $(document).on('shown.bs.modal', '.modal', function() {
+                        $(this).find('.member-search').each(function() {
+                            if (!$(this).data('select2')) {
+                                initMemberSelect($(this));
+                            }
+                        });
+                    });
+                });
+            })(jQuery);
+        </script>
 {% endblock my_scripts %}
