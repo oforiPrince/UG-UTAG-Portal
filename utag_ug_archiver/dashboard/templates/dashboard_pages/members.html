@@ -60,52 +60,13 @@
                                             <th>Title</th>
                                             <th>Surname</th>
                                             <th>Other Name(s)</th>
-                                            <th>Gender</th>
+                                            <th>Academic Rank</th>
                                             <th>Email</th>
-                                            <th>Phone Number</th>
-                                            <th>Department</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for member in page_obj %}
-                                            <tr>
-                                                <td>{{ forloop.counter }}</td>
-                                                <td>{{ member.title }}</td>
-                                                <td>{{ member.surname }}</td>
-                                                <td>{{ member.other_name }}</td>
-                                                <td>{{ member.gender }}</td>
-                                                <td>{{ member.email }}</td>
-                                                <td>{{ member.phone_number }}</td>
-                                                <td>{{ member.department }}</td>
-                                                <td>
-                                                    <a href="#"
-                                                       class="btn btn-primary btn-sm view-member-details"
-                                                       data-bs-toggle="modal"
-                                                       data-bs-target="#userModal_{{ member.id }}"
-                                                       title="View">
-                                                        <i class="mdi mdi-eye"></i>
-                                                    </a>
-                                                    {% if has_change_permission %}
-                                                        <a href="#"
-                                                           class="btn btn-success btn-sm"
-                                                           data-bs-toggle="modal"
-                                                           data-bs-target="#editUserModal_{{ member.id }}"
-                                                           title="Edit">
-                                                            <i class="mdi mdi-pen"></i>
-                                                        </a>
-                                                    {% endif %}
-                                                    {% if has_delete_permission %}
-                                                        <a href="{% url 'dashboard:delete_member' member_id=member.id %}"
-                                                           class="btn btn-danger btn-sm"
-                                                           onclick="return confirm('Are you sure you want to delete this member?');"
-                                                           title="Delete">
-                                                            <i class="mdi mdi-delete"></i>
-                                                        </a>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
+                                        <!-- Rows populated by server-side DataTables -->
                                     </tbody>
                                 </table>
                                 <div class="d-flex justify-content-between align-items-center mt-2">
@@ -156,8 +117,64 @@
     <!-- Responsive examples -->
     <script src="{% static 'dashboard/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js' %}"></script>
     <script src="{% static 'dashboard/assets/libs/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js' %}"></script>
-    <!-- Datatable init js -->
-    <script src="{% static 'dashboard/assets/js/pages/datatables.init.js' %}"></script>
     <script src="{% static 'dashboard/assets/libs/parsleyjs/parsley.min.js' %}"></script>
     <script src="{% static 'dashboard/assets/js/pages/form-validation.init.js' %}"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Server-side DataTables initialization for members list
+            var table = $('#datatable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: "{% url 'dashboard:members_api' %}",
+                    type: 'GET',
+                    data: function(d) {
+                        // DataTables sends draw, start, length, search[value], order[i][column], order[i][dir]
+                        // No additional data needed; parameters are automatically set
+                    }
+                },
+                columns: [
+                    { data: 0, orderable: false },  // # (not orderable)
+                    { data: 1 },                     // Title
+                    { data: 2 },                     // Surname
+                    { data: 3 },                     // Other Name(s)
+                    { data: 4 },                     // Academic Rank
+                    { data: 5 },                     // Email
+                    {
+                        data: 6,                     // ID (for actions)
+                        render: function(data, type, row) {
+                            // Generate action buttons dynamically
+                            var memberId = data;
+                            var html = '<a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#userModal_' + memberId + '" title="View"><i class="mdi mdi-eye"></i></a> ';
+                            {% if has_change_permission %}
+                                html += '<a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal_' + memberId + '" title="Edit"><i class="mdi mdi-pen"></i></a> ';
+                            {% endif %}
+                            {% if has_delete_permission %}
+                                html += '<a href="{% url 'dashboard:delete_member' member_id=0 %}".replace('/0/', '/' + memberId + '/') + '" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to delete this member?\');" title="Delete"><i class="mdi mdi-delete"></i></a>';
+                            {% endif %}
+                            return html;
+                        },
+                        orderable: false
+                    }
+                ],
+                order: [[2, 'asc']],  // Order by Surname by default
+                pageLength: 50,
+                language: {
+                    processing: '<i class="fa fa-spinner fa-spin"></i> Loading...',
+                    search: 'Search:',
+                    lengthMenu: 'Show _MENU_ entries',
+                    info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+                    infoEmpty: 'No entries',
+                    infoFiltered: '(filtered from _MAX_ total)',
+                    paginate: {
+                        first: 'First',
+                        previous: 'Previous',
+                        next: 'Next',
+                        last: 'Last'
+                    }
+                }
+            });
+        });
+    </script>
 {% endblock my_scripts %}
