@@ -1,20 +1,19 @@
 from datetime import datetime
-import random
-import string
 
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User, School, College, Department
-from dashboard.models import Announcement, Notification
+from dashboard.models import Notification
 from utag_ug_archiver.utils.constants import executive_committee_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
+from django.core.cache import cache
 
 
 def _parse_date(value):
@@ -39,13 +38,10 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         # Sort the executive officers based on the custom order
         executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position) if x.executive_position in executive_committee_members_position_order else len(executive_committee_members_position_order))
 
-        # Get all members
-        members = User.objects.all()
-
-        # Get schools, colleges, and departments
-        schools = School.objects.all()
-        colleges = College.objects.all()
-        departments = Department.objects.all()
+        # Cached static lists
+        schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
+        colleges = cache.get_or_set('colleges_all', lambda: list(College.objects.all()), 60 * 60)
+        departments = cache.get_or_set('departments_all', lambda: list(Department.objects.all()), 60 * 60)
 
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
@@ -53,7 +49,6 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
 
         context = {
             'executive_officers': executive_officers,
-            'members': members,
             'schools': schools,
             'colleges': colleges,
             'departments': departments,

@@ -142,9 +142,8 @@
                      data-parsley-pattern="[0-9]{4,20}"
                      data-parsley-pattern-message="Staff ID must be 4-20 digits only"
                      data-parsley-remote="/dashboard/account_management/check-staff-id/"
-                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id_exec").val(); } } }'
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "text", "data": { "staff_id": function() { return $("#id_staff_id_exec").val(); } } }'
                      data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
-                     data-parsley-remote-reverse="true"
                      title="Staff ID must be 4-20 digits" />
               <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique.</small>
             </div>

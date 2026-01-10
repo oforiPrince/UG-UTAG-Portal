@@ -52,6 +52,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Female', 'Female')
     )
     
+    RANK_CHOICES = (
+        ('Senior Lecturer', 'Senior Lecturer'),
+        ('Lecturer', 'Lecturer'),
+        ('Professor', 'Professor'),
+        ('Associate Professor', 'Associate Professor'),
+        ('Senior Research Fellow', 'Senior Research Fellow'),
+        ('Assistant Lecturer', 'Assistant Lecturer'),
+        ('Research Fellow', 'Research Fellow'),
+        ('Senior Librarian', 'Senior Librarian'),
+        ('Research Associate', 'Research Associate'),
+        ('Dean', 'Dean'),
+        ('Pro-Vice-Chancellor', 'Pro-Vice-Chancellor'),
+        ('Tutor', 'Tutor'),
+        ('Librarian', 'Librarian'),
+        ('Director', 'Director'),
+        ('Assistant Research Fellow', 'Assistant Research Fellow'),
+        ('Visiting Scholar', 'Visiting Scholar'),
+    )
+    
     EXECUTIVE_POSITION_CHOICES = (
         ('President', 'President'),
         ('Vice President', 'Vice President'),
@@ -66,6 +85,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     staff_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     title = models.CharField(max_length=15, choices=TITLE_CHOICES)
+    academic_rank = models.CharField(max_length=50, blank=True, null=True)
     # first_name removed: use other_name and surname instead
     other_name = models.CharField(max_length=30)
     surname = models.CharField(max_length=30)

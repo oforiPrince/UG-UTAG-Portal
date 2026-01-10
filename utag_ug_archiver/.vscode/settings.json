@@ -1,3 +1,12 @@
 {
-    "postman.settings.dotenv-detection-notification-visibility": false
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    // Docker-only workflow:
+    // Your host Python may not have Django/Celery installed, so don't pin an interpreter here.
+    // Instead, keep Pylance warnings non-blocking and run code/tests inside containers.
+    // If you're not using a local venv and rely on Docker, these warnings are expected.
+    // Keep them as warnings instead of errors to reduce noise.
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "warning",
+        "reportMissingModuleSource": "warning"
+    }
 }

@@ -42,14 +42,8 @@
           </div>
           <div class="mb-3">
             <label for="member" class="form-label">Member</label>
-            <select class="form-control select2" id="member" name="member_id">
+            <select class="form-control select2 member-search" id="member" name="member_id">
               <option value="">Select a member</option>
-              {% for member in members %}
-                <option value="{{ member.id }}"
-                        {% if member.id == initial_data.member.id %}selected{% endif %}>
-                  {{ member.get_full_name }}
-                </option>
-              {% endfor %}
             </select>
           </div>
           <hr class="mt-4 mb-4">
@@ -122,8 +116,28 @@
   document.addEventListener("DOMContentLoaded", function () {
     // Initialize Select2
     $('#existingMemberModal').on('shown.bs.modal', function () {
-      $('#member, #id_position_existing').select2({
+      $('#id_position_existing').select2({
         dropdownParent: $('#existingMemberModal')
+      });
+
+      $('#member').select2({
+        dropdownParent: $('#existingMemberModal'),
+        placeholder: 'Search member by name, email, or staff ID',
+        minimumInputLength: 2,
+        allowClear: true,
+        ajax: {
+          url: '/dashboard/account_management/member-search',
+          dataType: 'json',
+          delay: 250,
+          data: function (params) {
+            return {
+              q: params.term
+            };
+          },
+          processResults: function (data) {
+            return data;
+          }
+        }
       });
     });
 

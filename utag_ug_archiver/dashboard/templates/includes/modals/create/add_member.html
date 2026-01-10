@@ -157,9 +157,8 @@
                      data-parsley-pattern="[0-9]{4,20}"
                      data-parsley-pattern-message="Staff ID must be 4-20 digits only"
                      data-parsley-remote="/dashboard/account_management/check-staff-id/"
-                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id").val(); } } }'
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "text", "data": { "staff_id": function() { return $("#id_staff_id").val(); } } }'
                      data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
-                     data-parsley-remote-reverse="true"
                      title="Staff ID must be 4-20 digits" />
               <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique (4-20 digits).</small>
               <div id="staff_id_feedback" class="invalid-feedback"></div>
@@ -200,25 +199,20 @@
             data: {
               staff_id: staffId
             },
-            dataType: 'json',
+            dataType: 'text',
             success: function(response) {
-              if (response.available) {
+              const available = (String(response).trim() === 'true');
+              if (available) {
                 $input.removeClass('is-invalid').addClass('is-valid');
                 $feedback.text('').hide();
               } else {
                 $input.removeClass('is-valid').addClass('is-invalid');
-                $feedback.text(response.message || 'Staff ID already taken').show();
+                $feedback.text('Staff ID already taken').show();
               }
             },
-            error: function(xhr) {
-              // Only show error if it's a validation error, not a 405
-              if (xhr.status === 400 && xhr.responseJSON) {
-                $input.removeClass('is-valid').addClass('is-invalid');
-                $feedback.text(xhr.responseJSON.message || 'Invalid Staff ID').show();
-              } else {
-                $input.removeClass('is-valid is-invalid');
-                $feedback.text('').hide();
-              }
+            error: function() {
+              $input.removeClass('is-valid is-invalid');
+              $feedback.text('').hide();
             }
           });
         } else if (staffId) {
