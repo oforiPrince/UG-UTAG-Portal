@@ -6,10 +6,13 @@ from django.db import IntegrityError
 from accounts.models import User
 from chat.models import ChatThread, ChatGroup, GroupMembership
 import json
+import logging
 from django.http import HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from chat.models import MessageAttachment, GroupMessageAttachment
 from django.views.decorators.csrf import csrf_exempt
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -89,8 +92,10 @@ def start_direct_chat(request):
         
     except ValueError as e:
         # Handle thread creation errors (e.g., same user on both sides)
+        logger.error(f"ValueError in start_direct_chat: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
     except Exception as e:
+        logger.error(f"Unexpected error in start_direct_chat: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': 'An error occurred'}, status=500)
 
 
