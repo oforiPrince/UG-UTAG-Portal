@@ -75,11 +75,11 @@ def start_direct_chat(request):
         if user_id == request.user.id:
             return JsonResponse({'success': False, 'error': 'Cannot start chat with yourself'}, status=400)
         
-        # Security: Get user and validate they exist and are active
+        # Security: Get user and validate they exist
         try:
-            other_user = User.objects.get(id=user_id, is_active=True)
+            other_user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'User not found or inactive'}, status=404)
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
         
         # Security: Use get_or_create_thread to ensure proper normalization and encryption
         thread, created = ChatThread.objects.get_or_create_thread(request.user, other_user)
