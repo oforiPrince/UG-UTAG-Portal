@@ -256,9 +256,14 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
             to_update.append(existing)
 
     with transaction.atomic():
+        created_count = len(to_create)
+        updated_count = len(to_update)
+        logger.info(f"About to create {created_count} new users and update {updated_count} existing users")
+        
         if to_create:
             # ignore_conflicts protects against concurrent uploads creating same email
             User.objects.bulk_create(to_create, ignore_conflicts=True)
+            logger.info(f"bulk_create completed for {created_count} users")
 
         if to_update:
             User.objects.bulk_update(
@@ -279,6 +284,7 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
                     'must_change_password',
                 ],
             )
+            logger.info(f"bulk_update completed for {updated_count} users")
 
         # Re-fetch users for password + group membership steps
         all_users_by_email = User.objects.in_bulk(emails, field_name='email') if emails else {}
@@ -320,6 +326,8 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
 
     summary = {
         'processed': processed,
+        'new_users': created_count,
+        'updated_users': updated_count,
         'skipped_incomplete': skipped_incomplete,
         'skipped_staff_id': skipped_staff_id,
         'skipped_department': skipped_department,
