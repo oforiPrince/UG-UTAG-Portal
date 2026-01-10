@@ -371,7 +371,8 @@ class MemberListView(PermissionRequiredMixin, View):
         
         # Prepare context
         context = {
-            'users': users,
+            # Keep legacy key for any includes expecting `users`
+            'users': users_page,
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
             'notifications': notifications,
