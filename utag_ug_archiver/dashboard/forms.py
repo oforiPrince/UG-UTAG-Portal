@@ -2,6 +2,7 @@ from django import forms
 from dashboard.models import CarouselSlide
 from django.db import models
 from django.db.models import F
+from accounts.models import User
 
 
 class CarouselSlideForm(forms.ModelForm):
