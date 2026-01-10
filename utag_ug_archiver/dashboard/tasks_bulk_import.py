@@ -112,7 +112,7 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
     staged: list[dict] = []
     emails: list[str] = []
 
-    for member in df.itertuples(index=False):
+    for idx, member in enumerate(df.itertuples(index=False), start=1):
         title = _normalize_value(getattr(member, 'title', None)) or ''
         other_name = _normalize_value(getattr(member, 'other_name', None)) or _normalize_value(getattr(member, 'first_name', None))
         surname = _normalize_value(getattr(member, 'surname', None)) or _normalize_value(getattr(member, 'last_name', None))
@@ -127,12 +127,22 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
 
         if not email or not dept_name or not surname or not other_name:
             skipped_incomplete += 1
+            if idx <= 10 or idx % 100 == 0:
+                logger.warning(
+                    f"Row {idx} skipped (incomplete): email={email}, surname={surname}, "
+                    f"other_name={other_name}, dept={dept_name}"
+                )
             continue
 
         if csv_staff_id:
             owner_email = existing_staff_id_to_email.get(csv_staff_id)
             if owner_email and owner_email != email:
                 skipped_staff_id += 1
+                if idx <= 10 or idx % 100 == 0:
+                    logger.warning(
+                        f"Row {idx} skipped (staff_id conflict): staff_id={csv_staff_id}, "
+                        f"requested_email={email}, existing_email={owner_email}"
+                    )
                 continue
 
         # Resolve org units with cache (may create as needed)
@@ -177,6 +187,11 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
 
         if not department_obj:
             skipped_department += 1
+            if idx <= 10 or idx % 100 == 0:
+                logger.warning(
+                    f"Row {idx} skipped (department not found): dept_name={dept_name}, "
+                    f"college={college_name}, school={school_name}"
+                )
             continue
 
         staged.append({
@@ -313,5 +328,9 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
         'created_departments': created_departments,
         'file': relative_media_path,
     }
-    logger.info('Bulk member import complete: %s', summary)
+    logger.info(
+        f'Bulk member import complete: {summary} | '
+        f'Total rows in file: {len(df)} | '
+        f'Valid rows staged: {len(emails)}'
+    )
     return summary
