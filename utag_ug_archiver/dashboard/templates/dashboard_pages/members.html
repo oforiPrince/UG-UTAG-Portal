@@ -144,7 +144,7 @@
                         render: function(data, type, row) {
                             // Generate action buttons dynamically
                             var memberId = data;
-                            var deleteUrl = "{% url 'dashboard:delete_member' member_id='MEMBER_ID' %}".replace('MEMBER_ID', memberId);
+                            var deleteUrl = '/dashboard/account_management/members/delete/' + memberId;
                             var html = '<a href="#" class="btn btn-primary btn-sm view-member-details" data-bs-toggle="modal" data-bs-target="#userModal_' + memberId + '" title="View"><i class="mdi mdi-eye"></i></a> ';
                             {% if has_change_permission %}
                                 html += '<a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal_' + memberId + '" title="Edit"><i class="mdi mdi-pen"></i></a> ';
