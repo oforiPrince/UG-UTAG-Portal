@@ -53,6 +53,8 @@ services:
     environment:
       RUN_MIGRATIONS: "0"
       RUN_COLLECTSTATIC: "0"
+    volumes:
+      - media_volume:/app/media
     depends_on:
       - redis
       - db
@@ -68,6 +70,8 @@ services:
     environment:
       RUN_MIGRATIONS: "0"
       RUN_COLLECTSTATIC: "0"
+    volumes:
+      - media_volume:/app/media
     depends_on:
       - redis
       - db
