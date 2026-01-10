@@ -293,29 +293,22 @@ class UploadMemberData(PermissionRequiredMixin, View):
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-        # For large uploads, do the work asynchronously (Celery) to keep the request fast.
-        # Threshold is in bytes; default 1MB.
-        async_threshold = int(os.environ.get('BULK_MEMBER_UPLOAD_ASYNC_THRESHOLD', 1_000_000))
-        if getattr(upload, 'size', 0) >= async_threshold:
-            ext = os.path.splitext(upload.name)[1].lower()
-            safe_ext = ext if ext in {'.csv', '.xlsx', '.xls'} else ''
-            rel_dir = 'bulk_uploads'
-            rel_name = f"{uuid.uuid4().hex}{safe_ext}"
-            rel_path = os.path.join(rel_dir, rel_name)
+        # Always process asynchronously to avoid long-running requests/timeouts.
+        ext = os.path.splitext(upload.name)[1].lower()
+        safe_ext = ext if ext in {'.csv', '.xlsx', '.xls'} else ''
+        rel_dir = 'bulk_uploads'
+        rel_name = f"{uuid.uuid4().hex}{safe_ext}"
+        rel_path = os.path.join(rel_dir, rel_name)
 
-            saved_path = default_storage.save(rel_path, ContentFile(upload.read()))
-            import_members_from_upload.delay(saved_path, uploaded_by_user_id=request.user.id)
+        saved_path = default_storage.save(rel_path, ContentFile(upload.read()))
+        task = import_members_from_upload.delay(saved_path, uploaded_by_user_id=request.user.id)
 
-            messages.success(
-                request,
-                'Upload received. Import is running in the background — refresh the Members page in a minute to see new members.'
-            )
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-        # Small uploads: process inline.
-        if excel_file:
-            return process_bulk_members(request, excel_file)
-        return process_bulk_members(request, csv_file)
+        messages.success(
+            request,
+            f'Upload received. Import is running in the background (task id: {task.id}). '
+            'You can refresh the Members page in a minute to see new members.'
+        )
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
 class OrgReferenceCSVView(PermissionRequiredMixin, View):
