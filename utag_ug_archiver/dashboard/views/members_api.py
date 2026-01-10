@@ -78,9 +78,9 @@ class MembersDataTableAPIView(PermissionRequiredMixin, View):
             for i, member in enumerate(members, start=start + 1):
                 data.append([
                     i,  # Row number
-                    member.surname or '',
-                    member.other_name or '',
-                    member.academic_rank or '',
+                    (member.surname or '').title(),
+                    (member.other_name or '').title(),
+                    (member.academic_rank or '').title(),
                     member.email or '',
                     str(member.id),  # ID for actions (hidden in table, used by JS)
                 ])
