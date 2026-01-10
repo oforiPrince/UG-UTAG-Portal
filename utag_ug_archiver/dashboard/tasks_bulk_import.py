@@ -243,9 +243,9 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
             existing.surname = row['surname'] or ''
             existing.gender = row['gender']
             existing.phone_number = row['phone_number']
-            existing.department = row['department_id']
-            existing.college = row['college_id']
-            existing.school = row['school_id']
+            existing.department_id = row['department_id']
+            existing.college_id = row['college_id']
+            existing.school_id = row['school_id']
             existing.academic_rank = row['academic_rank']
             if row['staff_id']:
                 existing.staff_id = row['staff_id']
@@ -269,9 +269,9 @@ def import_members_from_upload(self, relative_media_path: str, uploaded_by_user_
                     'surname',
                     'gender',
                     'phone_number',
-                    'department',
-                    'college',
-                    'school',
+                    'department_id',
+                    'college_id',
+                    'school_id',
                     'academic_rank',
                     'staff_id',
                     'created_from_dashboard',
