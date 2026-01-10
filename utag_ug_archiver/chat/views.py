@@ -26,7 +26,7 @@ class ThreadListView(LoginRequiredMixin, ListView):
 
     def get(self, request, *args, **kwargs):
         # Get direct message threads
-        threads = ChatThread.objects.filter(participants=request.user).annotate(
+        threads = ChatThread.objects.for_user(request.user).annotate(
             last_message_time=Max('message__created_at'),
             unread_count=Count(
                 'message',
@@ -36,7 +36,7 @@ class ThreadListView(LoginRequiredMixin, ListView):
 
         # Get group chats the user is a member of
         groups = ChatGroup.objects.filter(
-            members=request.user
+            membership_records__user=request.user
         ).annotate(
             last_message_time=Max('groupmessage__created_at'),
             unread_count=Count(
@@ -50,7 +50,7 @@ class ThreadListView(LoginRequiredMixin, ListView):
         
         # Add direct threads
         for thread in threads:
-            other_user = thread.get_other_user(request.user)
+            other_user = thread.other_participant(request.user)
             last_msg = thread.message_set.first() if thread.message_set.exists() else None
             chats.append({
                 'type': 'direct',
@@ -229,7 +229,7 @@ class GroupListView(LoginRequiredMixin, View):
     template_name = 'chat/group_list.html'
 
     def get(self, request):
-        groups = ChatGroup.objects.filter(members=request.user).order_by('name')
+        groups = ChatGroup.objects.filter(membership_records__user=request.user).order_by('name')
         return render(
             request,
             self.template_name,
