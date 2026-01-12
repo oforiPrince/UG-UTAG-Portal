@@ -77,7 +77,7 @@ class UserAdmin(BaseUserAdmin):
 		(None, {'fields': ('email', 'password')}),
 		('Personal info', {'fields': ('title', 'other_name', 'surname', 'gender', 'phone_number', 'profile_pic')}),
 		('Permissions', {'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-		('Important dates', {'fields': ('last_login', 'created_at')}),
+		('Important dates', {'fields': ('last_login',)}),
 	)
 
 	# add_fieldsets is used when creating a user via the admin
