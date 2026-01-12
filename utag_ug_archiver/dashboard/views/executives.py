@@ -45,7 +45,7 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User, School, College, Department
 from dashboard.models import Notification
-from utag_ug_archiver.utils.constants import executive_committee_members_position_order
+from utag_ug_archiver.utils.constants import executive_committee_members_position_order, executive_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
@@ -83,6 +83,10 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
                          if x.executive_position and x.executive_position in executive_committee_members_position_order 
                          else len(executive_committee_members_position_order)
         )
+        
+        # Separate executives into main executives and committee members
+        executive_members = [e for e in executive_officers if e.executive_position in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position not in executive_members_position_order and e.executive_position]
 
         # Cached static lists
         schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
@@ -95,6 +99,8 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
 
         context = {
             'executive_officers': executive_officers,
+            'executive_members': executive_members,
+            'committee_members': committee_members,
             'schools': schools,
             'colleges': colleges,
             'departments': departments,
@@ -356,3 +362,38 @@ class ExecutiveMemberDeleteView(View):
 
         messages.success(request, 'Member removed from executive successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+class PrintAllExecutivesView(PermissionRequiredMixin, View):
+    template_name = 'dashboard_pages/print_all_executives.html'
+    permission_required = 'accounts.view_dashboard'
+    
+    @method_decorator(MustLogin)
+    def get(self, request):
+        from django.db.models import Q
+        from datetime import date, datetime
+        
+        # Get all executives: those with positions in the committee members order list OR marked as active executives
+        executive_officers = User.objects.filter(
+            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
+        )
+        # Sort the executive officers based on the custom order
+        executive_officers = sorted(
+            executive_officers, 
+            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
+                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
+        
+        # Separate executives into main executives and committee members
+        executive_members = [e for e in executive_officers if e.executive_position in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position not in executive_members_position_order and e.executive_position]
+        
+        context = {
+            'executive_officers': executive_officers,
+            'executive_members': executive_members,
+            'committee_members': committee_members,
+            'now': datetime.now(),
+            'today': date.today(),
+        }
+        return render(request, self.template_name, context)

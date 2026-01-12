@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Executives & Committee Members - Print</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            margin-top: 30px;
+            page-break-before: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status-current {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-past {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+        @media print {
+            body {
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+            }
+            h2 {
+                page-break-before: avoid;
+            }
+            table {
+                page-break-inside: avoid;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+        .print-button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .print-button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">Print This Page</button>
+    
+    <h1>All Executives & Committee Members Directory</h1>
+    <p style="text-align: center; color: #666;">Generated on {{ now|date:'d F Y, H:i' }}</p>
+
+    <!-- Executive Members Section -->
+    <h2>Executive Members (Main Leadership)</h2>
+    {% if executive_members %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Position</th>
+                    <th>Date Appointed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for executive in executive_members %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ executive.get_full_name }}</td>
+                        <td>{{ executive.email }}</td>
+                        <td>{{ executive.phone_number|default:'N/A' }}</td>
+                        <td><strong>{{ executive.executive_position }}</strong></td>
+                        <td>{{ executive.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
+                        <td>
+                            {% if executive.date_ended and executive.date_ended < today %}
+                                <span class="status-past">Past</span>
+                            {% else %}
+                                <span class="status-current">Current</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty-message">No executive members found.</p>
+    {% endif %}
+
+    <!-- Committee Members Section -->
+    <h2>Committee Members</h2>
+    {% if committee_members %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Position</th>
+                    <th>Date Appointed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for committee in committee_members %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ committee.get_full_name }}</td>
+                        <td>{{ committee.email }}</td>
+                        <td>{{ committee.phone_number|default:'N/A' }}</td>
+                        <td><strong>{{ committee.executive_position }}</strong></td>
+                        <td>{{ committee.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
+                        <td>
+                            {% if committee.date_ended and committee.date_ended < today %}
+                                <span class="status-past">Past</span>
+                            {% else %}
+                                <span class="status-current">Current</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty-message">No committee members found.</p>
+    {% endif %}
+
+    <!-- Summary -->
+    <h2>Summary</h2>
+    <table>
+        <tr>
+            <td><strong>Total Executive Members:</strong></td>
+            <td>{{ executive_members|length }}</td>
+        </tr>
+        <tr>
+            <td><strong>Total Committee Members:</strong></td>
+            <td>{{ committee_members|length }}</td>
+        </tr>
+        <tr>
+            <td><strong>Grand Total:</strong></td>
+            <td>{{ executive_officers|length }}</td>
+        </tr>
+    </table>
+
+    <script>
+        // Automatically set the "today" variable for Django template
+        document.addEventListener('DOMContentLoaded', function() {
+            // This is handled by Django, but we can add print styling here if needed
+        });
+    </script>
+</body>
+</html>

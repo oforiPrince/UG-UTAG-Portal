@@ -27,6 +27,7 @@ urlpatterns += [
 #For executive management
 urlpatterns += [
     path('executives/executive_members',views.ExecutiveMembersView.as_view(), name='executive_members'),
+    path('executives/executive_members/print',views.PrintAllExecutivesView.as_view(), name='print_all_executives'),
     path('executives/executive_members/create/new_member',views.NewExecutiveMemberCreateView.as_view(), name='create_new_executive_member'),
     path('executives/executive_members/create/existing_member',views.ExistingExecutiveMemberCreateView.as_view(), name='create_existing_executive_member'),
     path('executives/executive_members/update/',views.UpdateExecutiveMemberView.as_view(), name='update_executive_member'),
