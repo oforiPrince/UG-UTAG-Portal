@@ -69,10 +69,17 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
     permission_required = 'accounts.view_dashboard'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Get all executive officers
-        executive_officers = User.objects.filter(executive_position__in=executive_committee_members_position_order, is_active_executive=True)
+        from django.db.models import Q
+        from datetime import date
+        # Get all executive officers with positions in the committee members order list
+        # Exclude those whose term has ended (date_ended is in the past)
+        executive_officers = User.objects.filter(
+            executive_position__in=executive_committee_members_position_order
+        ).filter(
+            Q(date_ended__isnull=True) | Q(date_ended__gte=date.today())
+        )
         # Sort the executive officers based on the custom order
-        executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position) if x.executive_position in executive_committee_members_position_order else len(executive_committee_members_position_order))
+        executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position))
 
         # Cached static lists
         schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
