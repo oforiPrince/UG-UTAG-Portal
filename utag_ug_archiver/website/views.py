@@ -184,13 +184,19 @@ class ExecutiveCommitteeMembersView(View):
     template_name = 'website_pages/executive_committee_members-v2.html'
     
     def get(self, request):
-        # Get all executives and committee members with positions in the order list
+        from django.db.models import Q
+        # Get all executives and committee members: those with positions in the order list OR marked as active executives
         # Show all, including past executives (those whose term has ended)
         executives = User.objects.filter(
-            executive_position__in=executive_committee_members_position_order
+            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
         )
         # Sort the executives based on the custom order
-        executives = sorted(executives, key=executive_committee_members_custom_order)
+        executives = sorted(
+            executives, 
+            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
+                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
         context = {
             'executives': executives,
         }
