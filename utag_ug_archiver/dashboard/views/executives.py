@@ -72,11 +72,9 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         from django.db.models import Q
         from datetime import date
         # Get all executive officers with positions in the committee members order list
-        # Exclude those whose term has ended (date_ended is in the past)
+        # Show all, including past executives (those whose term has ended)
         executive_officers = User.objects.filter(
             executive_position__in=executive_committee_members_position_order
-        ).filter(
-            Q(date_ended__isnull=True) | Q(date_ended__gte=date.today())
         )
         # Sort the executive officers based on the custom order
         executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position))
@@ -120,6 +118,7 @@ class NewExecutiveMemberCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed_str = request.POST.get('date_appointed')
+        date_ended_str = request.POST.get('date_ended')
         print(date_appointed_str)
         executive_image = request.FILES.get('image')
         print(executive_image)
@@ -150,6 +149,15 @@ class NewExecutiveMemberCreateView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        date_ended = None
+        if date_ended_str:
+            try:
+                date_ended = _parse_date(date_ended_str)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Create User
         member = User.objects.create(
@@ -169,6 +177,7 @@ class NewExecutiveMemberCreateView(View):
             twitter_profile_url=twitter_username,
             linkedin_profile_url=linkedin_username,
             date_appointed=date_appointed,
+            date_ended=date_ended,
             is_active_executive=True,          # Mark as active executive
             must_change_password=True,
         )
@@ -192,6 +201,7 @@ class ExistingExecutiveMemberCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
+        date_ended = request.POST.get('date_ended')
         executive_image = request.FILES.get('image')
         print(position)
         print(member_id)
@@ -226,6 +236,15 @@ class ExistingExecutiveMemberCreateView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        parsed_end_date = None
+        if date_ended:
+            try:
+                parsed_end_date = _parse_date(date_ended)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update member to executive
         # If the member was previously an executive but inactive, increment terms
@@ -237,6 +256,7 @@ class ExistingExecutiveMemberCreateView(View):
         member.twitter_profile_url = twitter_username
         member.linkedin_profile_url = linkedin_username
         member.date_appointed = parsed_date
+        member.date_ended = parsed_end_date
         member.executive_image = executive_image
         member.is_active_executive = True
 
@@ -260,7 +280,7 @@ class UpdateExecutiveMemberView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
-        # date_ended removed; expiry is computed automatically
+        date_ended = request.POST.get('date_ended')
         active = request.POST.get('active')
         executive_image = request.FILES.get('image')
         
@@ -281,6 +301,15 @@ class UpdateExecutiveMemberView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        parsed_ended = None
+        if date_ended:
+            try:
+                parsed_ended = _parse_date(date_ended)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update the executive officer's details
         executive.executive_position = position
@@ -288,6 +317,7 @@ class UpdateExecutiveMemberView(View):
         executive.twitter_profile_url = twitter_username
         executive.linkedin_profile_url = linkedin_username
         executive.date_appointed = parsed_appointed
+        executive.date_ended = parsed_ended
         # If reactivating an inactive executive, increment their terms
         was_active_before = executive.is_active_executive
         executive.is_active_executive = True if active == 'on' else False

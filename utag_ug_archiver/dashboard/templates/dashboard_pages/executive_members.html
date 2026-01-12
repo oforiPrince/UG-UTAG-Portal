@@ -87,10 +87,10 @@
                                                 <td>{{ executive.executive_position }}</td>
                                                 <td>{{ executive.date_appointed|date:'d M, Y' }}</td>
                                                 <td>
-                                                    {% if executive.executive_status %}
-                                                        <span class="badge bg-info">{{ executive.executive_status }}</span>
+                                                    {% if executive.date_ended and executive.date_ended < today %}
+                                                        <span class="badge bg-danger">Past</span>
                                                     {% else %}
-                                                        <span class="badge bg-secondary">N/A</span>
+                                                        <span class="badge bg-success">Current</span>
                                                     {% endif %}
                                                 </td>
                                                 <td>

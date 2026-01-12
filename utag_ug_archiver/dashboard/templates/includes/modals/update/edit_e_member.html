@@ -51,8 +51,10 @@
                 <option value="Past President"
                         {% if executive.executive_position == 'Past President' %}selected{% endif %}>
                   Past President
-                </option>
-                <option value="CBAS Rep"
+                </option>                <option value="National President"
+                        {% if executive.executive_position == 'National President' %}selected{% endif %}>
+                  National President
+                </option>                <option value="CBAS Rep"
                         {% if executive.executive_position == 'CBAS Rep' %}selected{% endif %}>CBAS Rep</option>
                 <option value="College of Humanities Rep"
                         {% if executive.executive_position == 'College of Humanities Rep' %}selected{% endif %}>
@@ -133,7 +135,15 @@
                          value="{{ executive.date_appointed|date:'Y-m-d' }}" />
                 </div>
               </div>
-              <!-- Date Ended removed: expiry is computed automatically -->
+              <div class="col-md-6">
+                <label class="form-label">Date Ended (Optional)</label>
+                <div class="input-group">
+                  <input type="date"
+                         class="form-control"
+                         name="date_ended"
+                         value="{% if executive.date_ended %}{{ executive.date_ended|date:'Y-m-d' }}{% endif %}" />
+                </div>
+              </div>
             </div>
             <hr class="mt-4 mb-4">
             <div class="mb-3">

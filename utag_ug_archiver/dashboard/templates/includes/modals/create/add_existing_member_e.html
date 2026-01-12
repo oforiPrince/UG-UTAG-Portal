@@ -58,8 +58,7 @@
               <option value="Secretary">Secretary</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Women's Executive Officer">Women's Executive Officer</option>
-              <option value="Past President">Past President</option>
-              <option value="CBAS Rep">CBAS Rep</option>
+              <option value="Past President">Past President</option>              <option value="National President">National President</option>              <option value="CBAS Rep">CBAS Rep</option>
               <option value="College of Humanities Rep">College of Humanities Rep</option>
               <option value="College of Health Rep">College of Health Rep</option>              <option value="College of Education Rep">College of Education Rep</option>            </select>
           </div>
@@ -98,10 +97,18 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Date Appointed</label>
-            <div class="input-group" id="datepickerContainer">
-              <input type="date" class="form-control" name="date_appointed" />
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Date Appointed</label>
+              <div class="input-group" id="datepickerContainer">
+                <input type="date" class="form-control" name="date_appointed" required />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date Ended (Optional)</label>
+              <div class="input-group">
+                <input type="date" class="form-control" name="date_ended" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
