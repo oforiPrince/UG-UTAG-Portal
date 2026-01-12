@@ -65,19 +65,24 @@ def _parse_date(value):
 
 #For Executives
 class ExecutiveMembersView(PermissionRequiredMixin,View):
-    template_name = 'dashboard_pages/executive_members.html'
+    template_name = 'dashboard_pages/all_executives.html'
     permission_required = 'accounts.view_dashboard'
     @method_decorator(MustLogin)
     def get(self, request):
         from django.db.models import Q
         from datetime import date
-        # Get all executive officers with positions in the committee members order list
+        # Get all executives: those with positions in the committee members order list OR marked as active executives
         # Show all, including past executives (those whose term has ended)
         executive_officers = User.objects.filter(
-            executive_position__in=executive_committee_members_position_order
+            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
         )
         # Sort the executive officers based on the custom order
-        executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position))
+        executive_officers = sorted(
+            executive_officers, 
+            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
+                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
 
         # Cached static lists
         schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
