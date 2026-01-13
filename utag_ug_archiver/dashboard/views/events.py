@@ -52,13 +52,15 @@ class EventCreateUpdateView(View):
                 'start_time': event.start_time,
                 'end_time': event.end_time,
                 'notifications':notifications,
-                'notification_count': notification_count
+                'notification_count': notification_count,
+                'active_menu': 'events'
             }
         else:
             context = {
                 'is_published': 'off',
                 'notifications':notifications,
-                'notification_count': notification_count
+                'notification_count': notification_count,
+                'active_menu': 'events'
             }
         return render(request, self.template_name, {'context': context})
 

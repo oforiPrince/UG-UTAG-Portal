@@ -22,25 +22,26 @@ class GalleryListView(PermissionRequiredMixin, ListView):
     permission_required = 'gallery.view_gallery'
     paginate_by = 10
 
-    @method_decorator(MustLogin)
-    def get(self, request, *args, **kwargs):
-        # Get notifications for header
-        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
-        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
-        
+    def get_queryset(self):
         # Optimize queryset with prefetch_related and only fetch needed fields
-        galleries = Gallery.objects.prefetch_related(
+        return Gallery.objects.prefetch_related(
             'images'
         ).only(
             'id', 'title', 'description', 'created_at', 'is_active'
         ).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get notifications for header
+        notifications = Notification.objects.filter(user=self.request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=self.request.user, status='UNREAD').count()
         
-        context = {
-            'galleries': galleries,
+        context.update({
             'notification_count': notification_count,
             'notifications': notifications,
-        }
-        return self.render_to_response(context)
+            'active_menu': 'gallery'
+        })
+        return context
 
 class GalleryCreateView(PermissionRequiredMixin, CreateView):
     model = Gallery

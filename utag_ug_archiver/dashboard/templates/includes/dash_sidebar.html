@@ -48,13 +48,13 @@
                     </li>
                 {% endif %}
                 <li>
-                    <a href="javascript: void(0);" class="has-arrow waves-effect">
+                    <a href="javascript: void(0);" class="has-arrow waves-effect {% if active_menu == 'documents' %}mm-active{% endif %}">
                         <i class="far fa-file-archive"></i>
                         <span>File Mgt</span>
                     </a>
-                    <ul class="sub-menu" aria-expanded="false">
+                    <ul class="sub-menu" aria-expanded="false" {% if active_menu == 'documents' %}style="display: block;"{% endif %}>
                         <li>
-                            <a href="{% url 'dashboard:documents' %}">Documents</a>
+                            <a href="{% url 'dashboard:documents' %}" {% if active_menu == 'documents' %}class="active"{% endif %}>Documents</a>
                         </li>
                     </ul>
                 </li>
@@ -67,7 +67,7 @@
                 <li class="menu-title">Site Management</li>
                 {% if perms.dashboard.view_event %}
                     <li>
-                        <a href="{% url 'dashboard:events' %}" class="">
+                        <a href="{% url 'dashboard:events' %}" class="{% if active_menu == 'events' %}active mm-active{% endif %}">
                             <i class="fas fa-calendar-check"></i>
                             <span>Events</span>
                         </a>
@@ -75,7 +75,7 @@
                 {% endif %}
                 {% if perms.dashboard.view_carouselslide %}
                     <li>
-                        <a href="{% url 'dashboard:carousel_slide_list' %}" class="">
+                        <a href="{% url 'dashboard:carousel_slide_list' %}" class="{% if active_menu == 'carousel' %}active mm-active{% endif %}">
                             <i class="fas fa-tv"></i>
                             <span>Carousel Sliders</span>
                         </a>
@@ -83,7 +83,7 @@
                 {% endif %}
                 {% if perms.dashboard.view_news %}
                     <li>
-                        <a href="{% url 'dashboard:news' %}" class="waves-effect">
+                        <a href="{% url 'dashboard:news' %}" class="waves-effect {% if active_menu == 'news' %}active mm-active{% endif %}">
                             <i class="fas fa-newspaper"></i>
                             <span>News</span>
                         </a>
@@ -91,7 +91,7 @@
                 {% endif %}
                 {% if perms.gallery.view_gallery %}
                     <li>
-                        <a href="{% url 'dashboard:gallery' %}" class="waves-effect">
+                        <a href="{% url 'dashboard:gallery' %}" class="waves-effect {% if active_menu == 'gallery' %}active mm-active{% endif %}">
                             <i class="fas fa-image"></i>
                             <span>Gallery</span>
                         </a>
@@ -99,7 +99,7 @@
                 {% endif %}
                 {% if perms.dashboard.view_announcement %}
                     <li>
-                        <a href="{% url 'dashboard:announcements' %}" class="waves-effect">
+                        <a href="{% url 'dashboard:announcements' %}" class="{% if active_menu == 'announcements' %}active mm-active{% endif %}">
                             <i class="fas fa-bullhorn"></i>
                             <span>Announcements</span>
                         </a>

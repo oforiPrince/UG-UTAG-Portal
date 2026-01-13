@@ -56,7 +56,7 @@ class NewsCreateUpdateView(View):
                     'attached_documents': [],
                     'featured_image': None,
                 }
-            return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags})
+            return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags, 'active_menu': 'news'})
         except Exception as e:
             messages.error(request, f"Error loading news form: {e}")
             return redirect('dashboard:news')

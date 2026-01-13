@@ -147,7 +147,8 @@ class DocumentCreateUpdateView(View):
             'DOCUMENT_STATUS_CHOICES': Document.DOCUMENT_STATUS_CHOICES,
             'VISIBILITY_CHOICES': Document.VISIBILITY_CHOICES,
             'all_groups': Group.objects.all(),
-            'tinymce_api_key': getattr(settings, 'TINYMCE_API_KEY', '')
+            'tinymce_api_key': getattr(settings, 'TINYMCE_API_KEY', ''),
+            'active_menu': 'documents'
         }
         return render(request, self.template_name, context)
 

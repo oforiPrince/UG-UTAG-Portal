@@ -65,7 +65,8 @@ class AnnouncementCreateUpdateView(View):
             'all_groups': Group.objects.all(),
             
             'notification_count': notification_count,
-            'notifications': notifications
+            'notifications': notifications,
+            'active_menu': 'announcements'
         }
         return render(request, self.template_name, context)
 
