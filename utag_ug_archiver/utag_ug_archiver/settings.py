@@ -320,6 +320,9 @@ TINYMCE_DEFAULT_CONFIG = {
     'statusbar': True,
 }
 
+# TinyMCE API Key for cloud-based editor (optional)
+TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY', 'o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an')
+
 
 # Celery Configuration
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')

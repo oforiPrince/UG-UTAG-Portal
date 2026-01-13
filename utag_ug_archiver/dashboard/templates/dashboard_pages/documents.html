@@ -79,10 +79,8 @@
                           <span class="badge bg-success">{{ document.status_label|default:document.get_status_display|default:"N/A" }}</span>
                         </td>
                         <td>
-                          <a href="#"
+                          <a href="{% url 'dashboard:document_detail' document.id %}"
                              class="btn btn-primary btn-sm"
-                             data-bs-toggle="modal"
-                             data-bs-target="#documentDetailModal_{{ document.id }}"
                              title="View">
                             <i class="mdi mdi-eye"></i>
                           </a>
@@ -112,7 +110,6 @@
         </div>
       </div>
     </div>
-    {% include 'includes/modals/details/file_details.html' %}
   </div>
 {% endblock content %}
 {% block my_styles %}

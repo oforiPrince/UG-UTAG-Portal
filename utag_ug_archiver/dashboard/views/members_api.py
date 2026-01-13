@@ -100,3 +100,48 @@ class MembersDataTableAPIView(PermissionRequiredMixin, View):
                 'data': [],
                 'error': str(e),
             }, status=500)
+
+
+class MemberDetailAPIView(PermissionRequiredMixin, View):
+    """AJAX API for fetching member details for dynamic modal loading.
+    
+    Returns member data as JSON to avoid rendering all modals on page load.
+    """
+    permission_required = 'accounts.view_member'
+    
+    @method_decorator(MustLogin)
+    def get(self, request, member_id):
+        try:
+            user = User.objects.get(id=member_id, groups__name='Member')
+            
+            # Get groups as list
+            groups = list(user.groups.values_list('name', flat=True))
+            
+            return JsonResponse({
+                'id': user.id,
+                'title': user.title or '',
+                'surname': user.surname or '',
+                'other_name': user.other_name or '',
+                'email': user.email or '',
+                'phone_number': user.phone_number or '',
+                'gender': user.gender or '',
+                'academic_rank': user.academic_rank or '',
+                'staff_id': user.staff_id or '',
+                'profile_pic': user.profile_pic.url if user.profile_pic else '',
+                'full_name': user.get_full_name(),
+                'short_name': user.get_short_name(),
+                'groups': groups,
+                'department_id': user.department.id if user.department else '',
+                'department_name': user.department.name if user.department else '',
+                'school_id': user.school.id if user.school else '',
+                'school_name': user.school.name if user.school else '',
+                'college_id': user.college.id if user.college else '',
+                'college_name': user.college.name if user.college else '',
+                'is_active': user.is_active,
+            })
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Member not found'}, status=404)
+        except Exception as e:
+            logger.error(f"MemberDetailAPIView error: {e}", exc_info=True)
+            return JsonResponse({'error': str(e)}, status=500)
+

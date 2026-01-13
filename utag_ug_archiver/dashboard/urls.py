@@ -1,7 +1,8 @@
 from django.urls import path
 from . import views
-from .views.members_api import MembersDataTableAPIView
+from .views.members_api import MembersDataTableAPIView, MemberDetailAPIView
 from .views.executives import ExecutiveBioUpdateView
+from .views.document_detail import DocumentDetailView
 app_name = 'dashboard'
 
 urlpatterns =[
@@ -20,6 +21,7 @@ urlpatterns += [
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
     path('account_management/members/api', MembersDataTableAPIView.as_view(), name='members_api'),
+    path('account_management/members/detail/<int:member_id>/api', MemberDetailAPIView.as_view(), name='member_detail_api'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
     path('account_management/member-search', views.MemberSearchView.as_view(), name='member_search'),
     path('account_management/check-staff-id/', views.CheckStaffIdView.as_view(), name='check_staff_id'),
@@ -70,6 +72,7 @@ urlpatterns += [
 #For Document management
 urlpatterns += [
     path('documents/',views.DocumentsView.as_view(), name='documents'),
+    path('documents/<int:document_id>/', DocumentDetailView.as_view(), name='document_detail'),
     path('documents/create',views.DocumentCreateUpdateView.as_view(), name='create_document'),
     path('documents/update/<int:document_id>',views.DocumentCreateUpdateView.as_view(), name='update_document'),
     path('documents/delete_file/',views.DeleteFileView.as_view(), name='delete_file'),

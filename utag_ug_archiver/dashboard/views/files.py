@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, Http404
 from django.contrib.auth.models import Group
 from django.db.models import Q
 from django.core.cache import cache
@@ -140,12 +140,14 @@ class DocumentCreateUpdateView(View):
         else:
             document = None
 
+        from django.conf import settings
         context = {
             'document': document,
             'CATEGORY_CHOICES': Document.CATEGORY_CHOICES,
             'DOCUMENT_STATUS_CHOICES': Document.DOCUMENT_STATUS_CHOICES,
             'VISIBILITY_CHOICES': Document.VISIBILITY_CHOICES,
-            'all_groups': Group.objects.all()
+            'all_groups': Group.objects.all(),
+            'tinymce_api_key': getattr(settings, 'TINYMCE_API_KEY', '')
         }
         return render(request, self.template_name, context)
 

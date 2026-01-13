@@ -352,6 +352,7 @@ class MemberListView(PermissionRequiredMixin, View):
         
         # Prepare context
         # Note: Members data is loaded via server-side DataTables API call to MembersDataTableAPIView
+        # Modals are loaded dynamically via AJAX to avoid loading all members on page load
         context = {
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,

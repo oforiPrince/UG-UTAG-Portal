@@ -2,144 +2,215 @@
 {% load static %}
 {% block title %}
 {% if document %}
-  Update Document - {{ document.title }}
+  Edit Document - {{ document.title }}
 {% else %}
-  Add Document
+  Add New Document
 {% endif %}
 {% endblock title %}
 {% block content %}
 <div class="page-content">
   <div class="container-fluid">
+    <!-- Page Title -->
+    <div class="page-title-box">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h6 class="page-title">
+            {% if document %}
+              Edit Document
+            {% else %}
+              Add New Document
+            {% endif %}
+          </h6>
+          <ol class="breadcrumb m-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard:documents' %}">Documents</a>
+            </li>
+            <li class="breadcrumb-item active">
+              {% if document %}
+                Edit Document
+              {% else %}
+                Add New Document
+              {% endif %}
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="col-12">
         <div class="card">
+          <div class="card-header bg-light">
+            <h4 class="card-title mb-0">
+              <i class="mdi mdi-file-document"></i>
+              {% if document %}
+                Edit: {{ document.title }}
+              {% else %}
+                Create New Document
+              {% endif %}
+            </h4>
+          </div>
           <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-md-8">
-                <h4 class="card-title">
-                  {% if document %}
-                    Update Document - {{ document.title }}
-                  {% else %}
-                    Add Document
-                  {% endif %}
-                </h4>
-              </div>
-            </div>
-
             <form id="documentForm" class="custom-validation" method="POST" action="{% if document %}{% url 'dashboard:update_document' document_id=document.id %}{% else %}{% url 'dashboard:create_document' %}{% endif %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% if document %}
                 <input type="hidden" name="document_id" value="{{ document.id }}">
                 {% endif %}
                 
-                <div class="mb-3">
-                  <label for="title" class="form-label">Title</label>
-                  <input type="text" class="form-control" id="title" name="title" value="{% if document %}{{ document.title }}{% endif %}" required>
-                </div>
-                
-                <div class="row">
-                  <div class="mb-3 col-md-6">
-                    <label for="sender" class="form-label">Sender</label>
-                    <input type="text" class="form-control" id="sender" name="sender" value="{% if document %}{{ document.sender }}{% endif %}" required>
-                  </div>
-                  <div class="mb-3 col-md-6">
-                    <label for="receiver" class="form-label">Receiver</label>
-                    <input type="text" class="form-control" id="receiver" name="receiver" value="{% if document %}{{ document.receiver }}{% endif %}" required>
-                  </div>
-                </div>
-                
-                {% if document and document.files.all %}
-                <p class="text-success">Existing Files</p>
-                <div class="card mb-3">
-                  <div class="card-body">
-                    <div class="row">
-                      {% for file in document.files.all %}
-                      <div class="col-md-2" id="file_{{ file.id }}">
-                        {% if file.file.name|lower|slice:'-4:' == ".png" or file.file.name|lower|slice:'-4:' == ".jpg" or file.file.name|lower|slice:'-5:' == ".jpeg" or file.file.name|lower|slice:'-4:' == ".gif" %}
-                        <a href="{{ file.file.url }}" target="_blank">
-                          <img src="{{ file.file.url }}" class="img-fluid" alt="{{ file.file.name }}">
-                        </a>
-                        {% else %}
-                        <a href="{{ file.file.url }}" target="_blank">
-                          <img src="{% static 'dashboard/assets/images/file/generic.png' %}" alt="Document Icon" class="img-fluid">
-                        </a>
-                        {% endif %}
-                        <div class="text-center mt-2">
-                          <button type="button" class="btn btn-danger btn-sm" onclick="removeFile('{{ file.id }}')">Remove</button>
-                        </div>
-                      </div>
-                      {% endfor %}
-                    </div>
-                  </div>
-                </div>
-                {% endif %}
-              
-                <div class="mb-3">
-                  <label for="files" class="form-label">Files</label>
-                  <input type="file" class="form-control" id="files" name="files" multiple>
-                </div>
-              
-                <div class="mb-3">
-                  <label for="text_area" class="form-label">Description</label>
-                  <textarea class="form-control" id="text_area" name="description" rows="10">{% if document %}{{ document.description }}{% endif %}</textarea>
-                </div>
-                
-                <div class="row">
-                  <div class="mb-3 col-md-4">
-                    <label for="category" class="form-label">Category</label>
-                    <select class="form-select" name="category" required>
-                      <option value="">Select Category</option>
-                      {% for key, value in CATEGORY_CHOICES %}
-                      <option value="{{ key }}" {% if document and document.category == key %} selected {% endif %}>{{ value }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-
-                  <div class="mb-3 col-md-4">
-                    <label for="status" class="form-label">Status</label>
-                    <select class="form-select" name="status" required>
-                      <option value="">Select Status</option>
-                      {% for id, value in DOCUMENT_STATUS_CHOICES %}
-                      <option value="{{ id }}" {% if document and document.status == id %} selected {% endif %}>{{ value }}</option>
-                      {% endfor %}
-                    </select>
+                <!-- Title Section -->
+                <div class="mb-4 pb-3 border-bottom">
+                  <h5 class="mb-3"><i class="mdi mdi-text"></i> Document Information</h5>
+                  <div class="mb-3">
+                    <label for="title" class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-lg" id="title" name="title" placeholder="Enter document title" value="{% if document %}{{ document.title }}{% endif %}" required>
                   </div>
                   
-                  <div class="mb-3 col-md-4">
-                    <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date" value="{% if document.date %}{{ document.date|date:"Y-m-d" }}{% endif %}" {% if not document %}required{% endif %}>
-                  </div>
-                </div>
-              
-                <div class="row">
-                  <div class="mb-3 col-md-6">
-                    <label for="visibility" class="form-label">Visibility</label>
-                    <select class="form-select" name="visibility" id="visibility" required>
-                      <option value="">Select Visibility</option>
-                      {% for key, value in VISIBILITY_CHOICES %}
-                      <option value="{{ key }}" {% if document and document.visibility == key %} selected {% endif %}>{{ value }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-
-                  <div class="mb-3 col-md-6" id="visible_to_groups_container" style="display: none;">
-                    <label class="form-label">Visible to Groups</label>
-                    <div>
-                      {% for group in all_groups %}
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="visible_to_groups" id="group_{{ group.id }}" value="{{ group.id }}"
-                          {% if document and group in document.visible_to_groups.all %} checked {% endif %}>
-                        <label class="form-check-label" for="group_{{ group.id }}">
-                          {{ group.name }}
-                        </label>
-                      </div>
-                      {% endfor %}
+                  <div class="row">
+                    <div class="mb-3 col-md-6">
+                      <label for="sender" class="form-label fw-semibold">Sender <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="sender" name="sender" placeholder="e.g., Department Name" value="{% if document %}{{ document.sender }}{% endif %}" required>
+                    </div>
+                    <div class="mb-3 col-md-6">
+                      <label for="receiver" class="form-label fw-semibold">Receiver <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="receiver" name="receiver" placeholder="e.g., Recipient Name" value="{% if document %}{{ document.receiver }}{% endif %}" required>
                     </div>
                   </div>
                 </div>
-              
-                <div class="mb-0">
-                  <button type="submit" class="btn btn-primary waves-effect waves-light me-1">Save</button>
+                
+                <!-- Description Section -->
+                <div class="mb-4 pb-3 border-bottom">
+                  <h5 class="mb-3"><i class="mdi mdi-note-text"></i> Description & Details</h5>
+                  
+                  <div class="mb-3">
+                    <label for="text_area" class="form-label fw-semibold">Description</label>
+                    <textarea class="form-control" id="text_area" name="description" rows="6" placeholder="Enter a detailed description of this document">{% if document %}{{ document.description }}{% endif %}</textarea>
+                  </div>
+                  
+                  <div class="row">
+                    <div class="mb-3 col-md-4">
+                      <label for="category" class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                      <select class="form-select" name="category" required>
+                        <option value="">Select Category</option>
+                        {% for key, value in CATEGORY_CHOICES %}
+                        <option value="{{ key }}" {% if document and document.category == key %} selected {% endif %}>{{ value }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="mb-3 col-md-4">
+                      <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                      <select class="form-select" name="status" required>
+                        <option value="">Select Status</option>
+                        {% for id, value in DOCUMENT_STATUS_CHOICES %}
+                        <option value="{{ id }}" {% if document and document.status == id %} selected {% endif %}>{{ value }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="mb-3 col-md-4">
+                      <label for="date" class="form-label fw-semibold">Date</label>
+                      <input type="date" class="form-control" id="date" name="date" value="{% if document.date %}{{ document.date|date:"Y-m-d" }}{% endif %}" {% if not document %}required{% endif %}>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Files Section -->
+                <div class="mb-4 pb-3 border-bottom">
+                  <h5 class="mb-3"><i class="mdi mdi-file-multiple"></i> Files</h5>
+                  
+                  {% if document and document.files.all %}
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold d-block mb-2">Existing Files</label>
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <div class="row">
+                          {% for file in document.files.all %}
+                          <div class="col-md-3 col-sm-4 mb-2" id="file_{{ file.id }}">
+                            <div class="card shadow-sm h-100">
+                              <div class="card-body p-2 text-center">
+                                {% if file.file.name|lower|slice:'-4:' == ".png" or file.file.name|lower|slice:'-4:' == ".jpg" or file.file.name|lower|slice:'-5:' == ".jpeg" or file.file.name|lower|slice:'-4:' == ".gif" %}
+                                <a href="{{ file.file.url }}" target="_blank" class="d-block mb-2">
+                                  <img src="{{ file.file.url }}" class="img-fluid" style="max-height: 80px;" alt="{{ file.file.name }}">
+                                </a>
+                                {% else %}
+                                <a href="{{ file.file.url }}" target="_blank" class="d-block mb-2">
+                                  <i class="mdi mdi-file-document" style="font-size: 3rem; color: #6c757d;"></i>
+                                </a>
+                                {% endif %}
+                                <p class="small text-truncate mb-2">{{ file.file.name|truncatechars:20 }}</p>
+                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeFile('{{ file.id }}')">
+                                  <i class="mdi mdi-delete"></i> Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                  
+                  <div class="mb-0">
+                    <label for="files" class="form-label fw-semibold">Add New Files</label>
+                    <div class="input-group">
+                      <input type="file" class="form-control" id="files" name="files" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.png,.gif,.jpeg">
+                      <span class="input-group-text">
+                        <i class="mdi mdi-cloud-upload"></i>
+                      </span>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                      <i class="mdi mdi-information"></i> Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
+                    </small>
+                  </div>
+                </div>
+
+                <!-- Visibility Section -->
+                <div class="mb-4 pb-3 border-bottom">
+                  <h5 class="mb-3"><i class="mdi mdi-eye"></i> Visibility & Sharing</h5>
+                  
+                  <div class="row">
+                    <div class="mb-3 col-md-6">
+                      <label for="visibility" class="form-label fw-semibold">Visibility <span class="text-danger">*</span></label>
+                      <select class="form-select" name="visibility" id="visibility" required onchange="toggleVisibilityGroups()">
+                        <option value="">Select Visibility</option>
+                        {% for key, value in VISIBILITY_CHOICES %}
+                        <option value="{{ key }}" {% if document and document.visibility == key %} selected {% endif %}>{{ value }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+
+                    <div class="mb-3 col-md-6" id="visible_to_groups_container" style="display: none;">
+                      <label class="form-label fw-semibold">Visible to Groups</label>
+                      <div class="border rounded p-3 bg-light">
+                        {% for group in all_groups %}
+                        <div class="form-check mb-2">
+                          <input class="form-check-input" type="checkbox" name="visible_to_groups" id="group_{{ group.id }}" value="{{ group.id }}"
+                            {% if document and group in document.visible_to_groups.all %} checked {% endif %}>
+                          <label class="form-check-label" for="group_{{ group.id }}">
+                            {{ group.name }}
+                          </label>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 justify-content-between">
+                  <a href="{% url 'dashboard:documents' %}" class="btn btn-secondary">
+                    <i class="mdi mdi-arrow-left"></i> Back to Documents
+                  </a>
+                  <div>
+                    <button type="reset" class="btn btn-light me-2">
+                      <i class="mdi mdi-refresh"></i> Reset
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="mdi mdi-check-circle"></i> {% if document %}Update Document{% else %}Create Document{% endif %}
+                    </button>
+                  </div>
                 </div>
             </form>              
           </div>
@@ -150,50 +221,79 @@
 </div>
 {% endblock %}
 
+<!-- Load TinyMCE from CDN -->
+{% if tinymce_api_key %}
+<script src="https://cdn.tiny.cloud/1/{{ tinymce_api_key }}/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+{% endif %}
+
 {% block my_scripts %}
 <script>
-  $(document).ready(function() {
-    // Show/Hide the "Visible to Groups" field based on the visibility selection
-    $('#visibility').change(function() {
-      if ($(this).val() === 'selected_groups') {
-        $('#visible_to_groups_container').show();
-      } else {
-        $('#visible_to_groups_container').hide();
-      }
-    }).trigger('change');
+  // Toggle visibility groups container
+  function toggleVisibilityGroups() {
+    const visibility = document.getElementById('visibility').value;
+    const container = document.getElementById('visible_to_groups_container');
+    if (visibility === 'selected_groups') {
+      container.style.display = 'block';
+    } else {
+      container.style.display = 'none';
+    }
+  }
 
-    // Remove file function
-    function removeFile(fileId) {
-      if (confirm("Are you sure you want to remove this file?")) {
-        $.ajax({
-          type: 'POST',
-          url: 'delete_file/',  // Replace with the URL mapped to your DeleteFileView
-          data: {
-            'file_id': fileId,
-            'csrfmiddlewaretoken': '{{ csrf_token }}'
-          },
-          success: function(response) {
-            if (response.success) {
-              $('#file_' + fileId).remove();
-            } else {
-              alert('Failed to remove the file: ' + response.error);
-            }
-          },
-          error: function(xhr, status, error) {
-            console.error('Error removing file:', error);
-            alert('An error occurred while removing the file. Please try again later.');
-          }
-        });
-      }
+  // Remove file function
+  function removeFile(fileId) {
+    if (confirm("Are you sure you want to remove this file?")) {
+      fetch('{% url "dashboard:delete_file" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'file_id=' + fileId
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('file_' + fileId).remove();
+          alert('File removed successfully');
+        } else {
+          alert('Failed to remove the file: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while removing the file.');
+      });
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    toggleVisibilityGroups();
+    
+    // Initialize TinyMCE for description field
+    if (typeof tinymce !== 'undefined') {
+      tinymce.init({
+        selector: '#text_area',
+        {% if tinymce_api_key %}
+        api_key: '{{ tinymce_api_key }}',
+        {% endif %}
+        plugins: 'lists link image media table code help preview fullscreen',
+        toolbar: 'undo redo | formatselect | bold italic underline | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image media table code | fullscreen preview help',
+        height: 360,
+        width: '100%',
+        branding: false,
+        statusbar: true,
+        menubar: true,
+        setup: function(editor) {
+          editor.on('init', function() {
+            console.log('TinyMCE initialized for description field');
+          });
+        },
+        promotion: false
+      });
+    } else {
+      console.warn('TinyMCE library not loaded. Make sure to load tinymce.js before initializing.');
     }
   });
-</script>
-<script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-<script>
-    tinymce.init({
-        selector: '#text_area',  // Ensure this matches the ID of your textarea
-        plugins: 'lists link image',
-        toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image',
-    });
 </script>
 {% endblock my_scripts %}
