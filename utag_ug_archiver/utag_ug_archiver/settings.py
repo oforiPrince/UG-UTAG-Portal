@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'chat',
     'gallery',
     'website',
+    'utag_ug_archiver',
     
     #External libraries
     'import_export',
