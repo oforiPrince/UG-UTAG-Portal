@@ -1,6 +1,7 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
 {% load ads_tags %}
+{% load image_tags %}
 {% block title %}Home{% endblock %}
 {% block extra_head %}
   <style>
@@ -311,14 +312,24 @@
               <a href="#"
                  title="View executive profile"
                  aria-label="View profile of {{ executive.get_full_name }}">
-       <img src="{% if executive.executive_image %}{{ executive.get_executive_image_url }}{% else %}{% static 'website/assets/img/team/ourteam31.png' %}{% endif %}"
-         alt="Executive Officer: {{ executive.get_full_name }}"
-         loading="lazy"
-         decoding="async" />
+                {% if executive.executive_image %}
+                  {% lazy_img executive.executive_image.url executive.get_full_name "img-fluid" "executive" %}
+                {% else %}
+                  <img src="{% static 'website/assets/img/team/ourteam31.png' %}" alt="Executive Officer: {{ executive.get_full_name }}" loading="lazy" decoding="async" class="img-fluid" />
+                {% endif %}
               </a>
             </div>
             <div class="teacher-column-carousel-text">
-              <h4>{{ executive.get_full_name }}</h4>
+              <h4>
+                <a href="#" class="text-decoration-none" data-bio-modal
+                   data-name="{{ executive.get_full_name }}"
+                   data-position="{{ executive.executive_position }}"
+                   data-affiliation="{% if executive.school %}School: {{ executive.school.name }}{% endif %}{% if executive.college %} | College: {{ executive.college.name }}{% endif %}{% if executive.department %} | Dept: {{ executive.department.name }}{% endif %}"
+                   data-bio="{{ executive.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"
+                   data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}">
+                  {{ executive.get_full_name }}
+                </a>
+              </h4>
               <span>{{ executive.executive_position }}</span>
               <div class="social-links">
                 {% if executive.fb_profile_url %}

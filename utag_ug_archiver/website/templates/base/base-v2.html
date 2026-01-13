@@ -33,6 +33,8 @@
     <!-- Typography overrides for v2 -->
     <link rel="stylesheet"
           href="{% static 'website-v2/css/typography-overrides.css' %}" />
+    <!-- Image Optimization CSS -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/image-optimization.css' %}" />
     <!-- Modernizr JS
 		============================================ -->
     <script src="{% static 'website-v2/js/vendor/modernizr-2.8.3.min.js' %}"></script>
@@ -238,5 +240,8 @@
     <!-- main JS
 		============================================ -->
     <script src="{% static 'website-v2/js/main.js' %}"></script>
+    <!-- Lazy Load JS for Image Optimization -->
+    <script src="{% static 'dashboard/js/lazy-load.js' %}"></script>
+    {% include "includes/executive_bio_modal.html" %}
   </body>
 </html>

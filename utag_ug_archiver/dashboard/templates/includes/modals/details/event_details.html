@@ -1,4 +1,5 @@
 <!-- Modal for Event Details -->
+{% load image_tags %}
 {% for event in events %}
   <div class="modal fade bs-example-modal-lg"
        id="eventModal_{{ event.id }}"
@@ -18,11 +19,7 @@
           <div class="row">
             <div class="col-md-6">
               {% if event.featured_image and event.featured_image.name %}
-                <img src="{{ event.get_featured_image_url }}"
-                     alt="{{ event.title }}"
-                     class="img-fluid rounded"
-                     width="100"
-                     height="80" />
+                {% lazy_img event.featured_image.url event.title "img-fluid rounded" "event" %}
               {% else %}
                 <div class="text-muted">No image available</div>
               {% endif %}

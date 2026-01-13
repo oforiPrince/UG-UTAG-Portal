@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+import os
 
 
 def ad_upload_to(instance, filename):
@@ -80,6 +81,43 @@ class Ad(models.Model):
         if self.end and now > self.end:
             return False
         return True
+
+    def save(self, *args, **kwargs):
+        # Optimize image on upload
+        from utag_ug_archiver.utils.image_optimizer import ImageOptimizer
+        if self.pk:
+            try:
+                old_instance = Ad.objects.get(pk=self.pk)
+                if self.image and old_instance.image != self.image:
+                    if hasattr(self.image, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.image,
+                            image_type='default',
+                            max_size_kb=400
+                        )
+                        if optimized:
+                            self.image.save(
+                                self.image.name,
+                                optimized,
+                                save=False
+                            )
+            except Ad.DoesNotExist:
+                pass
+        else:
+            if self.image and hasattr(self.image, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.image,
+                    image_type='default',
+                    max_size_kb=400
+                )
+                if optimized:
+                    self.image.save(
+                        self.image.name,
+                        optimized,
+                        save=False
+                    )
+        
+        super().save(*args, **kwargs)
 
     @property
     def get_image_url(self):

@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}Gallery{% endblock title %}
 {% block content %}
 <!--Breadcrumb Banner Area Start-->
@@ -48,15 +49,7 @@
                   <a href="{{ image.get_absolute_url }}"
                      data-gallery="gallery-{{ gallery.id }}"
                      data-caption="{{ image.caption|default:gallery.title }}">
-                    <img src="{{ image.get_thumbnail_url }}"
-                         alt="{{ image.caption|default:gallery.title }}"
-                         data-src="{{ image.get_absolute_url }}"
-                         class="gallery-image img-fluid"
-                         loading="lazy"
-                         decoding="async"
-                         width="400"
-                         height="300"
-                         style="object-fit: cover; width: 100%; height: 250px;" />
+                    {% lazy_img image.image.url image.caption|default:gallery.title "gallery-image img-fluid" "gallery" %}
                   </a>
                   <div class="gallery-hover-effect">
                     <a class="gallery-icon venobox"

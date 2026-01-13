@@ -39,7 +39,16 @@
                                 </a>
                             </div>
                             <div class="teacher-column-carousel-text">
-                                <h4>{{ executive.get_full_name }}</h4>
+                                <h4>
+                                  <a href="#" class="text-decoration-none" data-bio-modal
+                                     data-name="{{ executive.get_full_name }}"
+                                     data-position="{{ executive.executive_position }}"
+                                     data-affiliation="{% if executive.school %}School: {{ executive.school.name }}{% endif %}{% if executive.college %} | College: {{ executive.college.name }}{% endif %}{% if executive.department %} | Dept: {{ executive.department.name }}{% endif %}"
+                                     data-bio="{{ executive.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"
+                                     data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}">
+                                    {{ executive.get_full_name }}
+                                  </a>
+                                </h4>
                                 <span>{{ executive.executive_position }}</span>
                                 <!-- {% if executive.executive_status %}
                                     <div>

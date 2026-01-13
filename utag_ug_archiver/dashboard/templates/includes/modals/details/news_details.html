@@ -1,4 +1,5 @@
 <!-- Modal for News Details -->
+{% load image_tags %}
 {% for news in newss %}
     <!-- Modernized Modal for News Details -->
     <div class="modal fade"
@@ -22,9 +23,7 @@
                     <div class="row">
                         <!-- Featured Image -->
                         <div class="col-md-6">
-                            <img src="{{ news.get_featured_image_url }}"
-                                 alt="{{ news.title }}"
-                                 class="img-fluid rounded shadow-sm mb-3" />
+                            {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow-sm mb-3" "news" %}
                         </div>
                         <!-- News Details -->
                         <div class="col-md-6">

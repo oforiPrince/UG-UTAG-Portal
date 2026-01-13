@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
   Events
 {% endblock title %}
@@ -35,9 +36,7 @@
               <div class="single-class">
                 <div class="single-class-image">
                   <a href="{% url 'website:events_detail' slug=event.event_slug %}">
-                    <img src="{{ event.get_featured_image_url }}"
-                         alt="{{ event.title }}"
-                         class="img-fluid rounded shadow" />
+                    {% lazy_img event.featured_image.url event.title "img-fluid rounded shadow" "event" %}
                     <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
                   </a>
                 </div>

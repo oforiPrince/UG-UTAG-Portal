@@ -16,7 +16,34 @@
                             data-bs-dismiss="modal"
                             aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-5">
+                <div class="modal-body p-4">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs mb-3" id="docTabs_{{ document.id }}" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="details-tab-{{ document.id }}" data-bs-toggle="tab" data-bs-target="#details-{{ document.id }}" type="button" role="tab">
+                                <i class="mdi mdi-information-outline"></i> Details
+                            </button>
+                        </li>
+                        {% if document.files.all %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="preview-tab-{{ document.id }}" data-bs-toggle="tab" data-bs-target="#preview-{{ document.id }}" type="button" role="tab">
+                                <i class="mdi mdi-eye-outline"></i> Preview
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="files-tab-{{ document.id }}" data-bs-toggle="tab" data-bs-target="#files-{{ document.id }}" type="button" role="tab">
+                                <i class="mdi mdi-file-multiple"></i> Files ({{ document.files.count }})
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    <!-- Tab content -->
+                    <div class="tab-content" id="docTabsContent_{{ document.id }}">
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade show active" id="details-{{ document.id }}" role="tabpanel">
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade show active" id="details-{{ document.id }}" role="tabpanel">
                     <div class="row">
                         <div class="col-md-6">
                             <p>
@@ -43,28 +70,201 @@
                                 {{ document.status_label|default:document.get_status_display|default:"N/A" }}
                             </p>
                         </div>
-                        <div class="col-md-6">
-                            <h5>Title</h5>
+                        <div class="col-md-12 mt-3">
+                            <h6>Title</h6>
                             <div class="card">
                                 <div class="card-body">
-                                    <p>{{ document.title }}</p>
+                                    <p class="mb-0">{{ document.title }}</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <h5>Description</h5>
+                        <div class="col-md-12 mt-3">
+                            <h6>Description</h6>
                             <div class="card">
                                 <div class="card-body">
-                                    <p>{{ document.description |safe }}</p>
+                                    <p class="mb-0">{{ document.description |safe }}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <hr>
-                    {% if document.files.all %}
-                        <p class="text-success">Uploaded Document</p>
+                        </div>
+
+                        {% if document.files.all %}
+                        <!-- Preview Tab -->
+                        <div class="tab-pane fade" id="preview-{{ document.id }}" role="tabpanel">
+                            {% with first_file=document.files.first %}
+                                {% if first_file and not first_file.deleted %}
+                                    <div class="preview-container">
+                                        <!-- File Selector for multiple files -->
+                                        {% if document.files.count > 1 %}
+                                        <div class="mb-3">
+                                            <label for="fileSelector_{{ document.id }}" class="form-label"><strong>Select File to Preview:</strong></label>
+                                            <select class="form-select" id="fileSelector_{{ document.id }}" onchange="switchPreview_{{ document.id }}(this.value)">
+                                                {% for file in document.files.all %}
+                                                    {% if not file.deleted %}
+                                                        <option value="{{ file.id }}" {% if forloop.first %}selected{% endif %}>
+                                                            {{ file.file.name|truncatechars:50 }}
+                                                        </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Preview Areas for each file -->
+                                        {% for file in document.files.all %}
+                                            {% if not file.deleted %}
+                                                <div id="previewArea_{{ file.id }}" class="preview-area" style="{% if not forloop.first %}display:none;{% endif %}">
+                                                    {% if file.file.name|lower|slice:'-4:' == ".pdf" %}
+                                                        <!-- PDF Preview -->
+                                                        <div class="card shadow-sm">
+                                                            <div class="card-header bg-white border-bottom">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        <i class="mdi mdi-file-pdf-box text-danger" style="font-size: 1.5rem;"></i>
+                                                                        <span class="ms-2 fw-semibold">{{ file.file.name }}</span>
+                                                                    </div>
+                                                                    <div class="btn-group" role="group">
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Open in new tab">
+                                                                            <i class="mdi mdi-open-in-new"></i> Open
+                                                                        </a>
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-primary" download title="Download file">
+                                                                            <i class="mdi mdi-download"></i> Download
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="card-body p-0">
+                                                                <div class="pdf-viewer-container">
+                                                                    <iframe src="{{ file.file.url }}#toolbar=1&navpanes=1&scrollbar=1" 
+                                                                            width="100%" 
+                                                                            height="700" 
+                                                                            frameborder="0"
+                                                                            style="border: none; background: #525659;">
+                                                                        <div class="p-4 text-center">
+                                                                            <p>Your browser does not support PDF preview.</p>
+                                                                            <a href="{{ file.file.url }}" class="btn btn-primary" target="_blank">Open in new tab</a>
+                                                                            <a href="{{ file.file.url }}" class="btn btn-success" download>Download file</a>
+                                                                        </div>
+                                                                    </iframe>
+                                                                </div>
+                                                            </div>
+                                                            <div class="card-footer bg-light text-muted small">
+                                                                <i class="mdi mdi-information"></i> Use the toolbar above to download or open in a new tab for full features.
+                                                            </div>
+                                                        </div>
+                                                    {% elif file.file.name|lower|slice:'-5:' == ".docx" or file.file.name|lower|slice:'-4:' == ".doc" or file.file.name|lower|slice:'-5:' == ".pptx" or file.file.name|lower|slice:'-4:' == ".ppt" or file.file.name|lower|slice:'-5:' == ".xlsx" or file.file.name|lower|slice:'-4:' == ".xls" %}
+                                                        <!-- Office Document Preview -->
+                                                        <div class="card shadow-sm">
+                                                            <div class="card-header bg-white border-bottom">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        <i class="mdi mdi-file-document text-primary" style="font-size: 1.5rem;"></i>
+                                                                        <span class="ms-2 fw-semibold">{{ file.file.name }}</span>
+                                                                    </div>
+                                                                    <div class="btn-group" role="group">
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Open in new tab">
+                                                                            <i class="mdi mdi-open-in-new"></i> Open
+                                                                        </a>
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-primary" download title="Download file">
+                                                                            <i class="mdi mdi-download"></i> Download
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="card-body p-0">
+                                                                <div class="office-viewer-container">
+                                                                    <iframe class="office-doc-preview" 
+                                                                            data-file-url="{{ file.file.url }}"
+                                                                            width="100%" 
+                                                                            height="700" 
+                                                                            frameborder="0"
+                                                                            style="border: none; background: #f5f5f5;">
+                                                                    </iframe>
+                                                                </div>
+                                                            </div>
+                                                            <div class="card-footer bg-light text-muted small">
+                                                                <i class="mdi mdi-information"></i> 
+                                                                For best viewing experience, download the file or open in Microsoft Office.
+                                                                If preview fails to load, please use the download button above.
+                                                            </div>
+                                                        </div>
+                                                    {% elif file.file.name|lower|slice:'-4:' == ".txt" or file.file.name|lower|slice:'-3:' == ".md" or file.file.name|lower|slice:'-4:' == ".csv" %}
+                                                        <!-- Text/CSV File Preview -->
+                                                        <div class="card shadow-sm">
+                                                            <div class="card-header bg-white border-bottom">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        <i class="mdi mdi-text-box text-secondary" style="font-size: 1.5rem;"></i>
+                                                                        <span class="ms-2 fw-semibold">{{ file.file.name }}</span>
+                                                                    </div>
+                                                                    <div class="btn-group" role="group">
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Open in new tab">
+                                                                            <i class="mdi mdi-open-in-new"></i> Open
+                                                                        </a>
+                                                                        <a href="{{ file.file.url }}" class="btn btn-sm btn-primary" download title="Download file">
+                                                                            <i class="mdi mdi-download"></i> Download
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="card-body p-0">
+                                                                <div class="text-viewer-container" style="background-color: #f8f9fa;">
+                                                                    <iframe src="{{ file.file.url }}" 
+                                                                            width="100%" 
+                                                                            height="700" 
+                                                                            frameborder="0"
+                                                                            style="border: none; background-color: white; padding: 20px;">
+                                                                    </iframe>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    {% else %}
+                                                        <!-- Generic File - No preview available -->
+                                                        <div class="card shadow-sm">
+                                                            <div class="card-body text-center py-5">
+                                                                <div class="mb-4">
+                                                                    <i class="mdi mdi-file-document-outline" style="font-size: 80px; color: #6c757d;"></i>
+                                                                </div>
+                                                                <h5 class="fw-semibold mb-2">{{ file.file.name }}</h5>
+                                                                <p class="text-muted mb-4">
+                                                                    Preview is not available for this file type.<br>
+                                                                    Please download the file to view its contents.
+                                                                </p>
+                                                                <div class="d-flex gap-2 justify-content-center">
+                                                                    <a href="{{ file.file.url }}" class="btn btn-primary" download>
+                                                                        <i class="mdi mdi-download"></i> Download File
+                                                                    </a>
+                                                                    <a href="{{ file.file.url }}" class="btn btn-outline-primary" target="_blank">
+                                                                        <i class="mdi mdi-open-in-new"></i> Open in New Tab
+                                                                    </a>
+                                                                </div>
+                                                                <div class="mt-4 text-muted small">
+                                                                    <i class="mdi mdi-shield-check"></i> File size: 
+                                                                    <span class="fw-semibold">{{ file.file.size|filesizeformat }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="mdi mdi-information-outline"></i> No files available for preview.
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+
+                        <!-- Files Tab -->
+                        <div class="tab-pane fade" id="files-{{ document.id }}" role="tabpanel">
+                        <!-- Files Tab -->
+                        <div class="tab-pane fade" id="files-{{ document.id }}" role="tabpanel">
+                        <p class="text-success mb-3"><i class="mdi mdi-paperclip"></i> Attached Files</p>
                         <div class="card">
-                            <div class="row mb-3 mt-3">
+                            <div class="row mb-3 mt-3 px-3">
                                 {% for file in document.files.all %}
                                     {% if not file.deleted %}
                                         {# Add this condition to exclude deleted files #}
@@ -171,7 +371,9 @@
                                 {% endfor %}
                             </div>
                         </div>
-                    {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -181,7 +383,122 @@
     </div>
 {% endfor %}
 
-{# JS loader: lazy-load Office preview and fallback to Google Docs after timeout if Office fails. Uses Bootstrap collapse 'shown' event to trigger loading. #}
+{% endfor %}
+
+<style>
+.preview-container {
+    position: relative;
+}
+.preview-area {
+    min-height: 400px;
+}
+.nav-tabs .nav-link {
+    color: #6c757d;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+.nav-tabs .nav-link:hover {
+    color: #0d6efd;
+    border-color: transparent;
+    background-color: #f8f9fa;
+}
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    font-weight: 600;
+    border-bottom: 2px solid #0d6efd;
+    background-color: transparent;
+}
+.pdf-viewer-container iframe,
+.office-viewer-container iframe,
+.text-viewer-container iframe {
+    display: block;
+    width: 100%;
+}
+.card.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075) !important;
+    border: 1px solid #dee2e6;
+}
+.card-header {
+    padding: 1rem 1.25rem;
+}
+.card-footer {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+}
+.btn-group .btn {
+    white-space: nowrap;
+}
+</style>
+
+<script>
+// File preview switcher functions (dynamically generated for each document)
+{% for document in documents %}
+function switchPreview_{{ document.id }}(fileId) {
+    // Hide all preview areas for this document
+    const previewAreas = document.querySelectorAll('#preview-{{ document.id }} .preview-area');
+    previewAreas.forEach(area => {
+        area.style.display = 'none';
+    });
+    
+    // Show selected preview area
+    const selectedArea = document.getElementById('previewArea_' + fileId);
+    if (selectedArea) {
+        selectedArea.style.display = 'block';
+        
+        // Load Office document iframe if not already loaded
+        const iframe = selectedArea.querySelector('.office-doc-preview');
+        if (iframe && !iframe.src) {
+            loadOfficePreview(iframe);
+        }
+    }
+}
+{% endfor %}
+
+// Office document preview loader with fallback
+function loadOfficePreview(iframe) {
+    const fileUrl = iframe.dataset.fileUrl;
+    if (!fileUrl) return;
+    
+    // Try Microsoft Office Online Viewer first
+    const officeViewerUrl = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(fileUrl);
+    iframe.src = officeViewerUrl;
+    
+    // Fallback to Google Docs Viewer if Office viewer fails to load within 8 seconds
+    let loaded = false;
+    iframe.onload = function() {
+        loaded = true;
+    };
+    
+    setTimeout(function() {
+        if (!loaded) {
+            const googleViewerUrl = 'https://docs.google.com/gview?url=' + encodeURIComponent(fileUrl) + '&embedded=true';
+            iframe.src = googleViewerUrl;
+        }
+    }, 8000);
+}
+
+// Load Office previews when preview tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    {% for document in documents %}
+    const previewTab_{{ document.id }} = document.getElementById('preview-tab-{{ document.id }}');
+    if (previewTab_{{ document.id }}) {
+        previewTab_{{ document.id }}.addEventListener('shown.bs.tab', function() {
+            // Load the first visible Office document preview
+            const visiblePreview = document.querySelector('#preview-{{ document.id }} .preview-area[style*="display: block"], #preview-{{ document.id }} .preview-area:not([style*="display: none"])');
+            if (visiblePreview) {
+                const iframe = visiblePreview.querySelector('.office-doc-preview');
+                if (iframe && !iframe.src) {
+                    loadOfficePreview(iframe);
+                }
+            }
+        });
+    }
+    {% endfor %}
+});
+</script>
+
+{# Legacy JS for collapsible previews in Files tab - kept for backward compatibility #}
 <script>
 document.addEventListener('DOMContentLoaded', function(){
     var iframes = document.querySelectorAll('.office-preview-iframe');

@@ -1,0 +1,9 @@
+{% load static %}
+<!-- Lazy loaded image component -->
+<img class="{{ css_class }} lazyload" 
+     data-src="{{ src }}" 
+     src="{% static 'dashboard/assets/images/placeholder.png' %}"
+     alt="{{ alt }}"
+     {% if width %}width="{{ width }}"{% endif %}
+     {% if height %}height="{{ height }}"{% endif %}
+     loading="lazy">

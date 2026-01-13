@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}News{% endblock title %}
 {% block content %}
 
@@ -33,7 +34,7 @@
             <div class="single-blog-image">
               <div class="overlay-effect">
                 <a href="{% url 'website:news_detail' slug=news.news_slug %}">
-                  <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" />
+                  {% lazy_img news.featured_image.url news.title "img-fluid" "news" %}
                   <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
                 </a>
               </div>

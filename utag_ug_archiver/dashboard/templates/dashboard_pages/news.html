@@ -1,5 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
   News
 {% endblock title %}
@@ -63,11 +64,7 @@
                       <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>
-                          <img src="{{ news.get_featured_image_url }}"
-                               alt=""
-                               class="img-fluid"
-                               width="80"
-                               height="60">
+                          {% lazy_img news.featured_image.url news.title "img-fluid" "news" %}
                         </td>
                         <td>{{ news.title }}</td>
                         <td>

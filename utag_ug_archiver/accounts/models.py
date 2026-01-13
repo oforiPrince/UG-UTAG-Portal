@@ -199,6 +199,76 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.get_full_name()
     
+    def save(self, *args, **kwargs):
+        """Override save to optimize images on upload."""
+        from utag_ug_archiver.utils.image_optimizer import ImageOptimizer
+        
+        # Check if profile_pic or executive_image changed
+        if self.pk:
+            try:
+                old_instance = User.objects.get(pk=self.pk)
+                
+                # Optimize profile_pic if changed
+                if self.profile_pic and old_instance.profile_pic != self.profile_pic:
+                    if hasattr(self.profile_pic, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.profile_pic,
+                            image_type='profile',
+                            max_size_kb=300
+                        )
+                        if optimized:
+                            self.profile_pic.save(
+                                self.profile_pic.name,
+                                optimized,
+                                save=False
+                            )
+                
+                # Optimize executive_image if changed
+                if self.executive_image and old_instance.executive_image != self.executive_image:
+                    if hasattr(self.executive_image, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.executive_image,
+                            image_type='executive',
+                            max_size_kb=400
+                        )
+                        if optimized:
+                            self.executive_image.save(
+                                self.executive_image.name,
+                                optimized,
+                                save=False
+                            )
+            except User.DoesNotExist:
+                pass
+        else:
+            # New instance - optimize images
+            if self.profile_pic and hasattr(self.profile_pic, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.profile_pic,
+                    image_type='profile',
+                    max_size_kb=300
+                )
+                if optimized:
+                    self.profile_pic.save(
+                        self.profile_pic.name,
+                        optimized,
+                        save=False
+                    )
+            
+            if self.executive_image and hasattr(self.executive_image, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.executive_image,
+                    image_type='executive',
+                    max_size_kb=400
+                )
+                if optimized:
+                    self.executive_image.save(
+                        self.executive_image.name,
+                        optimized,
+                        save=False
+                    )
+        
+        super().save(*args, **kwargs)
+    
     class Meta:
         permissions = [
         ('view_dashboard', 'Can view dashboard'),

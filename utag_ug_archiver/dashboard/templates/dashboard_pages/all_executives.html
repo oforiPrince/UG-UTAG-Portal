@@ -1,5 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
     All Executives & Committee Members
 {% endblock title %}
@@ -74,9 +75,9 @@
                                             <th>#</th>
                                             <th>Name</th>
                                             <th>Email</th>
-                                            <th>Phone Number</th>
-                                            <th>Gender</th>
+                                            <th>Staff ID</th>
                                             <th>Position</th>
+                                            <th>Department</th>
                                             <th>Date Appointed</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -88,9 +89,9 @@
                                                 <td>{{ forloop.counter }}</td>
                                                 <td>{{ executive.get_full_name }}</td>
                                                 <td>{{ executive.email }}</td>
-                                                <td>{{ executive.phone_number }}</td>
-                                                <td>{{ executive.gender }}</td>
+                                                <td>{{ executive.staff_id|default:'N/A' }}</td>
                                                 <td>{{ executive.executive_position }}</td>
+                                                <td>{{ executive.department.name|default:'N/A' }}</td>
                                                 <td>{{ executive.date_appointed|date:'d M, Y' }}</td>
                                                 <td>
                                                     {% if executive.date_ended and executive.date_ended < today %}

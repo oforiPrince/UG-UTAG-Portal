@@ -40,6 +40,8 @@
             <link href="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/6/skins/ui/oxide/content.min.css"
                   rel="stylesheet">
             <style>/* Custom styles for TinyMCE if needed */</style>
+            <!-- Image Optimization CSS -->
+            <link rel="stylesheet" href="{% static 'dashboard/css/image-optimization.css' %}"
       </head>
       <body data-sidebar="dark">
             <div id="layout-wrapper">
@@ -98,6 +100,8 @@
             <script src="{% static 'dashboard/assets/js/app.js' %}"></script>
             <!-- Select2 JS -->
             <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+            <!-- Lazy Load JS for Image Optimization -->
+            <script src="{% static 'dashboard/js/lazy-load.js' %}"></script>
             <script>
         $(document).ready(function() {
             $('.select2').select2();

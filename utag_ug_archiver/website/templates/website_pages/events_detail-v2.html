@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
   {{ event.title|default:"Event Details" }}
 {% endblock title %}
@@ -62,10 +63,9 @@
             </div>
             <!-- Event Image Carousel -->
             <div class="class-details-carousel carousel-style-one owl-carousel">
-              <img src="{{ event.featured_image.url }}" alt="{{ event.title }}" />
+              {% lazy_img event.featured_image.url event.title "img-fluid" "event" %}
               {% for image in event.additional_images.all %}
-                <img src="{{ image.image.url }}"
-                     alt="{{ image.caption|default:event.title }}" />
+                {% lazy_img image.image.url image.caption|default:event.title "img-fluid" "event" %}
               {% endfor %}
             </div>
           </div>

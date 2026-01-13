@@ -1,5 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
   Events
 {% endblock title %}
@@ -66,11 +67,7 @@
                         <td>{{ forloop.counter }}</td>
                         <td>
                           {% if event.featured_image and event.featured_image.name %}
-                            <img src="{{ event.get_featured_image_url }}"
-                                 alt="{{ event.name }}"
-                                 class="img-fluid"
-                                 width="80"
-                                 height="60" />
+                            {% lazy_img event.featured_image.url event.name "img-fluid" "event" %}
                           {% else %}
                             <span class="text-muted">No image</span>
                           {% endif %}

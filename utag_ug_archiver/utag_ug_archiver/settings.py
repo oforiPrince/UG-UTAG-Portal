@@ -237,6 +237,37 @@ STATICFILES_STORAGE = os.environ.get(
 MEDIA_URL = os.environ.get('MEDIA_URL', '/media/')
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 
+# Image optimization settings
+# Maximum dimensions for different image types
+IMAGE_MAX_DIMENSIONS = {
+    'profile': (800, 800),
+    'executive': (800, 800),
+    'event': (1200, 800),
+    'news': (1200, 800),
+    'gallery': (1920, 1080),
+    'thumbnail': (400, 400),
+}
+
+# JPEG compression quality (1-100, higher = better quality but larger file)
+IMAGE_JPEG_QUALITY = 85
+
+# WebP compression quality
+IMAGE_WEBP_QUALITY = 80
+
+# Auto-optimize images on upload
+AUTO_OPTIMIZE_IMAGES = _env_bool('AUTO_OPTIMIZE_IMAGES', default=True)
+
+# Image caching and serving
+# Use appropriate cache headers for images
+if not DEBUG:
+    # In production, serve images with long cache period
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
+else:
+    # Development: allow larger uploads for testing
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
+
 X_FRAME_OPTIONS = 'ALLOWALL'
 
 # Default primary key field type

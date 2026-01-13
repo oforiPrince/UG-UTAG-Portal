@@ -113,7 +113,7 @@
                     <th>#</th>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Phone</th>
+                    <th>Staff ID</th>
                     <th>Position</th>
                     <th>Date Appointed</th>
                     <th>Status</th>
@@ -125,7 +125,7 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ executive.get_full_name }}</td>
                         <td>{{ executive.email }}</td>
-                        <td>{{ executive.phone_number|default:'N/A' }}</td>
+                        <td>{{ executive.staff_id|default:'N/A' }}</td>
                         <td><strong>{{ executive.executive_position }}</strong></td>
                         <td>{{ executive.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
                         <td>
@@ -152,19 +152,19 @@
                     <th>#</th>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Phone</th>
+                    <th>Staff ID</th>
                     <th>Position</th>
                     <th>Date Appointed</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                {% for committee in committee_members %}
+                {% for committee_member in committee_members %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ committee.get_full_name }}</td>
-                        <td>{{ committee.email }}</td>
-                        <td>{{ committee.phone_number|default:'N/A' }}</td>
+                        <td>{{ committee_member.get_full_name }}</td>
+                        <td>{{ committee_member.email }}</td>
+                        <td>{{ committee_member.staff_id|default:'N/A' }}</td>
                         <td><strong>{{ committee.executive_position }}</strong></td>
                         <td>{{ committee.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
                         <td>

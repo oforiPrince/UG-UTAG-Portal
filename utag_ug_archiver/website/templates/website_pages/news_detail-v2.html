@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}News Detail{% endblock %}
 {% block content %}
 <!--Breadcrumb Banner Area Start-->
@@ -32,7 +33,7 @@
             <span><i class="fa fa-calendar"></i>{{ news.created_at|date:'F d, Y' }} / By: {{ news.author }}</span>
           </div>
           <div class="blog-post-details-img">
-            <img src="{{ news.get_featured_image_url }}" alt="{{ news.title }}" class="img-fluid rounded shadow" />
+            {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow" "news" %}
           </div>
           <div class="blog-post-details-text">
             <div class="news-content">
@@ -87,7 +88,7 @@
                 <div class="single-blog-image">
                   <div class="overlay-effect">
                     <a href="{% url 'website:news_detail' slug=latest.news_slug %}">
-                      <img src="{{ latest.get_featured_image_url }}" alt="{{ latest.title }}" />
+                      {% lazy_img latest.featured_image.url latest.title "img-fluid" "news" %}
                       <span class="class-date">{{ latest.created_at|date:'M d' }} <span>{{ latest.created_at|date:'Y' }}</span></span>
                     </a>
                   </div>

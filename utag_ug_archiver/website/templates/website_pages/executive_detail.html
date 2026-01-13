@@ -1,5 +1,6 @@
 {% extends "base/website_base.html" %}
 {% load static %}
+{% load image_tags %}
 
 {% block title %}{{ exec.surname|title }} {{ exec.other_name|title }} - Executive Profile{% endblock %}
 
@@ -11,7 +12,7 @@
         <div class="card shadow-sm">
           <div class="card-body text-center">
             {% if exec.profile_pic %}
-              <img src="{{ exec.profile_pic.url }}" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 200px;">
+              {% lazy_img exec.profile_pic.url exec.get_full_name "img-fluid rounded-circle mb-3" "profile" %}
             {% endif %}
             <h3 class="mb-0">{{ exec.surname|title }} {{ exec.other_name|title }}</h3>
             <div class="text-muted">{{ exec.title }}{% if exec.academic_rank %} • {{ exec.academic_rank }}{% endif %}</div>

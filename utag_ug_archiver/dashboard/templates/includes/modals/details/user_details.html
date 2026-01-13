@@ -1,5 +1,6 @@
 <!-- Modal for User Details -->
 {% load static %}
+{% load image_tags %}
 {% for user in users %}
   <div class="modal fade bs-example-modal-lg"
        id="userModal_{{ user.id }}"
@@ -21,10 +22,11 @@
               <div class="col-md-4">
                 <div class="card">
                   <div class="card-body text-center">
-                    <img src="{% if user.profile_pic %} {{ user.get_profile_pic_url }} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}"
-                         alt="{{ user.surname }} {{ user.other_name }}"
-                         class="rounded-circle p-1 bg-primary"
-                         width="110">
+                    {% if user.profile_pic %}
+                      {% lazy_img user.profile_pic.url user.get_full_name "rounded-circle p-1 bg-primary" "profile" %}
+                    {% else %}
+                      <img src="{% static 'dashboard/assets/images/users/profile.png' %}" alt="Profile" class="rounded-circle p-1 bg-primary" width="110" loading="lazy" decoding="async" />
+                    {% endif %}
                     <div class="mt-3">
                       <h4>{{ user.get_full_name }}</h4>
                       <p class="mb-1">

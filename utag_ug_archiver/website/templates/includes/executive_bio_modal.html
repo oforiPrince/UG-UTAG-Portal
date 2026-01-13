@@ -1,0 +1,51 @@
+{# Reusable modal for executive/committee member bio #}
+<div class="modal fade" id="executiveBioModal" tabindex="-1" aria-labelledby="executiveBioModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="executiveBioModalLabel">Executive Bio</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-4 align-items-center">
+          <div class="col-md-4 text-center">
+            <div id="executiveBioModalPhoto"></div>
+            <h4 class="mt-3" id="executiveBioModalName"></h4>
+            <div class="text-muted" id="executiveBioModalPosition"></div>
+            <div class="text-muted small" id="executiveBioModalAffiliation"></div>
+          </div>
+          <div class="col-md-8">
+            <h5>Professional Biography</h5>
+            <div id="executiveBioModalBio" class="prose"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Attach this only once per page
+if (!window._executiveBioModalHandler) {
+  window._executiveBioModalHandler = true;
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-bio-modal]');
+      if (btn) {
+        var name = btn.getAttribute('data-name') || '';
+        var position = btn.getAttribute('data-position') || '';
+        var affiliation = btn.getAttribute('data-affiliation') || '';
+        var bio = btn.getAttribute('data-bio') || '';
+        var photo = btn.getAttribute('data-photo') || '';
+        var photoHtml = photo ? `<img src="${photo}" class="img-fluid rounded-circle shadow" alt="${name}" style="max-width:160px;">` : '<div class="bg-light rounded-circle d-inline-block" style="width:120px;height:120px;"></div>';
+        document.getElementById('executiveBioModalPhoto').innerHTML = photoHtml;
+        document.getElementById('executiveBioModalName').textContent = name;
+        document.getElementById('executiveBioModalPosition').textContent = position;
+        document.getElementById('executiveBioModalAffiliation').textContent = affiliation;
+        document.getElementById('executiveBioModalBio').innerHTML = bio || '<span class="text-muted">No biography provided.</span>';
+        var modal = new bootstrap.Modal(document.getElementById('executiveBioModal'));
+        modal.show();
+      }
+    });
+  });
+}
+</script>

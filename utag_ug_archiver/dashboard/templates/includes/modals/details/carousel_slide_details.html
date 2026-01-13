@@ -1,3 +1,4 @@
+{% load image_tags %}
 {% for slide in carousel_slides %}
     <div class="modal fade bs-example-modal-lg"
          id="slideModal_{{ slide.id }}"
@@ -16,9 +17,7 @@
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <img src="{{ slide.image.url }}"
-                                 alt="{{ slide.title }}"
-                                 class="img-fluid rounded" />
+                            {% lazy_img slide.image.url slide.title "img-fluid rounded" "carousel" %}
                         </div>
                         <div class="col-md-6">
                             <p>
