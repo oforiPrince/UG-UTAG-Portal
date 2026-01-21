@@ -71,8 +71,19 @@ class NewsCreateUpdateView(View):
 
         try:
             # Handle tags
-            tag_ids = request.POST.getlist('tags')
-            tags = Tag.objects.filter(id__in=tag_ids)
+            raw_tags = [tag.strip() for tag in request.POST.getlist('tags')]
+            tags = []
+            for tag_value in raw_tags:
+                if not tag_value:
+                    continue
+                if tag_value.isdigit():
+                    try:
+                        tags.append(Tag.objects.get(pk=int(tag_value)))
+                    except Tag.DoesNotExist:
+                        continue
+                else:
+                    tag, _ = Tag.objects.get_or_create(name=tag_value)
+                    tags.append(tag)
 
             if news_id:
                 news = get_object_or_404(News, id=news_id)
