@@ -38,7 +38,7 @@ class IndexView(View):
         published_news = News.objects.filter(
             is_published=True
         ).select_related(
-            'created_by'
+            'author'
         ).only(
             'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at'
         ).order_by('-created_at')[:5]
