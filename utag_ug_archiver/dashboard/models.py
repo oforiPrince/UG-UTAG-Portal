@@ -370,8 +370,8 @@ class AttachedDocument(models.Model):
 
 class News(models.Model):
     featured_image = models.ImageField(upload_to='news_images/', blank=True, null=True)
-    title = models.CharField(max_length=150)
-    news_slug = models.SlugField(max_length=150, unique=True, blank=True)
+    title = models.CharField(max_length=250)
+    news_slug = models.SlugField(max_length=250, unique=True, blank=True)
     content = HTMLField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='author')
     tags = models.ManyToManyField('Tag', blank=True)
