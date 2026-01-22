@@ -1,49 +1,359 @@
-{# Reusable modal for executive/committee member bio #}
+{# Modern modal for executive/committee member bio #}
 <div class="modal fade" id="executiveBioModal" tabindex="-1" aria-labelledby="executiveBioModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="executiveBioModalLabel">Executive Bio</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row g-4 align-items-center">
-          <div class="col-md-4 text-center">
+    <div class="modal-content utag-bio-modal">
+      <button type="button" class="utag-modal-close" data-bs-dismiss="modal" aria-label="Close">
+        <i class="fa fa-times"></i>
+      </button>
+      <div class="utag-bio-modal-body">
+        <div class="utag-bio-left">
+          <div class="utag-bio-photo-wrapper">
             <div id="executiveBioModalPhoto"></div>
-            <h4 class="mt-3" id="executiveBioModalName"></h4>
-            <div class="text-muted" id="executiveBioModalPosition"></div>
-            <div class="text-muted small" id="executiveBioModalAffiliation"></div>
           </div>
-          <div class="col-md-8">
-            <h5>Professional Biography</h5>
-            <div id="executiveBioModalBio" class="prose"></div>
+          <div class="utag-bio-contact">
+            <div id="executiveBioModalEmail" class="utag-bio-contact-item"></div>
+            <div id="executiveBioModalPhone" class="utag-bio-contact-item"></div>
+          </div>
+          <div class="utag-bio-social" id="executiveBioModalSocial"></div>
+        </div>
+        <div class="utag-bio-right">
+          <div class="utag-bio-header">
+            <h3 id="executiveBioModalName"></h3>
+            <span class="utag-bio-position" id="executiveBioModalPosition"></span>
+            <span class="utag-bio-affiliation" id="executiveBioModalAffiliation"></span>
+          </div>
+          <div class="utag-bio-content">
+            <h5><i class="fa fa-user-circle"></i> About</h5>
+            <div id="executiveBioModalBio" class="utag-bio-text"></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+/* Modern Executive Bio Modal */
+.utag-bio-modal {
+  border: none;
+  border-radius: 16px;
+  overflow: visible;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.25);
+  position: relative;
+}
+
+.utag-modal-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  color: #01004e;
+}
+
+.utag-modal-close:hover {
+  background: #01004e;
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+.utag-modal-close i {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.utag-bio-modal-body {
+  display: flex;
+  min-height: 400px;
+}
+
+.utag-bio-left {
+  width: 280px;
+  background: linear-gradient(135deg, #01004e 0%, #020080 100%);
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.utag-bio-photo-wrapper {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid rgba(255,255,255,0.3);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  margin-bottom: 25px;
+}
+
+.utag-bio-photo-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.utag-bio-contact {
+  width: 100%;
+  margin-top: auto;
+}
+
+.utag-bio-contact-item {
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.utag-bio-contact-item i {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.utag-bio-contact-item a {
+  color: rgba(255,255,255,0.9);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.utag-bio-contact-item a:hover {
+  color: #fff;
+}
+
+.utag-bio-social {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.utag-bio-social a {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.9);
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.utag-bio-social a:hover {
+  background: #fff;
+  color: #01004e;
+  transform: translateY(-3px);
+}
+
+.utag-bio-social a.linkedin:hover { color: #0077B5; }
+.utag-bio-social a.twitter:hover { color: #1DA1F2; }
+.utag-bio-social a.facebook:hover { color: #1877F2; }
+.utag-bio-social a.website:hover { color: #01004e; }
+.utag-bio-social a.email-link:hover { color: #EA4335; }
+
+.utag-bio-right {
+  flex: 1;
+  padding: 40px;
+  background: #fff;
+}
+
+.utag-bio-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.utag-bio-header h3 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #01004e;
+  margin: 0 0 8px 0;
+}
+
+.utag-bio-position {
+  display: block;
+  font-size: 16px;
+  color: #0066cc;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.utag-bio-affiliation {
+  display: block;
+  font-size: 13px;
+  color: #888;
+}
+
+.utag-bio-content h5 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #01004e;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.utag-bio-content h5 i {
+  color: #0066cc;
+}
+
+.utag-bio-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #555;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.utag-bio-text::-webkit-scrollbar {
+  width: 4px;
+}
+
+.utag-bio-text::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.utag-bio-text::-webkit-scrollbar-thumb {
+  background: #01004e;
+  border-radius: 2px;
+}
+
+.utag-bio-no-bio {
+  color: #999;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .utag-bio-modal-body {
+    flex-direction: column;
+  }
+  
+  .utag-bio-left {
+    width: 100%;
+    padding: 30px 20px;
+  }
+  
+  .utag-bio-photo-wrapper {
+    width: 140px;
+    height: 140px;
+    margin-bottom: 20px;
+  }
+  
+  .utag-bio-contact {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .utag-bio-right {
+    padding: 25px 20px;
+  }
+  
+  .utag-bio-header h3 {
+    font-size: 22px;
+  }
+  
+  .utag-bio-text {
+    max-height: none;
+  }
+}
+</style>
+
 <script>
-// Attach this only once per page
+// Executive Bio Modal Handler
 if (!window._executiveBioModalHandler) {
   window._executiveBioModalHandler = true;
   document.addEventListener('DOMContentLoaded', function() {
+    var currentModal = null;
+    
     document.body.addEventListener('click', function(e) {
+      // Handle close button click
+      var closeBtn = e.target.closest('.utag-modal-close');
+      if (closeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentModal) {
+          currentModal.hide();
+        }
+        return;
+      }
+      
+      // Handle open modal click
       var btn = e.target.closest('[data-bio-modal]');
       if (btn) {
+        e.preventDefault();
         var name = btn.getAttribute('data-name') || '';
         var position = btn.getAttribute('data-position') || '';
         var affiliation = btn.getAttribute('data-affiliation') || '';
         var bio = btn.getAttribute('data-bio') || '';
         var photo = btn.getAttribute('data-photo') || '';
-        var photoHtml = photo ? `<img src="${photo}" class="img-fluid rounded-circle shadow" alt="${name}" style="max-width:160px;">` : '<div class="bg-light rounded-circle d-inline-block" style="width:120px;height:120px;"></div>';
+        var email = btn.getAttribute('data-email') || '';
+        var phone = btn.getAttribute('data-phone') || '';
+        var linkedin = btn.getAttribute('data-linkedin') || '';
+        var twitter = btn.getAttribute('data-twitter') || '';
+        var facebook = btn.getAttribute('data-facebook') || '';
+        var website = btn.getAttribute('data-website') || '';
+        
+        // Photo
+        var photoHtml = photo 
+          ? '<img src="' + photo + '" alt="' + name + '">' 
+          : '<div style="width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;"><i class="fa fa-user" style="font-size:60px;color:rgba(255,255,255,0.3);"></i></div>';
         document.getElementById('executiveBioModalPhoto').innerHTML = photoHtml;
+        
+        // Name, Position, Affiliation
         document.getElementById('executiveBioModalName').textContent = name;
         document.getElementById('executiveBioModalPosition').textContent = position;
         document.getElementById('executiveBioModalAffiliation').textContent = affiliation;
-        document.getElementById('executiveBioModalBio').innerHTML = bio || '<span class="text-muted">No biography provided.</span>';
-        var modal = new bootstrap.Modal(document.getElementById('executiveBioModal'));
-        modal.show();
+        
+        // Bio
+        var bioContent = bio ? bio : '<span class="utag-bio-no-bio">No biography available.</span>';
+        document.getElementById('executiveBioModalBio').innerHTML = bioContent;
+        
+        // Contact info
+        var emailHtml = email ? '<i class="fa fa-envelope"></i><a href="mailto:' + email + '">' + email + '</a>' : '';
+        var phoneHtml = phone ? '<i class="fa fa-phone"></i><a href="tel:' + phone + '">' + phone + '</a>' : '';
+        document.getElementById('executiveBioModalEmail').innerHTML = emailHtml;
+        document.getElementById('executiveBioModalPhone').innerHTML = phoneHtml;
+        
+        // Social media links
+        var socialHtml = '';
+        if (email) socialHtml += '<a href="mailto:' + email + '" class="email-link" title="Email"><i class="fa fa-envelope"></i></a>';
+        if (linkedin) socialHtml += '<a href="' + linkedin + '" target="_blank" class="linkedin" title="LinkedIn"><i class="fa fa-linkedin"></i></a>';
+        if (twitter) socialHtml += '<a href="' + twitter + '" target="_blank" class="twitter" title="Twitter"><i class="fa fa-twitter"></i></a>';
+        if (facebook) socialHtml += '<a href="' + facebook + '" target="_blank" class="facebook" title="Facebook"><i class="fa fa-facebook"></i></a>';
+        if (website) socialHtml += '<a href="' + website + '" target="_blank" class="website" title="Personal Website"><i class="fa fa-globe"></i></a>';
+        document.getElementById('executiveBioModalSocial').innerHTML = socialHtml;
+        document.getElementById('executiveBioModalSocial').style.display = socialHtml ? 'flex' : 'none';
+        
+        currentModal = new bootstrap.Modal(document.getElementById('executiveBioModal'));
+        currentModal.show();
       }
     });
   });

@@ -111,6 +111,59 @@
 {% block my_styles %}
   <link href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css"
         rel="stylesheet">
+  <style>
+    /* Custom Dropzone Styling */
+    .dropzone-container {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      transition: all 0.3s ease;
+    }
+    .dropzone-container:hover,
+    .dropzone-container.dz-drag-hover {
+      border-color: #0d6efd !important;
+      background: linear-gradient(135deg, #e7f1ff 0%, #cfe2ff 100%);
+    }
+    .dropzone-container .dz-message {
+      margin: 2em 0;
+    }
+    .dropzone-container .dz-preview {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 8px;
+      transition: transform 0.2s;
+    }
+    .dropzone-container .dz-preview:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .dropzone-container .dz-preview .dz-progress {
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .dropzone-container .dz-preview .dz-success-mark,
+    .dropzone-container .dz-preview .dz-error-mark {
+      display: none;
+      font-size: 1.5rem;
+      margin-top: 4px;
+    }
+    .dropzone-container .dz-preview.dz-success .dz-success-mark { display: block; }
+    .dropzone-container .dz-preview.dz-error .dz-error-mark { display: block; }
+    .dropzone-container .dz-preview.dz-success .dz-progress,
+    .dropzone-container .dz-preview.dz-error .dz-progress { display: none; }
+    .dropzone-container .dz-preview .dz-remove {
+      color: #dc3545;
+      text-decoration: none;
+      margin-top: 4px;
+    }
+    .dropzone-container .dz-preview .dz-remove:hover {
+      text-decoration: underline;
+    }
+    /* Hide default message when files are added */
+    .dropzone-container.dz-started .dz-message {
+      display: none;
+    }
+  </style>
 {% endblock my_styles %}
 {% block my_scripts %}
   <!-- Dropzone JS -->
@@ -130,7 +183,7 @@
       data: formData,
       success: function(response) {
         alert(response.message);
-        location.reload();  // Reload the page to show the updated gallery list
+        location.reload();
       },
       error: function(xhr) {
         alert('Failed to add gallery: ' + xhr.responseJSON.errors);
@@ -138,99 +191,204 @@
     });
   });
 
-  // Upload Images with Dropzone
+  // Professional Gallery Upload with Dropzone
   Dropzone.autoDiscover = false;
 
   const uploadModal = $('#uploadImagesModal');
-  const dropzone = new Dropzone("#dropzone", {
-    url: "{% url 'dashboard:gallery_upload_images' %}",
-    maxFilesize: 10, // MB (increased for high-quality images)
-    acceptedFiles: 'image/jpeg,image/jpg,image/png,image/gif,image/webp',
-    addRemoveLinks: true,
-    headers: { "X-CSRFToken": csrfToken },
-    paramName: "image",  // Ensure param name matches form field
-    parallelUploads: 5,  // Reduced for better server performance
-    autoProcessQueue: true,
-    maxThumbnailFilesize: 10, // MB
-    thumbnailWidth: 200,
-    thumbnailHeight: 200,
-    resizeWidth: null, // Let server handle optimization
-    resizeHeight: null,
-    init: function() {
-      const dz = this;
-  
-      // Append gallery_id to FormData
-      dz.on("sending", function(file, xhr, formData) {
-        const galleryId = uploadModal.find('#gallery_id').val();
-        formData.append("gallery_id", galleryId);
-        // Show progress bar
-        $('#uploadProgress').removeClass('d-none');
-      });
-      
-      // Track upload progress
-      dz.on("uploadprogress", function(file, progress, bytesSent) {
-        const progressBar = $('#uploadProgress .progress-bar');
-        progressBar.css('width', progress + '%').attr('aria-valuenow', progress).text(Math.round(progress) + '%');
-      });
-  
-      // Success event for each file
-      dz.on("success", function(file, response) {
-        console.log('Successfully uploaded and optimized:', file.name);
-        // Show success message
-        if (response.message) {
-          file.previewElement.classList.add("dz-success");
-          // Update file preview with thumbnail if available
-          if (response.thumbnail_url) {
-            $(file.previewElement).find('img').attr('src', response.thumbnail_url);
-          }
-        }
-      });
-  
-      // Handle errors
-      dz.on("error", function(file, error) {
-        console.error('Failed to upload:', file.name, error);
-        file.previewElement.classList.add("dz-error");
-        let errorMsg = 'Upload failed';
-        if (typeof error === 'string') {
-          errorMsg = error;
-        } else if (error.message) {
-          errorMsg = error.message;
-        } else if (error.xhr && error.xhr.responseJSON) {
-          errorMsg = JSON.stringify(error.xhr.responseJSON.errors || error.xhr.responseJSON);
-        }
-        $(file.previewElement).find('.dz-error-message').text(errorMsg);
-      });
-  
-      // Event when all files in the queue have been processed
-      dz.on("queuecomplete", function() {
-        // All files have been uploaded; show success and reload
-        console.log("All images uploaded and optimized successfully!");
-        const progressBar = $('#uploadProgress .progress-bar');
-        progressBar.removeClass('progress-bar-animated').addClass('bg-success').text('Complete!');
-        setTimeout(function() {
-          location.reload();
-        }, 1500); // Small delay to show success state
-      });
-      
-      // Reset dropzone when modal is closed
-      uploadModal.on('hidden.bs.modal', function() {
-        dz.removeAllFiles(true);
-        $('#uploadProgress').addClass('d-none');
-        const progressBar = $('#uploadProgress .progress-bar');
-        progressBar.css('width', '0%').attr('aria-valuenow', 0).text('0%')
-                   .removeClass('bg-success').addClass('progress-bar-animated');
-      });
+  let galleryDropzone = null;
+  let uploadStats = { total: 0, completed: 0, success: 0, failed: 0 };
+
+  function initializeDropzone() {
+    if (galleryDropzone) {
+      galleryDropzone.destroy();
     }
-  });
 
+    galleryDropzone = new Dropzone("#galleryDropzone", {
+      url: "{% url 'dashboard:gallery_upload_images' %}",
+      maxFilesize: 10,
+      acceptedFiles: 'image/jpeg,image/jpg,image/png,image/gif,image/webp',
+      addRemoveLinks: true,
+      dictRemoveFile: 'Remove file',
+      dictCancelUpload: 'Cancel upload',
+      headers: { "X-CSRFToken": csrfToken },
+      paramName: "image",
+      parallelUploads: 3,
+      autoProcessQueue: true,
+      createImageThumbnails: true,
+      maxThumbnailFilesize: 10,
+      thumbnailWidth: 150,
+      thumbnailHeight: 150,
+      clickable: true,
+      previewsContainer: "#galleryDropzone",
+      previewTemplate: `
+        <div class="dz-preview dz-file-preview d-inline-block m-2" style="width: 150px;">
+          <div class="dz-image rounded overflow-hidden" style="width: 150px; height: 150px;">
+            <img data-dz-thumbnail class="w-100 h-100" style="object-fit: cover;" />
+          </div>
+          <div class="dz-progress mt-1" style="height: 6px;">
+            <span class="dz-upload bg-primary" data-dz-uploadprogress style="display: block; height: 100%;"></span>
+          </div>
+          <div class="dz-success-mark text-success text-center"><i class="mdi mdi-check-circle"></i></div>
+          <div class="dz-error-mark text-danger text-center"><i class="mdi mdi-close-circle"></i></div>
+          <div class="dz-error-message small text-danger text-center text-truncate" data-dz-errormessage></div>
+          <a href="javascript:void(0);" class="dz-remove small text-center d-block" data-dz-remove>Remove</a>
+        </div>
+      `,
+      init: function() {
+        const dz = this;
 
+        dz.on("addedfile", function(file) {
+          uploadStats.total++;
+          updateUploadUI();
+        });
 
+        dz.on("sending", function(file, xhr, formData) {
+          const galleryId = $('#gallery_id').val();
+          if (!galleryId) {
+            console.error('No gallery ID found');
+            dz.removeFile(file);
+            return;
+          }
+          formData.append("gallery_id", galleryId);
+          $('#uploadProgress').removeClass('d-none');
+        });
+
+        dz.on("uploadprogress", function(file, progress) {
+          updateOverallProgress();
+        });
+
+        dz.on("success", function(file, response) {
+          uploadStats.completed++;
+          uploadStats.success++;
+          console.log('Uploaded:', file.name, response);
+          updateUploadUI();
+          
+          // Update thumbnail with server-generated one
+          if (response.thumbnail_url) {
+            const img = file.previewElement.querySelector('img');
+            if (img) img.src = response.thumbnail_url;
+          }
+        });
+
+        dz.on("error", function(file, error, xhr) {
+          uploadStats.completed++;
+          uploadStats.failed++;
+          console.error('Upload failed:', file.name, error);
+          
+          let errorMsg = 'Upload failed';
+          if (typeof error === 'string') {
+            errorMsg = error;
+          } else if (error && error.errors) {
+            errorMsg = Object.values(error.errors).flat().join(', ');
+          } else if (error && error.message) {
+            errorMsg = error.message;
+          }
+          
+          const errorEl = file.previewElement.querySelector('.dz-error-message');
+          if (errorEl) errorEl.textContent = errorMsg;
+          updateUploadUI();
+        });
+
+        dz.on("queuecomplete", function() {
+          console.log('Queue complete. Success:', uploadStats.success, 'Failed:', uploadStats.failed);
+          
+          const progressBar = $('#uploadProgress .progress-bar');
+          if (uploadStats.failed === 0 && uploadStats.success > 0) {
+            progressBar.removeClass('progress-bar-animated bg-primary').addClass('bg-success');
+            showResult('success', `Successfully uploaded ${uploadStats.success} image(s)!`);
+            setTimeout(function() {
+              location.reload();
+            }, 1500);
+          } else if (uploadStats.success > 0) {
+            progressBar.removeClass('progress-bar-animated bg-primary').addClass('bg-warning');
+            showResult('warning', `Uploaded ${uploadStats.success} image(s), ${uploadStats.failed} failed.`);
+            setTimeout(function() {
+              location.reload();
+            }, 2500);
+          } else if (uploadStats.failed > 0) {
+            progressBar.removeClass('progress-bar-animated bg-primary').addClass('bg-danger');
+            showResult('danger', `All ${uploadStats.failed} upload(s) failed. Please try again.`);
+          }
+        });
+
+        dz.on("removedfile", function(file) {
+          if (file.status !== Dropzone.SUCCESS) {
+            uploadStats.total = Math.max(0, uploadStats.total - 1);
+            updateUploadUI();
+          }
+        });
+      }
+    });
+  }
+
+  function updateOverallProgress() {
+    if (!galleryDropzone) return;
+    const files = galleryDropzone.files;
+    if (files.length === 0) return;
+    
+    let totalProgress = 0;
+    files.forEach(file => {
+      totalProgress += (file.upload ? file.upload.progress : 0) || 0;
+    });
+    const overallProgress = totalProgress / files.length;
+    
+    const progressBar = $('#uploadProgress .progress-bar');
+    progressBar.css('width', overallProgress + '%').attr('aria-valuenow', Math.round(overallProgress));
+  }
+
+  function updateUploadUI() {
+    $('#uploadCount').text(`${uploadStats.completed} / ${uploadStats.total}`);
+    if (uploadStats.total > 0) {
+      $('#uploadProgress').removeClass('d-none');
+    }
+  }
+
+  function showResult(type, message) {
+    $('#uploadResults').html(`<div class="alert alert-${type} py-2 mb-0">${message}</div>`);
+  }
+
+  function resetUploadState() {
+    uploadStats = { total: 0, completed: 0, success: 0, failed: 0 };
+    if (galleryDropzone) {
+      galleryDropzone.removeAllFiles(true);
+    }
+    $('#uploadProgress').addClass('d-none');
+    $('#uploadProgress .progress-bar')
+      .css('width', '0%')
+      .attr('aria-valuenow', 0)
+      .removeClass('bg-success bg-warning bg-danger')
+      .addClass('bg-primary progress-bar-animated');
+    $('#uploadCount').text('0 / 0');
+    $('#uploadResults').empty();
+  }
+
+  // Initialize dropzone when modal opens
   uploadModal.on('show.bs.modal', function(e) {
     const button = $(e.relatedTarget);
     const galleryId = button.data('gallery-id');
     const galleryTitle = button.data('gallery-title');
-    $(this).find('#gallery_id').val(galleryId);
+    
+    if (!galleryId) {
+      console.error('No gallery ID provided');
+      e.preventDefault();
+      return;
+    }
+    
+    $('#gallery_id').val(galleryId);
     $(this).find('.modal-title').text('Upload Images to ' + galleryTitle);
+  });
+
+  uploadModal.on('shown.bs.modal', function() {
+    resetUploadState();
+    initializeDropzone();
+  });
+
+  uploadModal.on('hidden.bs.modal', function() {
+    resetUploadState();
+    if (galleryDropzone) {
+      galleryDropzone.destroy();
+      galleryDropzone = null;
+    }
   });
   
 

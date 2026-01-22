@@ -23,70 +23,104 @@
   </div>
 </div>
 <!--End of Breadcrumb Banner Area-->
-<!--News Fullwidth Area Start-->
-<div class="blog-fullwidth-area section-padding blog-two">
+
+<!--News Page Area Start-->
+<section class="utag-news-page">
   <div class="container">
-    <div class="row">
-      {% if news_page.object_list %}
+    {% if news_page.object_list %}
+      <div class="utag-news-grid">
         {% for news in news_page.object_list %}
-        <div class="col-lg-4 col-md-6">
-          <div class="single-blog-item overlay-hover">
-            <div class="single-blog-image">
-              <div class="overlay-effect">
-                <a href="{% url 'website:news_detail' slug=news.news_slug %}">
-                  {% lazy_img news.featured_image.url news.title "img-fluid" "news" %}
-                  <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
-                </a>
+        <article class="utag-news-card">
+          <a href="{% url 'website:news_detail' slug=news.news_slug %}" class="utag-news-card-link">
+            <div class="utag-news-image">
+              <img src="{{ news.featured_image.url }}"
+                   alt="{{ news.title }}"
+                   loading="lazy" />
+              <div class="utag-news-date">
+                <span class="day">{{ news.created_at|date:"d" }}</span>
+                <span class="month">{{ news.created_at|date:"M" }}</span>
+                <span class="year">{{ news.created_at|date:"Y" }}</span>
               </div>
             </div>
-            <div class="single-blog-text">
-              <h4>
-                <a href="{% url 'website:news_detail' slug=news.news_slug %}">{{ news.title|truncatechars:80 }}</a>
-              </h4>
-              <div class="blog-date">
-                <span><i class="fa fa-calendar"></i>{{ news.created_at|date:"d M, Y" }}</span>
-              </div>
-              <p>{{ news.content|truncatechars:120|safe }}</p>
-              <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
+            <div class="utag-news-content">
+              <h3>{{ news.title|truncatechars:80 }}</h3>
+              <p>{{ news.content|striptags|truncatechars:120|safe }}</p>
+              <span class="utag-read-more">Read more <i class="fa fa-arrow-right"></i></span>
             </div>
-          </div>
-        </div>
+          </a>
+        </article>
         {% endfor %}
-      {% else %}
-        <div class="col-12">
-          <p class="text-center">No news articles are currently available. Please check back later.</p>
-        </div>
-      {% endif %}
-    </div>
-    <div class="row">
-      <div class="col-md-12">
-        <div class="pagination-content">
-          <div class="pagination-button">
-            <ul class="pagination">
-              {% if news_page.has_previous %}
-                <li><a href="?page={{ news_page.previous_page_number }}">&laquo;</a></li>
-              {% else %}
-                <li class="disabled"><span>&laquo;</span></li>
-              {% endif %}
-              {% for num in news_page.paginator.page_range %}
-                {% if news_page.number == num %}
-                  <li class="current"><a href="#">{{ num }}</a></li>
-                {% elif num > news_page.number|add:'-3' and num < news_page.number|add:'3' %}
-                  <li><a href="?page={{ num }}">{{ num }}</a></li>
-                {% endif %}
-              {% endfor %}
-              {% if news_page.has_next %}
-                <li><a href="?page={{ news_page.next_page_number }}">&raquo;</a></li>
-              {% else %}
-                <li class="disabled"><span>&raquo;</span></li>
-              {% endif %}
-            </ul>
-            <span>Page: {{ news_page.number }} of {{ news_page.paginator.num_pages }}</span>
-          </div>
-        </div>
       </div>
-    </div>
+      
+      <!-- Enhanced Pagination -->
+      {% if news_page.paginator.num_pages > 1 %}
+      <nav class="utag-pagination" aria-label="News pagination">
+        <ul class="utag-pagination-list">
+          <!-- Previous Button -->
+          {% if news_page.has_previous %}
+            <li class="utag-page-item utag-page-nav">
+              <a href="?page={{ news_page.previous_page_number }}" class="utag-page-link" aria-label="Previous">
+                <i class="fa fa-chevron-left"></i>
+              </a>
+            </li>
+          {% else %}
+            <li class="utag-page-item utag-page-nav disabled">
+              <span class="utag-page-link"><i class="fa fa-chevron-left"></i></span>
+            </li>
+          {% endif %}
+          
+          <!-- Page Numbers -->
+          {% for num in news_page.paginator.page_range %}
+            {% if news_page.number == num %}
+              <li class="utag-page-item active">
+                <span class="utag-page-link">{{ num }}</span>
+              </li>
+            {% elif num == 1 or num == news_page.paginator.num_pages %}
+              <!-- Always show first and last page -->
+              <li class="utag-page-item">
+                <a href="?page={{ num }}" class="utag-page-link">{{ num }}</a>
+              </li>
+            {% elif num >= news_page.number|add:"-2" and num <= news_page.number|add:"2" %}
+              <!-- Show pages within 2 of current -->
+              <li class="utag-page-item">
+                <a href="?page={{ num }}" class="utag-page-link">{{ num }}</a>
+              </li>
+            {% elif num == news_page.number|add:"-3" or num == news_page.number|add:"3" %}
+              <!-- Show ellipsis -->
+              <li class="utag-page-item utag-page-ellipsis">
+                <span class="utag-page-link">&hellip;</span>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          <!-- Next Button -->
+          {% if news_page.has_next %}
+            <li class="utag-page-item utag-page-nav">
+              <a href="?page={{ news_page.next_page_number }}" class="utag-page-link" aria-label="Next">
+                <i class="fa fa-chevron-right"></i>
+              </a>
+            </li>
+          {% else %}
+            <li class="utag-page-item utag-page-nav disabled">
+              <span class="utag-page-link"><i class="fa fa-chevron-right"></i></span>
+            </li>
+          {% endif %}
+        </ul>
+        <div class="utag-pagination-info">
+          Page {{ news_page.number }} of {{ news_page.paginator.num_pages }}
+        </div>
+      </nav>
+      {% endif %}
+      
+    {% else %}
+      <div class="utag-empty-state">
+        <i class="fa fa-newspaper-o"></i>
+        <h3>No News Available</h3>
+        <p>No news articles are currently available. Please check back later.</p>
+        <a href="{% url 'website:index' %}" class="utag-view-all-btn">Return Home</a>
+      </div>
+    {% endif %}
   </div>
-</div>
-<!--End of News Fullwidth Area-->
+</section>
+<!--End of News Page Area-->
 {% endblock %}

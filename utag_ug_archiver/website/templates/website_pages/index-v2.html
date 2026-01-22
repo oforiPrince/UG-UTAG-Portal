@@ -3,78 +3,6 @@
 {% load ads_tags %}
 {% load image_tags %}
 {% block title %}Home{% endblock %}
-{% block extra_head %}
-  <style>
-    /* Image Performance Optimizations */
-    img {
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      max-width: 100%;
-      height: auto;
-    }
-    
-    /* Lazy loading placeholder */
-    img[loading="lazy"] {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-    }
-    
-    @keyframes loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    
-    /* Optimize carousel images */
-    .single-class-image img,
-    .single-blog-image img,
-    .gallery-wrapper img {
-      will-change: transform;
-      backface-visibility: hidden;
-      transform: translateZ(0);
-    }
-    
-    /* Prevent layout shift */
-    .single-class-image,
-    .single-blog-image,
-    .teachers-image-column {
-      aspect-ratio: 16 / 9;
-      overflow: hidden;
-    }
-    
-    .teachers-image-column img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    /* Optimize font loading */
-    body {
-      font-display: swap;
-    }
-
-    /* Keep hero/aim images upright (override any theme rotations) */
-    .skill-image img,
-    .service-image img,
-    .teachers-image-column img,
-    .gallery-wrapper img,
-    .single-class-image img,
-    .single-blog-image img {
-      transform: none !important;
-      rotate: none;
-      animation: none !important;
-    }
-
-    /* Executive carousel: remove gray backgrounds */
-    .teachers-column-carousel-area,
-    .teachers-column-carousel,
-    .teachers-column-carousel .owl-stage-outer,
-    .teachers-column-carousel .owl-item,
-    .teachers-column-carousel .single-teachers-column {
-      background: transparent !important;
-    }
-  </style>
-{% endblock extra_head %}
 {% block content %}
   <!--Slider Area Start-->
   <div class="slider-area slider-two-area">
@@ -256,26 +184,19 @@
         <div class="row no-gutters">
           {% for image in gallery_images %}
             <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover">
-              <div class="overlay-effect sea-green-overlay">
-                <a href="#"
-                   title="Open image"
-                   aria-label="{{ image.caption|default:'Gallery image' }}">
-                  <img src="{{ image.get_absolute_url }}"
-                       alt="{{ image.caption|default:'Gallery image' }}"
-                       width="400"
-                       height="300"
-                       loading="lazy"
-                       decoding="async"
-                       style="object-fit: cover; width: 100%; height: 100%;" />
-                </a>
-                <div class="gallery-hover-effect">
-                  <a class="gallery-icon venobox"
-                     href="{{ image.get_absolute_url }}"
-                     title="View image"
-                     aria-label="View image: {{ image.caption|default:'Gallery image' }}"><i class="fa fa-image"></i></a>
-                  <span class="gallery-text">{{ image.caption|default:"" }}</span>
+              <a href="{{ image.get_absolute_url }}" 
+                 class="utag-gallery-item venobox" 
+                 data-gall="gallery"
+                 title="{{ image.caption|default:'View image' }}">
+                <img src="{{ image.get_absolute_url }}"
+                     alt="{{ image.caption|default:'Gallery image' }}"
+                     loading="lazy"
+                     decoding="async" />
+                <div class="utag-gallery-overlay">
+                  <i class="fa fa-search-plus"></i>
+                  {% if image.caption %}<span>{{ image.caption }}</span>{% endif %}
                 </div>
-              </div>
+              </a>
             </div>
           {% endfor %}
         </div>
@@ -290,79 +211,86 @@
     <!--End of Gallery Fullwidth Area-->
   {% endif %}
   {% if executives and executives|length > 0 %}
-    <!--Teachers Large Carousel Area Start-->
-    <div class="teachers-column-carousel-area section-padding">
+    <!--Executive Officers Section Start-->
+    <div class="utag-executives-section">
       <div class="container">
         <div class="row">
           <div class="col-md-12">
             <div class="section-title-wrapper">
               <div class="section-title">
                 <h3>Our Executive Officers</h3>
-                <p>
-                  Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG, advocating for the rights and welfare of our members.
-                </p>
+                <p>Meet our dedicated executive officers who lead the University of Ghana Branch of UTAG</p>
               </div>
             </div>
           </div>
         </div>
-        <div class="teachers-column-carousel carousel-style-one owl-carousel">
+        <div class="utag-executives-scroll-wrapper">
+          <button class="utag-scroll-arrow utag-scroll-prev" aria-label="Previous">
+            <i class="fa fa-chevron-left"></i>
+          </button>
+          <button class="utag-scroll-arrow utag-scroll-next" aria-label="Next">
+            <i class="fa fa-chevron-right"></i>
+          </button>
+          <div class="utag-executives-scroll">
           {% for executive in executives %}
-          <div class="single-teachers-column text-center">
-            <div class="teachers-image-column">
-              <a href="#"
-                 title="View executive profile"
-                 aria-label="View profile of {{ executive.get_full_name }}">
-                {% if executive.executive_image %}
-                  {% lazy_img executive.executive_image.url executive.get_full_name "img-fluid" "executive" %}
-                {% else %}
-                  <img src="{% static 'website/assets/img/team/ourteam31.png' %}" alt="Executive Officer: {{ executive.get_full_name }}" loading="lazy" decoding="async" class="img-fluid" />
-                {% endif %}
-              </a>
+          <div class="utag-executive-card" data-bio-modal
+               data-name="{{ executive.get_full_name }}"
+               data-position="{{ executive.executive_position }}"
+               data-affiliation="{% if executive.school %}{{ executive.school.name }}{% endif %}{% if executive.college %}{{ executive.college.name }}{% endif %}{% if executive.department %}{{ executive.department.name }}{% endif %}"
+               data-bio="{{ executive.executive_bio|default:''|linebreaksbr|escapejs }}"
+               data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}"
+               data-email="{{ executive.email|default:'' }}"
+               data-phone="{{ executive.phone_number|default:'' }}"
+               data-linkedin="{{ executive.linkedin_profile_url|default:'' }}"
+               data-twitter="{{ executive.twitter_profile_url|default:'' }}"
+               data-facebook="{{ executive.fb_profile_url|default:'' }}"
+               data-website="{{ executive.personal_website_url|default:'' }}">
+            <div class="utag-executive-image">
+              {% if executive.executive_image %}
+                <img src="{{ executive.executive_image.url }}" 
+                     alt="{{ executive.get_full_name }}"
+                     loading="lazy" 
+                     decoding="async"
+                     onerror="this.onerror=null; this.src='{% static 'website/assets/img/team/ourteam31.png' %}';" />
+              {% else %}
+                <img src="{% static 'website/assets/img/team/ourteam31.png' %}" 
+                     alt="{{ executive.get_full_name }}" 
+                     loading="lazy" 
+                     decoding="async" />
+              {% endif %}
             </div>
-            <div class="teacher-column-carousel-text">
-              <h4>
-                <a href="#" class="text-decoration-none" data-bio-modal
-                   data-name="{{ executive.get_full_name }}"
-                   data-position="{{ executive.executive_position }}"
-                   data-affiliation="{% if executive.school %}School: {{ executive.school.name }}{% endif %}{% if executive.college %} | College: {{ executive.college.name }}{% endif %}{% if executive.department %} | Dept: {{ executive.department.name }}{% endif %}"
-                   data-bio="{{ executive.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"
-                   data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}">
-                  {{ executive.get_full_name }}
-                </a>
-              </h4>
-              <span>{{ executive.executive_position }}</span>
-              <div class="social-links">
-                {% if executive.fb_profile_url %}
-                  <a href="{{ executive.fb_profile_url }}"
-                     title="Facebook profile"
-                     aria-label="Facebook profile of {{ executive.get_full_name }}"><i class="fa fa-facebook"></i></a>
-                {% endif %}
+            <div class="utag-executive-info">
+              <h4>{{ executive.get_full_name }}</h4>
+              <span class="utag-executive-position">{{ executive.executive_position }}</span>
+              <div class="utag-executive-social">
                 {% if executive.email %}
-                  <a href="mailto:{{ executive.email }}"
-                     title="Send email"
-                     aria-label="Send email to {{ executive.get_full_name }}"><i class="fa fa-google-plus"></i></a>
-                {% endif %}
-                {% if executive.twitter_profile_url %}
-                  <a href="{{ executive.twitter_profile_url }}"
-                     title="Twitter profile"
-                     aria-label="Twitter profile of {{ executive.get_full_name }}"><i class="fa fa-twitter"></i></a>
+                  <a href="mailto:{{ executive.email }}" onclick="event.stopPropagation();" title="Email"><i class="fa fa-envelope"></i></a>
                 {% endif %}
                 {% if executive.linkedin_profile_url %}
-                  <a href="{{ executive.linkedin_profile_url }}"
-                     title="LinkedIn profile"
-                     aria-label="LinkedIn profile of {{ executive.get_full_name }}"><i class="fa fa-linkedin"></i></a>
+                  <a href="{{ executive.linkedin_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="LinkedIn"><i class="fa fa-linkedin"></i></a>
+                {% endif %}
+                {% if executive.twitter_profile_url %}
+                  <a href="{{ executive.twitter_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="Twitter"><i class="fa fa-twitter"></i></a>
+                {% endif %}
+                {% if executive.fb_profile_url %}
+                  <a href="{{ executive.fb_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="Facebook"><i class="fa fa-facebook"></i></a>
+                {% endif %}
+                {% if executive.personal_website_url %}
+                  <a href="{{ executive.personal_website_url }}" onclick="event.stopPropagation();" target="_blank" title="Website"><i class="fa fa-globe"></i></a>
                 {% endif %}
               </div>
+              <span class="utag-view-bio">View Bio <i class="fa fa-arrow-right"></i></span>
             </div>
           </div>
           {% endfor %}
         </div>
+        </div>
       </div>
     </div>
-    <!--End of Teachers Large Carousel Area-->
+    <!--End of Executive Officers Section-->
   {% endif %}
   <!--Aim Start-->
-  <div class="service-area section-padding">
+  <div class="utag-aims-section">
     <div class="container">
       <div class="row">
         <div class="col-md-12">
@@ -374,297 +302,53 @@
           </div>
         </div>
       </div>
-      <div class="row">
-        <div class="col-lg-4 col-md-4 col-12">
-          <div class="single-service-item-wrapper">
-            <div class="single-service-item">
-              <div class="single-service-text">
-                <h4>Promote Welfare</h4>
-                <p>To promote the welfare of UG Teachers by seeking the improvement of their working conditions and facilities.</p>
-              </div>
-              <div class="single-service-icon">
-                <i class="fa fa-heartbeat"></i>
-              </div>
-            </div>
-            <div class="single-service-item">
-              <div class="single-service-text">
-                <h4>Foster Unity</h4>
-                <p>To promote actions of common interests among UG Teachers and foster a spirit of unity and mutual support.</p>
-              </div>
-              <div class="single-service-icon">
-                <i class="fa fa-users"></i>
-              </div>
-            </div>
-            <div class="single-service-item">
-              <div class="single-service-text">
-                <h4>Improve Communication</h4>
-                <p>To improve communication channels and relations among stakeholders within and outside the University Community.</p>
-              </div>
-              <div class="single-service-icon">
-                <i class="fa fa-comments-o"></i>
-              </div>
-            </div>
+      <div class="utag-aims-grid">
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-heartbeat"></i>
           </div>
+          <h4>Promote Welfare</h4>
+          <p>To promote the welfare of UG Teachers by seeking the improvement of their working conditions and facilities.</p>
         </div>
-        <div class="col-lg-4 col-md-4 col-12">
-          <div class="service-image">
-            <img src="{% static 'website-v2/img/banner/ug-logo.png' %}"
-                 alt="University of Ghana logo"
-                 class="img-fluid"
-                 width="300"
-                 height="150"
-                 loading="lazy"
-                 decoding="async"
-                 style="max-width: 100%; height: auto;" />
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-users"></i>
           </div>
+          <h4>Foster Unity</h4>
+          <p>To promote actions of common interests among UG Teachers and foster a spirit of unity and mutual support.</p>
         </div>
-        <div class="col-lg-4 col-md-4 col-12">
-          <div class="single-service-item-wrapper">
-            <div class="single-service-item">
-              <div class="single-service-icon">
-                <i class="fa fa-line-chart"></i>
-              </div>
-              <div class="single-service-text">
-                <h4>Advance Academics</h4>
-                <p>To advance teaching, research, and community service, ensuring the highest standards of academic excellence.</p>
-              </div>
-            </div>
-            <div class="single-service-item">
-              <div class="single-service-icon">
-                <i class="fa fa-puzzle-piece"></i>
-              </div>
-              <div class="single-service-text">
-                <h4>Pursue Related Aims</h4>
-                <p>To pursue any other aim which is reasonably connected with or incidental to the foregoing aims.</p>
-              </div>
-            </div>
-            <div class="single-service-item">
-              <div class="single-service-icon">
-                <i class="fa fa-balance-scale"></i>
-              </div>
-              <div class="single-service-text">
-                <h4>Uphold Academic Freedom</h4>
-                <p>
-                  To uphold and defend the principles of academic freedom, ensuring an environment of open inquiry and intellectual growth.
-                </p>
-              </div>
-            </div>
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-comments-o"></i>
           </div>
+          <h4>Improve Communication</h4>
+          <p>To improve communication channels and relations among stakeholders within and outside the University Community.</p>
+        </div>
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-line-chart"></i>
+          </div>
+          <h4>Advance Academics</h4>
+          <p>To advance teaching, research, and community service, ensuring the highest standards of academic excellence.</p>
+        </div>
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-puzzle-piece"></i>
+          </div>
+          <h4>Pursue Related Aims</h4>
+          <p>To pursue any other aim which is reasonably connected with or incidental to the foregoing aims.</p>
+        </div>
+        <div class="utag-aim-card">
+          <div class="utag-aim-icon">
+            <i class="fa fa-balance-scale"></i>
+          </div>
+          <h4>Uphold Academic Freedom</h4>
+          <p>To uphold and defend the principles of academic freedom, ensuring an environment of open inquiry.</p>
         </div>
       </div>
     </div>
   </div>
   <!--End of Aim Area-->
-  <style>
-    /* Fix logo centering - horizontally and vertically */
-    .service-area .col-md-4:nth-child(2) {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .service-image {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      min-height: 100%;
-      padding: 20px 0;
-    }
-    
-    .service-image img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-      object-fit: contain;
-    }
-    
-    /* Fix hover description visibility - allow full expansion */
-    .single-service-item {
-      min-height: 90px !important;
-      height: auto !important;
-      overflow: visible !important;
-      transition: all 0.3s ease;
-      position: relative;
-    }
-    
-    .single-service-item:hover {
-      height: auto !important;
-      min-height: 90px !important;
-      padding-bottom: 20px;
-      margin-bottom: 10px;
-    }
-    
-    .single-service-text {
-      overflow: visible !important;
-      position: relative;
-      z-index: 1;
-      width: 100%;
-    }
-    
-    .single-service-text > p {
-      display: none;
-      margin-top: 10px;
-      margin-bottom: 0;
-      line-height: 1.7;
-      color: #555;
-      font-size: 13px;
-      padding: 0 8px;
-      word-wrap: break-word;
-      overflow: visible;
-      white-space: normal;
-      text-align: inherit;
-      max-width: 100%;
-    }
-    
-    .single-service-item:hover .single-service-text > p {
-      display: block !important;
-      animation: fadeIn 0.3s ease;
-      visibility: visible;
-      opacity: 1;
-    }
-    
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    /* Ensure wrapper doesn't clip content */
-    .single-service-item-wrapper {
-      overflow: visible !important;
-      position: relative;
-    }
-    
-    /* Adjust for left column - ensure text area is wide enough */
-    .service-area .col-md-4:first-child .single-service-text {
-      overflow: visible !important;
-      padding-right: 112px;
-      text-align: right;
-    }
-    
-    .service-area .col-md-4:first-child .single-service-item:hover .single-service-text {
-      padding-right: 112px;
-    }
-    
-    /* Adjust for right column - ensure text area is wide enough */
-    .service-area .col-md-4:last-child .single-service-text {
-      overflow: visible !important;
-      padding-left: 112px;
-      text-align: left;
-    }
-    
-    .service-area .col-md-4:last-child .single-service-item:hover .single-service-text {
-      padding-left: 112px;
-    }
-    
-    /* Make sure icons stay in place on hover */
-    .single-service-item:hover .single-service-icon {
-      position: absolute;
-      top: 0;
-    }
-    
-    .service-area .col-md-4:first-child .single-service-item:hover .single-service-icon {
-      right: 0;
-    }
-    
-    .service-area .col-md-4:last-child .single-service-item:hover .single-service-icon {
-      left: 0;
-      right: auto;
-    }
-    
-    /* Ensure service area container allows overflow */
-    .service-area .row {
-      overflow: visible;
-    }
-    
-    .service-area .container {
-      overflow: visible;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 991px) {
-      .service-image {
-        margin: 30px 0;
-        min-height: 200px;
-      }
-      
-      .single-service-item {
-        margin-bottom: 50px;
-      }
-      
-      .service-area .col-md-4:first-child .single-service-text,
-      .service-area .col-md-4:last-child .single-service-text {
-        padding-left: 112px;
-        padding-right: 0;
-        text-align: left;
-      }
-    }
-    
-    @media (max-width: 767px) {
-      .service-image {
-        min-height: 150px;
-      }
-    }
-    
-    /* Performance: Optimize image loading */
-    img[loading="lazy"] {
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    
-    img[loading="lazy"].loaded {
-      opacity: 1;
-    }
-    
-    /* Prevent cumulative layout shift */
-    .single-class-image,
-    .single-blog-image,
-    .teachers-image-column,
-    .gallery-wrapper .single-items {
-      min-height: 200px;
-      background: #f5f5f5;
-    }
-    
-    /* Optimize carousel performance */
-    .owl-carousel .owl-item {
-      will-change: transform;
-      backface-visibility: hidden;
-    }
-  </style>
-  <script>
-    // Lazy load images with intersection observer for better performance
-    document.addEventListener('DOMContentLoaded', function() {
-      const lazyImages = document.querySelectorAll('img[loading="lazy"]');
-      
-      if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver(function(entries, observer) {
-          entries.forEach(function(entry) {
-            if (entry.isIntersecting) {
-              const img = entry.target;
-              img.classList.add('loaded');
-              observer.unobserve(img);
-            }
-          });
-        });
-        
-        lazyImages.forEach(function(img) {
-          imageObserver.observe(img);
-        });
-      } else {
-        // Fallback for older browsers
-        lazyImages.forEach(function(img) {
-          img.classList.add('loaded');
-        });
-      }
-    });
-  </script>
   <!--Fun Factor Area Start-->
   <div class="fun-factor-area fun-factor-two">
     <div class="container">
@@ -716,53 +400,47 @@
   </div>
   <!--End of Fun Factor Area-->
   {% if published_news and published_news|length > 0 %}
-    <!--Blog Area Start-->
-    <div class="blog-area blog-two">
+    <!--News Section Start-->
+    <section class="utag-news-section">
       <div class="container">
         <div class="row">
           <div class="col-md-12">
-            <div class="section-title-wrapper title-yellow">
+            <div class="section-title-wrapper">
               <div class="section-title">
                 <h3>Our News</h3>
-                <p>
-                  Latest news and updates from the University of Ghana Branch of UTAG, keeping you informed about our activities and initiatives.
-                </p>
+                <p>Latest news and updates from the University of Ghana Branch of UTAG</p>
               </div>
             </div>
           </div>
         </div>
-        <div class="blog-carousel carousel-style-one owl-carousel">
+        <div class="utag-news-grid">
           {% for news in published_news %}
-          <div class="single-blog-item overlay-hover">
-            <div class="single-blog-image">
-              <div class="overlay-effect">
-                <a href="{% url 'website:news_detail' slug=news.news_slug %}">
-                  <img src="{{ news.get_featured_image_url }}"
-                       alt="{{ news.title }}"
-                       width="400"
-                       height="250"
-                       loading="lazy"
-                       decoding="async"
-                       style="object-fit: cover; width: 100%; height: auto;" />
-                  <span class="class-date">{{ news.created_at|date:"M d" }} <span>{{ news.created_at|date:"Y" }}</span></span>
-                </a>
+          <article class="utag-news-card">
+            <a href="{% url 'website:news_detail' slug=news.news_slug %}" class="utag-news-card-link">
+              <div class="utag-news-image">
+                <img src="{{ news.get_featured_image_url }}"
+                     alt="{{ news.title }}"
+                     loading="lazy" />
+                <div class="utag-news-date">
+                  <span class="day">{{ news.created_at|date:"d" }}</span>
+                  <span class="month">{{ news.created_at|date:"M" }}</span>
+                  <span class="year">{{ news.created_at|date:"Y" }}</span>
+                </div>
               </div>
-            </div>
-            <div class="single-blog-text">
-              <h4>
-                <a href="{% url 'website:news_detail' slug=news.news_slug %}">{{ news.title|truncatechars:80 }}</a>
-              </h4>
-              <div class="blog-date">
-                <span><i class="fa fa-calendar"></i>{{ news.created_at|date:"d M, Y" }}</span>
+              <div class="utag-news-content">
+                <h3>{{ news.title|truncatechars:80 }}</h3>
+                <p>{{ news.content|striptags|truncatechars:100|safe }}</p>
+                <span class="utag-read-more">Read more <i class="fa fa-arrow-right"></i></span>
               </div>
-              <p>{{ news.content|truncatechars:120|safe }}</p>
-              <a href="{% url 'website:news_detail' slug=news.news_slug %}">Read more.</a>
-            </div>
-          </div>
+            </a>
+          </article>
           {% endfor %}
         </div>
+        <div class="utag-news-footer">
+          <a href="{% url 'website:news' %}" class="utag-view-all-btn">View All News</a>
+        </div>
       </div>
-    </div>
-    <!--End of Blog Area-->
+    </section>
+    <!--End of News Section-->
   {% endif %}
 {% endblock %}

@@ -26,67 +26,76 @@
         </div>
     </div>
     <!--End of Breadcrumb Banner Area-->
-    <!--Teacher Fullwidth Area Start-->
-    <div class="teacher-fullwidth-area section-padding">
+    
+    <!--Executive Officers Grid Start-->
+    <section class="utag-executives-page">
         <div class="container">
-            <div class="row">
+            {% if executives %}
+            <div class="utag-executives-grid">
                 {% for executive in executives %}
-                    <div class="col-lg-4 col-md-4 col-sm-6 col-12">
-                        <div class="single-teachers-column text-center">
-                            <div class="teachers-image-column">
-                                <a href="#">
-                                    {% if executive.executive_image %}
-                                      {% lazy_img executive.executive_image.url executive.get_full_name "img-fluid" "executive" %}
-                                    {% else %}
-                                      <img src="{% static 'website/assets/img/team/ourteam31.png' %}" alt="Executive Officer" loading="lazy" decoding="async" class="img-fluid" />
-                                    {% endif %}
-                                </a>
-                            </div>
-                            <div class="teacher-column-carousel-text">
-                                <h4>
-                                  <a href="#" class="text-decoration-none" data-bio-modal
-                                     data-name="{{ executive.get_full_name }}"
-                                     data-position="{{ executive.executive_position }}"
-                                     data-affiliation="{% if executive.school %}School: {{ executive.school.name }}{% endif %}{% if executive.college %} | College: {{ executive.college.name }}{% endif %}{% if executive.department %} | Dept: {{ executive.department.name }}{% endif %}"
-                                     data-bio="{{ executive.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"
-                                     data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}">
-                                    {{ executive.get_full_name }}
-                                  </a>
-                                </h4>
-                                <span>{{ executive.executive_position }}</span>
-                                <!-- {% if executive.executive_status %}
-                                    <div>
-                                        <strong>Status:</strong> {{ executive.executive_status }}
-                                    </div>
-                                {% endif %}
-                                {% if executive.expiry_date %}
-                                    <div>
-                                        <strong>Expiry Date:</strong> {{ executive.expiry_date|date:'d M, Y' }}
-                                    </div>
-                                {% endif %}
-                                <p>{{ executive.bio|default:"" }}</p> -->
-                                <div class="social-links">
-                                    {% if executive.fb_profile_url %}
-                                        <a href="{{ executive.fb_profile_url }}" aria-label="Facebook profile"><i class="fa fa-facebook"></i></a>
-                                    {% endif %}
-                                    {% if executive.email %}
-                                        <a href="mailto:{{ executive.email }}" aria-label="Email"><i class="fa fa-google-plus"></i></a>
-                                    {% endif %}
-                                    {% if executive.twitter_profile_url %}
-                                        <a href="{{ executive.twitter_profile_url }}"
-                                           aria-label="Twitter profile"><i class="fa fa-twitter"></i></a>
-                                    {% endif %}
-                                    {% if executive.linkedin_profile_url %}
-                                        <a href="{{ executive.linkedin_profile_url }}"
-                                           aria-label="LinkedIn profile"><i class="fa fa-linkedin"></i></a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+                <div class="utag-executive-card" data-bio-modal
+                     data-name="{{ executive.get_full_name }}"
+                     data-position="{{ executive.executive_position }}"
+                     data-affiliation="{% if executive.school %}{{ executive.school.name }}{% endif %}{% if executive.college %}{{ executive.college.name }}{% endif %}{% if executive.department %}{{ executive.department.name }}{% endif %}"
+                     data-bio="{{ executive.executive_bio|default:''|linebreaksbr|escapejs }}"
+                     data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}"
+                     data-email="{{ executive.email|default:'' }}"
+                     data-phone="{{ executive.phone_number|default:'' }}"
+                     data-linkedin="{{ executive.linkedin_profile_url|default:'' }}"
+                     data-twitter="{{ executive.twitter_profile_url|default:'' }}"
+                     data-facebook="{{ executive.fb_profile_url|default:'' }}"
+                     data-website="{{ executive.personal_website_url|default:'' }}">
+                    <div class="utag-executive-image">
+                        {% if executive.executive_image %}
+                        <img src="{{ executive.executive_image.url }}" 
+                             alt="{{ executive.get_full_name }}"
+                             loading="lazy" 
+                             decoding="async"
+                             onerror="this.onerror=null; this.src='{% static 'website/assets/img/team/ourteam31.png' %}';" />
+                        {% else %}
+                        <img src="{% static 'website/assets/img/team/ourteam31.png' %}" 
+                             alt="{{ executive.get_full_name }}" 
+                             loading="lazy" 
+                             decoding="async" />
+                        {% endif %}
                     </div>
+                    <div class="utag-executive-info">
+                        <h4>{{ executive.get_full_name }}</h4>
+                        <span class="utag-executive-position">{{ executive.executive_position }}</span>
+                        {% if executive.department %}
+                        <span class="utag-executive-dept">{{ executive.department.name }}</span>
+                        {% endif %}
+                        <div class="utag-executive-social">
+                            {% if executive.email %}
+                            <a href="mailto:{{ executive.email }}" onclick="event.stopPropagation();" title="Email"><i class="fa fa-envelope"></i></a>
+                            {% endif %}
+                            {% if executive.linkedin_profile_url %}
+                            <a href="{{ executive.linkedin_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="LinkedIn"><i class="fa fa-linkedin"></i></a>
+                            {% endif %}
+                            {% if executive.twitter_profile_url %}
+                            <a href="{{ executive.twitter_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="Twitter"><i class="fa fa-twitter"></i></a>
+                            {% endif %}
+                            {% if executive.fb_profile_url %}
+                            <a href="{{ executive.fb_profile_url }}" onclick="event.stopPropagation();" target="_blank" title="Facebook"><i class="fa fa-facebook"></i></a>
+                            {% endif %}
+                            {% if executive.personal_website_url %}
+                            <a href="{{ executive.personal_website_url }}" onclick="event.stopPropagation();" target="_blank" title="Website"><i class="fa fa-globe"></i></a>
+                            {% endif %}
+                        </div>
+                        <span class="utag-view-bio">View Bio <i class="fa fa-arrow-right"></i></span>
+                    </div>
+                </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <div class="utag-empty-state">
+                <i class="fa fa-users"></i>
+                <h3>No Executive Officers</h3>
+                <p>Executive officer information is not available at this time.</p>
+                <a href="{% url 'website:index' %}" class="utag-view-all-btn">Return Home</a>
+            </div>
+            {% endif %}
         </div>
-    </div>
-    <!--End of Teacher Fullwidth Area-->
+    </section>
+    <!--End of Executive Officers Grid-->
 {% endblock content %}

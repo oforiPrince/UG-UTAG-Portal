@@ -104,14 +104,25 @@ class DocumentsView(View):
         return render(request, self.template_name, context)
 
     def get_documents(self, user):
-        # get user's group names
-        group_names = user.groups.values_list('name', flat=True)
+        """
+        Return documents visible to the user based on their role and group membership.
+        
+        - Superusers see all documents
+        - Authenticated users see:
+          1. Documents with visibility='everyone'
+          2. Documents with visibility='selected_groups' where user belongs to one of the visible groups
+        """
         if user.is_superuser:
             return Document.objects.all()
-        elif user.groups.filter(name__in=['Executive', 'Member']).exists():
-            return Document.objects.filter(visibility='selected_groups', visible_to_groups__in=user.groups.all())
-        else:
-            return Document.objects.filter(visibility='everyone')
+        
+        # Build query for documents visible to this user
+        # Include documents visible to everyone OR documents visible to user's groups
+        user_groups = user.groups.all()
+        
+        return Document.objects.filter(
+            Q(visibility='everyone') |
+            Q(visibility='selected_groups', visible_to_groups__in=user_groups)
+        ).distinct()
     
     
 class DeleteFileView(View):

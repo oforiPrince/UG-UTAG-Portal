@@ -40,7 +40,7 @@ class IndexView(View):
         ).select_related(
             'author'
         ).only(
-            'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at'
+            'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at', 'author'
         ).order_by('-created_at')[:5]
 
         # Get executives with optimized query
