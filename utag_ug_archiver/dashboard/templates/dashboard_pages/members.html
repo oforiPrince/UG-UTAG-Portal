@@ -50,7 +50,7 @@
                             </div>
                             <div class='mt-3'>
                                 <table id="datatable"
-                                       class="table table-bordered dt-responsive nowrap"
+                                        class="table table-bordered dt-responsive nowrap w-100"
                                        style="border-collapse: collapse;
                                               border-spacing: 0;
                                               width: 100%">
@@ -109,6 +109,13 @@
         $(document).ready(function() {
             // Server-side DataTables initialization for members list
             var table = $('#datatable').DataTable({
+                responsive: {
+                    details: {
+                        type: 'inline',
+                        target: 'tr'
+                    }
+                },
+                autoWidth: false,
                 processing: true,
                 serverSide: true,
                 ajax: {
@@ -162,6 +169,13 @@
                     }
                 }
             });
+
+            setTimeout(function() {
+                table.columns.adjust();
+                if (table.responsive) {
+                    table.responsive.recalc();
+                }
+            }, 150);
 
             // Handle view member details click
             $(document).on('click', '.view-member-details', function(e) {
