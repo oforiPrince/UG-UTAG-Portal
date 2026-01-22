@@ -1,202 +1,871 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
 {% load image_tags %}
-{% block title %}News Detail{% endblock %}
+{% block title %}{{ news.title }}{% endblock %}
 {% block content %}
-<!--Breadcrumb Banner Area Start-->
-<div class="breadcrumb-banner-area blog">
-  <div class="container">
-    <div class="row">
-      <div class="col-md-12">
-        <div class="breadcrumb-text">
-          <h1 class="text-center">News Details</h1>
-          <div class="breadcrumb-bar">
-            <ul class="breadcrumb">
-              <li><a href="{% url 'website:index' %}">Home</a></li>
-              <li>News Details</li>
-            </ul>
+
+<!-- Modern Hero Section with Featured Image -->
+<div class="utag-news-hero">
+  <div class="utag-news-hero-overlay"></div>
+  <img src="{{ news.featured_image.url }}" alt="{{ news.title }}" class="utag-news-hero-img" />
+  <div class="utag-news-hero-content">
+    <div class="container">
+      <div class="utag-news-hero-inner">
+        <nav class="utag-breadcrumb">
+          <a href="{% url 'website:index' %}">Home</a>
+          <span>/</span>
+          <a href="{% url 'website:news' %}">News</a>
+        </nav>
+        <h1>{{ news.title }}</h1>
+        <div class="utag-news-meta">
+          <div class="utag-meta-item">
+            <i class="fa fa-calendar"></i>
+            <span>{{ news.created_at|date:'F d, Y' }}</span>
           </div>
+          <div class="utag-meta-item">
+            <i class="fa fa-user"></i>
+            <span>{{ news.author }}</span>
+          </div>
+          {% if news.tags.exists %}
+          <div class="utag-meta-item">
+            <i class="fa fa-tag"></i>
+            <span>{{ news.tags.first.name }}</span>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
 </div>
-<!--End of Breadcrumb Banner Area-->
-<!--News Details Area Start-->
-<div class="blog-details-area section-padding blog-two">
+
+<!-- Main Content Area -->
+<article class="utag-news-detail">
   <div class="container">
     <div class="row">
-      <div class="col-xl-9 col-lg-8">
-        <div class="blog-post-wrapper">
-          <div class="blog-post-details">
-            <h1>{{ news.title }}</h1>
-            <span><i class="fa fa-calendar"></i>{{ news.created_at|date:'F d, Y' }} / By: {{ news.author }}</span>
-          </div>
-          <div class="blog-post-details-img">
-            {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow" "news" %}
-          </div>
-          <div class="blog-post-details-text">
-            <div class="news-content">
-              <p class="text-justify">{{ news.content|safe }}</p>
-              {% if news.citations.exists %}
-              <div class="news-citations mt-5">
-                <h4 class="mb-3"><i class="fa fa-book"></i> References</h4>
-                <ol>
-                  {% for citation in news.citations.all %}
-                  <li>
-                    <a href="{{ citation.url }}" target="_blank" rel="noopener">
-                      {{ citation.source_name }}
-                    </a>
-                    {% if citation.description %}
-                      - {{ citation.description }}
-                    {% endif %}
-                  </li>
-                  {% endfor %}
-                </ol>
-              </div>
-              {% endif %}
-              {% if news.attached_documents.exists %}
-              <div class="news-documents mt-5">
-                <h4 class="mb-3"><i class="fa fa-file"></i> Related Documents</h4>
-                <ul class="list-group">
-                  {% for document in news.attached_documents.all %}
-                  <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-                    <!-- <span>{{ document.name }}</span> -->
-                    {% if document.is_pdf %}
-                      <div class="w-100 mt-2 mt-md-0" style="height:400px;">
-                        <iframe src="{{ document.file.url }}#toolbar=1" width="100%" height="100%" style="border:1px solid #ccc; border-radius:4px;" allowfullscreen title="PDF Preview"></iframe>
-                      </div>
-                    {% else %}
-                      <a href="{{ document.file.url }}" class="btn btn-primary btn-sm mt-2 mt-md-0" download>
-                        <i class="fa fa-download"></i> Download
-                      </a>
-                    {% endif %}
-                  </li>
-                  {% endfor %}
-                </ul>
-              </div>
-              {% endif %}
+      <!-- Main Article Content -->
+      <div class="col-lg-8">
+        <div class="utag-article-card">
+          <!-- Share moved to sidebar to avoid duplication -->
+          
+          <!-- Article Body -->
+          <div class="utag-article-body">
+            <div class="utag-article-content">
+              {{ news.content|safe }}
             </div>
+            
+            <!-- Citations/References -->
+            {% if news.citations.exists %}
+            <div class="utag-article-references">
+              <h4><i class="fa fa-bookmark"></i> References</h4>
+              <ol>
+                {% for citation in news.citations.all %}
+                <li>
+                  <a href="{{ citation.url }}" target="_blank" rel="noopener">
+                    {{ citation.source_name }}
+                  </a>
+                  {% if citation.description %}
+                    <span class="citation-desc">– {{ citation.description }}</span>
+                  {% endif %}
+                </li>
+                {% endfor %}
+              </ol>
+            </div>
+            {% endif %}
+            
+            <!-- Attached Documents -->
+            {% if news.attached_documents.exists %}
+            <div class="utag-article-documents">
+              <h4><i class="fa fa-paperclip"></i> Attached Documents</h4>
+              <div class="utag-documents-list">
+                {% for document in news.attached_documents.all %}
+                <div class="utag-document-item">
+                  {% if document.is_pdf %}
+                  <div class="utag-pdf-preview">
+                    <iframe src="{{ document.file.url }}#toolbar=1" allowfullscreen title="PDF Preview: {{ document.name }}"></iframe>
+                  </div>
+                  {% else %}
+                  <div class="utag-document-download">
+                    <i class="fa fa-file-o"></i>
+                    <span>{{ document.name }}</span>
+                    <a href="{{ document.file.url }}" class="utag-download-btn" download>
+                      <i class="fa fa-download"></i> Download
+                    </a>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Tags moved to sidebar to avoid duplication -->
           </div>
-          <div class="single-title">
-            <h3>Related Posts</h3>
-          </div>
-          <div class="row">
+          
+          <!-- Article footer share removed; share controls moved to sidebar -->
+        </div>
+        
+        <!-- Related Posts Section -->
+        {% if latest_news %}
+        <div class="utag-related-posts">
+          <h3 class="utag-section-heading">Related Articles</h3>
+          <div class="utag-related-grid">
             {% for latest in latest_news %}
-            <div class="col-xl-4 col-lg-6 col-md-6 col-12">
-              <div class="single-blog-item overlay-hover">
-                <div class="single-blog-image">
-                  <div class="overlay-effect">
-                    <a href="{% url 'website:news_detail' slug=latest.news_slug %}">
-                      {% lazy_img latest.featured_image.url latest.title "img-fluid" "news" %}
-                      <span class="class-date">{{ latest.created_at|date:'M d' }} <span>{{ latest.created_at|date:'Y' }}</span></span>
-                    </a>
-                  </div>
+            <article class="utag-related-card">
+              <a href="{% url 'website:news_detail' slug=latest.news_slug %}" class="utag-related-link">
+                <div class="utag-related-image">
+                  <img src="{{ latest.featured_image.url }}" alt="{{ latest.title }}" loading="lazy" />
+                  <span class="utag-related-date">{{ latest.created_at|date:'M d' }}</span>
                 </div>
-                <div class="single-blog-text">
-                  <h4>
-                    <a href="{% url 'website:news_detail' slug=latest.news_slug %}">{{ latest.title }}</a>
-                  </h4>
-                  <div class="blog-date">
-                    <span><i class="fa fa-calendar"></i>{{ latest.created_at|date:'d M, Y' }}</span>
-                  </div>
-                  <p>{{ latest.content|truncatechars:80|safe }}</p>
-                  <a href="{% url 'website:news_detail' slug=latest.news_slug %}">Read more.</a>
+                <div class="utag-related-content">
+                  <h4>{{ latest.title|truncatechars:60 }}</h4>
+                  <p>{{ latest.content|striptags|truncatechars:80 }}</p>
+                  <span class="utag-related-more">Read Article <i class="fa fa-arrow-right"></i></span>
                 </div>
-              </div>
-            </div>
+              </a>
+            </article>
             {% endfor %}
           </div>
         </div>
-      </div>
-      <div class="col-xl-3 col-lg-4">
-        <div class="single-widget-item">
-          <div class="single-title">
-            <h3>News Details</h3>
-          </div>
-          <div class="single-widget-container">
-            <ul class="sidebar-categories">
-              <li><strong>Published:</strong> {{ news.created_at|date:'F d, Y' }}</li>
-              <li><strong>Author:</strong> {{ news.author }}</li>
-            </ul>
-          </div>
-        </div>
-        <div class="single-widget-item">
-          <div class="single-title">
-            <h3>Share this News</h3>
-          </div>
-          <div class="single-widget-container">
-            <ul class="list-unstyled d-flex gap-3 mt-3 mb-0">
-              <li>
-                <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on Facebook">
-                  <i class="fa fa-facebook fa-lg"></i>
-                </a>
-              </li>
-              <li>
-                <a href="https://wa.me/?text={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-success rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on WhatsApp">
-                  <i class="fa fa-whatsapp fa-lg"></i>
-                </a>
-              </li>
-              <li>
-                <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.title }}" target="_blank" rel="noopener" class="btn btn-info rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share on Twitter">
-                  <i class="fa fa-twitter fa-lg"></i>
-                </a>
-              </li>
-              <li>
-                <a href="mailto:?subject={{ news.title }}&body={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-danger rounded-circle d-flex align-items-center justify-content-center p-0" style="width: 40px; height: 40px;" title="Share by Email">
-                  <i class="fa fa-envelope fa-lg"></i>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        {% if news.tags.exists %}
-        <div class="single-widget-item">
-          <div class="single-title">
-            <h3>Tags</h3>
-          </div>
-          <div class="single-widget-container">
-            <ul class="tag-list">
-                {% for tag in news.tags.all %}
-              <li><a href="#">{{ tag.name }}</a></li>
-                {% endfor %}
-            </ul>
-          </div>
-        </div>
         {% endif %}
-        <!-- Advertisement Banners -->
-        <div class="single-widget-item">
-          <div class="single-widget-container">
-            <a href="#">
-              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
+      </div>
+      
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <aside class="utag-news-sidebar">
+          <!-- Author/Source Card -->
+          <div class="utag-sidebar-card utag-author-card">
+            <div class="utag-author-avatar">
+              <i class="fa fa-newspaper-o"></i>
+            </div>
+            <div class="utag-author-info">
+              <span class="utag-author-label">Published by</span>
+              <h4>{{ news.author }}</h4>
+              <span class="utag-author-date">{{ news.created_at|date:'F d, Y' }}</span>
+            </div>
+          </div>
+          
+          <!-- Quick Share Card: centralized share buttons for sidebar -->
+          <div class="utag-sidebar-card">
+            <h4 class="utag-sidebar-title">Share Article</h4>
+            <div class="utag-quick-share">
+              <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="utag-qs-btn facebook" title="Share on Facebook">
+                <i class="fa fa-facebook"></i>
+              </a>
+              <a href="https://twitter.com/share?url={{ request.build_absolute_uri }}&text={{ news.title|urlencode }}" target="_blank" rel="noopener" class="utag-qs-btn twitter" title="Share on Twitter">
+                <i class="fa fa-twitter"></i>
+              </a>
+              <a href="https://wa.me/?text={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="utag-qs-btn whatsapp" title="Share on WhatsApp">
+                <i class="fa fa-whatsapp"></i>
+              </a>
+              <a href="https://www.linkedin.com/shareArticle?mini=true&url={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="utag-qs-btn linkedin" title="Share on LinkedIn">
+                <i class="fa fa-linkedin"></i>
+              </a>
+              <a href="mailto:?subject={{ news.title }}&body={{ request.build_absolute_uri }}" class="utag-qs-btn email" title="Share by Email">
+                <i class="fa fa-envelope"></i>
+              </a>
+            </div>
+          </div>
+          
+          <!-- Tags Card -->
+          <!-- Sidebar Tags Card -->
+          {% if news.tags.exists %}
+          <div class="utag-sidebar-card">
+            <h4 class="utag-sidebar-title">Tags</h4>
+            <div class="utag-sidebar-tags">
+              {% for tag in news.tags.all %}
+              <a href="#" class="utag-sidebar-tag">{{ tag.name }}</a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          
+          <!-- Back to News Link -->
+          <div class="utag-sidebar-card utag-back-card">
+            <a href="{% url 'website:news' %}" class="utag-back-link">
+              <i class="fa fa-arrow-left"></i>
+              <span>Back to All News</span>
             </a>
           </div>
-        </div>
-        <div class="single-widget-item">
-          <div class="single-widget-container">
-            <a href="#">
-              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
-            </a>
-          </div>
-        </div>
-        <div class="single-widget-item">
-          <div class="single-widget-container">
-            <a href="#">
-              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
-            </a>
-          </div>
-        </div>
-        <div class="single-widget-item">
-          <div class="single-widget-container">
-            <a href="#">
-              <img src="{% static 'website-v2/img/banner/11.jpg' %}" alt="" />
-            </a>
-          </div>
-        </div>
-        <!-- Advertisement Banners End -->
+        </aside>
       </div>
     </div>
   </div>
-</div>
-<!--End of News Details Details Area-->
+</article>
+
+<style>
+/* Modern News Detail Styles */
+.utag-news-hero {
+  position: relative;
+  height: 70vh;
+  min-height: 500px;
+  max-height: 700px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.utag-news-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%);
+  z-index: 1;
+}
+
+.utag-news-hero-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.utag-news-hero-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding-bottom: 60px;
+}
+
+.utag-news-hero-inner {
+  max-width: 800px;
+}
+
+.utag-breadcrumb {
+  margin-bottom: 20px;
+}
+
+.utag-breadcrumb a,
+.utag-breadcrumb span {
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.utag-breadcrumb a:hover {
+  color: #fff;
+}
+
+.utag-breadcrumb span {
+  margin: 0 8px;
+}
+
+.utag-news-hero h1 {
+  font-size: 42px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 25px;
+}
+
+.utag-news-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 25px;
+}
+
+.utag-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,0.85);
+  font-size: 14px;
+}
+
+.utag-meta-item i {
+  font-size: 16px;
+  color: rgba(255,255,255,0.6);
+}
+
+/* Main Article */
+.utag-news-detail {
+  padding: 60px 0 80px;
+  background: #f8f9fa;
+}
+
+.utag-article-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 5px 30px rgba(0,0,0,0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Sticky Share Sidebar */
+.utag-share-sidebar {
+  position: absolute;
+  left: -70px;
+  top: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 100px;
+  float: left;
+  margin-left: -70px;
+}
+
+.utag-share-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #999;
+  margin-bottom: 5px;
+}
+
+.utag-share-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.utag-share-btn:hover {
+  transform: scale(1.15);
+  color: #fff;
+}
+
+.utag-share-btn.facebook { background: #1877f2; }
+.utag-share-btn.twitter { background: #1da1f2; }
+.utag-share-btn.whatsapp { background: #25d366; }
+.utag-share-btn.linkedin { background: #0077b5; }
+.utag-share-btn.email { background: #ea4335; }
+
+/* Article Body */
+.utag-article-body {
+  padding: 50px 60px;
+}
+
+.utag-article-content {
+  font-size: 17px;
+  line-height: 1.9;
+  color: #333;
+}
+
+.utag-article-content p {
+  margin-bottom: 1.5em;
+}
+
+.utag-article-content h2,
+.utag-article-content h3,
+.utag-article-content h4 {
+  color: #01004e;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+.utag-article-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.utag-article-content blockquote {
+  border-left: 4px solid #01004e;
+  padding: 20px 30px;
+  margin: 30px 0;
+  background: #f8f9fa;
+  font-style: italic;
+  font-size: 18px;
+  color: #555;
+}
+
+/* References */
+.utag-article-references {
+  margin-top: 50px;
+  padding-top: 30px;
+  border-top: 1px solid #eee;
+}
+
+.utag-article-references h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #01004e;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.utag-article-references ol {
+  padding-left: 20px;
+}
+
+.utag-article-references li {
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.utag-article-references a {
+  color: #01004e;
+  font-weight: 500;
+}
+
+.citation-desc {
+  color: #888;
+}
+
+/* Documents */
+.utag-article-documents {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #eee;
+}
+
+.utag-article-documents h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #01004e;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.utag-pdf-preview {
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.utag-pdf-preview iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+}
+
+.utag-document-download {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.utag-document-download i {
+  font-size: 32px;
+  color: #01004e;
+}
+
+.utag-document-download span {
+  flex: 1;
+  font-weight: 500;
+}
+
+.utag-download-btn {
+  padding: 10px 20px;
+  background: #01004e;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.utag-download-btn:hover {
+  background: #020080;
+  color: #fff;
+}
+
+/* Tags */
+.utag-article-tags {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.utag-article-tags i {
+  color: #999;
+  font-size: 16px;
+}
+
+.utag-tag {
+  padding: 6px 14px;
+  background: #f0f0f0;
+  color: #555;
+  border-radius: 20px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.utag-tag:hover {
+  background: #01004e;
+  color: #fff;
+}
+
+/* Article Footer */
+.utag-article-footer {
+  padding: 25px 60px;
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
+}
+
+.utag-share-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.utag-share-row span {
+  font-weight: 500;
+  color: #555;
+}
+
+.utag-share-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.utag-share-buttons a {
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.3s ease;
+}
+
+.utag-share-buttons a:hover {
+  opacity: 0.9;
+  color: #fff;
+}
+
+.utag-share-buttons .facebook { background: #1877f2; }
+.utag-share-buttons .twitter { background: #1da1f2; }
+.utag-share-buttons .whatsapp { background: #25d366; }
+
+/* Related Posts */
+.utag-related-posts {
+  margin-top: 50px;
+}
+
+.utag-section-heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: #01004e;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 3px solid #01004e;
+  display: inline-block;
+}
+
+.utag-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.utag-related-card {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.utag-related-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(1,0,78,0.15);
+}
+
+.utag-related-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.utag-related-image {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.utag-related-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.utag-related-card:hover .utag-related-image img {
+  transform: scale(1.1);
+}
+
+.utag-related-date {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: #01004e;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.utag-related-content {
+  padding: 20px;
+}
+
+.utag-related-content h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #01004e;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.utag-related-content p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.utag-related-more {
+  color: #01004e;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Sidebar */
+.utag-news-sidebar {
+  position: sticky;
+  top: 30px;
+}
+
+.utag-sidebar-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+.utag-sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #01004e;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* Author Card */
+.utag-author-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, #01004e 0%, #020080 100%);
+  color: #fff;
+}
+
+.utag-author-avatar {
+  width: 60px;
+  height: 60px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.utag-author-avatar i {
+  font-size: 24px;
+}
+
+.utag-author-label {
+  font-size: 12px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+  .utag-author-info h4 {
+  margin: 5px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.utag-author-date {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Quick Share */
+.utag-quick-share {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.utag-qs-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.utag-qs-btn:hover {
+  transform: translateY(-3px);
+  color: #fff;
+}
+
+.utag-qs-btn.facebook { background: #1877f2; }
+.utag-qs-btn.twitter { background: #1da1f2; }
+.utag-qs-btn.whatsapp { background: #25d366; }
+.utag-qs-btn.linkedin { background: #0077b5; }
+.utag-qs-btn.email { background: #ea4335; }
+
+/* Sidebar Tags */
+.utag-sidebar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.utag-sidebar-tag {
+  padding: 8px 16px;
+  background: #f0f0f0;
+  color: #555;
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.utag-sidebar-tag:hover {
+  background: #01004e;
+  color: #fff;
+}
+
+/* Back Link */
+.utag-back-card {
+  background: #f8f9fa;
+}
+
+.utag-back-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #01004e;
+  text-decoration: none;
+  font-weight: 600;
+  transition: gap 0.3s ease;
+}
+
+.utag-back-link:hover {
+  gap: 18px;
+  color: #01004e;
+}
+
+.utag-back-link i {
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .utag-share-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 991px) {
+  .utag-news-hero {
+    height: 60vh;
+    min-height: 400px;
+  }
+  
+  .utag-news-hero h1 {
+    font-size: 32px;
+  }
+  
+  .utag-article-body {
+    padding: 35px 30px;
+  }
+  
+  .utag-article-footer {
+    padding: 20px 30px;
+  }
+  
+  .utag-news-sidebar {
+    position: static;
+    margin-top: 40px;
+  }
+}
+
+@media (max-width: 576px) {
+  .utag-news-hero {
+    height: 50vh;
+    min-height: 350px;
+  }
+  
+  .utag-news-hero h1 {
+    font-size: 26px;
+  }
+  
+  .utag-news-meta {
+    gap: 15px;
+  }
+  
+  .utag-article-body {
+    padding: 25px 20px;
+  }
+  
+  .utag-article-content {
+    font-size: 16px;
+  }
+  
+  .utag-article-footer {
+    padding: 20px;
+  }
+  
+  .utag-share-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .utag-share-buttons {
+    flex-wrap: wrap;
+  }
+  
+  .utag-related-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
 {% endblock content %}
