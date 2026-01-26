@@ -1107,3 +1107,16 @@ img[loading="lazy"].loaded {
     font-size: 26px;
   }
 }
+
+/* ==========================================================================
+   Executive Cards - Text Casing
+   ========================================================================== */
+
+.utag-executive-card .utag-executive-info h4 {
+  text-transform: capitalize;
+}
+
+.utag-executive-card .utag-executive-position {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
