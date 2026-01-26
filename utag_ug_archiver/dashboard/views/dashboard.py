@@ -98,7 +98,14 @@ class DashboardView(PermissionRequiredMixin, View):
                 models.Q(visibility='everyone') | 
                 models.Q(visibility='selected_groups', visible_to_groups__in=user_groups_queryset)
             ).distinct().order_by('-created_at')[:5]
-        
+
+        # Compute a real last-updated timestamp across core content
+        latest_times = []
+        for model in (Document, Event, Announcement, News, Ad):
+            ts = model.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+            if ts:
+                latest_times.append(ts)
+        last_updated = max(latest_times) if latest_times else timezone.now()
         context = {
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
@@ -118,6 +125,7 @@ class DashboardView(PermissionRequiredMixin, View):
             'is_admin': 'Admin' in user_groups,
             'is_executive': 'Executive' in user_groups,
             'is_member': 'Member' in user_groups,
+            'last_updated': last_updated,
         }
         print(context)
         return render(request, self.template_name, context)
