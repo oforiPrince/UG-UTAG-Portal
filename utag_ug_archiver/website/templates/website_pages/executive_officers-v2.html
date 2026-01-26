@@ -37,7 +37,7 @@
                      data-name="{{ executive.get_full_name }}"
                      data-position="{{ executive.executive_position }}"
                      data-affiliation="{% if executive.school %}{{ executive.school.name }}{% endif %}{% if executive.college %}{{ executive.college.name }}{% endif %}{% if executive.department %}{{ executive.department.name }}{% endif %}"
-                     data-bio="{{ executive.executive_bio|default:''|linebreaksbr|escapejs }}"
+                     data-bio="{{ executive.executive_bio|default:''|escapejs }}"
                      data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}"
                      data-email="{{ executive.email|default:'' }}"
                      data-phone="{{ executive.phone_number|default:'' }}"

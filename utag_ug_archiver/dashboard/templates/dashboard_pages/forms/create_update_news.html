@@ -12,124 +12,218 @@
 {% block content %}
 <div class="page-content">
   <div class="container-fluid">
+    <!-- Page Title -->
+    <div class="page-title-box mb-4">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h6 class="page-title">
+            {% if news.pk %}
+              Edit News Article
+            {% else %}
+              Create New News Article
+            {% endif %}
+          </h6>
+          <ol class="breadcrumb m-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard:news' %}">News</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+              {% if news.pk %}Edit{% else %}Create{% endif %}
+            </li>
+          </ol>
+        </div>
+        <div class="col-md-4">
+          <div class="float-end d-none d-md-block">
+            <a href="{% url 'dashboard:news' %}" class="btn btn-secondary btn-sm">
+              <i class="mdi mdi-arrow-left"></i> Back to News
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <div class="row align-items-center mb-4">
-              <div class="col-md-8">
-                <h4 class="card-title">
-                  {% if news.pk %}
-                    Update News
-                  {% else %}
-                    Create News
-                  {% endif %}
-                </h4>
-              </div>
-            </div>
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
 
             <!-- News Form -->
             <form id="newsForm" method="POST" enctype="multipart/form-data" class="custom-validation">
               {% csrf_token %}
 
-              <!-- News Title -->
-              <div class="mb-3">
-                <label for="title" class="form-label fw-bold">News Title</label>
-                <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" required>
-              </div>
+              <!-- Form Sections -->
+              <div class="row">
+                <div class="col-12">
+                  <!-- Basic Info Section -->
+                  <div class="mb-4">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-information-outline me-2"></i>Basic Information
+                    </h5>
+                    
+                    <!-- News Title -->
+                    <div class="mb-3">
+                      <label for="title" class="form-label fw-bold">News Title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="title" name="title" value="{{ initial_data.title }}" placeholder="Enter a compelling news headline" required>
+                      <small class="text-muted">Make it descriptive and engaging</small>
+                    </div>
 
-              <!-- News Content -->
-              <div class="mb-3">
-                <label for="content" class="form-label fw-bold">News Content</label>
-                <textarea class="form-control" id="content" name="content" rows="10">{{ initial_data.content }}</textarea>
-              </div>
-
-              <!-- Tags -->
-              <div class="mb-3">
-                <label for="tags" class="form-label fw-bold">Tags</label>
-                <select class="form-control select2" id="tags" name="tags" multiple="multiple">
-                  {% for tag in tags %}
-                    <option value="{{ tag.id }}" {% if tag.id in initial_data.tags %}selected{% endif %}>{{ tag.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <!-- Featured Image -->
-              <div class="mb-3">
-                <label for="image" class="form-label fw-bold">News Featured Image</label>
-                <input type="file" class="form-control" id="image" name="featured_image">
-                <div id="imageError" class="text-danger mt-2"></div>
-
-                <!-- Images Container -->
-                <div class="d-flex justify-content-center align-items-center mt-3 gap-3">
-                  <!-- Current Image -->
-                  {% if initial_data.featured_image %}
-                  <div class="text-center">
-                    <p class="text-muted">Current Image:</p>
-                    <img src="{{ initial_data.featured_image }}" 
-                        alt="Current Image" 
-                        class="img-fluid rounded shadow-sm border" 
-                        style="max-width: 150px; max-height: 150px;">
+                    <!-- Tags -->
+                    <div class="mb-3">
+                      <label for="tags" class="form-label fw-bold">Tags</label>
+                      <select class="form-control select2" id="tags" name="tags" multiple="multiple">
+                        {% for tag in tags %}
+                          <option value="{{ tag.id }}" {% if tag.id in initial_data.tags %}selected{% endif %}>{{ tag.name }}</option>
+                        {% endfor %}
+                      </select>
+                      <small class="text-muted">Select or create tags to categorize this article</small>
+                    </div>
                   </div>
-                  {% endif %}
 
-                  <!-- New Image Preview -->
-                  <div id="newImagePreviewWrapper" class="text-center" style="display: none;">
-                    <p class="text-muted">New Image Preview:</p>
-                    <img id="newImagePreview" 
-                        class="img-fluid rounded shadow-sm border" 
-                        style="max-width: 150px; max-height: 150px;" />
+                  <!-- Featured Image Section -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-image-outline me-2"></i>Featured Image
+                    </h5>
+                    
+                    <div class="row">
+                      <div class="col-md-6">
+                        <label for="image" class="form-label fw-bold">Upload Image</label>
+                        <input type="file" class="form-control" id="image" name="featured_image" accept="image/*">
+                        <small class="text-muted">Recommended size: 1200x600px</small>
+                        <div id="imageError" class="text-danger mt-2"></div>
+                      </div>
+                      <div class="col-md-6">
+                        <!-- Current Image -->
+                        {% if initial_data.featured_image %}
+                          <div class="text-center">
+                            <p class="text-muted mb-2"><strong>Current Image:</strong></p>
+                            <img src="{{ initial_data.featured_image }}" 
+                                alt="Current Image" 
+                                class="img-fluid rounded shadow-sm border" 
+                                style="max-width: 100%; max-height: 150px;">
+                          </div>
+                        {% endif %}
+
+                        <!-- New Image Preview -->
+                        <div id="newImagePreviewWrapper" class="text-center" style="display: none;">
+                          <p class="text-muted mb-2"><strong>Preview:</strong></p>
+                          <img id="newImagePreview" 
+                              class="img-fluid rounded shadow-sm border" 
+                              style="max-width: 100%; max-height: 150px;" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Content Section -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-file-document-outline me-2"></i>Article Content
+                    </h5>
+                    
+                    <div class="mb-3">
+                      <label for="content" class="form-label fw-bold">News Content <span class="text-danger">*</span></label>
+                      <textarea class="form-control" id="content" name="content" rows="10" placeholder="Write your news article here...">{{ initial_data.content }}</textarea>
+                      <small class="text-muted">Rich text editor available below. Add formatting, links, and media as needed.</small>
+                    </div>
+                  </div>
+
+                  <!-- Citations Section -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-book-outline me-2"></i>Citations & References
+                    </h5>
+                    
+                    <div id="citationsWrapper">
+                      {% for citation in initial_data.citations %}
+                      <div class="citation-item mb-3 p-3 rounded border bg-light">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name" value="{{ citation.source_name }}">
+                          </div>
+                          <div class="col-md-6">
+                            <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL (e.g., https://...)" value="{{ citation.url }}">
+                          </div>
+                        </div>
+                        <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description" rows="2">{{ citation.description }}</textarea>
+                        <button type="button" class="btn btn-danger btn-sm remove-citation">
+                          <i class="mdi mdi-delete me-1"></i>Remove
+                        </button>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="addCitation">
+                      <i class="mdi mdi-plus me-1"></i>Add Citation
+                    </button>
+                  </div>
+
+                  <!-- Attached Documents Section -->
+                  <div class="mb-4 pb-4 border-bottom">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-paperclip me-2"></i>Attached Documents
+                    </h5>
+                    
+                    <div id="documentsWrapper">
+                      {% for document in initial_data.attached_documents %}
+                      <div class="document-item mb-3 p-3 rounded border bg-light">
+                        <div class="row">
+                          <div class="col-md-5">
+                            <input type="text" name="document_names[]" class="form-control mb-2 mb-md-0" placeholder="Document Name" value="{{ document.name }}">
+                          </div>
+                          <div class="col-md-5">
+                            <input type="file" name="document_files[]" class="form-control">
+                          </div>
+                          <div class="col-md-2">
+                            <a href="{{ document.file.url }}" class="btn btn-info btn-sm w-100" target="_blank">
+                              <i class="mdi mdi-eye"></i> View
+                            </a>
+                          </div>
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm mt-2 remove-document">
+                          <i class="mdi mdi-delete me-1"></i>Remove
+                        </button>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="addDocument">
+                      <i class="mdi mdi-plus me-1"></i>Add Document
+                    </button>
+                  </div>
+
+                  <!-- Publication Settings -->
+                  <div class="mb-4 p-3 rounded bg-light border">
+                    <h5 class="card-title mb-3">
+                      <i class="mdi mdi-cog-outline me-2"></i>Publication Settings
+                    </h5>
+                    
+                    <div class="form-check form-switch">
+                      <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if news.is_published or initial_data.is_published %}checked{% endif %}>
+                      <label class="form-check-label fw-bold" for="isPublished">
+                        Publish Now
+                        <small class="text-muted d-block mt-1">(Make this news visible to the public immediately)</small>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Form Actions -->
+                  <div class="d-flex justify-content-between align-items-center pt-3">
+                    <a href="{% url 'dashboard:news' %}" class="btn btn-light d-md-none">
+                      <i class="mdi mdi-arrow-left me-1"></i>Back
+                    </a>
+                    <div class="gap-2 d-flex ms-auto">
+                      <a href="{% url 'dashboard:news' %}" class="btn btn-secondary d-none d-md-inline-block">
+                        <i class="mdi mdi-close me-1"></i>Cancel
+                      </a>
+                      <button type="submit" class="btn btn-primary">
+                        <i class="mdi mdi-check-circle-outline me-2"></i>
+                        {% if news.pk %}Update Article{% else %}Publish Article{% endif %}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-
-              <!-- Citations -->
-              <div class="mb-3">
-                <label for="citations" class="form-label fw-bold">Citations</label>
-                <div id="citationsWrapper">
-                  {% for citation in initial_data.citations %}
-                  <div class="citation-item mb-3">
-                    <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name" value="{{ citation.source_name }}">
-                    <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL" value="{{ citation.url }}">
-                    <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description">{{ citation.description }}</textarea>
-                    <button type="button" class="btn btn-danger btn-sm remove-citation">Remove</button>
-                  </div>
-                  {% endfor %}
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="addCitation">Add Citation</button>
-              </div>
-
-              <!-- Attached Documents -->
-              <div class="mb-3">
-                <label for="documents" class="form-label fw-bold">Attached Documents</label>
-                <div id="documentsWrapper">
-                  {% for document in initial_data.attached_documents %}
-                  <div class="document-item mb-3">
-                    <input type="text" name="document_names[]" class="form-control mb-2" placeholder="Document Name" value="{{ document.name }}">
-                    <input type="file" name="document_files[]" class="form-control mb-2">
-                    <a href="{{ document.file.url }}" class="btn btn-primary btn-sm" target="_blank">View Existing</a>
-                    <button type="button" class="btn btn-danger btn-sm remove-document">Remove</button>
-                  </div>
-                  {% endfor %}
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="addDocument">Add Document</button>
-              </div>
-
-              <!-- Publish Checkbox -->
-              <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if initial_data.is_published %}checked{% endif %}>
-                <label class="form-check-label fw-bold" for="isPublished">
-                  Publish
-                  <small class="text-muted d-block">(Make this news visible to the public.)</small>
-                </label>
-              </div>
-
-              <!-- Submit Button -->
-              <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary">
-                  <i class="mdi mdi-check-circle-outline me-2"></i>Submit
-                </button>
               </div>
             </form>
             <!-- End News Form -->
@@ -145,6 +239,40 @@
 {% block my_styles %}
 <!-- Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+  .citation-item, .document-item {
+    transition: all 0.3s ease;
+  }
+
+  .form-label {
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-title {
+    color: #002147;
+    font-weight: 600;
+  }
+
+  .text-danger {
+    color: #dc3545;
+  }
+
+  .btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+  }
+
+  .btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  #citationsWrapper, #documentsWrapper {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+</style>
 {% endblock my_styles %}
 
 {% block my_scripts %}
@@ -183,11 +311,19 @@
     // Add and remove citations dynamically
     $('#addCitation').click(function () {
       $('#citationsWrapper').append(`
-        <div class="citation-item mb-3">
-          <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name">
-          <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL">
-          <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description"></textarea>
-          <button type="button" class="btn btn-danger btn-sm remove-citation">Remove</button>
+        <div class="citation-item mb-3 p-3 rounded border bg-light">
+          <div class="row">
+            <div class="col-md-6">
+              <input type="text" name="citation_sources[]" class="form-control mb-2" placeholder="Source Name">
+            </div>
+            <div class="col-md-6">
+              <input type="url" name="citation_urls[]" class="form-control mb-2" placeholder="Source URL (e.g., https://...)">
+            </div>
+          </div>
+          <textarea name="citation_descriptions[]" class="form-control mb-2" placeholder="Description" rows="2"></textarea>
+          <button type="button" class="btn btn-danger btn-sm remove-citation">
+            <i class="mdi mdi-delete me-1"></i>Remove
+          </button>
         </div>
       `);
     });
@@ -199,10 +335,20 @@
     // Add and remove documents dynamically
     $('#addDocument').click(function () {
       $('#documentsWrapper').append(`
-        <div class="document-item mb-3">
-          <input type="text" name="document_names[]" class="form-control mb-2" placeholder="Document Name">
-          <input type="file" name="document_files[]" class="form-control mb-2">
-          <button type="button" class="btn btn-danger btn-sm remove-document">Remove</button>
+        <div class="document-item mb-3 p-3 rounded border bg-light">
+          <div class="row">
+            <div class="col-md-5">
+              <input type="text" name="document_names[]" class="form-control mb-2 mb-md-0" placeholder="Document Name">
+            </div>
+            <div class="col-md-5">
+              <input type="file" name="document_files[]" class="form-control">
+            </div>
+            <div class="col-md-2">
+              <button type="button" class="btn btn-danger btn-sm w-100 remove-document">
+                <i class="mdi mdi-delete"></i>
+              </button>
+            </div>
+          </div>
         </div>
       `);
     });

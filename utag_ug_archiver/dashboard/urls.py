@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views.members_api import MembersDataTableAPIView, MemberDetailAPIView
+from .views.members_api import MembersDataTableAPIView, MemberDetailAPIView, MemberPasswordResetAPIView, MemberUpdateAPIView
 from .views.executives import ExecutiveBioUpdateView
 from .views.document_detail import DocumentDetailView
 app_name = 'dashboard'
@@ -45,6 +45,7 @@ urlpatterns += [
 #For event management
 urlpatterns += [
     path('events',views.EventsView.as_view(), name='events'),
+    path('events/<int:event_id>',views.EventDetailView.as_view(), name='view_event'),
     path('events/create',views.EventCreateUpdateView.as_view(), name='create_event'),
     path('events/update/<int:event_id>',views.EventCreateUpdateView.as_view(), name='update_event'),
     path('events/delete/<int:event_id>',views.EventDeleteView.as_view(), name='delete_event'),
@@ -53,6 +54,7 @@ urlpatterns += [
 #For news management
 urlpatterns += [
     path('news',views.NewsView.as_view(), name='news'),
+    path('news/<int:news_id>',views.NewsDetailView.as_view(), name='news_detail'),
     path('news/create',views.NewsCreateUpdateView.as_view(), name='create_news'),
     path('news/update/<int:news_id>',views.NewsCreateUpdateView.as_view(), name='update_news'),
     path('news/delete/<int:news_id>',views.NewsDeleteView.as_view(), name='delete_news'),
@@ -98,8 +100,7 @@ urlpatterns += [
 
 #For Adverts
 urlpatterns +={
-    path('adverts',views.AdvertsView.as_view(), name='adverts'),
-    path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
+    path('adverts',views.AdvertsView.as_view(), name='adverts'),    path('adverts/<int:advert_id>',views.AdvertDetailView.as_view(), name='advert_detail'),    path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
     path('adverts/update/',views.AdvertUpdateView.as_view(), name='update_advert'),
     path('adverts/delete/<int:advert_id>',views.AdvertDeleteView.as_view(), name='delete_advert'),
     path('adverts/orders', views.AdvertOrdersView.as_view(), name='advert_orders'),
@@ -114,6 +115,8 @@ urlpatterns +={
 urlpatterns += [
     path('profile',views.ProfileView.as_view(), name='profile'),
     path('profile/update_profile_pic',views.ChangeProfilePicView.as_view(), name='update_profile_pic'),
+    path('account_management/members/reset-password/<int:member_id>/', MemberPasswordResetAPIView.as_view(), name='reset_member_password'),
+    path('account_management/members/update/<int:member_id>/', MemberUpdateAPIView.as_view(), name='update_member'),
 ]
 
 # Carousel Slider

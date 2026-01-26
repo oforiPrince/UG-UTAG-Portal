@@ -1,0 +1,141 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+{% load image_tags %}
+
+{% block title %}
+    {{ event.title }} — Events
+{% endblock title %}
+
+{% block content %}
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="page-title-box">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="page-title">Event Detail</h6>
+                        <ol class="breadcrumb m-0">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'dashboard:events' %}">Events</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">{{ event.title }}</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="float-end d-none d-md-block">
+                            {% if user.is_admin or user.is_superuser %}
+                                <a href="{% url 'dashboard:update_event' event.id %}" class="btn btn-success btn-sm me-2">
+                                    <i class="mdi mdi-pen"></i> Edit
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'dashboard:events' %}" class="btn btn-secondary btn-sm">
+                                <i class="mdi mdi-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- end page title -->
+
+            <!-- Event Detail Card -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- Featured Image -->
+                            {% if event.featured_image %}
+                                <div class="mb-4">
+                                    {% lazy_img event.featured_image.url event.title "img-fluid rounded shadow" "event" %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Title -->
+                            <h2 class="mb-3">{{ event.title }}</h2>
+
+                            <!-- Meta Information -->
+                            <div class="row mb-4 pb-4 border-bottom">
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong><i class="mdi mdi-calendar"></i> Start Date:</strong>
+                                        <span>{{ event.start_date|date:"F d, Y H:i" }}</span>
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong><i class="mdi mdi-map-marker"></i> Venue:</strong>
+                                        <span>{{ event.venue }}</span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if event.end_date %}
+                                        <p class="mb-2">
+                                            <strong><i class="mdi mdi-calendar-end"></i> End Date:</strong>
+                                            <span>{{ event.end_date|date:"F d, Y H:i" }}</span>
+                                        </p>
+                                    {% endif %}
+                                    <p class="mb-2">
+                                        <strong>Status:</strong>
+                                        {% if event.is_published %}
+                                            <span class="badge bg-success">Published</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Draft</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Main Content -->
+                            <div class="mb-4 pt-3">
+                                <h5 class="mb-3">Description</h5>
+                                <div class="event-content" style="line-height: 1.8; color: #333;">
+                                    {{ event.description|safe }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Button (Mobile) -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="{% url 'dashboard:events' %}" class="btn btn-secondary d-md-none w-100">
+                        <i class="mdi mdi-arrow-left"></i> Back to Events
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block my_styles %}
+    <style>
+        .event-content {
+            font-size: 16px;
+            word-wrap: break-word;
+        }
+
+        .event-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .event-content p {
+            margin-bottom: 1rem;
+        }
+
+        .event-content h1, .event-content h2, .event-content h3, .event-content h4, .event-content h5, .event-content h6 {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .badge {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+        }
+    </style>
+{% endblock my_styles %}

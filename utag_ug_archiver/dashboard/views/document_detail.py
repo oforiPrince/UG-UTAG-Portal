@@ -37,6 +37,7 @@ class DocumentDetailView(View):
             'notification_count': notification_count,
             'has_change_permission': request.user.has_perm('dashboard.change_document') or request.user.executive_position == "Secretary",
             'has_delete_permission': request.user.has_perm('dashboard.delete_document') or request.user.executive_position == "Secretary",
+            'active_menu': 'documents'
         }
         
         return render(request, self.template_name, context)

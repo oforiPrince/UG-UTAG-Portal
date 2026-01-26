@@ -121,13 +121,35 @@ class EventCreateUpdateView(View):
             messages.info(request, "Event Created Successfully")
 
         return redirect('dashboard:events')
+
+
+class EventDetailView(View):
+    template_name = 'dashboard_pages/event_detail.html'
     
+    @method_decorator(MustLogin)
+    def get(self, request, event_id):
+        event = Event.objects.get(id=event_id)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
+        context = {
+            'event': event,
+            'notifications': notifications,
+            'notification_count': notification_count,
+            'active_menu': 'events'
+        }
+        return render(request, self.template_name, context)
+
+
 class EventDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         event_id = kwargs.get('event_id')
-        event = Event.objects.get(id=event_id)
-        event.delete()
-        messages.success(request, 'Event deleted successfully!')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    
+        try:
+            event = Event.objects.get(id=event_id)
+            event.delete()
+            messages.success(request, "Event deleted successfully")
+        except Event.DoesNotExist:
+            messages.error(request, "Event not found")
+        return redirect('dashboard:events')

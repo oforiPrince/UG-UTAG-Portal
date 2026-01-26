@@ -125,7 +125,15 @@
 
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item waves-effect" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <img class="rounded-circle header-profile-user" src="{% if request.user.profile_pic %} {{ request.user.get_profile_pic_url }} {% else %} {% static 'dashboard/assets/images/users/profile.png' %} {% endif %}" alt="Header Avatar">
+                    {% if request.user.is_active_executive and request.user.executive_image %}
+                        <img class="rounded-circle header-profile-user" src="{{ request.user.get_executive_image_url }}" alt="Header Avatar">
+                    {% elif request.user.profile_pic %}
+                        <img class="rounded-circle header-profile-user" src="{{ request.user.get_profile_pic_url }}" alt="Header Avatar">
+                    {% else %}
+                        <div class="rounded-circle header-profile-user d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: linear-gradient(135deg, #002147 0%, #004d7f 100%); color: white; font-weight: bold; font-size: 14px;">
+                            {{ request.user.other_name.0|upper }}{{ request.user.surname.0|upper }}
+                        </div>
+                    {% endif %}
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">
                     <!-- item -->

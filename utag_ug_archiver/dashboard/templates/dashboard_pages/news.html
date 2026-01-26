@@ -87,10 +87,8 @@
                           </td>
                         {% endif %}
                         <td>
-                          <a href="#"
+                          <a href="{% url 'dashboard:news_detail' news.id %}"
                              class="btn btn-primary btn-sm"
-                             data-bs-toggle="modal"
-                             data-bs-target="#newsModal_{{ news.id }}"
                              title="View">
                             <i class="mdi mdi-eye"></i>
                           </a>
@@ -118,8 +116,6 @@
         </div>
       </div>
     </div>
-    {% include "includes/modals/details/news_details.html" %}
-  </div>
 {% endblock content %}
 {% block my_styles %}
   <!-- DataTables -->

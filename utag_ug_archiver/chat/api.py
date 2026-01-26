@@ -23,10 +23,8 @@ def get_users_list(request):
     Excludes the current user
     Security: Only returns active users, excludes sensitive information
     """
-    # Security: Only return active users, exclude sensitive fields
-    users = User.objects.filter(
-        is_active=True
-    ).exclude(
+    # Security: Exclude current user and get users, exclude sensitive fields
+    users = User.objects.exclude(
         id=request.user.id
     ).select_related('profile_pic').values('id', 'other_name', 'surname', 'title', 'profile_pic')
     
@@ -196,8 +194,8 @@ def create_group_ajax(request):
         added_count = 0
         for member_id in member_ids:
             try:
-                # Security: Only add active users
-                user = User.objects.get(id=member_id, is_active=True)
+                # Security: Get user and validate they exist
+                user = User.objects.get(id=member_id)
                 # Security: Prevent duplicate memberships
                 if not GroupMembership.objects.filter(group=group, user=user).exists():
                     GroupMembership.objects.create(

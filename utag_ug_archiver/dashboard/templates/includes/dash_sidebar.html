@@ -115,17 +115,17 @@
                 {% endif %}
                 {% if perms.adverts.view_advertisement %}
                     <li>
-                        <a href="javascript: void(0);" class="has-arrow waves-effect">
+                        <a href="javascript: void(0);" class="has-arrow waves-effect {% if active_menu == 'adverts' %}mm-active{% endif %}">
                             <i class="fas fa-ad"></i>
                             <span>Advert Mgt</span>
                         </a>
-                        <ul class="sub-menu" aria-expanded="false">
+                        <ul class="sub-menu" aria-expanded="false" {% if active_menu == 'adverts' %}style="display: block;"{% endif %}>
                             <li>
                                 <a href="{% url 'dashboard:plans' %}">Plans</a>
                             </li>
                             {# Companies removed: route no longer exists after adverts refactor #}
                             <li>
-                                <a href="{% url 'dashboard:adverts' %}">Adverts</a>
+                                <a href="{% url 'dashboard:adverts' %}" {% if active_menu == 'adverts' %}class="active"{% endif %}>Adverts</a>
                             </li>
                         </ul>
                     </li>

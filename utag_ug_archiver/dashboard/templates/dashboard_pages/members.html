@@ -215,6 +215,18 @@
                 var profilePic = data.profile_pic || '{% static "dashboard/assets/images/users/profile.png" %}';
                 var groupBadges = data.groups.map(g => '<span class="badge bg-primary">' + g + '</span>').join(' ');
                 
+                // Build action buttons (show reset password for admins only)
+                var actionButtons = '';
+                {% if user.is_admin or user.is_superuser %}
+                actionButtons = `
+                    <div class="mt-3 d-flex gap-2">
+                        <button class="btn btn-warning btn-sm reset-member-password" data-member-id="${data.id}" data-member-name="${data.full_name}">
+                            <i class="mdi mdi-lock-reset"></i> Reset Password
+                        </button>
+                    </div>
+                `;
+                {% endif %}
+                
                 var html = `
                     <div class="container">
                         <div class="row mb-3">
@@ -278,6 +290,7 @@
                                         <p><strong>Status:</strong> <span class="badge ${data.is_active ? 'bg-success' : 'bg-danger'}">${data.is_active ? 'Active' : 'Inactive'}</span></p>
                                     </div>
                                 </div>
+                                ${actionButtons}
                             </div>
                         </div>
                     </div>
@@ -291,8 +304,314 @@
 
             // Function to display edit modal
             function showEditModal(data) {
-                alert('Edit functionality coming soon. For now, please use the admin panel.');
-                // TODO: Implement edit modal with form
+                // Build academic rank options
+                var academicRanks = [
+                    'Senior Lecturer', 'Lecturer', 'Professor', 'Associate Professor',
+                    'Senior Research Fellow', 'Assistant Lecturer', 'Research Fellow',
+                    'Senior Librarian', 'Research Associate', 'Dean', 'Pro-Vice-Chancellor',
+                    'Tutor', 'Librarian', 'Director', 'Assistant Research Fellow', 'Visiting Scholar'
+                ];
+                
+                // Trim the user's current academic rank
+                var currentRank = (data.academic_rank || '').trim();
+                
+                var rankOptions = '<option value="">-- Select Rank --</option>';
+                academicRanks.forEach(function(rank) {
+                    var selected = currentRank === rank.trim() ? ' selected' : '';
+                    rankOptions += `<option value="${rank}"${selected}>${rank}</option>`;
+                });
+                
+                // Build school options
+                var schoolOptions = '<option value="">-- Select School --</option>';
+                data.schools.forEach(function(school) {
+                    var selected = parseInt(data.school_id) === school.id ? ' selected' : '';
+                    schoolOptions += `<option value="${school.id}"${selected}>${school.name}</option>`;
+                });
+                
+                // Build college options
+                var collegeOptions = '<option value="">-- Select College --</option>';
+                data.colleges.forEach(function(college) {
+                    var selected = parseInt(data.college_id) === college.id ? ' selected' : '';
+                    collegeOptions += `<option value="${college.id}"${selected}>${college.name}</option>`;
+                });
+                
+                // Build department options
+                var departmentOptions = '<option value="">-- Select Department --</option>';
+                data.departments.forEach(function(dept) {
+                    var selected = parseInt(data.department_id) === dept.id ? ' selected' : '';
+                    departmentOptions += `<option value="${dept.id}"${selected}>${dept.name}</option>`;
+                });
+                
+                var html = `
+                    <div class="container">
+                        <form id="editMemberForm" class="needs-validation">
+                            <input type="hidden" name="member_id" value="${data.id}">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Title</strong></label>
+                                    <select class="form-select" name="title" required>
+                                        <option value="">-- Select Title --</option>
+                                        <option value="Prof."${data.title === 'Prof.' ? ' selected' : ''}>Prof.</option>
+                                        <option value="Prof. (Mrs.)"${data.title === 'Prof. (Mrs.)' ? ' selected' : ''}>Prof. (Mrs.)</option>
+                                        <option value="Dr."${data.title === 'Dr.' ? ' selected' : ''}>Dr.</option>
+                                        <option value="Dr. (Alhaji)"${data.title === 'Dr. (Alhaji)' ? ' selected' : ''}>Dr. (Alhaji)</option>
+                                        <option value="Mr."${data.title === 'Mr.' ? ' selected' : ''}>Mr.</option>
+                                        <option value="Mrs."${data.title === 'Mrs.' ? ' selected' : ''}>Mrs.</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Surname</strong></label>
+                                    <input type="text" class="form-control" name="surname" value="${data.surname}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Other Name(s)</strong></label>
+                                    <input type="text" class="form-control" name="other_name" value="${data.other_name}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Gender</strong></label>
+                                    <select class="form-select" name="gender">
+                                        <option value="">-- Select Gender --</option>
+                                        <option value="Male"${data.gender === 'Male' ? ' selected' : ''}>Male</option>
+                                        <option value="Female"${data.gender === 'Female' ? ' selected' : ''}>Female</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Email</strong></label>
+                                    <input type="email" class="form-control" value="${data.email}" disabled>
+                                    <small class="text-muted">Email cannot be changed</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Phone</strong></label>
+                                    <input type="text" class="form-control" name="phone_number" value="${data.phone_number}">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Staff ID</strong></label>
+                                    <input type="text" class="form-control" name="staff_id" value="${data.staff_id}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Academic Rank</strong></label>
+                                    <select class="form-select" name="academic_rank">
+                                        ${rankOptions}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label"><strong>School</strong></label>
+                                    <select class="form-select" name="school_id">
+                                        ${schoolOptions}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>College</strong></label>
+                                    <select class="form-select" name="college_id">
+                                        ${collegeOptions}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><strong>Department</strong></label>
+                                    <select class="form-select" name="department_id">
+                                        ${departmentOptions}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="mdi mdi-content-save"></i> Save Changes
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                
+                $('#memberDetailContent').html(html);
+                $('#memberDetailModalLabel').text('Edit Member — ' + data.full_name);
+                var modal = new bootstrap.Modal(document.getElementById('memberDetailModal'));
+                modal.show();
+                
+                // Handle form submission
+                $('#editMemberForm').on('submit', function(e) {
+                    e.preventDefault();
+                    
+                    var memberId = data.id;
+                    var formData = new FormData(this);
+                    var btn = $(this).find('button[type="submit"]');
+                    var originalText = btn.html();
+                    
+                    btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin"></i> Saving...');
+                    
+                    $.ajax({
+                        url: '/dashboard/account_management/members/update/' + memberId + '/',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        headers: {
+                            'X-CSRFToken': $('[name="csrfmiddlewaretoken"]').val() || getCookie('csrftoken')
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            btn.prop('disabled', false).html(originalText);
+                            
+                            // Show success message
+                            var successHtml = `
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <strong>Success!</strong> Member details updated successfully.
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            `;
+                            
+                            $('#memberDetailContent').prepend(successHtml);
+                            
+                            // Close modal after 2 seconds
+                            setTimeout(function() {
+                                modal.hide();
+                                table.ajax.reload(null, false);
+                            }, 1500);
+                        },
+                        error: function(xhr, status, error) {
+                            btn.prop('disabled', false).html(originalText);
+                            var errorMsg = 'Error updating member';
+                            if (xhr.responseJSON && xhr.responseJSON.error) {
+                                errorMsg = xhr.responseJSON.error;
+                            }
+                            alert('Error: ' + errorMsg);
+                        }
+                    });
+                });
+            }
+
+            // Handle reset password click
+            $(document).on('click', '.reset-member-password', function(e) {
+                e.preventDefault();
+                var memberId = $(this).data('member-id');
+                var memberName = $(this).data('member-name');
+                
+                // Professional confirmation dialog
+                if (!confirm(`Are you sure you want to reset the password for ${memberName}?\n\nA temporary password will be generated and the member will be required to set a new password on next login.`)) {
+                    return;
+                }
+                
+                // Show loading state
+                var btn = $(this);
+                var originalText = btn.html();
+                btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin"></i> Resetting...');
+                
+                // Make API call
+                $.ajax({
+                    url: '/dashboard/account_management/members/reset-password/' + memberId + '/',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': $('[name="csrfmiddlewaretoken"]').val() || getCookie('csrftoken')
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        btn.prop('disabled', false).html(originalText);
+                        
+                        // Show success message with password and copy button
+                        var successHtml = `
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <strong>Password Reset Successful!</strong>
+                                <p class="mb-2 mt-2">Member: <strong>${data.member_name}</strong> (${data.member_email})</p>
+                                <div class="mb-2 d-flex align-items-center gap-2">
+                                    <span>Temporary Password:</span>
+                                    <code id="temp-password-${data.temporary_password}" style="background: #f0f0f0; padding: 8px 12px; border-radius: 3px; word-break: break-all; flex: 1;">${data.temporary_password}</code>
+                                    <button type="button" class="btn btn-sm btn-outline-success copy-password-btn" data-password="${data.temporary_password}" title="Copy to clipboard">
+                                        <i class="mdi mdi-content-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <small>Member must change this password on next login.</small>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `;
+                        
+                        // Insert alert at top of modal body
+                        $('#memberDetailContent').prepend(successHtml);
+                        
+                        // Auto-dismiss after 8 seconds
+                        setTimeout(function() {
+                            $('#memberDetailContent .alert').fadeOut('slow', function() {
+                                $(this).remove();
+                            });
+                        }, 8000);
+                    },
+                    error: function(xhr, status, error) {
+                        btn.prop('disabled', false).html(originalText);
+                        var errorMsg = 'Error resetting password';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        alert('Error: ' + errorMsg);
+                    }
+                });
+            });
+
+            // Handle copy password button click
+            $(document).on('click', '.copy-password-btn', function(e) {
+                e.preventDefault();
+                var password = $(this).data('password');
+                var btn = $(this);
+                var originalText = btn.html();
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(password).then(function() {
+                    // Show success feedback
+                    btn.html('<i class="mdi mdi-check"></i> Copied!').addClass('btn-success').removeClass('btn-outline-success');
+                    
+                    // Revert after 2 seconds
+                    setTimeout(function() {
+                        btn.html(originalText).removeClass('btn-success').addClass('btn-outline-success');
+                    }, 2000);
+                }).catch(function(err) {
+                    // Fallback: select text manually
+                    var tempInput = document.createElement('textarea');
+                    tempInput.value = password;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    
+                    btn.html('<i class="mdi mdi-check"></i> Copied!').addClass('btn-success').removeClass('btn-outline-success');
+                    setTimeout(function() {
+                        btn.html(originalText).removeClass('btn-success').addClass('btn-outline-success');
+                    }, 2000);
+                });
+            });
+
+            // Helper function to get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
             }
         });
     </script>

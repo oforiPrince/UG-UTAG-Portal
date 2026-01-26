@@ -434,6 +434,25 @@ class AdvertUpdateView(PermissionRequiredMixin, View):
 
         messages.success(request, 'Advert updated successfully')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+class AdvertDetailView(PermissionRequiredMixin, View):
+    permission_required = 'adverts.view_ad'
+    template_name = 'dashboard_pages/advert_detail.html'
+    
+    @method_decorator(MustLogin)
+    def get(self, request, advert_id):
+        advert = Ad.objects.get(id=advert_id)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
+        context = {
+            'advert': advert,
+            'notifications': notifications,
+            'notification_count': notification_count,
+            'active_menu': 'adverts'
+        }
+        return render(request, self.template_name, context)
     
 class AdvertDeleteView(PermissionRequiredMixin, View):
     permission_required = 'adverts.delete_ad'
@@ -443,7 +462,7 @@ class AdvertDeleteView(PermissionRequiredMixin, View):
         advert.delete()
         messages.success(request, 'Advert deleted successfully')
         return redirect('dashboard:adverts')
-    
+
 
 class PlansView(PermissionRequiredMixin, View):
     """Render the advert plans page.

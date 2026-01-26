@@ -34,6 +34,7 @@ class NewsCreateUpdateView(View):
     @method_decorator(MustLogin)
     def get(self, request, news_id=None):
         tags = Tag.objects.all()
+        news = None
         try:
             if news_id:
                 news = get_object_or_404(News, id=news_id)
@@ -56,7 +57,7 @@ class NewsCreateUpdateView(View):
                     'attached_documents': [],
                     'featured_image': None,
                 }
-            return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags, 'active_menu': 'news'})
+            return render(request, self.template_name, {'initial_data': initial_data, 'news': news, 'tags': tags, 'active_menu': 'news'})
         except Exception as e:
             messages.error(request, f"Error loading news form: {e}")
             return redirect('dashboard:news')
@@ -194,6 +195,25 @@ class NewsUpdateView(View):
         messages.info(request, "News Updated Successfully")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
+class NewsDetailView(View):
+    template_name = 'dashboard_pages/news_detail.html'
+    
+    @method_decorator(MustLogin)
+    def get(self, request, news_id):
+        news = get_object_or_404(News, id=news_id)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
+        context = {
+            'news': news,
+            'notifications': notifications,
+            'notification_count': notification_count,
+            'active_menu': 'news'
+        }
+        return render(request, self.template_name, context)
+
+
 class NewsDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):

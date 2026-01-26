@@ -4,7 +4,7 @@ from django.views import View
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.utils.decorators import method_decorator
 from django.db.models import Q
-from accounts.models import User
+from accounts.models import User, Department, School, College
 from utag_ug_archiver.utils.decorators import MustLogin
 
 logger = logging.getLogger(__name__)
@@ -117,6 +117,11 @@ class MemberDetailAPIView(PermissionRequiredMixin, View):
             # Get groups as list
             groups = list(user.groups.values_list('name', flat=True))
             
+            # Get schools, colleges, departments for dropdowns
+            schools = [{'id': s.id, 'name': s.name} for s in School.objects.all()]
+            colleges = [{'id': c.id, 'name': c.name} for c in College.objects.all()]
+            departments = [{'id': d.id, 'name': d.name} for d in Department.objects.all()]
+            
             return JsonResponse({
                 'id': user.id,
                 'title': user.title or '',
@@ -138,10 +143,134 @@ class MemberDetailAPIView(PermissionRequiredMixin, View):
                 'college_id': user.college.id if user.college else '',
                 'college_name': user.college.name if user.college else '',
                 'is_active': user.is_active,
+                'schools': schools,
+                'colleges': colleges,
+                'departments': departments,
             })
         except User.DoesNotExist:
             return JsonResponse({'error': 'Member not found'}, status=404)
         except Exception as e:
             logger.error(f"MemberDetailAPIView error: {e}", exc_info=True)
+            return JsonResponse({'error': str(e)}, status=500)
+
+
+class MemberPasswordResetAPIView(PermissionRequiredMixin, View):
+    """API for admin to reset a member's password.
+    
+    Generates a temporary password and resets the user's password.
+    Logs the action for audit trail.
+    """
+    permission_required = 'accounts.change_member'
+    
+    @method_decorator(MustLogin)
+    def post(self, request, member_id):
+        try:
+            user = User.objects.get(id=member_id, groups__name='Member')
+            
+            # Generate a temporary password
+            import uuid
+            temporary_password = str(uuid.uuid4())[:12]
+            
+            # Set the temporary password
+            user.set_password(temporary_password)
+            user.must_change_password = True  # Force password change on next login
+            user.save()
+            
+            # Log the action
+            logger.info(
+                f"Password reset by {request.user.get_full_name()} ({request.user.email}) "
+                f"for member {user.get_full_name()} ({user.email}). "
+                f"Member must change password on next login."
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Password reset successfully. Temporary password: {temporary_password}',
+                'temporary_password': temporary_password,
+                'member_name': user.get_full_name(),
+                'member_email': user.email,
+            })
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Member not found'}, status=404)
+        except Exception as e:
+            logger.error(f"MemberPasswordResetAPIView error: {e}", exc_info=True)
+            return JsonResponse({'error': str(e)}, status=500)
+
+
+class MemberUpdateAPIView(PermissionRequiredMixin, View):
+    """API for admin to update member details.
+    
+    Updates member profile information like name, phone, academic rank, department, etc.
+    """
+    permission_required = 'accounts.change_member'
+    
+    @method_decorator(MustLogin)
+    def post(self, request, member_id):
+        try:
+            user = User.objects.get(id=member_id, groups__name='Member')
+            
+            # Get form data
+            title = request.POST.get('title')
+            surname = request.POST.get('surname')
+            other_name = request.POST.get('other_name')
+            phone_number = request.POST.get('phone_number')
+            academic_rank = request.POST.get('academic_rank')
+            gender = request.POST.get('gender')
+            staff_id = request.POST.get('staff_id')
+            school_id = request.POST.get('school_id')
+            college_id = request.POST.get('college_id')
+            department_id = request.POST.get('department_id')
+            
+            # Update fields
+            if title:
+                user.title = title
+            if surname:
+                user.surname = surname
+            if other_name:
+                user.other_name = other_name
+            if phone_number is not None:
+                user.phone_number = phone_number
+            if academic_rank:
+                user.academic_rank = academic_rank
+            if gender:
+                user.gender = gender
+            if staff_id is not None:
+                user.staff_id = staff_id
+            
+            # Update foreign keys
+            if school_id:
+                try:
+                    user.school = School.objects.get(id=school_id)
+                except School.DoesNotExist:
+                    pass
+            
+            if college_id:
+                try:
+                    user.college = College.objects.get(id=college_id)
+                except College.DoesNotExist:
+                    pass
+            
+            if department_id:
+                try:
+                    user.department = Department.objects.get(id=department_id)
+                except Department.DoesNotExist:
+                    pass
+            
+            user.save()
+            
+            # Log the action
+            logger.info(
+                f"Member {user.get_full_name()} ({user.email}) updated by admin {request.user.get_full_name()}"
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Member {user.get_full_name()} updated successfully',
+                'member_name': user.get_full_name(),
+            })
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Member not found'}, status=404)
+        except Exception as e:
+            logger.error(f"MemberUpdateAPIView error: {e}", exc_info=True)
             return JsonResponse({'error': str(e)}, status=500)
 

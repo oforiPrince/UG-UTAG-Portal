@@ -4,6 +4,7 @@
 {% block title %}
     Profile
 {% endblock title %}
+
 {% block content %}
     <div class="page-content">
         <div class="container-fluid">
@@ -28,10 +29,14 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="d-flex flex-column align-items-center text-center">
-                                {% if request.user.profile_pic %}
-                                    {% lazy_img request.user.profile_pic.url request.user.get_full_name "rounded-circle p-1 bg-primary" "profile" %}
+                                {% if request.user.is_active_executive and request.user.executive_image %}
+                                    {% lazy_img request.user.get_executive_image_url request.user.get_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
+                                {% elif request.user.profile_pic %}
+                                    {% lazy_img request.user.get_profile_pic_url request.user.get_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
                                 {% else %}
-                                    <img src="{% static 'dashboard/assets/images/users/profile.png' %}" alt="Profile" class="rounded-circle p-1 bg-primary" width="120" height="120" loading="lazy" decoding="async" />
+                                    <div class="rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background: linear-gradient(135deg, #002147 0%, #004d7f 100%); color: white; font-weight: bold; font-size: 36px;">
+                                        {{ request.user.other_name.0|upper }}{{ request.user.surname.0|upper }}
+                                    </div>
                                 {% endif %}
                                 <div class="mt-3">
                                     <h4>{{ request.user.get_full_name }}</h4>
@@ -53,6 +58,14 @@
                                           enctype="multipart/form-data">
                                         {% csrf_token %}
                                         <input type="file" name="profile_picture" class="form-control" />
+                                        {% if request.user.is_active_executive %}
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1" id="useAsExecutiveImage" name="use_as_executive_image">
+                                            <label class="form-check-label" for="useAsExecutiveImage">
+                                                Use this image as my executive photo on the website
+                                            </label>
+                                        </div>
+                                        {% endif %}
                                         <input type="submit"
                                                class="btn btn-light px-4 mt-2 form-control"
                                                value="Change Profile Picture" />
@@ -73,13 +86,12 @@
                                     </div>
                                     <div class="col-sm-9">
                                         <select class="form-select" name="title">
-                                            <option value="Mr." {% if request.user.title == 'Mr.' %}selected{% endif %}>Mr</option>
-                                            <option value="Mrs." {% if request.user.title == 'Mrs.' %}selected{% endif %}>Mrs</option>
-                                            <option value="Dr." {% if request.user.title == 'Dr.' %}selected{% endif %}>Dr</option>
-                                            <option value="Prof."
-                                                    {% if request.user.title == 'Prof.' %}selected{% endif %}>
-                                                Prof
-                                            </option>
+                                            <option value="Prof." {% if request.user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                                            <option value="Prof. (Mrs.)" {% if request.user.title == 'Prof. (Mrs.)' %}selected{% endif %}>Prof. (Mrs.)</option>
+                                            <option value="Dr." {% if request.user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                                            <option value="Dr. (Alhaji)" {% if request.user.title == 'Dr. (Alhaji)' %}selected{% endif %}>Dr. (Alhaji)</option>
+                                            <option value="Mr." {% if request.user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                                            <option value="Mrs." {% if request.user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
                                         </select>
                                     </div>
                                 </div>
@@ -125,9 +137,120 @@
                                         <input type="text"
                                                class="form-control"
                                                name="phone"
-                                               value="{{ request.user.phone_number }}" />
+                                               value="{{ request.user.phone_number|default_if_none:'' }}" />
                                     </div>
                                 </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">Academic Rank</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <select class="form-select" name="academic_rank">
+                                            <option value="">-- Select Academic Rank --</option>
+                                            <option value="Senior Lecturer" {% if request.user.academic_rank == 'Senior Lecturer' %}selected{% endif %}>Senior Lecturer</option>
+                                            <option value="Lecturer" {% if request.user.academic_rank == 'Lecturer' %}selected{% endif %}>Lecturer</option>
+                                            <option value="Professor" {% if request.user.academic_rank == 'Professor' %}selected{% endif %}>Professor</option>
+                                            <option value="Associate Professor" {% if request.user.academic_rank == 'Associate Professor' %}selected{% endif %}>Associate Professor</option>
+                                            <option value="Senior Research Fellow" {% if request.user.academic_rank == 'Senior Research Fellow' %}selected{% endif %}>Senior Research Fellow</option>
+                                            <option value="Assistant Lecturer" {% if request.user.academic_rank == 'Assistant Lecturer' %}selected{% endif %}>Assistant Lecturer</option>
+                                            <option value="Research Fellow" {% if request.user.academic_rank == 'Research Fellow' %}selected{% endif %}>Research Fellow</option>
+                                            <option value="Senior Librarian" {% if request.user.academic_rank == 'Senior Librarian' %}selected{% endif %}>Senior Librarian</option>
+                                            <option value="Research Associate" {% if request.user.academic_rank == 'Research Associate' %}selected{% endif %}>Research Associate</option>
+                                            <option value="Dean" {% if request.user.academic_rank == 'Dean' %}selected{% endif %}>Dean</option>
+                                            <option value="Pro-Vice-Chancellor" {% if request.user.academic_rank == 'Pro-Vice-Chancellor' %}selected{% endif %}>Pro-Vice-Chancellor</option>
+                                            <option value="Tutor" {% if request.user.academic_rank == 'Tutor' %}selected{% endif %}>Tutor</option>
+                                            <option value="Librarian" {% if request.user.academic_rank == 'Librarian' %}selected{% endif %}>Librarian</option>
+                                            <option value="Director" {% if request.user.academic_rank == 'Director' %}selected{% endif %}>Director</option>
+                                            <option value="Assistant Research Fellow" {% if request.user.academic_rank == 'Assistant Research Fellow' %}selected{% endif %}>Assistant Research Fellow</option>
+                                            <option value="Visiting Scholar" {% if request.user.academic_rank == 'Visiting Scholar' %}selected{% endif %}>Visiting Scholar</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">School</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                           <select class="form-select select2 select2-searchable" name="school_id" placeholder="Search School...">
+                                               <option value=""></option>
+                                            {% for school in schools %}
+                                                <option value="{{ school.id }}" {% if request.user.school.id == school.id %}selected{% endif %}>{{ school.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">College</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                           <select class="form-select select2 select2-searchable" name="college_id" placeholder="Search College...">
+                                               <option value=""></option>
+                                            {% for college in colleges %}
+                                                <option value="{{ college.id }}" {% if request.user.college.id == college.id %}selected{% endif %}>{{ college.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">Department</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                           <select class="form-select select2 select2-searchable" name="department_id" placeholder="Search Department...">
+                                               <option value=""></option>
+                                            {% for dept in departments %}
+                                                <option value="{{ dept.id }}" {% if request.user.department.id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                {% if request.user.is_active_executive %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">Executive Bio</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <textarea id="executive_bio" class="form-control" name="executive_bio" rows="6">{{ request.user.executive_bio|default_if_none:'' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">Facebook Profile URL</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <input type="url"
+                                               class="form-control"
+                                               name="fb_profile_url"
+                                               placeholder="https://facebook.com/username"
+                                               value="{{ request.user.fb_profile_url|default_if_none:'' }}" />
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">Twitter Profile URL</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <input type="url"
+                                               class="form-control"
+                                               name="twitter_profile_url"
+                                               placeholder="https://twitter.com/username"
+                                               value="{{ request.user.twitter_profile_url|default_if_none:'' }}" />
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-3">
+                                        <h6 class="mb-0">LinkedIn Profile URL</h6>
+                                    </div>
+                                    <div class="col-sm-9">
+                                        <input type="url"
+                                               class="form-control"
+                                               name="linkedin_profile_url"
+                                               placeholder="https://linkedin.com/in/username"
+                                               value="{{ request.user.linkedin_profile_url|default_if_none:'' }}" />
+                                    </div>
+                                </div>
+                                {% endif %}
                                 <div class="row mb-3">
                                     <small style="color: burlywood;">Leave Password fields blank if you don't want to reset password</small>
                                 </div>
@@ -170,3 +293,52 @@
             </div>
         </div>
     {% endblock content %}
+
+    {% block my_scripts %}
+    <script src="https://cdn.tiny.cloud/1/o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an/tinymce/7/tinymce.min.js"
+          referrerpolicy="origin"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Robust Select2 init (wait for jQuery & plugin readiness)
+            function initSelect2WithRetry(retries) {
+                if (window.jQuery && $.fn && $.fn.select2) {
+                    $('.select2-searchable').select2({
+                        placeholder: function() {
+                            return $(this).attr('placeholder') || 'Search...';
+                        },
+                        allowClear: true,
+                        width: '100%'
+                    });
+                    return;
+                }
+                if (retries > 0) {
+                    setTimeout(function() { initSelect2WithRetry(retries - 1); }, 150);
+                }
+            }
+            initSelect2WithRetry(10);
+
+            document.querySelectorAll('.select2-searchable').forEach(function(selectEl) {
+                var totalOptions = selectEl.querySelectorAll('option[value]:not([value=""])').length;
+                if (totalOptions === 0) {
+                    var notice = document.createElement('small');
+                    notice.className = 'text-muted d-block mt-1';
+                    notice.textContent = 'No options available yet.';
+                    selectEl.parentElement.appendChild(notice);
+                }
+            });
+
+            const bioElement = document.getElementById('executive_bio');
+            if (bioElement) {
+                tinymce.init({
+                    selector: '#executive_bio',
+                    height: 300,
+                    plugins: ['advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen', 'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'],
+                    toolbar: 'undo redo | blocks | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+                    menubar: false,
+                    branding: false,
+                    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; font-size: 14px; }',
+                });
+            }
+        });
+    </script>
+    {% endblock my_scripts %}
