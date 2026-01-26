@@ -1113,10 +1113,10 @@ img[loading="lazy"].loaded {
    ========================================================================== */
 
 .utag-executive-card .utag-executive-info h4 {
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 
 .utag-executive-card .utag-executive-position {
-  text-transform: uppercase;
+  text-transform: capitalize;
   letter-spacing: 0.4px;
 }
