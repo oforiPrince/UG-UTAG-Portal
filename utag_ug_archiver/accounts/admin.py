@@ -14,7 +14,7 @@ admin.site.site_header = "UTAG-UG Archiver Admin"
 admin.site.site_title = "UTAG-UG Archiver Admin Portal"
 admin.site.index_title = "Welcome to UTAG-UG Archiver Portal"
 
-from .models import User
+from .models import User, School, College, Department
 
 
 class UserCreationForm(forms.ModelForm):
@@ -90,3 +90,25 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(User, UserAdmin)
+
+
+class SchoolAdmin(admin.ModelAdmin):
+	list_display = ('name',)
+	search_fields = ('name',)
+
+
+class CollegeAdmin(admin.ModelAdmin):
+	list_display = ('name', 'school')
+	search_fields = ('name', 'school__name')
+	list_filter = ('school',)
+
+
+class DepartmentAdmin(admin.ModelAdmin):
+	list_display = ('name', 'college')
+	search_fields = ('name', 'college__name')
+	list_filter = ('college',)
+
+
+admin.site.register(School, SchoolAdmin)
+admin.site.register(College, CollegeAdmin)
+admin.site.register(Department, DepartmentAdmin)
