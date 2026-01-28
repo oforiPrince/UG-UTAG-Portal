@@ -1,6 +1,7 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
 {% load image_tags %}
+{% load name_filters %}
 {% block title %}
     Profile
 {% endblock title %}
@@ -30,16 +31,16 @@
                         <div class="card-body">
                             <div class="d-flex flex-column align-items-center text-center">
                                 {% if request.user.is_active_executive and request.user.executive_image %}
-                                    {% lazy_img request.user.get_executive_image_url request.user.get_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
+                                    {% lazy_img request.user.get_executive_image_url request.user|format_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
                                 {% elif request.user.profile_pic %}
-                                    {% lazy_img request.user.get_profile_pic_url request.user.get_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
+                                    {% lazy_img request.user.get_profile_pic_url request.user|format_full_name "rounded-circle p-1" "profile" width="120" height="120" %}
                                 {% else %}
                                     <div class="rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background: linear-gradient(135deg, #002147 0%, #004d7f 100%); color: white; font-weight: bold; font-size: 36px;">
                                         {{ request.user.other_name.0|upper }}{{ request.user.surname.0|upper }}
                                     </div>
                                 {% endif %}
                                 <div class="mt-3">
-                                    <h4>{{ request.user.get_full_name }}</h4>
+                                    <h4>{{ request.user|format_full_name }}</h4>
                                     <p class="mb-1">
                                         {% if request.user.is_superuser or request.user.is_admin %}
                                             Admin
@@ -86,12 +87,10 @@
                                     </div>
                                     <div class="col-sm-9">
                                         <select class="form-select" name="title">
-                                            <option value="Prof." {% if request.user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
-                                            <option value="Prof. (Mrs.)" {% if request.user.title == 'Prof. (Mrs.)' %}selected{% endif %}>Prof. (Mrs.)</option>
-                                            <option value="Dr." {% if request.user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
-                                            <option value="Dr. (Alhaji)" {% if request.user.title == 'Dr. (Alhaji)' %}selected{% endif %}>Dr. (Alhaji)</option>
-                                            <option value="Mr." {% if request.user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
-                                            <option value="Mrs." {% if request.user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                                            {% get_title_choices as title_choices %}
+                                            {% for val,label in title_choices %}
+                                                <option value="{{ val }}" {% if request.user.title == val %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
                                         </select>
                                     </div>
                                 </div>

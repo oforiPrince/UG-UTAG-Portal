@@ -1,0 +1,33 @@
+<!--
+Reusable create button include.
+Usage: include the file using the include tag, for example:
+  include "includes/create_button.html" with create_url="..." create_label="Add Item"
+Renders a full-size button for md+ and a compact icon button for small screens.
+-->
+<span class="create-button-wrapper d-inline-flex align-items-center gap-2">
+  {% if create_target %}
+    <div class="d-none d-md-block">
+      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="{{ create_target }}" aria-label="{{ create_label }}">
+        <i class="mdi mdi-plus-circle me-1"></i> {{ create_label }}
+      </button>
+    </div>
+    <div class="d-block d-md-none">
+      <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="{{ create_target }}" aria-label="{{ create_label }}">
+        <i class="mdi mdi-plus"></i>
+        <span class="ms-1 d-inline d-md-none small">{{ create_label|truncatechars:14 }}</span>
+      </button>
+    </div>
+  {% else %}
+    <div class="d-none d-md-block">
+      <a class="btn btn-primary" href="{{ create_url }}" aria-label="{{ create_label }}">
+        <i class="mdi mdi-plus-circle me-1"></i> {{ create_label }}
+      </a>
+    </div>
+    <div class="d-block d-md-none">
+      <a class="btn btn-primary btn-sm" href="{{ create_url }}" aria-label="{{ create_label }}">
+        <i class="mdi mdi-plus"></i>
+        <span class="ms-1 d-inline d-md-none small">{{ create_label|truncatechars:14 }}</span>
+      </a>
+    </div>
+  {% endif %}
+</span>

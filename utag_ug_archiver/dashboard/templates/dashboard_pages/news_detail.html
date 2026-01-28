@@ -1,6 +1,7 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
 {% load image_tags %}
+{% load name_filters %}
 
 {% block title %}
     {{ news.title }} — News
@@ -60,7 +61,7 @@
                                 <div class="col-md-6">
                                     <p class="mb-2">
                                         <strong>Author:</strong>
-                                        <span>{{ news.author.get_full_name }}</span>
+                                        <span>{{ news.author|format_full_name }}</span>
                                     </p>
                                     <p class="mb-2">
                                         <strong>Created:</strong>

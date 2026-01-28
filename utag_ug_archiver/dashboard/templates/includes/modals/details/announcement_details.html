@@ -1,4 +1,5 @@
 <!-- Modal for Announcement Details -->
+{% load name_filters %}
 {% for announcement in announcements %}
 <div
   class="modal fade bs-example-modal-lg"
@@ -38,7 +39,7 @@
                 <div class="col-md-6">
                   <p>
                     <strong>Created By:</strong>
-                    {{ announcement.created_by.get_full_name }}
+                    {{ announcement.created_by|format_full_name }}
                   </p>
                   <p>
                     <strong>Created At:</strong>

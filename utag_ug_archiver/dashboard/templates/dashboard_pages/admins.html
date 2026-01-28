@@ -30,18 +30,8 @@
                                     <h4 class="card-title">Administrators — Directory</h4>
                                 </div>
                                 {% if has_add_permission %}
-                                    <div class="col-md-4">
-                                        <div class="float-end d-none d-md-block">
-                                            <!-- <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#uploadAdminsModal">
-                                                <i class="mdi mdi-upload me-1"></i> Bulk upload of member
-                                            </button> -->
-                                            <button class="btn btn-primary"
-                                                    type="button"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#addAdminModal">
-                                                <i class="mdi mdi-plus me-1"></i> Add Admin
-                                            </button>
-                                        </div>
+                                    <div class="col-md-4 d-flex justify-content-end align-items-center">
+                                        {% include "includes/create_button.html" with create_target="#addAdminModal" create_label="Add Admin" %}
                                     </div>
                                 {% endif %}
                             </div>

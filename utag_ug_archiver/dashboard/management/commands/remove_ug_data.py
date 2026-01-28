@@ -2,6 +2,9 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import School, College, Department
+from django.contrib.auth.models import Group, Permission
+from django.contrib.auth import get_user_model
+from django.db.models import Count
 
 
 class Command(BaseCommand):
@@ -226,6 +229,20 @@ class Command(BaseCommand):
                 self.stdout.write(f'  College: {name}')
             for name in school_names:
                 self.stdout.write(f'  School: {name}')
+            # Show groups and orphaned permissions that would be deleted
+            group_names = set(dept_names + college_names + school_names)
+            self.stdout.write('\nDRY RUN: Matching Groups that would be deleted:')
+            for name in sorted(group_names):
+                self.stdout.write(f'  Group: {name}')
+
+            # Orphaned permissions (no groups and no users)
+            orphan_perms = Permission.objects.annotate(gcount=Count('group'), ucount=Count('user')).filter(gcount=0, ucount=0)
+            if orphan_perms.exists():
+                self.stdout.write('\nDRY RUN: Orphaned Permissions that would be deleted:')
+                for p in orphan_perms:
+                    self.stdout.write(f'  Permission: {p.content_type.app_label}.{p.codename} ({p.name})')
+            else:
+                self.stdout.write('\nDRY RUN: No orphaned Permissions found for deletion.')
             return
 
         # Perform deletions in order to respect FK constraints: Departments -> Colleges -> Schools
@@ -241,7 +258,27 @@ class Command(BaseCommand):
             schools_qs = School.objects.filter(name__in=school_names)
             scount = schools_qs.count()
             schools_qs.delete()
+            # Also delete any auth Groups that were created for these units
+            group_names = set(dept_names + college_names + school_names)
+            groups_qs = Group.objects.filter(name__in=group_names)
+            gcount = groups_qs.count()
+
+            # Remove group memberships from users to clean M2M entries (safer explicit cleanup)
+            User = get_user_model()
+            affected_users_qs = User.objects.filter(groups__in=groups_qs).distinct()
+            affected_user_count = affected_users_qs.count()
+            for group in groups_qs:
+                # clear memberships for this group
+                group.user_set.clear()
+
+            # Delete groups
+            groups_qs.delete()
+
+            # Delete orphaned permissions (permissions not assigned to any group or user)
+            orphan_perms_qs = Permission.objects.annotate(gcount=Count('group'), ucount=Count('user')).filter(gcount=0, ucount=0)
+            opcount = orphan_perms_qs.count()
+            orphan_perms_qs.delete()
 
         self.stdout.write(self.style.SUCCESS(
-            f'Deleted {dcount} departments, {ccount} colleges, {scount} schools.'
+            f'Deleted {dcount} departments, {ccount} colleges, {scount} schools, {gcount} groups; cleaned {affected_user_count} user-group memberships; deleted {opcount} orphaned permissions.'
         ))

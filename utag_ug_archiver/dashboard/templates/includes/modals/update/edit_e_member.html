@@ -1,4 +1,5 @@
 <!-- Existing Member Modal -->
+{% load name_filters %}
 {% for executive in executive_officers %}
   <div class="modal fade bs-example-modal-lg"
        id="editOfficerModal_{{ executive.id }}"
@@ -23,7 +24,7 @@
             <div class="mb-3">
               <label class="form-label">Select a member</label>
               <select class="form-control select2 member-search" id="member_{{ executive.id }}" name="member_id">
-                <option value="{{ executive.id }}" selected>{{ executive.get_full_name }}</option>
+                <option value="{{ executive.id }}" selected>{{ executive|format_full_name }}</option>
               </select>
             </div>
             <hr class="mt-4 mb-4">
@@ -38,7 +39,7 @@
                         {% if executive.executive_position == 'President' %}selected{% endif %}>President</option>
                 <option value="Vice President"
                         {% if executive.executive_position == 'Vice President' %}selected{% endif %}>
-                  Vice President
+                  Vice-President
                 </option>
                 <option value="Secretary"
                         {% if executive.executive_position == 'Secretary' %}selected{% endif %}>Secretary</option>
@@ -55,18 +56,18 @@
                         {% if executive.executive_position == 'National President' %}selected{% endif %}>
                   National President
                 </option>                <option value="CBAS Rep"
-                        {% if executive.executive_position == 'CBAS Rep' %}selected{% endif %}>CBAS Rep</option>
+                  {% if executive.executive_position == 'CBAS Rep' %}selected{% endif %}>Rep CBAS</option>
                 <option value="College of Humanities Rep"
                         {% if executive.executive_position == 'College of Humanities Rep' %}selected{% endif %}>
-                  College of Humanities Rep
+                  Rep COH
                 </option>
                 <option value="College of Health Rep"
                         {% if executive.executive_position == 'College of Health Rep' %}selected{% endif %}>
-                  College of Health Rep
+                  Rep CHS
                 </option>
                 <option value="College of Education Rep"
                         {% if executive.executive_position == 'College of Education Rep' %}selected{% endif %}>
-                  College of Education Rep
+                  Rep COE
                 </option>
               </select>
             </div>

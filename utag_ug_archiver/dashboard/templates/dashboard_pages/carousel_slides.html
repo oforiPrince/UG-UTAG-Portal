@@ -30,13 +30,9 @@
                   <h4 class="card-title">Carousel Slides — Banner Content</h4>
                 </div>
                 {% if perms.dashboard.add_carouselslide %}
-                  <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                      <a class="btn btn-primary"
-                         href="{% url 'dashboard:carousel_slide_create' %}">
-                        <i class="mdi mdi-plus-circle me-1"></i> Add Slide
-                      </a>
-                    </div>
+                  <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    {% url 'dashboard:carousel_slide_create' as create_slide_url %}
+                    {% include "includes/create_button.html" with create_url=create_slide_url create_label="Add Slide" %}
                   </div>
                 {% endif %}
               </div>
@@ -115,7 +111,7 @@
                   </tbody>
                 </table>
               </div>
-            </div>
+          </div>
           </div>
         </div>
       </div>

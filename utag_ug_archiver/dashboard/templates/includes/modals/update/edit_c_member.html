@@ -1,3 +1,4 @@
+{% load name_filters %}
 {% for executive in executive_committee_members %}
   <div class="modal fade bs-example-modal-lg"
        id="editOfficerModal_{{ executive.id }}"
@@ -25,7 +26,7 @@
                 <optgroup label="List of Members">
                   {% for member in members %}
                     <option {% if member.email == executive.member.email %}selected{% endif %}
-                            value="{{ member.email }}">{{ member.get_full_name }}</option>
+                            value="{{ member.email }}">{{ member|format_full_name }}</option>
                   {% endfor %}
                 </optgroup>
               </select>
@@ -63,7 +64,7 @@
                 <option value="President"
                         {% if executive.position.name == 'President' %}selected{% endif %}>President</option>
                 <option value="Vice President"
-                        {% if executive.position.name == 'Vice President' %}selected{% endif %}>Vice President</option>
+                  {% if executive.position.name == 'Vice President' %}selected{% endif %}>Vice-President</option>
                 <option value="Secretary"
                         {% if executive.position.name == 'Secretary' %}selected{% endif %}>Secretary</option>
                 <option value="Treasurer"

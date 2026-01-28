@@ -31,14 +31,7 @@
                 </div>
                 {% if user.is_admin or user.is_superuser %}
                   <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                      <button class="btn btn-primary"
-                              type="button"
-                              data-bs-toggle="modal"
-                              data-bs-target="#createAdvertisingCompanyModal">
-                        <i class="mdi mdi-plus-circle me-1"></i> Add Company
-                      </button>
-                    </div>
+                    {% include "includes/create_button.html" with create_target="#createAdvertisingCompanyModal" create_label="Add Company" %}
                   </div>
                 {% endif %}
               </div>

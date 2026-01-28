@@ -1,5 +1,6 @@
 <!-- Modal for Event Details -->
 {% load image_tags %}
+{% load name_filters %}
 {% for event in events %}
   <div class="modal fade bs-example-modal-lg"
        id="eventModal_{{ event.id }}"
@@ -51,7 +52,7 @@
               </p>
               <p>
                 <strong>Created By:</strong>
-                {{ event.created_by.get_full_name }}
+                {{ event.created_by|format_full_name }}
               </p>
               <p>
                 <strong>Created At:</strong>

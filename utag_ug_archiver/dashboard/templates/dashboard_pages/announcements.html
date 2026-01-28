@@ -30,13 +30,9 @@
                   <h4 class="card-title">Announcements — Active & Archived</h4>
                 </div>
                 {% if perms.dashboard.add_announcement %}
-                  <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                      <a class="btn btn-primary"
-                         href="{% url 'dashboard:create_announcement' %}">
-                        <i class="mdi mdi-plus-circle me-1"></i> Add Announcement
-                      </a>
-                    </div>
+                  <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    {% url 'dashboard:create_announcement' as create_announcement_url %}
+                    {% include "includes/create_button.html" with create_url=create_announcement_url create_label="Add Announcement" %}
                   </div>
                 {% endif %}
               </div>

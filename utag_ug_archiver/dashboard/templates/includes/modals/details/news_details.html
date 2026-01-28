@@ -1,5 +1,6 @@
 <!-- Modal for News Details -->
 {% load image_tags %}
+{% load name_filters %}
 {% for news in newss %}
     <!-- Modernized Modal for News Details -->
     <div class="modal fade"
@@ -30,7 +31,7 @@
                             <p class="mb-2">{{ news.content|safe }}</p>
                             <p class="mb-2">
                                 <strong>Author:</strong>
-                                {{ news.author.get_full_name }}
+                                {{ news.author|format_full_name }}
                             </p>
                             {% if news.tags.exists %}
                                 <p class="mb-2">

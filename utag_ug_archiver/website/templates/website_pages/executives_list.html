@@ -1,6 +1,7 @@
 {% extends "base/website_base.html" %}
 {% load static %}
 {% load image_tags %}
+{% load name_filters %}
 
 {% block title %}Executive Profiles{% endblock %}
 
@@ -17,13 +18,13 @@
       {% for u in executives %}
       <div class="col-md-6 col-lg-4">
         <div class="card h-100 shadow-sm">
-          {% if u.profile_pic %}
-            {% lazy_img u.profile_pic.url u.get_full_name "card-img-top" "profile" %}
+            {% if u.profile_pic %}
+            {% lazy_img u.profile_pic.url u|format_full_name "card-img-top" "profile" %}
           {% endif %}
           <div class="card-body">
             <h5 class="card-title mb-0">
               <a href="#" class="text-decoration-none" data-bio-modal
-                 data-name="{{ u.get_full_name }}"
+                 data-name="{{ u|format_full_name }}"
                  data-position="{{ u.title }}{% if u.academic_rank %} • {{ u.academic_rank }}{% endif %}"
                  data-affiliation="{% if u.school %}School: {{ u.school.name }}{% endif %}{% if u.college %} | College: {{ u.college.name }}{% endif %}{% if u.department %} | Dept: {{ u.department.name }}{% endif %}"
                  data-bio="{{ u.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"

@@ -199,12 +199,21 @@
                       <i class="mdi mdi-cog-outline me-2"></i>Publication Settings
                     </h5>
                     
-                    <div class="form-check form-switch">
-                      <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if news.is_published or initial_data.is_published %}checked{% endif %}>
-                      <label class="form-check-label fw-bold" for="isPublished">
-                        Publish Now
-                        <small class="text-muted d-block mt-1">(Make this news visible to the public immediately)</small>
-                      </label>
+                    <div class="row g-2 align-items-center">
+                      <div class="col-md-6">
+                        <label for="createdAt" class="form-label fw-bold">Created at</label>
+                        <input type="datetime-local" id="createdAt" name="created_at" class="form-control" value="{% if initial_data.created_at_iso %}{{ initial_data.created_at_iso }}{% endif %}">
+                        <small class="text-muted d-block">Set the published date/time for this article.</small>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check form-switch mt-4">
+                          <input type="checkbox" class="form-check-input" id="isPublished" name="is_published" {% if news.is_published or initial_data.is_published %}checked{% endif %}>
+                          <label class="form-check-label fw-bold" for="isPublished">
+                            Publish Now
+                            <small class="text-muted d-block mt-1">(Make this news visible to the public immediately)</small>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

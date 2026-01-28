@@ -1,5 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
+{% load name_filters %}
 {% block title %}Messages - UTAG Portal{% endblock %}
 {% block my_styles %}
     {{ block.super }}
@@ -411,7 +412,7 @@
                                 <div class="utag-chat-preview-row">
                                     {% if chat.last_message %}
                                         <p class="utag-chat-last-message">
-                                            {% if chat.type == 'group' %}<strong>{{ chat.last_message.sender.get_full_name }}:</strong>{% endif %}
+                                            {% if chat.type == 'group' %}<strong>{{ chat.last_message.sender|format_full_name }}:</strong>{% endif %}
                                             {{ chat.last_message.plaintext|truncatechars:60 }}
                                         </p>
                                     {% else %}

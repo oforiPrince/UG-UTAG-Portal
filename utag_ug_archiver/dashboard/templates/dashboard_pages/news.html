@@ -31,12 +31,9 @@
                   <h4 class="card-title">News — Articles & Notices</h4>
                 </div>
                 {% if user.is_admin or user.is_superuser or user.is_secretary %}
-                  <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                      <a class="btn btn-primary" href="{% url 'dashboard:create_news' %}">
-                        <i class="mdi mdi-plus-circle me-1"></i> Add News
-                      </a>
-                    </div>
+                  <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    {% url 'dashboard:create_news' as create_news_url %}
+                    {% include "includes/create_button.html" with create_url=create_news_url create_label="Add News" %}
                   </div>
                 {% endif %}
               </div>
@@ -111,7 +108,7 @@
                   </tbody>
                 </table>
               </div>
-            </div>
+          </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 {% extends "base/dashboard_base.html" %}
 {% load static %}
+{% load name_filters %}
 {% block title %}
     Association Members
 {% endblock title %}
@@ -26,25 +27,13 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="row align-items-center">
-                                <div class="col-md-8">
+                                <div class="col-md-4">
                                     <h4 class="card-title">Members — Directory</h4>
                                 </div>
                                 {% if has_add_permission %}
-                                    <div class="col-md-4">
-                                        <div class="float-end d-none d-md-block">
-                                            <button class="btn btn-success"
-                                                    type="button"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#uploadMembersModal">
-                                                <i class="mdi mdi-upload me-1"></i> Bulk upload of member
-                                            </button>
-                                            <button class="btn btn-primary"
-                                                    type="button"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#addMemberModal">
-                                                <i class="mdi mdi-plus me-1"></i> Add Member
-                                            </button>
-                                        </div>
+                                    <div class="col-md-8 d-flex justify-content-end align-items-center gap-2">
+                                        {% include "includes/create_button.html" with create_target="#uploadMembersModal" create_label="Bulk upload of members" %}
+                                        {% include "includes/create_button.html" with create_target="#addMemberModal" create_label="Add Member" %}
                                     </div>
                                 {% endif %}
                             </div>
@@ -80,6 +69,7 @@
         {% include "includes/modals/create/add_member.html" %}
         {% include "includes/modals/dynamic/member_detail_modal.html" %}
         {% include "includes/modals/upload/upload_members.html" %}
+        <script>window.TITLE_CHOICES = {% title_choices_json %};</script>
     </div>
 {% endblock content %}
 {% block my_styles %}
@@ -352,12 +342,7 @@
                                     <label class="form-label"><strong>Title</strong></label>
                                     <select class="form-select" name="title" required>
                                         <option value="">-- Select Title --</option>
-                                        <option value="Prof."${data.title === 'Prof.' ? ' selected' : ''}>Prof.</option>
-                                        <option value="Prof. (Mrs.)"${data.title === 'Prof. (Mrs.)' ? ' selected' : ''}>Prof. (Mrs.)</option>
-                                        <option value="Dr."${data.title === 'Dr.' ? ' selected' : ''}>Dr.</option>
-                                        <option value="Dr. (Alhaji)"${data.title === 'Dr. (Alhaji)' ? ' selected' : ''}>Dr. (Alhaji)</option>
-                                        <option value="Mr."${data.title === 'Mr.' ? ' selected' : ''}>Mr.</option>
-                                        <option value="Mrs."${data.title === 'Mrs.' ? ' selected' : ''}>Mrs.</option>
+                                        ${ (window.TITLE_CHOICES || []).map(function(t){ var sel = data.title === t.value ? ' selected' : ''; return `<option value="${t.value}"${sel}>${t.label}</option>`; }).join('') }
                                     </select>
                                 </div>
                                 <div class="col-md-6">

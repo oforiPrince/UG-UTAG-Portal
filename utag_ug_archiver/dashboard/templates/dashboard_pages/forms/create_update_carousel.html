@@ -1,6 +1,9 @@
-{% extends 'base/dashboard_base.html' %} {% load static %} {% block title %} {%
-if carousel_slide.pk %} Update Carousel Slide {% else %} Create Carousel Slide
-{% endif %} {% endblock title %} {% block content %}
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% block title %}
+  {% if carousel_slide.pk %} Update Carousel Slide {% else %} Create Carousel Slide {% endif %}
+{% endblock title %}
+{% block content %}
 <div class="page-content">
   <div class="container-fluid">
     <div class="row">
@@ -88,12 +91,7 @@ if carousel_slide.pk %} Update Carousel Slide {% else %} Create Carousel Slide
                   class="form-check-input"
                   id="isPublished"
                   name="is_published"
-                  {%
-                  if
-                  initial_data.is_published
-                  %}checked{%
-                  endif
-                  %}
+                  {% if initial_data.is_published %}checked{% endif %}
                 />
                 <label class="form-check-label" for="isPublished">
                   Published

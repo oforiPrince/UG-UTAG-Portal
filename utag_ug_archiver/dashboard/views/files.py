@@ -157,7 +157,7 @@ class DocumentCreateUpdateView(View):
             'CATEGORY_CHOICES': Document.CATEGORY_CHOICES,
             'DOCUMENT_STATUS_CHOICES': Document.DOCUMENT_STATUS_CHOICES,
             'VISIBILITY_CHOICES': Document.VISIBILITY_CHOICES,
-            'all_groups': Group.objects.all(),
+            'all_groups': Group.objects.all().exclude(name='Member'),
             'tinymce_api_key': getattr(settings, 'TINYMCE_API_KEY', ''),
             'active_menu': 'documents'
         }

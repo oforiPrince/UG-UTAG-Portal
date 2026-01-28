@@ -1,4 +1,5 @@
 <!-- Modal for Advertising Company Details -->
+{% load name_filters %}
 {% for company in companies %}
 <div class="modal fade" id="advertisingCompanyDetailsModal_{{ company.id }}" tabindex="-1" role="dialog" aria-labelledby="advertisingCompanyDetailsModalLabel_{{ company.id }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -35,7 +36,7 @@
                             </p>
                             <p>
                                 <strong>Created By:</strong>
-                                {{ company.created_by.get_full_name }}
+                                {{ company.created_by|format_full_name }}
                             </p>
                             <p>
                                 <strong>Created At:</strong>

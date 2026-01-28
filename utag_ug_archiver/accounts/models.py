@@ -42,9 +42,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Prof.', 'Prof.'),
         ("Prof. (Mrs.)", "Prof. (Mrs.)"),
         ('Dr.', 'Dr.'),
-        ("Dr. (Alhaji)", "Dr. (Alhaji)"),
+        ("Dr. (Mrs.)", "Dr. (Mrs.)"),
+        ("Dr. (Miss)", "Dr. (Miss)"),
         ('Mr.', 'Mr.'),
         ('Mrs.', 'Mrs.'),
+        ('Miss', 'Miss'),
+        ('Ms.', 'Ms.'),
+        ('Mx.', 'Mx.'),
+        ('Rev.', 'Rev.'),
+        ('Hon.', 'Hon.'),
+        ('Eng.', 'Eng.'),
+        ('Sir', 'Sir'),
+        ('Dame', 'Dame'),
     )
     
     GENDER_CHOICES = (
@@ -78,9 +87,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Treasurer', 'Treasurer'),
         ("Women's Executive Officer", "Women's Executive Officer"),
         ('Past President', 'Past President'),        ('National President', 'National President'),        ('CBAS Rep', 'CBAS Rep'),
-        ('College of Humanities Rep', 'College of Humanities Rep'),
-        ('College of Health Rep', 'College of Health Rep'),
-        ("College of Education Rep", "College of Education Rep"),
+        ('College of Humanities Rep', 'College of Humanities Rep'), # Rep COH
+        ('College of Health Rep', 'College of Health Rep'), # Rep CHS
+        ("College of Education Rep", "College of Education Rep"), # Rep COE
     )
     staff_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     title = models.CharField(max_length=15, choices=TITLE_CHOICES)
@@ -133,7 +142,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def get_full_name(self):
        
-        return f'{self.title} {self.surname} {self.other_name}'
+        return f'{self.title} {self.other_name}, {self.surname}'
     
     def get_short_name(self):
         return self.other_name

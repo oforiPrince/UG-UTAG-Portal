@@ -1,4 +1,5 @@
 <!-- New Member Modal with Bootstrap Tabs -->
+{% load name_filters %}
 <div class="modal fade bs-example-modal-lg"
      id="newMemberModal"
      tabindex="-1"
@@ -48,13 +49,10 @@
             <div>
               <select id="id_title" class="form-control select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
-                <option value="Prof.">Prof.</option>
-                <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
-                <option value="Dr.">Dr.</option>
-                <option value="Dr. (Alhaji)">Dr. (Alhaji)</option>
-                <option value="Mr.">Mr.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Ms.">Ms.</option>
+                {% get_title_choices as title_choices %}
+                {% for val,label in title_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -191,14 +189,14 @@
             <select id="id_position" class="form-control select2" required name="position">
               <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
-              <option value="Vice President">Vice President</option>
+              <option value="Vice President">Vice-President</option>
               <option value="Secretary">Secretary</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Women's Executive Officer">Women's Executive Officer</option>
-              <option value="Past President">Past President</option>              <option value="National President">National President</option>              <option value="CBAS Rep">CBAS Rep</option>
-              <option value="College of Humanities Rep">College of Humanities Rep</option>
-              <option value="College of Health Rep">College of Health Rep</option>
-              <option value="College of Education Rep">College of Education Rep</option>
+              <option value="Past President">Past President</option>              <option value="National President">National President</option>              <option value="CBAS Rep">Rep CBAS</option>
+              <option value="College of Humanities Rep">Rep COH</option>
+              <option value="College of Health Rep">Rep CHS</option>
+              <option value="College of Education Rep">Rep COE</option>
             </select>
           </div>
           <div class="row mb-3">

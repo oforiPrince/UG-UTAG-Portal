@@ -99,6 +99,7 @@
     </style>
 </head>
 <body>
+    {% load name_filters %}
     <button class="print-button no-print" onclick="window.print()">Print This Page</button>
     
     <h1>All Executives & Committee Members Directory</h1>
@@ -123,10 +124,10 @@
                 {% for executive in executive_members %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ executive.get_full_name }}</td>
+                        <td>{{ executive|format_full_name }}</td>
                         <td>{{ executive.email }}</td>
                         <td>{{ executive.staff_id|default:'N/A' }}</td>
-                        <td><strong>{{ executive.executive_position }}</strong></td>
+                        <td><strong>{{ executive.executive_position|position_label }}</strong></td>
                         <td>{{ executive.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
                         <td>
                             {% if executive.date_ended and executive.date_ended < today %}
@@ -162,13 +163,13 @@
                 {% for committee_member in committee_members %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ committee_member.get_full_name }}</td>
+                        <td>{{ committee_member|format_full_name }}</td>
                         <td>{{ committee_member.email }}</td>
                         <td>{{ committee_member.staff_id|default:'N/A' }}</td>
-                        <td><strong>{{ committee.executive_position }}</strong></td>
-                        <td>{{ committee.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
+                        <td><strong>{{ committee_member.executive_position|position_label }}</strong></td>
+                        <td>{{ committee_member.date_appointed|date:'d M, Y'|default:'N/A' }}</td>
                         <td>
-                            {% if committee.date_ended and committee.date_ended < today %}
+                            {% if committee_member.date_ended and committee_member.date_ended < today %}
                                 <span class="status-past">Past</span>
                             {% else %}
                                 <span class="status-current">Current</span>

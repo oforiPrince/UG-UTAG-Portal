@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load name_filters %}
 {% block title %}
     Executive Committee Members
 {% endblock title %}
@@ -33,8 +34,8 @@
             <div class="utag-executives-grid">
                 {% for executive in executives %}
                 <div class="utag-executive-card" data-bio-modal
-                     data-name="{{ executive.get_full_name }}"
-                     data-position="{{ executive.executive_position }}"
+                     data-name="{{ executive|format_full_name }}"
+                     data-position="{{ executive.executive_position|position_label }}"
                      data-affiliation="{% if executive.school %}{{ executive.school.name }}{% endif %}{% if executive.college %}{{ executive.college.name }}{% endif %}{% if executive.department %}{{ executive.department.name }}{% endif %}"
                      data-bio="{{ executive.executive_bio|default:''|escapejs }}"
                      data-photo="{% if executive.executive_image %}{{ executive.executive_image.url }}{% endif %}"
@@ -47,20 +48,20 @@
                     <div class="utag-executive-image">
                         {% if executive.executive_image %}
                         <img src="{{ executive.executive_image.url }}" 
-                             alt="{{ executive.get_full_name }}"
+                             alt="{{ executive|format_full_name }}"
                              loading="lazy" 
                              decoding="async"
                              onerror="this.onerror=null; this.src='{% static 'website/assets/img/team/ourteam31.png' %}';" />
                         {% else %}
                         <img src="{% static 'website/assets/img/team/ourteam31.png' %}" 
-                             alt="{{ executive.get_full_name }}" 
+                             alt="{{ executive|format_full_name }}" 
                              loading="lazy" 
                              decoding="async" />
                         {% endif %}
                     </div>
                     <div class="utag-executive-info">
-                        <h4>{{ executive.get_full_name }}</h4>
-                        <span class="utag-executive-position">{{ executive.executive_position }}</span>
+                        <h4>{{ executive|format_full_name }}</h4>
+                        <span class="utag-executive-position">{{ executive.executive_position|position_label }}</span>
                         {% if executive.department %}
                         <span class="utag-executive-dept">{{ executive.department.name }}</span>
                         {% endif %}

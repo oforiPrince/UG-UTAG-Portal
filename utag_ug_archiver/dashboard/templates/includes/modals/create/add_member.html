@@ -1,10 +1,11 @@
 <!-- Modal for Add Member -->
+{% load name_filters %}
 <div class="modal fade bs-example-modal-lg"
      id="addMemberModal"
      tabindex="-1"
      aria-labelledby="addMemberModalLabel"
      aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="addMemberModalLabel">Register New Association Member</h5>
@@ -23,13 +24,10 @@
             <div>
               <select id="id_title" class="form-select select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
-                <option value="Prof.">Prof.</option>
-                <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
-                <option value="Dr.">Dr.</option>
-                <option value="Dr. (Alhaji)">Dr. (Alhaji)</option>
-                <option value="Mr.">Mr.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Ms.">Ms.</option>
+                {% get_title_choices as title_choices %}
+                {% for val,label in title_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
