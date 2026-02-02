@@ -475,12 +475,17 @@
 .attachment-image {
     border-radius: 8px;
     overflow: hidden;
+    max-width: 360px;
 }
 
 .attachment-image img {
-    max-width: 100%;
+    width: 100%;
+    max-width: 360px;
+    max-height: 240px;
     height: auto;
+    object-fit: cover;
     border-radius: 8px;
+    display: block;
 }
 
 .attachment-file {
@@ -1266,13 +1271,13 @@
                                 {% if msg.attachments.exists %}
                                     <div class="message-attachments">
                                         {% for att in msg.attachments.all %}
-                                            {% if att.attachment.content_type|is_image %}
+                                            {% if att.is_image %}
                                                 <div class="attachment-image">
-                                                    <img src="{{ att.attachment.url }}" alt="Image">
+                                                    <img src="{{ att.download_url }}" alt="Image">
                                                 </div>
                                             {% else %}
-                                                <a href="{{ att.attachment.url }}" class="attachment-file">
-                                                    <i class="fas fa-paperclip"></i> {{ att.attachment.name|truncatechars:30 }}
+                                                <a href="{{ att.download_url }}" class="attachment-file">
+                                                    <i class="fas fa-paperclip"></i> {{ att.filename|truncatechars:30 }}
                                                 </a>
                                             {% endif %}
                                         {% endfor %}
@@ -1589,6 +1594,20 @@ function sendMessageViaAJAX(message, fileInput, replyId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+                        // Add the sent message to sender's UI
+                        if (data.message) {
+                            addMessageToUI({
+                                id: data.message.id,
+                                sender: 'me',
+                                text: data.message.body || data.message.plaintext,
+                                time: data.message.created_at,
+                                is_read: false,
+                                sender_name: data.message.sender_name || '{{ request.user.get_full_name|escapejs }}',
+                                attachments: data.message.attachments || [],
+                                reply_to: null
+                            });
+                        }
+            
             messageInput.value = '';
             messageInput.style.height = 'auto';
             clearReplyPreview();

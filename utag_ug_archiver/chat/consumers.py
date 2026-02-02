@@ -132,6 +132,38 @@ def save_direct_delivery(message_id, user):
 
 
 @database_sync_to_async
+def get_message_attachments(message):
+    """Get attachments for a message."""
+    try:
+        attachments = []
+        for att in message.attachments.all():
+            attachments.append({
+                'url': att.download_url(),
+                'filename': att.filename or 'file',
+                'content_type': att.content_type or '',
+            })
+        return attachments
+    except Exception:
+        return []
+
+
+@database_sync_to_async
+def get_group_message_attachments(message):
+    """Get attachments for a group message."""
+    try:
+        attachments = []
+        for att in message.attachments.all():
+            attachments.append({
+                'url': att.download_url(),
+                'filename': att.filename or 'file',
+                'content_type': att.content_type or '',
+            })
+        return attachments
+    except Exception:
+        return []
+
+
+@database_sync_to_async
 def save_group_message(group, sender, message_text, reply_to_id=None):
     """
     Save a group message with encryption.
@@ -375,6 +407,9 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                 # Save message with encryption (support reply_to)
                 message = await save_direct_message(self.thread, self.user, message_text, reply_to_id=reply_to_id)
                 
+                # Get attachments for the message
+                attachments = await get_message_attachments(message)
+                
                 # Get other participant for display
                 other_user = self.thread.other_participant(self.user)
                 
@@ -402,6 +437,7 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                             'created_at': message.created_at.isoformat(),
                             'read_at': message.read_at.isoformat() if message.read_at else None,
                             'reply_to': reply_payload,
+                            'attachments': attachments,
                         }
                     }
                 )
@@ -630,6 +666,9 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                 # Save message with encryption (support reply_to)
                 message = await save_group_message(self.group, self.user, message_text, reply_to_id=reply_to_id)
                 
+                # Get attachments for the message
+                attachments = await get_group_message_attachments(message)
+                
                 # Broadcast message to group
                 # Prepare reply payload if present
                 reply_payload = None
@@ -653,6 +692,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                             'sender_name': self.user.get_full_name(),
                             'created_at': message.created_at.isoformat(),
                             'reply_to': reply_payload,
+                            'attachments': attachments,
                         }
                     }
                 )
