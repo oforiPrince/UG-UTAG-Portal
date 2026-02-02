@@ -71,7 +71,7 @@ def get_group_and_validate_access(group_id, user):
 
 
 @database_sync_to_async
-def save_direct_message(thread, sender, message_text):
+def save_direct_message(thread, sender, message_text, reply_to_id=None):
     """
     Save a direct message with encryption.
     Security: Validates message length and ensures sender is thread participant.
@@ -89,17 +89,50 @@ def save_direct_message(thread, sender, message_text):
     
     # Create and save encrypted message
     message = Message(thread=thread, sender=sender)
+    # If reply_to_id provided, try to attach referenced message (must belong to same thread)
+    if reply_to_id is not None:
+        try:
+            ref = Message.objects.get(pk=int(reply_to_id), thread=thread)
+            message.reply_to = ref
+        except (Message.DoesNotExist, ValueError):
+            # ignore invalid reply reference
+            pass
+
     message.set_plaintext(message_text.strip())
     message.save()
     
-    # Mark as read for sender
-    message.mark_as_read()
+    # Note: Don't mark as read here - messages start unread for recipient
+    # They will be marked read when recipient views the thread
     
     return message
 
 
 @database_sync_to_async
-def save_group_message(group, sender, message_text):
+def save_direct_delivery(message_id, user):
+    """Record a delivery ack for a direct message from a recipient."""
+    try:
+        msg = Message.objects.get(pk=int(message_id))
+    except Exception:
+        return None
+    # Do not create delivery for sender
+    if msg.sender_id == user.id:
+        return None
+    try:
+        from .models import MessageDelivery
+        delivery, created = MessageDelivery.objects.get_or_create(message=msg, user=user)
+        return {
+            'message_id': msg.id,
+            'user_id': user.id,
+            'user_name': user.get_full_name(),
+            'avatar_url': user.get_profile_pic_url(),
+            'delivered_at': delivery.delivered_at.isoformat()
+        }
+    except Exception:
+        return None
+
+
+@database_sync_to_async
+def save_group_message(group, sender, message_text, reply_to_id=None):
     """
     Save a group message with encryption.
     Security: Validates message length and ensures sender is group member.
@@ -117,6 +150,14 @@ def save_group_message(group, sender, message_text):
     
     # Create and save encrypted message
     message = GroupMessage(group=group, sender=sender)
+    # If reply_to_id provided, try to attach referenced group message
+    if reply_to_id is not None:
+        try:
+            ref = GroupMessage.objects.get(pk=int(reply_to_id), group=group)
+            message.reply_to = ref
+        except (GroupMessage.DoesNotExist, ValueError):
+            pass
+
     message.set_plaintext(message_text.strip())
     message.save()
     
@@ -124,6 +165,29 @@ def save_group_message(group, sender, message_text):
     message.mark_read_for(sender)
     
     return message
+
+
+@database_sync_to_async
+def save_group_delivery(message_id, user):
+    """Record a delivery ack for a group message from a recipient."""
+    try:
+        msg = GroupMessage.objects.get(pk=int(message_id))
+    except Exception:
+        return None
+    if msg.sender_id == user.id:
+        return None
+    try:
+        from .models import GroupMessageDelivery
+        delivery, created = GroupMessageDelivery.objects.get_or_create(message=msg, user=user)
+        return {
+            'message_id': msg.id,
+            'user_id': user.id,
+            'user_name': user.get_full_name(),
+            'avatar_url': user.get_profile_pic_url(),
+            'delivered_at': delivery.delivered_at.isoformat()
+        }
+    except Exception:
+        return None
 
 
 @database_sync_to_async
@@ -138,6 +202,74 @@ def mark_group_messages_read(group, user):
     unread = group.messages.exclude(sender=user).exclude(read_by=user)
     for msg in unread:
         msg.mark_read_for(user)
+
+
+async def broadcast_chat_list_update(channel_layer, user_ids, chat_data):
+    """
+    Broadcast chat list update to specified users.
+    
+    Args:
+        channel_layer: Channels layer instance
+        user_ids: List of user IDs to notify
+        chat_data: Dict containing chat update info (id, type, last_message, etc.)
+    """
+    for user_id in user_ids:
+        await channel_layer.group_send(
+            f'chat_list_{user_id}',
+            {
+                'type': 'chat_list_update',
+                'chat': chat_data
+            }
+        )
+
+
+@database_sync_to_async
+def get_thread_chat_data(thread, user):
+    """Get formatted chat data for thread to send to chat list."""
+    other_user = thread.other_participant(user)
+    last_msg = thread.messages.order_by('-created_at').first() if thread.messages.exists() else None
+    
+    # Calculate unread count for this specific user
+    from django.db.models import Q, Count
+    unread_count = thread.messages.filter(
+        Q(read_at__isnull=True) & ~Q(sender=user)
+    ).count()
+    
+    return {
+        'id': thread.id,
+        'access_token': thread.access_token,
+        'is_group': False,
+        'display_name': f"{other_user.title} {other_user.other_name} {other_user.surname}" if other_user else 'Unknown User',
+        'avatar_initials': f"{other_user.other_name[0]}{other_user.surname[0]}" if other_user else '?',
+        'profile_pic_url': other_user.profile_pic.url if (other_user and other_user.profile_pic) else None,
+        'last_message': last_msg.plaintext if last_msg else '',
+        'last_message_time': (thread.last_message_at or thread.created_at).isoformat(),
+        'unread_count': unread_count,
+    }
+
+
+@database_sync_to_async
+def get_group_chat_data(group, user):
+    """Get formatted chat data for group to send to chat list."""
+    last_msg = group.messages.order_by('-created_at').first() if group.messages.exists() else None
+    
+    # Calculate unread count for this specific user
+    from django.db.models import Q, Count
+    unread_count = group.messages.filter(
+        ~Q(read_by=user) & ~Q(sender=user)
+    ).count()
+    
+    return {
+        'id': group.id,
+        'access_token': group.access_token,
+        'is_group': True,
+        'display_name': group.name,
+        'avatar_initials': group.name[0].upper() if group.name else 'G',
+        'profile_pic_url': None,  # Groups don't have profile pics
+        'last_message': last_msg.plaintext if last_msg else '',
+        'last_message_time': (last_msg.created_at if last_msg else group.created_at).isoformat(),
+        'unread_count': unread_count,
+    }
 
 
 class ThreadChatConsumer(AsyncWebsocketConsumer):
@@ -230,6 +362,7 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
         if message_type == 'message':
             # Security: Validate message content
             message_text = data.get('message', '').strip()
+            reply_to_id = data.get('reply_to')
             
             if not message_text:
                 await self.send(text_data=json.dumps({
@@ -239,13 +372,24 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                 return
             
             try:
-                # Save message with encryption
-                message = await save_direct_message(self.thread, self.user, message_text)
+                # Save message with encryption (support reply_to)
+                message = await save_direct_message(self.thread, self.user, message_text, reply_to_id=reply_to_id)
                 
                 # Get other participant for display
                 other_user = self.thread.other_participant(self.user)
                 
                 # Broadcast message to thread group
+                # Prepare reply payload if present
+                reply_payload = None
+                if getattr(message, 'reply_to_id', None):
+                    try:
+                        reply_payload = {
+                            'id': message.reply_to_id,
+                            'body': message.reply_to.plaintext
+                        }
+                    except Exception:
+                        reply_payload = None
+
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -257,9 +401,29 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                             'sender_name': self.user.get_full_name(),
                             'created_at': message.created_at.isoformat(),
                             'read_at': message.read_at.isoformat() if message.read_at else None,
+                            'reply_to': reply_payload,
                         }
                     }
                 )
+                
+                # Broadcast chat list update to both participants
+                chat_data_sender = await get_thread_chat_data(self.thread, self.user)
+                chat_data_recipient = await get_thread_chat_data(self.thread, other_user)
+                await broadcast_chat_list_update(
+                    self.channel_layer,
+                    [self.user.id, other_user.id],
+                    chat_data_sender  # We'll send individual updates in a moment
+                )
+                # Actually send personalized updates
+                await self.channel_layer.group_send(
+                    f'chat_list_{self.user.id}',
+                    {'type': 'chat_list_update', 'chat': chat_data_sender}
+                )
+                await self.channel_layer.group_send(
+                    f'chat_list_{other_user.id}',
+                    {'type': 'chat_list_update', 'chat': chat_data_recipient}
+                )
+                
             except ValidationError as e:
                 await self.send(text_data=json.dumps({
                     'type': 'error',
@@ -289,6 +453,21 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                     'is_typing': data.get('is_typing', False)
                 }
             )
+        elif message_type == 'delivered':
+            # Recipient reports it has received the message; record and broadcast delivery
+            message_id = data.get('message_id')
+            try:
+                res = await save_direct_delivery(message_id, self.user)
+                if res:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'delivery',
+                            'delivery': res,
+                        }
+                    )
+            except Exception as e:
+                logger.exception('Error handling delivered ack')
         
         else:
             await self.send(text_data=json.dumps({
@@ -302,6 +481,16 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
             'type': 'message',
             'message': event['message']
         }))
+
+    async def delivery(self, event):
+        """Forward delivery events to WebSocket clients."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'delivery',
+                'delivery': event.get('delivery')
+            }))
+        except Exception:
+            logger.exception('Error sending delivery event')
     
     async def typing_indicator(self, event):
         """Send typing indicator to WebSocket."""
@@ -313,6 +502,29 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                 'user_name': event['user_name'],
                 'is_typing': event['is_typing']
             }))
+
+    async def read_receipt(self, event):
+        """Forward read receipt events to WebSocket clients."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'read',
+                'user_id': event.get('user_id'),
+                'message_ids': event.get('message_ids', [])
+            }))
+        except Exception:
+            logger.exception('Error sending group read receipt')
+
+    async def read_receipt(self, event):
+        """Forward read receipt events to WebSocket clients."""
+        # send read event to clients (other side will update UI)
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'read',
+                'user_id': event.get('user_id'),
+                'message_ids': event.get('message_ids', [])
+            }))
+        except Exception as e:
+            logger.exception('Error sending read receipt over websocket')
 
 
 class GroupChatConsumer(AsyncWebsocketConsumer):
@@ -405,6 +617,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
         if message_type == 'message':
             # Security: Validate message content
             message_text = data.get('message', '').strip()
+            reply_to_id = data.get('reply_to')
             
             if not message_text:
                 await self.send(text_data=json.dumps({
@@ -414,10 +627,21 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                 return
             
             try:
-                # Save message with encryption
-                message = await save_group_message(self.group, self.user, message_text)
+                # Save message with encryption (support reply_to)
+                message = await save_group_message(self.group, self.user, message_text, reply_to_id=reply_to_id)
                 
                 # Broadcast message to group
+                # Prepare reply payload if present
+                reply_payload = None
+                if getattr(message, 'reply_to_id', None):
+                    try:
+                        reply_payload = {
+                            'id': message.reply_to_id,
+                            'body': message.reply_to.plaintext
+                        }
+                    except Exception:
+                        reply_payload = None
+
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -428,9 +652,27 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                             'sender_id': message.sender_id,
                             'sender_name': self.user.get_full_name(),
                             'created_at': message.created_at.isoformat(),
+                            'reply_to': reply_payload,
                         }
                     }
                 )
+                
+                # Broadcast chat list update to all group members
+                from .models import ChatGroup
+                group_obj = await database_sync_to_async(ChatGroup.objects.prefetch_related('members').get)(pk=self.group_id)
+                member_ids = await database_sync_to_async(list)(group_obj.members.values_list('id', flat=True))
+                
+                # Send personalized updates to each member with their own unread count
+                for member_id in member_ids:
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    member = await database_sync_to_async(User.objects.get)(pk=member_id)
+                    chat_data = await get_group_chat_data(self.group, member)
+                    await self.channel_layer.group_send(
+                        f'chat_list_{member_id}',
+                        {'type': 'chat_list_update', 'chat': chat_data}
+                    )
+                
             except ValidationError as e:
                 await self.send(text_data=json.dumps({
                     'type': 'error',
@@ -460,6 +702,21 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                     'is_typing': data.get('is_typing', False)
                 }
             )
+        elif message_type == 'delivered':
+            # Recipient reports it has received the message; record and broadcast delivery
+            message_id = data.get('message_id')
+            try:
+                res = await save_group_delivery(message_id, self.user)
+                if res:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'delivery',
+                            'delivery': res,
+                        }
+                    )
+            except Exception:
+                logger.exception('Error handling delivered ack (group)')
         
         else:
             await self.send(text_data=json.dumps({
@@ -484,4 +741,71 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                 'user_name': event['user_name'],
                 'is_typing': event['is_typing']
             }))
+
+    async def delivery(self, event):
+        """Forward delivery events to WebSocket clients."""
+        try:
+            await self.send(text_data=json.dumps({
+                'type': 'delivery',
+                'delivery': event.get('delivery')
+            }))
+        except Exception:
+            logger.exception('Error sending group delivery event')
+
+
+class ChatListConsumer(AsyncWebsocketConsumer):
+    """
+    WebSocket consumer for real-time chat list updates.
+    Broadcasts new messages to update chat list without page reload.
+    """
+    
+    async def connect(self):
+        """Accept connection if user is authenticated."""
+        self.user = self.scope.get('user')
+        
+        if not self.user or not self.user.is_authenticated:
+            await self.close()
+            return
+        
+        # Each user has their own chat list channel
+        self.room_group_name = f'chat_list_{self.user.id}'
+        
+        # Join user's personal chat list group
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+        
+        await self.accept()
+        logger.info(f'Chat list WebSocket connected for user {self.user.id}')
+    
+    async def disconnect(self, close_code):
+        """Leave chat list group."""
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+            logger.info(f'Chat list WebSocket disconnected for user {self.user.id}')
+    
+    async def receive(self, text_data):
+        """Handle incoming WebSocket messages (e.g., ping/pong for keepalive)."""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            if message_type == 'ping':
+                await self.send(text_data=json.dumps({'type': 'pong'}))
+        except json.JSONDecodeError:
+            logger.warning('Invalid JSON received in chat list WebSocket')
+    
+    async def chat_list_update(self, event):
+        """
+        Send chat list update to WebSocket.
+        Event should contain: chat_id, chat_type, last_message, timestamp, unread_count
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'chat_update',
+            'chat': event['chat']
+        }))
 

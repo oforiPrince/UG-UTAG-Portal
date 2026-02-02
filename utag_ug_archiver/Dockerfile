@@ -7,11 +7,11 @@ WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        libpq-dev \
-        libjpeg-dev \
-        zlib1g-dev \
-        libwebp-dev \
+    build-essential \
+    libpq-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
@@ -35,4 +35,6 @@ EXPOSE 8000
 USER app
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "utag_ug_archiver.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run the ASGI application with Daphne so Channels WebSockets work in production.
+# In production you can override this command (e.g. run behind nginx with the same asgi app).
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "utag_ug_archiver.asgi:application"]

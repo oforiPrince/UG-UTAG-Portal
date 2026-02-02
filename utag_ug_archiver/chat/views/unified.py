@@ -20,26 +20,23 @@ MAX_ATTACHMENT_SIZE = getattr(settings, 'CHAT_MAX_ATTACHMENT_SIZE', 20 * 1024 * 
 
 class UnifiedConversationView(LoginRequiredMixin, View):
     """Unified view for both direct chats and group conversations"""
-    template_name = 'chat/simple_conversation.html'
+    template_name = 'chat/modern_conversation.html'
 
     def get_context(self, request, chat_type, pk):
         """Get context data for the conversation
-        Security: Validates chat_type, pk, and user access before returning context
+        Security: Validates chat_type, pk/token, and user access before returning context
+        For direct chats: pk is access_token (string)
+        For groups: pk is access_token (string)
         """
         # Security: Validate chat_type
         if chat_type not in ['direct', 'group']:
             raise Http404('Invalid chat type')
         
-        # Security: Validate pk is integer
-        try:
-            pk = int(pk)
-        except (ValueError, TypeError):
-            raise Http404('Invalid ID')
-        
         context = {'chat_type': chat_type}
         
         if chat_type == 'direct':
-            thread = get_object_or_404(ChatThread, pk=pk)
+            # For direct chats, pk is the access_token (string)
+            thread = get_object_or_404(ChatThread, access_token=pk)
             
             # Security: Ensure user is participant
             if not thread.is_participant(request.user):
@@ -56,7 +53,8 @@ class UnifiedConversationView(LoginRequiredMixin, View):
             })
             
         elif chat_type == 'group':
-            group = get_object_or_404(ChatGroup, pk=pk)
+            # For groups, pk is the access_token (string)
+            group = get_object_or_404(ChatGroup, access_token=pk)
             
             # Security: Ensure user is a group member
             if not group.is_member(request.user):
@@ -69,9 +67,36 @@ class UnifiedConversationView(LoginRequiredMixin, View):
             
             context.update({
                 'group': group,
+                'group_invite_token': group.invite_token,  # Token for sharing invite link
                 'message_list': group.messages.select_related('sender').prefetch_related('attachments').order_by('created_at'),
                 'form': GroupMessageForm(),
             })
+            # Build members list with full membership info including role
+            members = []
+            for m in group.members.all():
+                try:
+                    gm = group.membership_records.get(user=m)
+                    members.append({
+                        'id': gm.id,  # Membership ID for API calls
+                        'user': m,
+                        'role': 'admin' if gm.is_admin else 'member',
+                        'is_admin': bool(gm.is_admin)
+                    })
+                except Exception:
+                    members.append({
+                        'id': None,
+                        'user': m,
+                        'role': 'member',
+                        'is_admin': False
+                    })
+            context['members'] = members
+            
+            # Check if current user is admin
+            try:
+                user_membership = group.membership_records.get(user=request.user)
+                context['user_is_admin'] = user_membership.is_admin
+            except Exception:
+                context['user_is_admin'] = False
         
         return context
 
@@ -82,7 +107,9 @@ class UnifiedConversationView(LoginRequiredMixin, View):
 
     def post(self, request, chat_type, pk):
         """Handle POST request (sending messages)
-        Security: Validates chat_type, pk, user access, message content, and attachment size
+        Security: Validates chat_type, pk/token, user access, message content, and attachment size
+        For direct chats: pk is access_token (string)
+        For groups: pk is access_token (string)
         """
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
@@ -92,16 +119,9 @@ class UnifiedConversationView(LoginRequiredMixin, View):
                 return JsonResponse({'success': False, 'error': 'Invalid chat type'}, status=400)
             raise Http404('Invalid chat type')
         
-        # Security: Validate pk is integer
-        try:
-            pk = int(pk)
-        except (ValueError, TypeError):
-            if is_ajax:
-                return JsonResponse({'success': False, 'error': 'Invalid ID'}, status=400)
-            raise Http404('Invalid ID')
-        
         if chat_type == 'direct':
-            thread = get_object_or_404(ChatThread, pk=pk)
+            # For direct chats, pk is the access_token (string)
+            thread = get_object_or_404(ChatThread, access_token=pk)
             
             # Security: Ensure user is participant
             if not thread.is_participant(request.user):
@@ -184,7 +204,8 @@ class UnifiedConversationView(LoginRequiredMixin, View):
                 }, status=400)
                 
         elif chat_type == 'group':
-            group = get_object_or_404(ChatGroup, pk=pk)
+            # For groups, pk is the access_token (string)
+            group = get_object_or_404(ChatGroup, access_token=pk)
             
             # Security: Ensure user is a group member
             if not group.is_member(request.user):

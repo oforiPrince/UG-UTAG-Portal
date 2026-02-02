@@ -142,7 +142,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def get_full_name(self):
        
-        return f'{self.title} {self.other_name}, {self.surname}'
+        return f'{self.title} {self.other_name} {self.surname}'
     
     def get_short_name(self):
         return self.other_name

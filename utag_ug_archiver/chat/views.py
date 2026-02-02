@@ -189,7 +189,16 @@ class ThreadDetailView(LoginRequiredMixin, View):
         # Handle AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             if form.is_valid():
+                # Support reply_to reference when sending via AJAX
+                reply_to = request.POST.get('reply_to')
                 message = Message(thread=thread, sender=request.user)
+                # attach reply_to if valid
+                if reply_to:
+                    try:
+                        ref = Message.objects.get(pk=int(reply_to), thread=thread)
+                        message.reply_to = ref
+                    except (Message.DoesNotExist, ValueError):
+                        pass
                 message.set_plaintext(form.cleaned_data['body'])
                 message.save()
                 return JsonResponse({
@@ -200,6 +209,10 @@ class ThreadDetailView(LoginRequiredMixin, View):
                         'sender_id': message.sender_id,
                         'created_at': message.created_at.isoformat(),
                         'read_at': message.read_at.isoformat() if message.read_at else None,
+                        'reply_to': {
+                            'id': message.reply_to_id,
+                            'body': message.reply_to.plaintext if getattr(message, 'reply_to', None) else None
+                        } if getattr(message, 'reply_to', None) else None,
                     }
                 })
             else:
@@ -211,7 +224,15 @@ class ThreadDetailView(LoginRequiredMixin, View):
         
         # Handle regular form submission
         if form.is_valid():
+            # Support reply_to for regular POST (form submission)
+            reply_to = request.POST.get('reply_to')
             message = Message(thread=thread, sender=request.user)
+            if reply_to:
+                try:
+                    ref = Message.objects.get(pk=int(reply_to), thread=thread)
+                    message.reply_to = ref
+                except (Message.DoesNotExist, ValueError):
+                    pass
             message.set_plaintext(form.cleaned_data['body'])
             message.save()
             return redirect(reverse('chat:thread_detail', kwargs={'pk': thread.pk}))
@@ -317,7 +338,15 @@ class GroupDetailView(LoginRequiredMixin, View):
                     'member_form': GroupMemberAddForm(group) if group.can_manage_members(request.user) else None,
                 })
             
+            # Support reply_to when posting group messages
+            reply_to = request.POST.get('reply_to')
             message = GroupMessage(group=group, sender=request.user)
+            if reply_to:
+                try:
+                    ref = GroupMessage.objects.get(pk=int(reply_to), group=group)
+                    message.reply_to = ref
+                except (GroupMessage.DoesNotExist, ValueError):
+                    pass
             message.set_plaintext(body)
             message.save()
             message.mark_read_for(request.user)

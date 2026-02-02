@@ -9,7 +9,7 @@ register = template.Library()
 def format_full_name(value):
     """Format a user object or string into the canonical display form:
 
-    Desired format for User-like objects: "Title. Other names, Surname".
+    Desired format for User-like objects: "Title. Other names Surname" (no comma).
     - `title` (if present) is shown first (assumed already punctuated, but a
       trailing period is added if missing).
     - `other_name` (if present) follows the title.
@@ -42,7 +42,8 @@ def format_full_name(value):
 
             if surname:
                 if name_body:
-                    name_body = f"{name_body}, {surname.strip()}"
+                    # Join other names and surname with a space (no comma)
+                    name_body = f"{name_body} {surname.strip()}"
                 else:
                     name_body = surname.strip()
 
