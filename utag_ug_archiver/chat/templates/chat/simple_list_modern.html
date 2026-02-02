@@ -52,6 +52,11 @@
 }
 
 .chat-header h1 {
+
+.chat-badge.official {
+    background: #e0e7ff;
+    color: #3730a3;
+}
     font-size: 18px;
     font-weight: 600;
     margin: 0;
@@ -771,12 +776,13 @@
             <div class="chat-list" id="chatList">
                 {% if chats %}
                     {% for chat in chats %}
-                        <a href="{% if chat.is_group %}{% url 'chat:group_detail' chat.access_token %}{% else %}{% url 'chat:thread_detail' chat.access_token %}{% endif %}"
-                           class="chat-item"
-                           data-chat-id="{{ chat.id }}"
-                           data-access-token="{{ chat.access_token }}"
-                           data-name="{{ chat.display_name|lower }}"
-                           data-preview="{{ chat.last_message|lower }}">
+                                <a href="{% if chat.is_group %}{% url 'chat:group_detail' chat.access_token %}{% else %}{% url 'chat:thread_detail' chat.access_token %}{% endif %}"
+                                    class="chat-item"
+                                    data-chat-id="{{ chat.id }}"
+                                    data-access-token="{{ chat.access_token }}"
+                                    data-pinned="{{ chat.is_pinned|yesno:'true,false' }}"
+                                    data-name="{{ chat.display_name|lower }}"
+                                    data-preview="{{ chat.last_message|lower }}">
                             <div class="chat-item-content">
                                 <div class="chat-avatar {% if chat.is_group %}group{% endif %}">
                                     {% if chat.profile_pic_url and not chat.is_group %}
@@ -790,6 +796,7 @@
                                         <div>
                                             <span class="chat-name">{{ chat.display_name }}</span>
                                             {% if chat.is_group %}<span class="chat-badge">GROUP</span>{% endif %}
+                                            {% if chat.is_official %}<span class="chat-badge official">OFFICIAL</span>{% endif %}
                                         </div>
                                         <span class="chat-time">{{ chat.last_message_time|date:"H:i"|default:"" }}</span>
                                     </div>
@@ -1325,21 +1332,27 @@ function updateChatInList(chatData) {
     tempDiv.innerHTML = chatHtml;
     const newChatElement = tempDiv.firstElementChild;
     
+    const pinnedElement = chatList.querySelector('.chat-item[data-pinned="true"]');
+    const insertAfterPinned = (element) => {
+        if (chatData.is_pinned) {
+            chatList.insertBefore(element, chatList.firstChild);
+            return;
+        }
+        if (pinnedElement && pinnedElement !== element) {
+            chatList.insertBefore(element, pinnedElement.nextSibling);
+            return;
+        }
+        chatList.insertBefore(element, chatList.firstChild);
+    };
+    
     if (existingChat) {
-        // Update existing chat - preserve position if it's already at top
-        const isAtTop = existingChat === chatList.firstChild;
         existingChat.replaceWith(newChatElement);
-        
-        // Only move to top if not already there
-        if (!isAtTop) {
-            const updatedChat = chatList.querySelector(`[data-access-token="${chatData.access_token}"]`);
-            if (updatedChat) {
-                chatList.insertBefore(updatedChat, chatList.firstChild);
-            }
+        const updatedChat = chatList.querySelector(`[data-access-token="${chatData.access_token}"]`);
+        if (updatedChat) {
+            insertAfterPinned(updatedChat);
         }
     } else {
-        // Add new chat at the top
-        chatList.insertBefore(newChatElement, chatList.firstChild);
+        insertAfterPinned(newChatElement);
     }
     
     // Setup swipe handler only for the new/updated element
@@ -1358,6 +1371,7 @@ function createChatItemHtml(chat) {
     const unreadBadge = chat.unread_count > 0 ? `<span class="unread-badge">${chat.unread_count}</span>` : '';
     const groupClass = chat.is_group ? 'group' : '';
     const groupBadge = chat.is_group ? '<span class="chat-badge">GROUP</span>' : '';
+    const officialBadge = chat.is_official ? '<span class="chat-badge official">OFFICIAL</span>' : '';
     
     // Avatar content - either profile pic or initials
     let avatarContent;
@@ -1368,12 +1382,13 @@ function createChatItemHtml(chat) {
     }
     
     return `
-        <a href="${actualUrl}"
-           class="chat-item"
-           data-chat-id="${chat.id}"
-           data-access-token="${chat.access_token}"
-           data-name="${escapeHtml(chat.display_name).toLowerCase()}"
-           data-preview="${escapeHtml(chat.last_message || '').toLowerCase()}">
+          <a href="${actualUrl}"
+              class="chat-item"
+              data-chat-id="${chat.id}"
+              data-access-token="${chat.access_token}"
+              data-pinned="${chat.is_pinned ? 'true' : 'false'}"
+              data-name="${escapeHtml(chat.display_name).toLowerCase()}"
+              data-preview="${escapeHtml(chat.last_message || '').toLowerCase()}">
             <div class="chat-item-content">
                 <div class="chat-avatar ${groupClass}">
                     ${avatarContent}
@@ -1383,11 +1398,12 @@ function createChatItemHtml(chat) {
                         <div>
                             <span class="chat-name">${escapeHtml(chat.display_name)}</span>
                             ${groupBadge}
+                            ${officialBadge}
                         </div>
                         <span class="chat-time">${lastMessageTime}</span>
                     </div>
                     <div class="chat-preview">
-                        <span>${escapeHtml(chat.last_message) || 'No messages yet'}</span>
+                        <span>${escapeHtml(chat.is_official && !chat.last_message ? 'Official UTAG UG communications' : (chat.last_message || 'No messages yet'))}</span>
                         ${unreadBadge}
                     </div>
                 </div>

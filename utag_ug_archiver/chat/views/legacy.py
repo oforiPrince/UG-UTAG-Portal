@@ -60,6 +60,7 @@ class ThreadListView(LoginRequiredMixin, ListView):
                 'id': thread.id,
                 'access_token': thread.access_token,  # Add token for secure URL
                 'is_group': False,
+                'is_pinned': False,
                 'display_name': f"{other_user.title} {other_user.other_name} {other_user.surname}" if other_user else 'Unknown User',
                 'avatar_initials': f"{other_user.other_name[0]}{other_user.surname[0]}" if other_user else '?',
                 'profile_pic_url': other_user.profile_pic.url if (other_user and other_user.profile_pic) else None,
@@ -71,11 +72,15 @@ class ThreadListView(LoginRequiredMixin, ListView):
         # Add groups
         for group in groups:
             last_msg = group.messages.order_by('-created_at').first() if group.messages.exists() else None
+            is_official = group.name.strip().lower() == 'utag ug'
+            is_pinned = is_official
             
             chats.append({
                 'id': group.id,
                 'access_token': group.access_token,  # Add token for secure URL
                 'is_group': True,
+                'is_pinned': is_pinned,
+                'is_official': is_official,
                 'display_name': group.name,
                 'avatar_initials': group.name[0].upper() if group.name else 'G',
                 'last_message': last_msg.plaintext if last_msg else '',
@@ -84,7 +89,7 @@ class ThreadListView(LoginRequiredMixin, ListView):
             })
         
         # Sort all chats by last activity
-        chats.sort(key=lambda x: x['last_message_time'], reverse=True)
+        chats.sort(key=lambda x: (x['is_pinned'], x['last_message_time']), reverse=True)
         
         # Get all users except current user for the modal
         available_users = User.objects.exclude(id=request.user.id).order_by('other_name', 'surname')

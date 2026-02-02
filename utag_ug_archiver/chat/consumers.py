@@ -271,6 +271,7 @@ def get_thread_chat_data(thread, user):
         'id': thread.id,
         'access_token': thread.access_token,
         'is_group': False,
+        'is_pinned': False,
         'display_name': f"{other_user.title} {other_user.other_name} {other_user.surname}" if other_user else 'Unknown User',
         'avatar_initials': f"{other_user.other_name[0]}{other_user.surname[0]}" if other_user else '?',
         'profile_pic_url': other_user.profile_pic.url if (other_user and other_user.profile_pic) else None,
@@ -295,6 +296,8 @@ def get_group_chat_data(group, user):
         'id': group.id,
         'access_token': group.access_token,
         'is_group': True,
+        'is_pinned': group.name.strip().lower() == 'utag ug',
+        'is_official': group.name.strip().lower() == 'utag ug',
         'display_name': group.name,
         'avatar_initials': group.name[0].upper() if group.name else 'G',
         'profile_pic_url': None,  # Groups don't have profile pics
@@ -395,6 +398,7 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
             # Security: Validate message content
             message_text = data.get('message', '').strip()
             reply_to_id = data.get('reply_to')
+            client_id = data.get('client_id')
             
             if not message_text:
                 await self.send(text_data=json.dumps({
@@ -438,6 +442,7 @@ class ThreadChatConsumer(AsyncWebsocketConsumer):
                             'read_at': message.read_at.isoformat() if message.read_at else None,
                             'reply_to': reply_payload,
                             'attachments': attachments,
+                            'client_id': client_id,
                         }
                     }
                 )
@@ -654,6 +659,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
             # Security: Validate message content
             message_text = data.get('message', '').strip()
             reply_to_id = data.get('reply_to')
+            client_id = data.get('client_id')
             
             if not message_text:
                 await self.send(text_data=json.dumps({
@@ -693,6 +699,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                             'created_at': message.created_at.isoformat(),
                             'reply_to': reply_payload,
                             'attachments': attachments,
+                            'client_id': client_id,
                         }
                     }
                 )
