@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 from dashboard.models import Announcement
-from accounts.models import School, College, Department
+from accounts.models import School, College, Department, User
 from utag_ug_archiver.utils.decorators import MustLogin
 
 #For user's profile
@@ -35,6 +35,7 @@ class ProfileView(View):
             'schools': schools,
             'colleges': colleges,
             'departments': departments,
+            'gender_choices': User.GENDER_CHOICES,
         }
         return render(request, self.template_name, context)
     
@@ -50,6 +51,7 @@ class ProfileView(View):
         school_id = request.POST.get('school_id')
         college_id = request.POST.get('college_id')
         department_id = request.POST.get('department_id')
+        gender = request.POST.get('gender')
         current_password = request.POST.get('current_password')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
@@ -68,6 +70,9 @@ class ProfileView(View):
         
         if user.academic_rank != academic_rank:
             user.academic_rank = academic_rank
+
+        if gender and user.gender != gender:
+            user.gender = gender
         
         # Update school, college, department
         if school_id:
