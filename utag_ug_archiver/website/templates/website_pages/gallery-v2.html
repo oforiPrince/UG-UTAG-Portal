@@ -44,26 +44,28 @@
         {% if galleries %}
           {% for gallery in galleries %}
             {% for image in gallery.images.all %}
-              <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover mix gallery-{{ gallery.id }}">
-                <div class="overlay-effect sea-green-overlay">
-                  <a href="{{ image.get_absolute_url }}"
-                     data-gallery="gallery-{{ gallery.id }}"
-                     data-caption="{{ image.caption|default:gallery.title }}">
-                    {% lazy_img image.image.url image.caption|default:gallery.title "gallery-image img-fluid" "gallery" %}
-                  </a>
-                  <div class="gallery-hover-effect">
-                    <a class="gallery-icon venobox"
-                       href="{{ image.get_absolute_url }}"
+              {% if image.image %}
+                <div class="single-items col-lg-3 col-md-3 col-sm-6 col-12 overlay-hover mix gallery-{{ gallery.id }}">
+                  <div class="overlay-effect sea-green-overlay">
+                    <a href="{{ image.get_absolute_url }}"
                        data-gallery="gallery-{{ gallery.id }}"
                        data-caption="{{ image.caption|default:gallery.title }}">
-                      <i class="fa fa-image"></i>
+                      {% lazy_img image.image.url image.caption|default:gallery.title "gallery-image img-fluid" "gallery" %}
                     </a>
-                    {% if image.caption %}
-                      <span class="gallery-text">{{ image.caption }}</span>
-                    {% endif %}
+                    <div class="gallery-hover-effect">
+                      <a class="gallery-icon venobox"
+                         href="{{ image.get_absolute_url }}"
+                         data-gallery="gallery-{{ gallery.id }}"
+                         data-caption="{{ image.caption|default:gallery.title }}">
+                        <i class="fa fa-image"></i>
+                      </a>
+                      {% if image.caption %}
+                        <span class="gallery-text">{{ image.caption }}</span>
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
-              </div>
+              {% endif %}
             {% endfor %}
           {% endfor %}
         {% else %}

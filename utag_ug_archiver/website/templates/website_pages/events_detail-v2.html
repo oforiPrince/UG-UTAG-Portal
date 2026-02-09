@@ -63,9 +63,13 @@
             </div>
             <!-- Event Image Carousel -->
             <div class="class-details-carousel carousel-style-one owl-carousel">
-              {% lazy_img event.featured_image.url event.title "img-fluid" "event" %}
+              {% if event.featured_image %}
+                {% lazy_img event.featured_image.url event.title "img-fluid" "event" %}
+              {% endif %}
               {% for image in event.additional_images.all %}
-                {% lazy_img image.image.url image.caption|default:event.title "img-fluid" "event" %}
+                {% if image.image %}
+                  {% lazy_img image.image.url image.caption|default:event.title "img-fluid" "event" %}
+                {% endif %}
               {% endfor %}
             </div>
           </div>

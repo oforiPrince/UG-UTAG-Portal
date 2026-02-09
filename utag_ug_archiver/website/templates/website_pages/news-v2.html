@@ -33,9 +33,15 @@
         <article class="utag-news-card">
           <a href="{% url 'website:news_detail' slug=news.news_slug %}" class="utag-news-card-link">
             <div class="utag-news-image">
-              <img src="{{ news.featured_image.url }}"
-                   alt="{{ news.title }}"
-                   loading="lazy" />
+              {% if news.featured_image %}
+                <img src="{{ news.featured_image.url }}"
+                     alt="{{ news.title }}"
+                     loading="lazy" />
+              {% else %}
+                <div class="d-flex align-items-center justify-content-center bg-light" style="height: 250px;">
+                  <span class="text-muted"><i class="fa fa-image fa-3x"></i></span>
+                </div>
+              {% endif %}
               <div class="utag-news-date">
                 <span class="day">{{ news.created_at|date:"d" }}</span>
                 <span class="month">{{ news.created_at|date:"M" }}</span>

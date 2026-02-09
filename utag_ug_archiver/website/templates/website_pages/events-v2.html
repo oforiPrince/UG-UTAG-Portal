@@ -36,7 +36,13 @@
               <div class="single-class">
                 <div class="single-class-image">
                   <a href="{% url 'website:events_detail' slug=event.event_slug %}">
-                    {% lazy_img event.featured_image.url event.title "img-fluid rounded shadow" "event" %}
+                    {% if event.featured_image %}
+                      {% lazy_img event.featured_image.url event.title "img-fluid rounded shadow" "event" %}
+                    {% else %}
+                      <div class="img-fluid rounded shadow d-flex align-items-center justify-content-center bg-light" style="min-height: 250px;">
+                        <span class="text-muted"><i class="fa fa-image fa-3x"></i></span>
+                      </div>
+                    {% endif %}
                     <span class="class-date">{{ event.start_date|date:'M d' }} <span>{{ event.start_date|date:'Y' }}</span></span>
                   </a>
                 </div>

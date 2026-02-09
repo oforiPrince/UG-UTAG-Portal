@@ -7,7 +7,9 @@
 <!-- Modern Hero Section with Featured Image -->
 <div class="utag-news-hero">
   <div class="utag-news-hero-overlay"></div>
-  <img src="{{ news.featured_image.url }}" alt="{{ news.title }}" class="utag-news-hero-img" />
+  {% if news.featured_image %}
+    <img src="{{ news.featured_image.url }}" alt="{{ news.title }}" class="utag-news-hero-img" />
+  {% endif %}
   <div class="utag-news-hero-content">
     <div class="container">
       <div class="utag-news-hero-inner">
@@ -113,7 +115,13 @@
             <article class="utag-related-card">
               <a href="{% url 'website:news_detail' slug=latest.news_slug %}" class="utag-related-link">
                 <div class="utag-related-image">
-                  <img src="{{ latest.featured_image.url }}" alt="{{ latest.title }}" loading="lazy" />
+                  {% if latest.featured_image %}
+                    <img src="{{ latest.featured_image.url }}" alt="{{ latest.title }}" loading="lazy" />
+                  {% else %}
+                    <div class="d-flex align-items-center justify-content-center bg-light" style="height: 150px;">
+                      <span class="text-muted"><i class="fa fa-image fa-2x"></i></span>
+                    </div>
+                  {% endif %}
                   <span class="utag-related-date">{{ latest.created_at|date:'M d' }}</span>
                 </div>
                 <div class="utag-related-content">

@@ -23,11 +23,13 @@
                     <!-- News Content -->
                     <div class="row">
                         <!-- Featured Image -->
-                        <div class="col-md-6">
-                            {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow-sm mb-3" "news" %}
-                        </div>
+                        {% if news.featured_image %}
+                            <div class="col-md-6">
+                                {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow-sm mb-3" "news" %}
+                            </div>
+                        {% endif %}
                         <!-- News Details -->
-                        <div class="col-md-6">
+                        <div class="{% if news.featured_image %}col-md-6{% else %}col-12{% endif %}">
                             <p class="mb-2">{{ news.content|safe }}</p>
                             <p class="mb-2">
                                 <strong>Author:</strong>
