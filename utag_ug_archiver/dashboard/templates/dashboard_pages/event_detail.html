@@ -60,7 +60,7 @@
                                 <div class="col-md-6">
                                     <p class="mb-2">
                                         <strong><i class="mdi mdi-calendar"></i> Start Date:</strong>
-                                        <span>{{ event.start_date|date:"F d, Y H:i" }}</span>
+                                        <span>{{ event.start_date|date:"F d, Y" }}</span>
                                     </p>
                                     <p class="mb-2">
                                         <strong><i class="mdi mdi-map-marker"></i> Venue:</strong>
@@ -71,7 +71,7 @@
                                     {% if event.end_date %}
                                         <p class="mb-2">
                                             <strong><i class="mdi mdi-calendar-end"></i> End Date:</strong>
-                                            <span>{{ event.end_date|date:"F d, Y H:i" }}</span>
+                                            <span>{{ event.end_date|date:"F d, Y" }}</span>
                                         </p>
                                     {% endif %}
                                     <p class="mb-2">
