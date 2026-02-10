@@ -91,7 +91,9 @@
                                                 <td>{{ executive|format_full_name }}</td>
                                                 <td>{{ executive.email }}</td>
                                                 <td>{{ executive.staff_id|default:'N/A' }}</td>
-                                                <td>{{ executive.executive_position|position_label }}</td>
+                                                <td data-order="{{ executive.executive_position|position_order_index }}">
+                                                    {{ executive.executive_position|position_label }}
+                                                </td>
                                                 <td>{{ executive.department.name|default:'N/A'|title }}</td>
                                                 <td>{{ executive.date_appointed|date:'d M, Y' }}</td>
                                                 <td>

@@ -92,6 +92,24 @@ def position_label(value):
         return str(value)
 
 
+@register.filter(is_safe=True)
+def position_order_index(value):
+    """Return the custom ordering index for executive positions."""
+    if not value:
+        return 999
+    try:
+        from utag_ug_archiver.utils.constants import (
+            executive_committee_members_position_order,
+            normalize_position_name,
+        )
+        normalized = normalize_position_name(value)
+        if normalized in executive_committee_members_position_order:
+            return executive_committee_members_position_order.index(normalized)
+    except Exception:
+        pass
+    return 999
+
+
 @register.simple_tag
 def get_title_choices():
     """Return the `TITLE_CHOICES` defined on the `User` model.

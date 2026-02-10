@@ -34,7 +34,8 @@
             {% if executives %}
             <div class="utag-executives-grid">
                 {% for executive in executives %}
-                <div class="utag-executive-card" data-bio-modal
+                 <div class="utag-executive-card" data-bio-modal
+                     data-order="{{ executive.executive_position|position_order_index }}"
                      data-name="{{ executive|format_full_name }}"
                      data-position="{{ executive.executive_position|position_label }}"
                      data-affiliation="{% if executive.department %}{{ executive.department.name }}{% endif %}{% if executive.school %}{% if executive.department %} • {% endif %}{{ executive.school.name }}{% endif %}{% if executive.college %}{% if executive.department or executive.school %} • {% endif %}{{ executive.college.name }}{% endif %}"
