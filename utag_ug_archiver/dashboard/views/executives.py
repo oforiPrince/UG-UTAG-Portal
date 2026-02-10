@@ -73,20 +73,21 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
         from datetime import date
         # Get all executives: those with positions in the committee members order list OR marked as active executives
         # Show all, including past executives (those whose term has ended)
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions, normalize_position_name
         executive_officers = User.objects.filter(
-            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
         )
-        # Sort the executive officers based on the custom order
+        # Sort the executive officers based on the custom order (normalize legacy names)
         executive_officers = sorted(
             executive_officers, 
-            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
-                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
                          else len(executive_committee_members_position_order)
         )
         
         # Separate executives into main executives and committee members
-        executive_members = [e for e in executive_officers if e.executive_position in executive_members_position_order]
-        committee_members = [e for e in executive_officers if e.executive_position not in executive_members_position_order and e.executive_position]
+        executive_members = [e for e in executive_officers if normalize_position_name(e.executive_position) in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position and normalize_position_name(e.executive_position) not in executive_members_position_order]
 
         # Cached static lists
         schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
@@ -376,21 +377,22 @@ class PrintAllExecutivesView(PermissionRequiredMixin, View):
         from django.db.models import Q
         from datetime import date, datetime
         
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions, normalize_position_name
         # Get all executives: those with positions in the committee members order list OR marked as active executives
         executive_officers = User.objects.filter(
-            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
         )
-        # Sort the executive officers based on the custom order
+        # Sort the executive officers based on the custom order (normalize legacy names)
         executive_officers = sorted(
             executive_officers, 
-            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
-                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
                          else len(executive_committee_members_position_order)
         )
         
         # Separate executives into main executives and committee members
-        executive_members = [e for e in executive_officers if e.executive_position in executive_members_position_order]
-        committee_members = [e for e in executive_officers if e.executive_position not in executive_members_position_order and e.executive_position]
+        executive_members = [e for e in executive_officers if normalize_position_name(e.executive_position) in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position and normalize_position_name(e.executive_position) not in executive_members_position_order]
         
         context = {
             'executive_officers': executive_officers,

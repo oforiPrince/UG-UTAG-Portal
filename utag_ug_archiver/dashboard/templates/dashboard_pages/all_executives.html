@@ -92,7 +92,7 @@
                                                 <td>{{ executive.email }}</td>
                                                 <td>{{ executive.staff_id|default:'N/A' }}</td>
                                                 <td>{{ executive.executive_position|position_label }}</td>
-                                                <td>{{ executive.department.name|default:'N/A' }}</td>
+                                                <td>{{ executive.department.name|default:'N/A'|title }}</td>
                                                 <td>{{ executive.date_appointed|date:'d M, Y' }}</td>
                                                 <td>
                                                     {% if executive.date_ended and executive.date_ended < today %}

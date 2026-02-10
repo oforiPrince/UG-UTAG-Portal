@@ -185,16 +185,18 @@ class ExecutiveCommitteeMembersView(View):
     
     def get(self, request):
         from django.db.models import Q
+        from utag_ug_archiver.utils.constants import normalize_position_name
         # Get all executives and committee members: those with positions in the order list OR marked as active executives
         # Show all, including past executives (those whose term has ended)
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions
         executives = User.objects.filter(
-            Q(executive_position__in=executive_committee_members_position_order) | Q(is_active_executive=True)
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
         )
-        # Sort the executives based on the custom order
+        # Sort the executives based on the custom order (normalize legacy position names)
         executives = sorted(
             executives, 
-            key=lambda x: executive_committee_members_position_order.index(x.executive_position) 
-                         if x.executive_position and x.executive_position in executive_committee_members_position_order 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
                          else len(executive_committee_members_position_order)
         )
         context = {
