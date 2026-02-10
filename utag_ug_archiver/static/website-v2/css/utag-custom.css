@@ -205,7 +205,7 @@ body {
   height: 50px;
   border: none;
   border-radius: 50%;
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   font-size: 18px;
   cursor: pointer;
@@ -314,7 +314,7 @@ body {
 .utag-executive-info h4 {
   font-size: 20px;
   font-weight: 700;
-  color: #01004e;
+  color: #1A3551;
   margin: 0 0 8px 0;
   line-height: 1.3;
 }
@@ -351,14 +351,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #01004e;
+  color: #1A3551;
   font-size: 14px;
   transition: all 0.3s ease;
   text-decoration: none;
 }
 
 .utag-executive-social a:hover {
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   transform: translateY(-3px);
 }
@@ -368,7 +368,7 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #01004e;
+  color: #1A3551;
   font-weight: 600;
   padding-top: 12px;
   border-top: 1px solid #eee;
@@ -452,7 +452,7 @@ body {
   left: 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #01004e, #0066cc);
+  background: linear-gradient(90deg, #1A3551, #0066cc);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -471,7 +471,7 @@ body {
   width: 70px;
   height: 70px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, #01004e 0%, #020080 100%);
+  background: linear-gradient(135deg, #1A3551 0%, #020080 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -492,7 +492,7 @@ body {
 .utag-aim-card h4 {
   font-size: 18px;
   font-weight: 600;
-  color: #01004e;
+  color: #1A3551;
   margin-bottom: 12px;
 }
 
@@ -618,7 +618,7 @@ img[loading="lazy"].loaded {
   position: absolute;
   top: 15px;
   left: 15px;
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   padding: 10px 15px;
   border-radius: 8px;
@@ -652,7 +652,7 @@ img[loading="lazy"].loaded {
 .utag-news-content h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #01004e;
+  color: #1A3551;
   margin-bottom: 12px;
   line-height: 1.4;
   min-height: 50px;
@@ -666,7 +666,7 @@ img[loading="lazy"].loaded {
 }
 
 .utag-read-more {
-  color: #01004e;
+  color: #1A3551;
   font-size: 14px;
   font-weight: 600;
   display: inline-flex;
@@ -687,7 +687,7 @@ img[loading="lazy"].loaded {
 .utag-view-all-btn {
   display: inline-block;
   padding: 14px 40px;
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   text-decoration: none;
   border-radius: 30px;
@@ -763,7 +763,7 @@ img[loading="lazy"].loaded {
   height: 44px;
   padding: 0 15px;
   background: #fff;
-  color: #01004e;
+  color: #1A3551;
   text-decoration: none;
   border-radius: 10px;
   font-weight: 600;
@@ -773,14 +773,14 @@ img[loading="lazy"].loaded {
 }
 
 .utag-page-link:hover {
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   transform: translateY(-2px);
   box-shadow: 0 5px 20px rgba(1,0,78,0.25);
 }
 
 .utag-page-item.active .utag-page-link {
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
   box-shadow: 0 5px 20px rgba(1,0,78,0.3);
 }
@@ -799,7 +799,7 @@ img[loading="lazy"].loaded {
 }
 
 .utag-page-nav .utag-page-link {
-  background: #01004e;
+  background: #1A3551;
   color: #fff;
 }
 
@@ -849,7 +849,7 @@ img[loading="lazy"].loaded {
 
 .utag-empty-state h3 {
   font-size: 24px;
-  color: #01004e;
+  color: #1A3551;
   margin-bottom: 10px;
 }
 

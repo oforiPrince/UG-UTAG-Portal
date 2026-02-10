@@ -83,7 +83,7 @@ INDEX:
 ******************************/
 
 /*
-    Defult Primary Color:       #01004e
+    Defult Primary Color:       #1A3551
     Default Border Color:       #eeeeee
     Default Text Color:         #444444
     Default Heading Color:      #222222
@@ -245,7 +245,7 @@ img {
 }
 
 a:hover {
-    color: #01004e;
+    color: #1A3551;
     text-decoration: none;
 }
 
@@ -1413,11 +1413,11 @@ textarea,
 /*-- 24.00 - Global Button --*/
 
 .btn {
-    background-color: #01004e;
+    background-color: #1A3551;
     color: #ffffff;
     border-width: 2px;
     border-style: solid;
-    border-color: #01004e;
+    border-color: #1A3551;
     padding: 0 20px;
     height: 44px;
     line-height: 40px;
@@ -1441,7 +1441,7 @@ textarea,
 
 .btn-outline {
     background-color: transparent;
-    color: #01004e;
+    color: #1A3551;
 }
 
 .btn-bd-white {
@@ -1458,7 +1458,7 @@ textarea,
 
 .btn-bg-white {
     background-color: #ffffff;
-    color: #01004e;
+    color: #1A3551;
     border-color: #ffffff;
 }
 
@@ -1483,7 +1483,7 @@ textarea,
 }
 
 .btn-color-primary {
-    color: #01004e;
+    color: #1A3551;
 }
 
 .btn-color-white {
@@ -1491,7 +1491,7 @@ textarea,
 }
 
 .btn-color-blue {
-    color: #01004e;
+    color: #1A3551;
 }
 
 .btn-color-gray {
@@ -1514,14 +1514,14 @@ textarea,
 
 .btn:hover {
     background-color: transparent;
-    color: #01004e;
-    border-color: #01004e;
+    color: #1A3551;
+    border-color: #1A3551;
 }
 
 .btn-hover-1:hover {
     color: #ffffff;
-    border-color: #01004e;
-    background-color: #01004e;
+    border-color: #1A3551;
+    background-color: #1A3551;
 }
 
 .btn-hover-2:hover {
@@ -1532,15 +1532,15 @@ textarea,
 .btn-hover-3:hover {
     background-color: #ffffff;
     border-color: #ffffff;
-    color: #01004e;
+    color: #1A3551;
 }
 
 .btn-hover-4:hover {
-    color: #01004e;
+    color: #1A3551;
 }
 
 .btn-submit:hover {
-    background-color: #01004e;
+    background-color: #1A3551;
     color: #ffffff;
 }
 
@@ -3990,7 +3990,7 @@ textarea,
 
 @media (min-width: 62em) {
     .main-navigation .mainmenu__item.menu-item-has-children>ul li a:hover {
-        color: #01004e;
+        color: #1A3551;
     }
 }
 
@@ -4227,7 +4227,7 @@ textarea,
 
 @media (min-width: 62em) {
     .main-navigation .mainmenu.primary-color .mainmenu__link {
-        color: #01004e;
+        color: #1A3551;
     }
 }
 
@@ -4314,11 +4314,11 @@ textarea,
 }
 
 .offcanvas-navigation .offcanvas-menu li:hover>a {
-    color: #01004e !important;
+    color: #1A3551 !important;
 }
 
 .offcanvas-navigation .offcanvas-menu li:hover>.menu-expand {
-    color: #01004e !important;
+    color: #1A3551 !important;
 }
 
 .offcanvas-navigation .site-info {
@@ -5459,7 +5459,7 @@ textarea,
 }
 
 .sidebar .widget-menu li.active {
-    border-bottom-color: #01004e;
+    border-bottom-color: #1A3551;
 }
 
 .sidebar .widget-contact p i {
@@ -5522,7 +5522,7 @@ textarea,
 
 .ui-widget-content .ui-state-default {
     background: #ffffff;
-    border: 2px solid #01004e;
+    border: 2px solid #1A3551;
     cursor: ew-resize;
     font-weight: normal;
     width: 20px;
@@ -5545,7 +5545,7 @@ textarea,
 }
 
 .ui-widget-content .ui-slider-range:last-child {
-    background: #01004e;
+    background: #1A3551;
     height: 2px;
 }
 
@@ -6384,7 +6384,7 @@ textarea,
     -o-border-radius: 50%;
     border-radius: 50%;
     text-align: center;
-    border: 2px solid #01004e;
+    border: 2px solid #1A3551;
     margin-bottom: 20px;
     font-size: 30px;
 }
@@ -22965,7 +22965,7 @@ button,
 .product-summary .product-price-wrapper span,
 .table tbody td.product-total-price,
 .product-widget__price span {
-    color: #01004e;
+    color: #1A3551;
 }
 
 .header__bottom,
@@ -22981,12 +22981,12 @@ button,
 .scroll-to-top,
 .testimonial__text:before,
 .testimonial-style-4 .testimonial__info:before {
-    background-color: #01004e;
+    background-color: #1A3551;
 }
 
 .project-filters button.is-checked,
 .tab-style-2 .nav-link.active {
-    border-color: #01004e;
+    border-color: #1A3551;
 }
 
 .opacity-bg:after {
@@ -23079,7 +23079,7 @@ button,
 }
 
 .color--primary {
-    color: #01004e !important;
+    color: #1A3551 !important;
 }
 
 .color--light {
@@ -23127,7 +23127,7 @@ button,
 }
 
 .bg--blue {
-    background-color: #01004e;
+    background-color: #1A3551;
 }
 
 .bg--gray {
@@ -23139,9 +23139,9 @@ button,
 }
 
 .bg--primary {
-    background-color: #01004e;
+    background-color: #1A3551;
 }
 
 .bd-color--primary {
-    border-color: #01004e;
+    border-color: #1A3551;
 }
