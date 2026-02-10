@@ -31,21 +31,21 @@ def format_full_name(value):
         if title or other or surname:
             parts = []
             if title:
-                t = str(title).strip().upper()
+                t = str(title).strip().title()
                 if t and not t.endswith('.'):
                     t = t + '.'
                 parts.append(t)
 
             name_body = ''
             if other:
-                name_body = str(other).strip()
+                name_body = str(other).strip().title()
 
             if surname:
                 if name_body:
                     # Join other names and surname with a space (no comma)
-                    name_body = f"{name_body} {surname.strip()}"
+                    name_body = f"{name_body} {surname.strip().title()}"
                 else:
-                    name_body = surname.strip()
+                    name_body = surname.strip().title()
 
             if name_body:
                 parts.append(name_body)
