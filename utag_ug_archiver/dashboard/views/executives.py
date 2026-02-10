@@ -286,6 +286,7 @@ class ExistingExecutiveMemberCreateView(View):
 class UpdateExecutiveMemberView(View):
     def post(self, request):
         executive_id = request.POST.get('executive_id')
+        user_title = request.POST.get('user_title')
         position = request.POST.get('position')
         fb_username = request.POST.get('fb_username')
         twitter_username = request.POST.get('twitter_username')
@@ -323,6 +324,8 @@ class UpdateExecutiveMemberView(View):
                 return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update the executive officer's details
+        if user_title:
+            executive.title = user_title
         executive.executive_position = position
         executive.fb_profile_url = fb_username
         executive.twitter_profile_url = twitter_username

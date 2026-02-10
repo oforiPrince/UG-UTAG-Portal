@@ -86,11 +86,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Secretary', 'Secretary'),
         ('Treasurer', 'Treasurer'),
         ("Women's Executive Officer", "Women's Executive Officer"),
-        ('Past President', 'Past President'),        ('National President', 'National President'),        ('CBAS Rep', 'CBAS Rep'),
-        ('College of Humanities Rep', 'College of Humanities Rep'), # Rep COH
-        ('College of Health Rep', 'College of Health Rep'), # Rep CHS
-        ("College of Education Rep", "College of Education Rep"), # Rep COE
-    )
+        ('National President', 'National President'),
+        ('CBAS Rep', 'CBAS Rep'),
+        ('CHS Rep', 'CHS Rep'),
+        ('COE Rep', 'COE Rep'),
+        ('COH Rep', 'COH Rep'),        # Legacy support for old position names (for backward compatibility with existing records)
+        ('College of Humanities Rep', 'College of Humanities Rep'),
+        ('College of Health Rep', 'College of Health Rep'),
+        ('College of Education Rep', 'College of Education Rep'),
+        ('Past President', 'Past President'),    )
     staff_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     title = models.CharField(max_length=15, choices=TITLE_CHOICES)
     academic_rank = models.CharField(max_length=100, blank=True, null=True)
@@ -203,7 +207,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.filter(name='Member').exists()
     
     def is_acting(self):
-        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer', 'Past President']).exists() and self.is_active_executive and self.date_ended is None
+        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer']).exists() and self.is_active_executive and self.date_ended is None
 
     def __str__(self):
         return self.get_full_name()

@@ -31,7 +31,7 @@ def format_full_name(value):
         if title or other or surname:
             parts = []
             if title:
-                t = str(title).strip()
+                t = str(title).strip().upper()
                 if t and not t.endswith('.'):
                     t = t + '.'
                 parts.append(t)
@@ -79,13 +79,12 @@ def position_label(value):
         s_norm = s.replace('\xa0', ' ').replace('\u00A0', ' ')
         mapping = {
             'Vice President': 'Vice-President',
-            'College of Humanities Rep': 'Rep COH',
-            'College of Humanities\xa0Rep': 'Rep COH',
-            'College of Health Rep': 'Rep CHS',
-            'College of Health\xa0Rep': 'Rep CHS',
-            'College of Education Rep': 'Rep COE',
-            'CBAS Rep': 'Rep CBAS',
-            'CBAS\xa0Rep': 'Rep CBAS',
+            'College of Humanities Rep': 'COH Rep',
+            'College of Humanities\xa0Rep': 'COH Rep',
+            'College of Health Rep': 'CHS Rep',
+            'College of Health\xa0Rep': 'CHS Rep',
+            'College of Education Rep': 'COE Rep',
+            "Women's Executive\xa0Officer": "Women's Executive Officer",
         }
         # Try normalized key first, then raw
         return mapping.get(s_norm, mapping.get(s, s))

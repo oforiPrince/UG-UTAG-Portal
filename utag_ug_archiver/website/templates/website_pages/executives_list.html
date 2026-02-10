@@ -26,7 +26,7 @@
               <a href="#" class="text-decoration-none" data-bio-modal
                  data-name="{{ u|format_full_name }}"
                  data-position="{{ u.title }}{% if u.academic_rank %} • {{ u.academic_rank }}{% endif %}"
-                 data-affiliation="{% if u.school %}School: {{ u.school.name }}{% endif %}{% if u.college %} | College: {{ u.college.name }}{% endif %}{% if u.department %} | Dept: {{ u.department.name }}{% endif %}"
+                 data-affiliation="{% if u.department %}{{ u.department.name }}{% endif %}{% if u.school %}{% if u.department %} • {% endif %}{{ u.school.name }}{% endif %}{% if u.college %}{% if u.department or u.school %} • {% endif %}{{ u.college.name }}{% endif %}"
                  data-bio="{{ u.executive_bio|default:'<span class=\'text-muted\'>No biography provided.</span>'|linebreaksbr|escapejs }}"
                  data-photo="{% if u.profile_pic %}{{ u.profile_pic.url }}{% endif %}">
                 {{ u.surname|title }} {{ u.other_name|title }}
