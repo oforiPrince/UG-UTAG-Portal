@@ -73,9 +73,31 @@ class UserAdmin(BaseUserAdmin):
 	ordering = ('email',)
 	filter_horizontal = ()
 
+	readonly_fields = ('last_login', 'created_at', 'updated_at')
+
 	fieldsets = (
 		(None, {'fields': ('email', 'password')}),
-		('Personal info', {'fields': ('title', 'other_name', 'surname', 'gender', 'phone_number', 'profile_pic')}),
+		('Personal info', {
+			'fields': (
+				'title', 'other_name', 'surname', 'gender', 'phone_number',
+				'profile_pic', 'staff_id', 'academic_rank'
+			)
+		}),
+		('Organization', {'fields': ('school', 'college', 'department')}),
+		('Executive Profile', {
+			'fields': (
+				'executive_image', 'executive_position', 'executive_terms', 'is_active_executive',
+				'date_appointed', 'date_ended', 'executive_summary', 'executive_bio'
+			)
+		}),
+		('Executive Links', {
+			'fields': (
+				'fb_profile_url', 'twitter_profile_url', 'linkedin_profile_url',
+				'linkedin_url', 'twitter_url', 'personal_website_url'
+			)
+		}),
+		('Flags', {'fields': ('email_sent', 'must_change_password', 'created_from_dashboard', 'is_bulk_creation')}),
+		('Audit', {'fields': ('created_by', 'created_at', 'updated_at')}),
 		('Permissions', {'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions')}),
 		('Important dates', {'fields': ('last_login',)}),
 	)
