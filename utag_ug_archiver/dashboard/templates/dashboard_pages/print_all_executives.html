@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Executives & Committee Members - Print</title>
+    <title>All Executives & Local Executive Council Members - Print</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -102,7 +102,7 @@
     {% load name_filters %}
     <button class="print-button no-print" onclick="window.print()">Print This Page</button>
     
-    <h1>All Executives & Committee Members Directory</h1>
+    <h1>All Executives & Local Executive Council Members Directory</h1>
     <p style="text-align: center; color: #666;">Generated on {{ now|date:'d F Y, H:i' }}</p>
 
     <!-- Executive Members Section -->
@@ -144,8 +144,8 @@
         <p class="empty-message">No executive members found.</p>
     {% endif %}
 
-    <!-- Committee Members Section -->
-    <h2>Committee Members</h2>
+    <!-- Local Executive Council Members Section -->
+    <h2>Local Executive Council Members</h2>
     {% if committee_members %}
         <table>
             <thead>
@@ -191,7 +191,7 @@
             <td>{{ executive_members|length }}</td>
         </tr>
         <tr>
-            <td><strong>Total Committee Members:</strong></td>
+            <td><strong>Total Local Executive Council Members:</strong></td>
             <td>{{ committee_members|length }}</td>
         </tr>
         <tr>
