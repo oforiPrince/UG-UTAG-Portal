@@ -384,6 +384,9 @@ if not DEBUG:
 
 # Security settings for production
 if not DEBUG:
+    # Trust the X-Forwarded-Proto header from Nginx so Django knows
+    # the original request was HTTPS (prevents infinite redirect loop).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
