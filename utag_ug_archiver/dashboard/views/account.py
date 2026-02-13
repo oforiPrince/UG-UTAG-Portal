@@ -35,8 +35,10 @@ class AdminListView(PermissionRequiredMixin, View):
     permission_required = 'accounts.view_admin'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Fetch users
-        users = User.objects.filter(groups__name='Admin').order_by('surname')
+        # Fetch users — include users in the Admin group AND superusers
+        users = User.objects.filter(
+            Q(groups__name='Admin') | Q(is_superuser=True)
+        ).distinct().order_by('surname')
         
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
