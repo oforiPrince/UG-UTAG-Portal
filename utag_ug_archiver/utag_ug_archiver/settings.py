@@ -234,7 +234,7 @@ STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'
 # (e.g. style.abc123.css) so that browsers automatically fetch new versions
 # after a deploy without needing a hard reload or cache clear.
 STATICFILES_STORAGE = os.environ.get(
-    'DJANGO_STATICFILES_STORAGE', 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    'DJANGO_STATICFILES_STORAGE', 'utag_ug_archiver.storage.ForgivingManifestStaticFilesStorage'
 )
 
 
