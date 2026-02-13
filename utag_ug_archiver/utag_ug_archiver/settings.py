@@ -358,8 +358,10 @@ except ImportError:
     }
 
 # Session caching for better performance
+# Use cached_db: reads from cache, writes to both cache and DB.
+# If Redis goes down, sessions still work via the database.
 if not DEBUG:
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
     SESSION_CACHE_ALIAS = 'default'
 
 # Template caching for production
