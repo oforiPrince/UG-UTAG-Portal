@@ -229,9 +229,12 @@ STATICFILES_DIRS = [
 # static root
 STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
 
-# Use WhiteNoise to serve static files directly from Gunicorn in simple deployments
+# Use WhiteNoise to serve static files directly from Gunicorn in simple deployments.
+# CompressedManifestStaticFilesStorage adds a content hash to each filename
+# (e.g. style.abc123.css) so that browsers automatically fetch new versions
+# after a deploy without needing a hard reload or cache clear.
 STATICFILES_STORAGE = os.environ.get(
-    'DJANGO_STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage'
+    'DJANGO_STATICFILES_STORAGE', 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 )
 
 
@@ -372,7 +375,9 @@ if not DEBUG:
 if not DEBUG:
     WHITENOISE_USE_FINDERS = False
     WHITENOISE_AUTOREFRESH = False
-    WHITENOISE_MANIFEST_STRICT = True
+    # Set to False so missing manifest entries return the unhashed URL
+    # instead of raising a 500 error. Safer for edge cases.
+    WHITENOISE_MANIFEST_STRICT = False
     # Add max-age for static files
     WHITENOISE_MAX_AGE = 31536000  # 1 year
 
