@@ -99,7 +99,8 @@ class EventCreateUpdateView(View):
             event.title = title
             event.description = description
             event.is_published = is_published
-            event.featured_image = featured_image
+            if featured_image:
+                event.featured_image = featured_image
             event.venue = venue
             event.start_date = start_date
             event.end_date = end_date
