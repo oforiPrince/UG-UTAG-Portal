@@ -109,6 +109,19 @@
                            value="{{ context.end_time|time:"H:i" }}">
                   </div>
                 </div>
+                <div class="mb-3">
+                  <label for="photos_link" class="form-label">Event Photos Link <small class="text-muted">(Optional)</small></label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="mdi mdi-image-multiple"></i></span>
+                    <input type="url"
+                           class="form-control"
+                           id="photos_link"
+                           name="photos_link"
+                           value="{{ context.photos_link }}"
+                           placeholder="https://photos.google.com/share/...">
+                  </div>
+                  <small class="text-muted">Paste a link to a Google Photos album, Flickr gallery, or any external photo collection for this event.</small>
+                </div>
                 <div class="mb-3 form-check">
                   <input type="checkbox"
                          class="form-check-input"

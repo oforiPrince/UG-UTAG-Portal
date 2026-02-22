@@ -138,6 +138,12 @@ class Event(models.Model):
     is_published = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     
+    # Event Photos
+    photos_link = models.URLField(
+        blank=True,
+        help_text="External link to event photos (e.g. Google Photos, Flickr)"
+    )
+
     # Metadata
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)

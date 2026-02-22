@@ -51,6 +51,7 @@ class EventCreateUpdateView(View):
                 'end_date': event.end_date,
                 'start_time': event.start_time,
                 'end_time': event.end_time,
+                'photos_link': event.photos_link,
                 'notifications':notifications,
                 'notification_count': notification_count,
                 'active_menu': 'events'
@@ -75,6 +76,7 @@ class EventCreateUpdateView(View):
         start_time_str = request.POST.get('start_time')
         end_time_str = request.POST.get('end_time')
         is_published = request.POST.get('is_published')
+        photos_link = request.POST.get('photos_link', '')
         featured_image = request.FILES.get('image')
 
         # Parse dates and times
@@ -103,6 +105,7 @@ class EventCreateUpdateView(View):
             event.end_date = end_date
             event.start_time = start_time
             event.end_time = end_time
+            event.photos_link = photos_link
             event.save()
             messages.info(request, "Event Updated Successfully")
         else:
@@ -117,6 +120,7 @@ class EventCreateUpdateView(View):
                 end_date=end_date,
                 start_time=start_time,
                 end_time=end_time,
+                photos_link=photos_link,
             )
             messages.info(request, "Event Created Successfully")
 
