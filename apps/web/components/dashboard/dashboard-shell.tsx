@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  Bell,
   ChevronDown,
   Command,
   LogOut,
@@ -20,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Logo } from "@/components/logo";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -79,12 +79,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     queryKey: ["auth", "me"],
     queryFn: () => api<User>("/api/v1/auth/me"),
     retry: false,
-  });
-  const unread = useQuery({
-    queryKey: ["notifications", "unread"],
-    queryFn: () =>
-      api<{ unread: number }>("/api/v1/notifications/unread-count"),
-    enabled: Boolean(user.data),
   });
   useEffect(() => {
     if (user.error)
@@ -250,20 +244,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Moon className="size-4" />
               )}
             </Button>
-            <Button asChild size="icon" variant="ghost">
-              <Link
-                href="/dashboard/notifications"
-                className="relative"
-                aria-label="Notifications"
-              >
-                <Bell className="size-4" />
-                {Boolean(unread.data?.unread) && (
-                  <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-coral text-[.5rem] font-black text-white">
-                    {Math.min(unread.data?.unread ?? 0, 9)}
-                  </span>
-                )}
-              </Link>
-            </Button>
+            <NotificationBell enabled={Boolean(user.data)} />
             <Link
               href="/dashboard/profile"
               className="ml-1 flex items-center gap-2 rounded-full border border-line bg-panel p-1 pr-2"

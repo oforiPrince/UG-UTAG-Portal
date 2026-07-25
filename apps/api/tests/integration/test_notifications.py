@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -91,6 +92,7 @@ async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
             ]
         )
         await session.commit()
+        member_id = member.id
 
     login = await client.post(
         "/api/v1/auth/login",
@@ -111,17 +113,18 @@ async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
     )
     assert created.status_code == 201
     announcement = created.json()
+    announcement_id = UUID(announcement["id"])
 
     async with session_factory() as session:
         deliveries = (
             await session.scalars(
                 select(Notification).where(
                     Notification.resource_type == "announcement",
-                    Notification.resource_id == announcement["id"],
+                    Notification.resource_id == announcement_id,
                 )
             )
         ).all()
-        assert [delivery.user_id for delivery in deliveries] == [member.id]
+        assert [delivery.user_id for delivery in deliveries] == [member_id]
         assert deliveries[0].category == "announcement"
         assert deliveries[0].body == "<p>Official member information.</p>"
 
@@ -142,10 +145,89 @@ async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
         delivery_count = await session.scalar(
             select(func.count(Notification.id)).where(
                 Notification.resource_type == "announcement",
-                Notification.resource_id == announcement["id"],
+                Notification.resource_id == announcement_id,
             )
         )
         assert delivery_count == 1
+
+
+async def test_moderation_approve_delivers_announcement_notifications(
+    client: AsyncClient, session_factory
+) -> None:  # type: ignore[no-untyped-def]
+    async with session_factory() as session:
+        member_role = await session.scalar(select(Role).where(Role.key == "member"))
+        assert member_role is not None
+        member = User(
+            id=new_id(),
+            email="review-member@example.edu.gh",
+            password_hash=hash_password("StrongPassword123"),
+            status="active",
+            email_verified=True,
+            other_name="Yaw",
+            surname="Boateng",
+        )
+        session.add(member)
+        await session.flush()
+        session.add(
+            UserRole(
+                id=new_id(),
+                user_id=member.id,
+                role_id=member_role.id,
+                assigned_at=datetime.now(UTC),
+            )
+        )
+        await session.commit()
+        member_id = member.id
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    assert login.status_code == 200
+    headers = {"X-CSRF-Token": login.json()["csrf_token"]}
+    created = await client.post(
+        "/api/v1/content/announcements",
+        headers=headers,
+        json={
+            "title": "Review queue notice",
+            "content_html": "<p>Awaiting approval.</p>",
+            "priority": "normal",
+            "audiences": [{"type": "role", "value": "member"}],
+            "status": "review",
+        },
+    )
+    assert created.status_code == 201
+    announcement = created.json()
+    announcement_id = UUID(announcement["id"])
+
+    async with session_factory() as session:
+        assert (
+            await session.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.resource_type == "announcement",
+                    Notification.resource_id == announcement_id,
+                )
+            )
+            == 0
+        )
+
+    approved = await client.post(
+        f"/api/v1/moderation/announcement/{announcement['id']}",
+        headers=headers,
+        json={"decision": "approve", "expected_version": announcement["version"]},
+    )
+    assert approved.status_code == 200
+
+    async with session_factory() as session:
+        deliveries = (
+            await session.scalars(
+                select(Notification).where(
+                    Notification.resource_type == "announcement",
+                    Notification.resource_id == announcement_id,
+                )
+            )
+        ).all()
+        assert [delivery.user_id for delivery in deliveries] == [member_id]
 
 
 async def test_direct_send_cannot_impersonate_an_announcement(

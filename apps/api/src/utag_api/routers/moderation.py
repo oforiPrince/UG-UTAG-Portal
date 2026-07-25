@@ -28,6 +28,7 @@ from utag_api.models import (
 )
 from utag_api.schemas.common import ApiModel
 from utag_api.services.events import record_change
+from utag_api.services.notifications import deliver_announcement_notifications
 
 router = APIRouter(prefix="/moderation", tags=["content moderation"])
 
@@ -380,9 +381,10 @@ async def decide(
         item.published_at = datetime.now(UTC)
     item.version += 1
 
+    context = event_context(request, principal)
     record_change(
         db,
-        context=event_context(request, principal),
+        context=context,
         action=f"{kind}.moderation.{payload.decision}",
         resource_type=kind,
         resource_id=item_id,
@@ -395,5 +397,11 @@ async def decide(
         changes={"status": {"from": previous_status, "to": next_status}},
         reason=payload.note.strip() or None,
     )
+    if (
+        isinstance(item, Announcement)
+        and previous_status != "published"
+        and next_status == "published"
+    ):
+        await deliver_announcement_notifications(db, item, context=context)
     await db.commit()
     return moderation_item(item)

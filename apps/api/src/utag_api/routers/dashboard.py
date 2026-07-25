@@ -102,6 +102,7 @@ async def overview(
                 select(func.count(Notification.id)).where(
                     Notification.user_id == principal.user.id,
                     Notification.read_at.is_(None),
+                    Notification.archived_at.is_(None),
                 )
             )
         )

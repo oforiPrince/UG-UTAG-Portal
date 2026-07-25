@@ -92,6 +92,6 @@ describe("notification authoring", () => {
       "STRONG",
     );
     expect(container.textContent).not.toContain("<strong>");
-    expect(screen.getByText("Official announcement")).toBeTruthy();
+    expect(screen.getByText(/Official announcement/)).toBeTruthy();
   });
 });

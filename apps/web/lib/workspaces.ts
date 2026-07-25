@@ -1369,7 +1369,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       method: "DELETE",
       successMessage: "Announcement archived",
       confirm:
-        "Archive this announcement while retaining its delivery history?",
+        "Archive this announcement? Existing inbox deliveries stay in members' notification history.",
       danger: true,
       when: (row) => row.status !== "archived",
     },
