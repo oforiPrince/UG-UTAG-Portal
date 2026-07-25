@@ -1,0 +1,16 @@
+.git
+.github
+.next
+node_modules
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+utag_ug_archiver/node_modules
+utag_ug_archiver/media
+utag_ug_archiver/staticfiles
+*.log
+.env
+.env.*
+!.env.example

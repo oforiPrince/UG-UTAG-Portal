@@ -1,0 +1,19 @@
+{
+  "name": "ug-utag-portal",
+  "version": "2.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @utag/web dev",
+    "build": "pnpm --filter @utag/web build",
+    "lint": "pnpm --filter @utag/web lint",
+    "typecheck": "pnpm --filter @utag/web typecheck",
+    "test": "pnpm --filter @utag/web test",
+    "test:e2e": "pnpm --filter @utag/web test:e2e",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  }
+}
