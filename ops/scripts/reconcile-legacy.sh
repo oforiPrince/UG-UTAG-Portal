@@ -13,6 +13,7 @@ evidence_directory="$(cd "${evidence_directory}" && pwd)"
 
 run_migration() {
   docker compose run --rm --no-deps \
+    --add-host=host.docker.internal:host-gateway \
     -e LEGACY_DATABASE_URL \
     -v "${evidence_directory}:/evidence" \
     api python /app/scripts/legacy_migration.py "$@"
@@ -26,6 +27,7 @@ run_migration reconcile --output /evidence/reconciliation.json
 if [[ -n "${LEGACY_MEDIA_ROOT:-}" ]]; then
   media_root="$(cd "${LEGACY_MEDIA_ROOT}" && pwd)"
   docker compose run --rm --no-deps \
+    --add-host=host.docker.internal:host-gateway \
     -v "${evidence_directory}:/evidence" \
     -v "${media_root}:/legacy-media:ro" \
     api python /app/scripts/legacy_migration.py files \

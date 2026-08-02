@@ -67,6 +67,45 @@ for candidate in docker-compose.db.yml compose.db.yml docker-compose.yml; do
 done
 [[ -n "${DB_COMPOSE}" ]] || die "Could not find a DB compose file under ${LEGACY_DIR}"
 
+# Parse env files safely (never `source` — passwords often contain shell metacharacters).
+load_env_value() {
+  local file="$1"
+  local key="$2"
+  python3 - "$file" "$key" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+key = sys.argv[2]
+if not path.is_file():
+    raise SystemExit(0)
+for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    name, value = line.split("=", 1)
+    name = name.strip()
+    if name.startswith("export "):
+        name = name[len("export "):].strip()
+    if name != key:
+        continue
+    value = value.strip()
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        value = value[1:-1]
+    print(value)
+    break
+PY
+}
+
+DB_ENV=""
+for candidate in .env.db .env; do
+  if [[ -f "${LEGACY_DIR}/${candidate}" ]]; then
+    DB_ENV="${LEGACY_DIR}/${candidate}"
+    # Prefer .env.db when present; still allow .env fallback below.
+    if [[ "${candidate}" == ".env.db" ]]; then
+      break
+    fi
+  fi
+done
 APP_ENV=""
 for candidate in .env .env.prod .env.production; do
   if [[ -f "${LEGACY_DIR}/${candidate}" ]]; then
@@ -74,41 +113,61 @@ for candidate in .env .env.prod .env.production; do
     break
   fi
 done
-DB_ENV=""
-for candidate in .env.db .env; do
-  if [[ -f "${LEGACY_DIR}/${candidate}" ]]; then
-    DB_ENV="${LEGACY_DIR}/${candidate}"
-    break
+
+env_get() {
+  local key="$1"
+  local value=""
+  if [[ -n "${DB_ENV}" ]]; then
+    value="$(load_env_value "${DB_ENV}" "${key}" || true)"
   fi
-done
+  if [[ -z "${value}" && -n "${APP_ENV}" && "${APP_ENV}" != "${DB_ENV}" ]]; then
+    value="$(load_env_value "${APP_ENV}" "${key}" || true)"
+  fi
+  printf '%s' "${value}"
+}
 
-# Load DB credentials without printing secrets.
-set +u
-set -a
-# shellcheck disable=SC1090
-[[ -n "${DB_ENV}" ]] && source "${DB_ENV}"
-# shellcheck disable=SC1090
-[[ -n "${APP_ENV}" && "${APP_ENV}" != "${DB_ENV}" ]] && source "${APP_ENV}"
-set +a
-set -u
+POSTGRES_DB_NAME="$(env_get POSTGRES_DB)"
+[[ -n "${POSTGRES_DB_NAME}" ]] || POSTGRES_DB_NAME="$(env_get DB_NAME)"
+[[ -n "${POSTGRES_DB_NAME}" ]] || POSTGRES_DB_NAME="app_database"
 
-POSTGRES_DB_NAME="${POSTGRES_DB:-${DB_NAME:-app_database}}"
-POSTGRES_DB_USER="${POSTGRES_USER:-${DB_USER:-db_user}}"
+POSTGRES_DB_USER="$(env_get POSTGRES_USER)"
+[[ -n "${POSTGRES_DB_USER}" ]] || POSTGRES_DB_USER="$(env_get DB_USER)"
+[[ -n "${POSTGRES_DB_USER}" ]] || POSTGRES_DB_USER="db_user"
+
+LEGACY_PASSWORD_RAW="$(env_get POSTGRES_PASSWORD)"
+[[ -n "${LEGACY_PASSWORD_RAW}" ]] || LEGACY_PASSWORD_RAW="$(env_get DB_PASSWORD)"
+
+# Live inventory shows the Django DB published on host :5433.
+# Migration runs inside Compose containers, so use host-gateway DNS — not 127.0.0.1.
+DB_HOST_FOR_URL="$(env_get DB_HOST)"
+DB_PORT_FOR_URL="$(env_get DB_PORT)"
+[[ -n "${DB_PORT_FOR_URL}" ]] || DB_PORT_FOR_URL="5433"
+if [[ -z "${DB_HOST_FOR_URL}" || "${DB_HOST_FOR_URL}" == "db" || "${DB_HOST_FOR_URL}" == "postgres" || "${DB_HOST_FOR_URL}" == "127.0.0.1" || "${DB_HOST_FOR_URL}" == "localhost" ]]; then
+  DB_HOST_FOR_URL="host.docker.internal"
+  DB_PORT_FOR_URL="5433"
+fi
+
 POSTGRES_CONTAINER="$(
-  docker compose -f "${DB_COMPOSE}" ps -q db 2>/dev/null \
-    || docker compose -f "${DB_COMPOSE}" ps -q postgres 2>/dev/null \
-    || true
+  docker ps --filter "name=utag_ug_archiver-db" --format '{{.ID}}' | head -1
 )"
 if [[ -z "${POSTGRES_CONTAINER}" ]]; then
-  # Fallback: find a running postgres container.
-  POSTGRES_CONTAINER="$(docker ps --filter 'ancestor=postgres' --format '{{.ID}}' | head -1)"
+  POSTGRES_CONTAINER="$(
+    docker compose -f "${DB_COMPOSE}" ps -q db 2>/dev/null \
+      || docker compose -f "${DB_COMPOSE}" ps -q postgres 2>/dev/null \
+      || true
+  )"
 fi
 [[ -n "${POSTGRES_CONTAINER}" ]] || die "No running Postgres container found — refuse to continue without a backup"
 
 DUMP_FILE="${EVIDENCE_DIR}/legacy-backups/prod-${BATCH_ID}.dump"
-log "Dumping database '${POSTGRES_DB_NAME}' from container ${POSTGRES_CONTAINER}"
-docker exec -e PGPASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}" "${POSTGRES_CONTAINER}" \
-  pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc -f "/tmp/prod-${BATCH_ID}.dump"
+log "Dumping database '${POSTGRES_DB_NAME}' from container ${POSTGRES_CONTAINER} (source DB untouched)"
+# Prefer local auth inside the container so we do not depend on shell-sourcing passwords.
+if ! docker exec "${POSTGRES_CONTAINER}" \
+  pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc -f "/tmp/prod-${BATCH_ID}.dump"; then
+  [[ -n "${LEGACY_PASSWORD_RAW}" ]] || die "pg_dump failed and no DB password was available from env files"
+  docker exec -e PGPASSWORD="${LEGACY_PASSWORD_RAW}" "${POSTGRES_CONTAINER}" \
+    pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc -f "/tmp/prod-${BATCH_ID}.dump"
+fi
 docker cp "${POSTGRES_CONTAINER}:/tmp/prod-${BATCH_ID}.dump" "${DUMP_FILE}"
 docker exec "${POSTGRES_CONTAINER}" rm -f "/tmp/prod-${BATCH_ID}.dump"
 if command -v shasum >/dev/null 2>&1; then
@@ -119,16 +178,7 @@ fi
 log "Legacy DB backup written to ${DUMP_FILE}"
 log "Checksum: $(cat "${DUMP_FILE}.sha256")"
 
-# Build a LEGACY_DATABASE_URL for the migration tool (read from the live DB).
-# Prefer connecting through the Docker network / published port rather than stopping anything.
-DB_HOST_FOR_URL="${DB_HOST:-127.0.0.1}"
-DB_PORT_FOR_URL="${DB_PORT:-5432}"
-# If DB_HOST points at a docker service name, use localhost published port instead.
-if [[ "${DB_HOST_FOR_URL}" == "db" || "${DB_HOST_FOR_URL}" == "postgres" ]]; then
-  DB_HOST_FOR_URL="127.0.0.1"
-fi
-LEGACY_PASSWORD_RAW="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
-[[ -n "${LEGACY_PASSWORD_RAW}" ]] || die "Could not resolve DB password from ${DB_ENV:-unknown}"
+[[ -n "${LEGACY_PASSWORD_RAW}" ]] || die "Could not resolve DB password from ${DB_ENV:-${APP_ENV:-unknown}}"
 LEGACY_DATABASE_URL="$(
   python3 - <<PY
 from urllib.parse import quote
@@ -202,13 +252,17 @@ def set_var(content: str, key: str, value: str) -> str:
 # Rehearsal-safe defaults: modern stack on loopback only; do NOT claim production edge yet.
 replacements = {
     "ENVIRONMENT": "development",
-    "PUBLIC_WEB_URL": "http://127.0.0.1:3000",
-    "API_URL": "http://127.0.0.1:8000",
+    "PUBLIC_WEB_URL": "http://127.0.0.1:13000",
+    "API_URL": "http://127.0.0.1:18000",
     "SESSION_COOKIE_SECURE": "false",
-    "ALLOWED_ORIGINS": '["http://127.0.0.1:3000","http://localhost:3000"]',
+    "ALLOWED_ORIGINS": '["http://127.0.0.1:13000","http://localhost:13000"]',
     "ALLOWED_HOSTS": '["localhost","127.0.0.1","api"]',
     "SITE_DOMAIN": "localhost",
     "MALWARE_SCAN_REQUIRED": "false",
+    # Avoid colliding with live Django (:8000) and live Postgres (:5433).
+    "POSTGRES_HOST_PORT": "15432",
+    "API_HOST_PORT": "18000",
+    "WEB_HOST_PORT": "13000",
     "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
     "RABBITMQ_DEFAULT_PASS": secrets.token_urlsafe(24),
     "APP_SECRET_KEY": secrets.token_urlsafe(48),
@@ -227,6 +281,29 @@ PY
   grep -E '^(BOOTSTRAP_ADMIN_EMAIL|BOOTSTRAP_ADMIN_PASSWORD)=' .env || true
 else
   log "Keeping existing ${MODERN_ROOT}/.env"
+  # Ensure parallel host ports are set even if .env already existed from an earlier attempt.
+  python3 - <<'PY'
+from pathlib import Path
+import re
+path = Path(".env")
+text = path.read_text()
+def set_var(content: str, key: str, value: str) -> str:
+    pattern = re.compile(rf"^{re.escape(key)}=.*$", re.M)
+    line = f"{key}={value}"
+    if pattern.search(content):
+        return pattern.sub(line, content, count=1)
+    return content + ("\n" if not content.endswith("\n") else "") + line + "\n"
+for key, value in {
+    "POSTGRES_HOST_PORT": "15432",
+    "API_HOST_PORT": "18000",
+    "WEB_HOST_PORT": "13000",
+    "PUBLIC_WEB_URL": "http://127.0.0.1:13000",
+    "API_URL": "http://127.0.0.1:18000",
+}.items():
+    text = set_var(text, key, value)
+path.write_text(text)
+print("Ensured parallel host ports in existing .env")
+PY
 fi
 
 # Persist migration pointers for later ship runs (do not echo password URL into files that get logged).
@@ -237,14 +314,19 @@ if [[ -n "${LEGACY_MEDIA_ROOT}" ]]; then
 fi
 chmod 600 "${EVIDENCE_DIR}/legacy-database.url"
 
+API_HOST_PORT="$(load_env_value "${MODERN_ROOT}/.env" API_HOST_PORT || true)"
+WEB_HOST_PORT="$(load_env_value "${MODERN_ROOT}/.env" WEB_HOST_PORT || true)"
+API_HOST_PORT="${API_HOST_PORT:-18000}"
+WEB_HOST_PORT="${WEB_HOST_PORT:-13000}"
+
 log "=== 5) Start modern stack ALONGSIDE legacy (no Caddy / no :80/:443) ==="
 cd "${MODERN_ROOT}"
 docker compose --profile local up -d --build
 
-log "Waiting for modern API/web health on loopback"
+log "Waiting for modern API/web health on loopback :${API_HOST_PORT} / :${WEB_HOST_PORT}"
 for i in $(seq 1 90); do
-  if curl --fail --silent --show-error http://127.0.0.1:8000/health/ready >/dev/null 2>&1 \
-    && curl --fail --silent --show-error http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+  if curl --fail --silent --show-error "http://127.0.0.1:${API_HOST_PORT}/health/ready" >/dev/null 2>&1 \
+    && curl --fail --silent --show-error "http://127.0.0.1:${WEB_HOST_PORT}/api/health" >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -291,8 +373,8 @@ cat <<EOF
 Legacy production site: still on :80/:443 (untouched edge)
 Legacy production DB:   intact; dump at ${DUMP_FILE}
 Modern stack worktree:  ${MODERN_ROOT}
-Modern web (local):     http://127.0.0.1:3000
-Modern API (local):     http://127.0.0.1:8000
+Modern web (local):     http://127.0.0.1:${WEB_HOST_PORT}
+Modern API (local):     http://127.0.0.1:${API_HOST_PORT}
 Evidence:               ${EVIDENCE_DIR}
 
 NEXT (only when you are ready to cut public traffic):
