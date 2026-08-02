@@ -67,7 +67,7 @@ for candidate in docker-compose.db.yml compose.db.yml docker-compose.yml; do
 done
 [[ -n "${DB_COMPOSE}" ]] || die "Could not find a DB compose file under ${LEGACY_DIR}"
 
-# Parse env files safely (never `source` — passwords often contain shell metacharacters).
+``# Parse env files safely (never `source` — passwords often contain shell metacharacters).
 load_env_value() {
   local file="$1"
   local key="$2"
@@ -142,9 +142,10 @@ LEGACY_PASSWORD_RAW="$(env_get POSTGRES_PASSWORD)"
 DB_HOST_FOR_URL="$(env_get DB_HOST)"
 DB_PORT_FOR_URL="$(env_get DB_PORT)"
 [[ -n "${DB_PORT_FOR_URL}" ]] || DB_PORT_FOR_URL="5433"
-if [[ -z "${DB_HOST_FOR_URL}" || "${DB_HOST_FOR_URL}" == "db" || "${DB_HOST_FOR_URL}" == "postgres" || "${DB_HOST_FOR_URL}" == "127.0.0.1" || "${DB_HOST_FOR_URL}" == "localhost" ]]; then
-  DB_HOST_FOR_URL="host.docker.internal"
-  DB_PORT_FOR_URL="5433"
+# Prefer the live DB container on the shared Docker network (works on older Compose).
+if [[ -z "${DB_HOST_FOR_URL}" || "${DB_HOST_FOR_URL}" == "db" || "${DB_HOST_FOR_URL}" == "postgres" || "${DB_HOST_FOR_URL}" == "127.0.0.1" || "${DB_HOST_FOR_URL}" == "localhost" || "${DB_HOST_FOR_URL}" == "host.docker.internal" ]]; then
+  DB_HOST_FOR_URL="utag_ug_archiver-db-1"
+  DB_PORT_FOR_URL="5432"
 fi
 
 POSTGRES_CONTAINER="$(

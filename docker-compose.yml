@@ -104,6 +104,9 @@ services:
       context: ./apps/api
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - legacy_db
     env_file:
       - path: .env
         required: false
@@ -277,6 +280,12 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+
+networks:
+  default:
+  legacy_db:
+    external: true
+    name: utag_ug_archiver_default
 
 volumes:
   portal_postgres:
