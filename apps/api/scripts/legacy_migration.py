@@ -244,7 +244,7 @@ def capture(source: Engine, target: Engine, batch_id: str, archive_dir: Path) ->
                             created_at=datetime.now(UTC),
                         )
                     )
-            archive_secure_chmod(path, 0o600)
+            secure_chmod(archive_path, 0o600)
             target_session.commit()
 
 
