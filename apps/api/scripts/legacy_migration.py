@@ -287,17 +287,50 @@ def promote_organization(
     )
     if existing:
         return existing
+    name = str(restore_value(row["name"]))
     parent = None
     if unit_type == "college":
         parent = unit_id(session, restore_value(row.get("school_id")), "school")
     elif unit_type == "department":
         parent = unit_id(session, restore_value(row.get("college_id")), "college")
+
+    # Reclaim seeded/demo units that share the same identity so promote
+    # remains idempotent against uq_organization_root_identity / unit_identity.
+    if parent is None:
+        existing = session.scalar(
+            select(OrganizationUnit).where(
+                OrganizationUnit.unit_type == unit_type,
+                OrganizationUnit.name == name,
+                OrganizationUnit.parent_id.is_(None),
+            )
+        )
+    else:
+        existing = session.scalar(
+            select(OrganizationUnit).where(
+                OrganizationUnit.unit_type == unit_type,
+                OrganizationUnit.name == name,
+                OrganizationUnit.parent_id == parent,
+            )
+        )
+    if existing is None:
+        existing = session.scalar(
+            select(OrganizationUnit).where(
+                OrganizationUnit.unit_type == unit_type,
+                OrganizationUnit.name == name,
+                OrganizationUnit.legacy_id.is_(None),
+            )
+        )
+    if existing:
+        existing.legacy_id = identifier
+        session.flush()
+        return existing
+
     item = OrganizationUnit(
         id=new_id(),
         legacy_id=identifier,
         unit_type=unit_type,
-        name=str(restore_value(row["name"])),
-        slug=f"{unit_type}-{identifier}-{slugify(str(restore_value(row['name'])))}",
+        name=name,
+        slug=f"{unit_type}-{identifier}-{slugify(name)}",
         parent_id=parent,
     )
     session.add(item)
