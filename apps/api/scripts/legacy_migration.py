@@ -25,11 +25,15 @@ from utag_api.models import (
     AdSlot,
     Announcement,
     Article,
+    ArticleAttachment,
     Document,
+    DocumentFile,
     Event,
     ExecutiveAppointment,
     Gallery,
+    GalleryItem,
     LegacyArchiveRecord,
+    MediaAsset,
     MigrationDisposition,
     OrganizationUnit,
     Role,
@@ -843,6 +847,373 @@ def copy_files(media_root: Path, archive_dir: Path, upload: bool) -> dict[str, A
     return manifest
 
 
+def _manifest_index(manifest_path: Path) -> dict[str, dict[str, Any]]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    index: dict[str, dict[str, Any]] = {}
+    for item in manifest.get("files", []):
+        relative = str(item.get("path") or "").lstrip("/")
+        if not relative:
+            continue
+        index[relative] = item
+        storage_key = item.get("storage_key") or f"legacy-media/{relative}"
+        index[storage_key] = item
+    return index
+
+
+def ensure_media_asset(
+    session: OrmSession,
+    *,
+    relative_path: str,
+    manifest: Mapping[str, dict[str, Any]],
+    is_private: bool,
+    caption: str | None = None,
+    alt_text: str | None = None,
+    owner_id: UUID | None = None,
+    metadata: dict[str, object] | None = None,
+) -> MediaAsset | None:
+    relative = relative_path.strip().lstrip("/")
+    if not relative:
+        return None
+    storage_key = f"legacy-media/{relative}"
+    existing = session.scalar(
+        select(MediaAsset).where(MediaAsset.storage_key == storage_key)
+    )
+    if existing:
+        if existing.status != "ready":
+            existing.status = "ready"
+        if existing.is_private and not is_private:
+            existing.is_private = False
+        if caption and not existing.caption:
+            existing.caption = caption
+        if alt_text and not existing.alt_text:
+            existing.alt_text = alt_text
+        if owner_id and existing.owner_id is None:
+            existing.owner_id = owner_id
+        return existing
+
+    details = manifest.get(relative) or manifest.get(storage_key)
+    if details is None:
+        # Fall back to object-store HEAD so recovery still works if the
+        # manifest path is incomplete but the object was uploaded.
+        client = s3_client()
+        settings = get_settings()
+        try:
+            head = client.head_object(Bucket=settings.media_bucket, Key=storage_key)
+        except Exception:
+            return None
+        byte_size = int(head["ContentLength"])
+        sha256 = str(head.get("Metadata", {}).get("sha256") or "")
+        if not sha256:
+            sha256 = hashlib.sha256(f"{storage_key}:{byte_size}".encode()).hexdigest()
+        content_type = (
+            head.get("ContentType")
+            or mimetypes.guess_type(relative)[0]
+            or "application/octet-stream"
+        )
+    else:
+        if details.get("target_verified") is not True and details.get("storage_key"):
+            # Prefer verified uploads; still accept listed keys already in store.
+            pass
+        byte_size = int(details["byte_size"])
+        sha256 = str(details["sha256"])
+        content_type = mimetypes.guess_type(relative)[0] or "application/octet-stream"
+
+    asset = MediaAsset(
+        id=new_id(),
+        owner_id=owner_id,
+        storage_key=storage_key,
+        original_filename=Path(relative).name,
+        content_type=content_type,
+        byte_size=byte_size,
+        sha256=sha256,
+        status="ready",
+        is_private=is_private,
+        alt_text=alt_text,
+        caption=caption,
+        metadata_json=metadata or {"source": "legacy-media-link"},
+    )
+    session.add(asset)
+    session.flush()
+    return asset
+
+
+def link_media(target: Engine, manifest_path: Path) -> dict[str, int]:
+    """Create MediaAsset rows for uploaded legacy files and wire joins.
+
+    The initial promote step intentionally left dashboard_file / gallery_image /
+    attachment tables archive-only. Files themselves were copied into object
+    storage under legacy-media/; this command reconnects them.
+    """
+    manifest = _manifest_index(manifest_path)
+    stats = {
+        "assets_created_or_reused": 0,
+        "document_files": 0,
+        "gallery_items": 0,
+        "article_attachments": 0,
+        "article_featured": 0,
+        "event_featured": 0,
+        "user_portraits": 0,
+        "missing_objects": 0,
+    }
+    with OrmSession(target) as session:
+        file_assets: dict[int, MediaAsset] = {}
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "dashboard_file")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            relative = str(restore_value(record.payload.get("file")) or "")
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=True,
+                metadata={
+                    "source": "dashboard_file",
+                    "legacy_pk": legacy_id(record.payload),
+                },
+            )
+            if asset is None:
+                stats["missing_objects"] += 1
+                continue
+            file_assets[legacy_id(record.payload)] = asset
+            stats["assets_created_or_reused"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "dashboard_document_files")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            document = lookup_legacy(
+                session, Document, int(restore_value(record.payload["document_id"]))
+            )
+            asset = file_assets.get(int(restore_value(record.payload["file_id"])))
+            if document is None or asset is None:
+                stats["missing_objects"] += 1
+                continue
+            existing = session.scalar(
+                select(DocumentFile).where(
+                    DocumentFile.document_id == document.id,
+                    DocumentFile.media_asset_id == asset.id,
+                )
+            )
+            if existing:
+                continue
+            position = int(
+                session.scalar(
+                    select(func.count(DocumentFile.id)).where(
+                        DocumentFile.document_id == document.id
+                    )
+                )
+                or 0
+            )
+            session.add(
+                DocumentFile(
+                    id=new_id(),
+                    document_id=document.id,
+                    media_asset_id=asset.id,
+                    version_number=document.version or 1,
+                    position=position,
+                )
+            )
+            stats["document_files"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "gallery_image")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            gallery = lookup_legacy(
+                session, Gallery, int(restore_value(record.payload["gallery_id"]))
+            )
+            relative = str(restore_value(record.payload.get("image")) or "")
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=False,
+                caption=restore_value(record.payload.get("caption")),
+                metadata={
+                    "source": "gallery_image",
+                    "legacy_pk": legacy_id(record.payload),
+                },
+            )
+            if gallery is None or asset is None:
+                stats["missing_objects"] += 1
+                continue
+            stats["assets_created_or_reused"] += 1
+            position = int(restore_value(record.payload.get("order")) or 0)
+            existing = session.scalar(
+                select(GalleryItem).where(
+                    GalleryItem.gallery_id == gallery.id,
+                    GalleryItem.media_asset_id == asset.id,
+                )
+            )
+            if existing:
+                continue
+            clash = session.scalar(
+                select(GalleryItem).where(
+                    GalleryItem.gallery_id == gallery.id,
+                    GalleryItem.position == position,
+                )
+            )
+            if clash is not None:
+                position = int(
+                    session.scalar(
+                        select(func.count(GalleryItem.id)).where(
+                            GalleryItem.gallery_id == gallery.id
+                        )
+                    )
+                    or 0
+                )
+            session.add(
+                GalleryItem(
+                    id=new_id(),
+                    gallery_id=gallery.id,
+                    media_asset_id=asset.id,
+                    position=position,
+                    caption=restore_value(record.payload.get("caption")),
+                    allow_download=True,
+                )
+            )
+            stats["gallery_items"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "dashboard_attacheddocument")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            article = lookup_legacy(
+                session, Article, int(restore_value(record.payload["news_id"]))
+            )
+            relative = str(restore_value(record.payload.get("file")) or "")
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=False,
+                alt_text=restore_value(record.payload.get("name")),
+                metadata={
+                    "source": "dashboard_attacheddocument",
+                    "legacy_pk": legacy_id(record.payload),
+                },
+            )
+            if article is None or asset is None:
+                stats["missing_objects"] += 1
+                continue
+            stats["assets_created_or_reused"] += 1
+            existing = session.scalar(
+                select(ArticleAttachment).where(
+                    ArticleAttachment.article_id == article.id,
+                    ArticleAttachment.media_asset_id == asset.id,
+                )
+            )
+            if existing:
+                continue
+            position = int(
+                session.scalar(
+                    select(func.count(ArticleAttachment.id)).where(
+                        ArticleAttachment.article_id == article.id
+                    )
+                )
+                or 0
+            )
+            session.add(
+                ArticleAttachment(
+                    id=new_id(),
+                    article_id=article.id,
+                    media_asset_id=asset.id,
+                    position=position,
+                )
+            )
+            stats["article_attachments"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "dashboard_news")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            article = lookup_legacy(session, Article, legacy_id(record.payload))
+            relative = str(restore_value(record.payload.get("featured_image")) or "")
+            if article is None or not relative:
+                continue
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=False,
+                alt_text=article.title,
+                metadata={"source": "dashboard_news.featured_image"},
+            )
+            if asset is None:
+                stats["missing_objects"] += 1
+                continue
+            stats["assets_created_or_reused"] += 1
+            if article.featured_media_id != asset.id:
+                article.featured_media_id = asset.id
+                stats["article_featured"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "dashboard_event")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            event = lookup_legacy(session, Event, legacy_id(record.payload))
+            relative = str(restore_value(record.payload.get("featured_image")) or "")
+            if event is None or not relative:
+                continue
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=False,
+                alt_text=event.title,
+                metadata={"source": "dashboard_event.featured_image"},
+            )
+            if asset is None:
+                stats["missing_objects"] += 1
+                continue
+            stats["assets_created_or_reused"] += 1
+            if event.featured_media_id != asset.id:
+                event.featured_media_id = asset.id
+                stats["event_featured"] += 1
+
+        for record in session.scalars(
+            select(LegacyArchiveRecord)
+            .where(LegacyArchiveRecord.source_table == "accounts_user")
+            .order_by(LegacyArchiveRecord.source_pk)
+        ):
+            user = lookup_legacy(session, User, legacy_id(record.payload))
+            if user is None:
+                continue
+            relative = str(
+                restore_value(record.payload.get("executive_image"))
+                or restore_value(record.payload.get("profile_pic"))
+                or ""
+            )
+            if not relative:
+                continue
+            asset = ensure_media_asset(
+                session,
+                relative_path=relative,
+                manifest=manifest,
+                is_private=False,
+                owner_id=user.id,
+                alt_text=f"{user.other_name} {user.surname}".strip(),
+                metadata={"source": "accounts_user.portrait"},
+            )
+            if asset is None:
+                stats["missing_objects"] += 1
+                continue
+            stats["assets_created_or_reused"] += 1
+            if user.profile_media_id != asset.id:
+                user.profile_media_id = asset.id
+                stats["user_portraits"] += 1
+
+        session.commit()
+    return stats
+
+
 def reconcile(source: Engine, target: Engine, output: Path) -> bool:
     source_report = inventory(source, output.with_name("source-inventory.json"))
     result: dict[str, Any] = {
@@ -909,7 +1280,8 @@ def parse_args() -> argparse.Namespace:
     settings = get_settings()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "command", choices=["inventory", "capture", "promote", "files", "reconcile"]
+        "command",
+        choices=["inventory", "capture", "promote", "files", "link-media", "reconcile"],
     )
     parser.add_argument("--source-url", default=settings.legacy_database_url)
     parser.add_argument("--target-url", default=settings.database_url)
@@ -933,6 +1305,20 @@ def main() -> None:
     target = engine(args.target_url)
     if args.command == "promote":
         promote(target, args.batch_id)
+        return
+    if args.command == "link-media":
+        manifest = args.archive_dir / "media-manifest.json"
+        if args.output and args.output.name.endswith("media-manifest.json"):
+            manifest = args.output
+        elif not manifest.is_file():
+            # Allow --output to point at the manifest directly.
+            candidate = Path(args.output)
+            if candidate.is_file():
+                manifest = candidate
+        if not manifest.is_file():
+            raise SystemExit(f"media manifest not found: {manifest}")
+        stats = link_media(target, manifest)
+        print(json.dumps({"linked": True, **stats}, indent=2, sort_keys=True))
         return
     source = engine(args.source_url)
     if args.command == "inventory":
