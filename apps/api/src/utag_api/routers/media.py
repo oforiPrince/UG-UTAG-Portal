@@ -12,6 +12,7 @@ from utag_api.database import new_id
 from utag_api.dependencies import (
     CurrentPrincipal,
     DbSession,
+    MutationPrincipal,
     Principal,
     event_context,
     require_mutation_permissions,
@@ -124,11 +125,12 @@ async def create_upload(
 async def upload_media(
     request: Request,
     db: DbSession,
-    principal: Annotated[Principal, Depends(require_mutation_permissions("media.manage"))],
+    principal: MutationPrincipal,
     file: Annotated[UploadFile, File()],
     is_private: Annotated[bool, Form()] = True,
     alt_text: Annotated[str | None, Form(max_length=500)] = None,
 ) -> MediaView:
+    can_manage_media = "media.manage" in principal.permissions
     digest = hashlib.sha256()
     byte_size = 0
     while chunk := await file.read(1024 * 1024):
@@ -138,6 +140,13 @@ async def upload_media(
             raise ApiError(413, "file_too_large", "The selected file is too large")
     await file.seek(0)
     content_type = file.content_type or "application/octet-stream"
+    if not can_manage_media:
+        if is_private or not content_type.startswith("image/"):
+            raise ApiError(
+                403,
+                "permission_denied",
+                "You can only upload a public profile portrait from this account",
+            )
     validate_upload(content_type, byte_size)
     asset_id = new_id()
     storage_key = quarantine_key(asset_id, file.filename or "upload")
@@ -256,10 +265,15 @@ async def complete_upload(
 async def get_media(
     asset_id: UUID,
     db: DbSession,
-    principal: Annotated[Principal, Depends(require_permissions("media.manage"))],
+    principal: CurrentPrincipal,
 ) -> MediaView:
     asset = await db.get(MediaAsset, asset_id)
     if asset is None:
+        raise ApiError(404, "media_not_found", "Media asset not found")
+    if (
+        asset.owner_id != principal.user.id
+        and "media.manage" not in principal.permissions
+    ):
         raise ApiError(404, "media_not_found", "Media asset not found")
     return MediaView.model_validate(asset)
 

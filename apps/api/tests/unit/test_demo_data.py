@@ -35,6 +35,8 @@ async def test_demo_seed_is_complete_login_ready_and_idempotent(session_factory,
             assert user.school_id is not None
             assert user.department_id is not None
             assert verify_password(user.password_hash, password)[0] is True
+            if account.executive_position:
+                assert user.profile_media_id is not None
             roles = set(
                 (
                     await session.scalars(

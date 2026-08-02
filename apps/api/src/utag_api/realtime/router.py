@@ -56,7 +56,11 @@ async def realtime(websocket: WebSocket) -> None:
     raw_token = websocket.cookies.get(settings.session_cookie_name)
     async with SessionFactory() as db:
         principal = await resolve_principal(db, raw_token, touch=False)
-    if principal is None or principal.user.must_change_password:
+    if (
+        principal is None
+        or principal.user.must_change_password
+        or principal.must_complete_executive_profile
+    ):
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
         )
@@ -100,7 +104,11 @@ async def realtime(websocket: WebSocket) -> None:
             await asyncio.sleep(settings.realtime_heartbeat_seconds)
             async with SessionFactory() as db:
                 refreshed = await resolve_principal(db, raw_token, touch=False)
-            if refreshed is None or refreshed.user.must_change_password:
+            if (
+                refreshed is None
+                or refreshed.user.must_change_password
+                or refreshed.must_complete_executive_profile
+            ):
                 await websocket.close(
                     code=status.WS_1008_POLICY_VIOLATION,
                     reason="Session is no longer authorized",

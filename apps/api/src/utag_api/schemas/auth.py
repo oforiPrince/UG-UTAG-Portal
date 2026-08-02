@@ -28,6 +28,7 @@ class UserSummary(ApiModel):
     college_id: UUID | None
     department_id: UUID | None
     must_change_password: bool
+    must_complete_executive_profile: bool
     roles: list[str]
     permissions: list[str]
 

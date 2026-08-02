@@ -15,6 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
+import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
 import { WorkspaceSelect } from "@/components/dashboard/workspace-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,7 @@ type User = {
   college_id: string | null;
   department_id: string | null;
   must_change_password: boolean;
+  must_complete_executive_profile: boolean;
   roles: string[];
   permissions: string[];
 };
@@ -115,6 +117,19 @@ const profileUnitFields: Record<
   ]),
 ) as Record<"school" | "college" | "department", WorkspaceField>;
 
+const profilePhotoField: WorkspaceField = {
+  key: "profile_media_id",
+  label: "Public profile photo",
+  type: "media",
+  required: true,
+  media: {
+    accept: "image",
+    isPrivate: false,
+    aspect: "portrait",
+  },
+  help: "Required for public leadership cards. Upload a clear portrait photo.",
+};
+
 export function ProfileClient() {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -140,9 +155,39 @@ export function ProfileClient() {
 
   const profile = profileDraft ?? profileFromUser(user.data);
   const publicExecutiveProfile = executiveDraft ?? executiveProfile.data;
+  const mustCompleteExecutiveProfile = Boolean(
+    user.data?.must_complete_executive_profile,
+  );
+  const executiveRequired =
+    search.get("executive") === "required" || mustCompleteExecutiveProfile;
 
   function updateProfile(changes: Partial<ProfileForm>) {
     setProfileDraft({ ...profile, ...changes });
+  }
+
+  async function saveProfilePhoto(profileMediaId: string | string[]) {
+    const nextId = Array.isArray(profileMediaId)
+      ? (profileMediaId[0] ?? null)
+      : profileMediaId || null;
+    try {
+      const updated = await api<User>("/api/v1/auth/profile", {
+        method: "PATCH",
+        body: { profile_media_id: nextId },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      toast.success("Profile photo updated");
+      if (
+        !updated.must_complete_executive_profile &&
+        !updated.must_change_password &&
+        executiveRequired
+      ) {
+        router.replace("/dashboard");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update profile photo",
+      );
+    }
   }
 
   async function saveProfile(event: React.FormEvent) {
@@ -193,7 +238,12 @@ export function ProfileClient() {
         search.get("password") === "required" ||
         user.data?.must_change_password
       ) {
-        router.replace("/dashboard");
+        const me = await api<User>("/api/v1/auth/me");
+        router.replace(
+          me.must_complete_executive_profile
+            ? "/dashboard/profile?executive=required"
+            : "/dashboard",
+        );
       }
     } catch (error) {
       toast.error(
@@ -224,8 +274,13 @@ export function ProfileClient() {
         queryClient.invalidateQueries({
           queryKey: ["workspace", "executives"],
         }),
+        queryClient.invalidateQueries({ queryKey: ["auth", "me"] }),
       ]);
       toast.success("Public executive profile updated");
+      const me = await api<User>("/api/v1/auth/me");
+      if (!me.must_complete_executive_profile && !me.must_change_password) {
+        if (executiveRequired) router.replace("/dashboard");
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -271,6 +326,25 @@ export function ProfileClient() {
               This account was issued with a temporary credential. Use the
               password form below to choose a private password that only you
               know.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {mustCompleteExecutiveProfile && !user.data?.must_change_password ? (
+        <div
+          className="flex items-start gap-4 rounded-2xl border border-coral/35 bg-coral/8 p-5"
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-coral" />
+          <div>
+            <b className="text-sm">
+              Complete your public leadership profile before continuing
+            </b>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Your portrait and biography appear on the public UG UTAG website.
+              Add a clear profile photo and a public biography to unlock the
+              rest of the dashboard.
             </p>
           </div>
         </div>
@@ -467,10 +541,22 @@ export function ProfileClient() {
               profile
             </h3>
             <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-              This biography and these links appear in your public leadership
-              details. Formatting is preserved after security checks.
+              This portrait, biography, and these links appear in your public
+              leadership details. Formatting is preserved after security checks.
             </p>
             <form className="mt-7 grid gap-5" onSubmit={saveExecutiveProfile}>
+              <div className="grid gap-2 text-xs font-bold">
+                <span id="profile-executive-photo-label">
+                  {profilePhotoField.label}
+                </span>
+                <WorkspaceMediaField
+                  field={profilePhotoField}
+                  value={user.data?.profile_media_id ?? ""}
+                  onChange={(value) => {
+                    void saveProfilePhoto(value);
+                  }}
+                />
+              </div>
               <div className="grid gap-2 text-xs font-bold">
                 <label
                   id="profile-executive-biography-label"

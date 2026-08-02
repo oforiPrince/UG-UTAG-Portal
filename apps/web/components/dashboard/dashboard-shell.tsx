@@ -32,6 +32,7 @@ type User = {
   email: string;
   profile_media_id: string | null;
   must_change_password: boolean;
+  must_complete_executive_profile: boolean;
   roles: string[];
   permissions: string[];
 };
@@ -88,8 +89,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user.data?.must_change_password && pathname !== "/dashboard/profile") {
       router.replace("/dashboard/profile?password=required");
+      return;
     }
-  }, [pathname, router, user.data?.must_change_password]);
+    if (
+      user.data?.must_complete_executive_profile &&
+      !user.data.must_change_password &&
+      pathname !== "/dashboard/profile"
+    ) {
+      router.replace("/dashboard/profile?executive=required");
+    }
+  }, [
+    pathname,
+    router,
+    user.data?.must_change_password,
+    user.data?.must_complete_executive_profile,
+  ]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {

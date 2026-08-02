@@ -120,12 +120,29 @@ async def test_profile_and_password_workflow(client: AsyncClient) -> None:
 async def test_active_executive_can_update_own_public_profile(
     client: AsyncClient, session_factory
 ) -> None:  # type: ignore[no-untyped-def]
+    portrait_id = new_id()
     async with session_factory() as session:
         administrator = await session.scalar(
             select(User).where(User.email == "admin@example.edu.gh")
         )
         assert administrator is not None
         appointment_id = new_id()
+        session.add(
+            MediaAsset(
+                id=portrait_id,
+                owner_id=administrator.id,
+                storage_key=f"profile/{portrait_id}.png",
+                original_filename="president-portrait.png",
+                content_type="image/png",
+                byte_size=128,
+                sha256="a" * 64,
+                status="ready",
+                is_private=False,
+                alt_text="President portrait",
+                metadata_json={},
+            )
+        )
+        administrator.profile_media_id = portrait_id
         session.add(
             ExecutiveAppointment(
                 id=appointment_id,
@@ -143,17 +160,31 @@ async def test_active_executive_can_update_own_public_profile(
         "/api/v1/auth/login",
         json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
     )
+    assert login.status_code == 200
+    assert login.json()["user"]["must_complete_executive_profile"] is True
     headers = {"X-CSRF-Token": login.json()["csrf_token"]}
+
+    blocked_chat = await client.get("/api/v1/chat/conversations")
+    assert blocked_chat.status_code == 403
+    assert blocked_chat.json()["error"]["code"] == "executive_profile_required"
 
     current = await client.get("/api/v1/auth/executive-profile")
     assert current.status_code == 200
     assert current.json()["position"] == "President"
 
+    too_short = await client.patch(
+        "/api/v1/auth/executive-profile",
+        headers=headers,
+        json={"biography_html": "<p>Hi</p>", "social_links": {}},
+    )
+    assert too_short.status_code == 422
+    assert too_short.json()["error"]["code"] == "executive_biography_required"
+
     invalid_link = await client.patch(
         "/api/v1/auth/executive-profile",
         headers=headers,
         json={
-            "biography_html": "<p>Biography.</p>",
+            "biography_html": "<p>Biography for the public leadership page.</p>",
             "social_links": {"linkedin": "javascript:alert('unsafe')"},
         },
     )
@@ -177,6 +208,13 @@ async def test_active_executive_can_update_own_public_profile(
     assert updated.json()["social_links"] == {
         "linkedin": "https://www.linkedin.com/in/ug-utag-test"
     }
+
+    me = await client.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json()["must_complete_executive_profile"] is False
+
+    conversations = await client.get("/api/v1/chat/conversations")
+    assert conversations.status_code == 200
 
     public = await client.get("/api/v1/public/leadership")
     assert public.status_code == 200

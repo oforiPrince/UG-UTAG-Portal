@@ -31,6 +31,7 @@ describe("executive profile authoring", () => {
           college_id: null,
           department_id: null,
           must_change_password: false,
+          must_complete_executive_profile: false,
           roles: ["executive"],
           permissions: ["dashboard.view"],
         };
@@ -39,7 +40,7 @@ describe("executive profile authoring", () => {
         return {
           id: "appointment-1",
           position: "President",
-          biography_html: "<p>Serving members.</p>",
+          biography_html: "<p>Serving members across the University of Ghana.</p>",
           social_links: {},
         };
       }

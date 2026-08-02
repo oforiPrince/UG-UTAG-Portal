@@ -1,4 +1,4 @@
-.PHONY: dev down logs api-install api-check api-test seed-demo web-install web-check migrate migration
+.PHONY: dev down logs api-install api-check api-test seed-demo web-install web-check migrate migration ship-rehearsal
 
 dev:
 	docker compose up --build
@@ -33,3 +33,7 @@ migrate:
 
 migration:
 	cd apps/api && .venv/bin/alembic revision --autogenerate -m "$(name)"
+
+ship-rehearsal:
+	@test -n "$$LEGACY_DATABASE_URL" || (echo "Set LEGACY_DATABASE_URL first" && exit 1)
+	ops/scripts/ship-production.sh --mode rehearsal

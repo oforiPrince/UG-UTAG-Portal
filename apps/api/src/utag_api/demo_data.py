@@ -6,7 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utag_api.database import new_id
-from utag_api.models import ExecutiveAppointment, OrganizationUnit, Role, User, UserRole
+from utag_api.models import (
+    ExecutiveAppointment,
+    MediaAsset,
+    OrganizationUnit,
+    Role,
+    User,
+    UserRole,
+)
 from utag_api.security import hash_password, verify_password
 from utag_api.seed_data import seed_portal_defaults
 from utag_api.services.identity import seed_authorization
@@ -358,6 +365,22 @@ async def seed_demo_data(db: AsyncSession, password: str) -> DemoSeedResult:
         position = account.executive_position
         if position is None:
             continue
+        if user.profile_media_id is None:
+            portrait = MediaAsset(
+                id=new_id(),
+                owner_id=user.id,
+                storage_key=f"demo/portraits/{account.staff_id.lower()}.jpg",
+                original_filename=f"{account.staff_id.lower()}-portrait.jpg",
+                content_type="image/jpeg",
+                byte_size=12_000,
+                sha256="0" * 64,
+                status="ready",
+                is_private=False,
+                alt_text=f"Portrait of {user.full_name}",
+            )
+            db.add(portrait)
+            await db.flush()
+            user.profile_media_id = portrait.id
         appointment = existing_appointments.get((user.id, position))
         if appointment is None:
             appointment = ExecutiveAppointment(

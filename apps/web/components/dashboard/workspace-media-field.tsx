@@ -187,7 +187,7 @@ export function WorkspaceMediaField({
   value: string | string[];
   onChange: (value: string | string[]) => void;
   onBusyChange?: (busy: boolean) => void;
-  picker: React.ReactNode;
+  picker?: React.ReactNode;
   downloadBlockedIds?: string[];
   onDownloadBlockedChange?: (ids: string[]) => void;
 }) {
@@ -549,12 +549,14 @@ export function WorkspaceMediaField({
         </>
       )}
 
-      <div className="grid gap-2 border-t border-line pt-4">
-        <span className="text-[.65rem] font-black tracking-wide text-muted uppercase">
-          Or choose an existing ready file
-        </span>
-        {picker}
-      </div>
+      {picker ? (
+        <div className="grid gap-2 border-t border-line pt-4">
+          <span className="text-[.65rem] font-black tracking-wide text-muted uppercase">
+            Or choose an existing ready file
+          </span>
+          {picker}
+        </div>
+      ) : null}
     </div>
   );
 }

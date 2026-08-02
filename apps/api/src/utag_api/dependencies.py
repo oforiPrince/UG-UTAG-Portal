@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address, ip_network
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, Header, Request
 from sqlalchemy import select
@@ -10,17 +11,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utag_api.config import Settings, get_settings
 from utag_api.database import get_db
 from utag_api.errors import ApiError
-from utag_api.models import Session, User
+from utag_api.models import ExecutiveAppointment, Session, User
 from utag_api.security import constant_time_equal, token_digest
 from utag_api.services.events import EventContext
+from utag_api.services.executives import executive_public_profile_incomplete
 from utag_api.services.identity import load_user_access
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-PASSWORD_CHANGE_PATHS = {
+RESTRICTED_SESSION_PATHS = {
     "/api/v1/auth/logout",
     "/api/v1/auth/me",
     "/api/v1/auth/password",
+    "/api/v1/auth/profile",
+    "/api/v1/auth/executive-profile",
+    "/api/v1/organization/units",
 }
+# Keep the old name as an alias for any lingering imports/tests.
+PASSWORD_CHANGE_PATHS = RESTRICTED_SESSION_PATHS
 
 
 @dataclass(slots=True)
@@ -29,6 +36,31 @@ class Principal:
     session: Session
     roles: set[str]
     permissions: set[str]
+    must_complete_executive_profile: bool = False
+
+
+def session_path_allowed(path: str) -> bool:
+    if path in RESTRICTED_SESSION_PATHS:
+        return True
+    return path == "/api/v1/media" or path.startswith("/api/v1/media/")
+
+
+async def active_executive_appointment(
+    db: AsyncSession, user_id: UUID
+) -> ExecutiveAppointment | None:
+    appointment: ExecutiveAppointment | None = await db.scalar(
+        select(ExecutiveAppointment)
+        .where(
+            ExecutiveAppointment.user_id == user_id,
+            ExecutiveAppointment.is_active.is_(True),
+        )
+        .order_by(
+            ExecutiveAppointment.appointed_on.desc(),
+            ExecutiveAppointment.created_at.desc(),
+        )
+        .limit(1)
+    )
+    return appointment
 
 
 async def resolve_principal(
@@ -55,6 +87,7 @@ async def resolve_principal(
         return None
     session, user = row
     access = await load_user_access(db, user.id)
+    appointment = await active_executive_appointment(db, user.id)
     last_seen = session.last_seen_at
     if last_seen.tzinfo is None:
         last_seen = last_seen.replace(tzinfo=UTC)
@@ -66,6 +99,7 @@ async def resolve_principal(
         session=session,
         roles=access.roles,
         permissions=access.effective_permissions,
+        must_complete_executive_profile=executive_public_profile_incomplete(user, appointment),
     )
 
 
@@ -78,11 +112,17 @@ async def get_current_principal(
     principal = await resolve_principal(db, session_cookie)
     if principal is None:
         raise ApiError(401, "authentication_required", "Please sign in to continue")
-    if principal.user.must_change_password and request.url.path not in PASSWORD_CHANGE_PATHS:
+    if principal.user.must_change_password and not session_path_allowed(request.url.path):
         raise ApiError(
             403,
             "password_change_required",
             "Change your temporary password before continuing",
+        )
+    if principal.must_complete_executive_profile and not session_path_allowed(request.url.path):
+        raise ApiError(
+            403,
+            "executive_profile_required",
+            "Complete your public executive profile before continuing",
         )
     return principal
 

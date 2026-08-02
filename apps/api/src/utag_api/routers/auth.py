@@ -11,6 +11,8 @@ from utag_api.dependencies import (
     CurrentPrincipal,
     DbSession,
     MutationPrincipal,
+    Principal,
+    active_executive_appointment,
     client_ip,
     event_context,
 )
@@ -47,14 +49,23 @@ from utag_api.security import (
 )
 from utag_api.services.content import sanitize_html
 from utag_api.services.events import EventContext, enqueue_task, record_change
-from utag_api.services.identity import strong_password_errors
+from utag_api.services.executives import (
+    MIN_PUBLIC_BIOGRAPHY_CHARS,
+    biography_is_complete,
+    executive_public_profile_incomplete,
+)
+from utag_api.services.identity import require_public_profile_image, strong_password_errors
 from utag_api.services.organization import validate_organization_assignment
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 DUMMY_PASSWORD_HASH = hash_password(new_token())
 
 
-def summarize_user(principal: CurrentPrincipal) -> UserSummary:
+def summarize_user(
+    principal: Principal,
+    *,
+    must_complete_executive_profile: bool | None = None,
+) -> UserSummary:
     return UserSummary(
         id=principal.user.id,
         email=principal.user.email,
@@ -71,6 +82,11 @@ def summarize_user(principal: CurrentPrincipal) -> UserSummary:
         college_id=principal.user.college_id,
         department_id=principal.user.department_id,
         must_change_password=principal.user.must_change_password,
+        must_complete_executive_profile=(
+            principal.must_complete_executive_profile
+            if must_complete_executive_profile is None
+            else must_complete_executive_profile
+        ),
         roles=sorted(principal.roles),
         permissions=sorted(principal.permissions),
     )
@@ -79,19 +95,7 @@ def summarize_user(principal: CurrentPrincipal) -> UserSummary:
 async def current_executive_appointment(
     db: DbSession, user_id: UUID
 ) -> ExecutiveAppointment | None:
-    appointment: ExecutiveAppointment | None = await db.scalar(
-        select(ExecutiveAppointment)
-        .where(
-            ExecutiveAppointment.user_id == user_id,
-            ExecutiveAppointment.is_active.is_(True),
-        )
-        .order_by(
-            ExecutiveAppointment.appointed_on.desc(),
-            ExecutiveAppointment.created_at.desc(),
-        )
-        .limit(1)
-    )
-    return appointment
+    return await active_executive_appointment(db, user_id)
 
 
 def summarize_executive_profile(
@@ -240,14 +244,28 @@ async def update_profile(
     )
     profile_media_id = changes.get("profile_media_id")
     if profile_media_id is not None:
-        asset = await db.get(MediaAsset, profile_media_id)
-        if (
-            asset is None
-            or asset.status != "ready"
-            or not asset.content_type.startswith("image/")
-            or asset.owner_id != principal.user.id
-        ):
-            raise ApiError(422, "profile_image_invalid", "Select one of your ready image uploads")
+        if principal.must_complete_executive_profile:
+            await require_public_profile_image(db, profile_media_id)
+            asset = await db.get(MediaAsset, profile_media_id)
+            if asset is None or asset.owner_id != principal.user.id:
+                raise ApiError(
+                    422,
+                    "profile_image_invalid",
+                    "Upload your own public portrait for the leadership profile",
+                )
+        else:
+            asset = await db.get(MediaAsset, profile_media_id)
+            if (
+                asset is None
+                or asset.status != "ready"
+                or not asset.content_type.startswith("image/")
+                or asset.owner_id != principal.user.id
+            ):
+                raise ApiError(
+                    422,
+                    "profile_image_invalid",
+                    "Select one of your ready image uploads",
+                )
     for key, value in changes.items():
         setattr(principal.user, key, value)
     record_change(
@@ -261,7 +279,10 @@ async def update_profile(
         changes={key: {"to": str(value)} for key, value in changes.items()},
     )
     await db.commit()
-    return summarize_user(principal)
+    appointment = await current_executive_appointment(db, principal.user.id)
+    incomplete = executive_public_profile_incomplete(principal.user, appointment)
+    principal.must_complete_executive_profile = incomplete
+    return summarize_user(principal, must_complete_executive_profile=incomplete)
 
 
 @router.get("/executive-profile", response_model=ExecutiveProfileSummary | None)
@@ -288,7 +309,18 @@ async def update_executive_profile(
             "No active executive appointment is linked to this account",
         )
 
-    appointment.biography_html = sanitize_html(payload.biography_html)
+    biography_html = sanitize_html(payload.biography_html)
+    if appointment.is_public and not biography_is_complete(biography_html):
+        raise ApiError(
+            422,
+            "executive_biography_required",
+            (
+                "Add a public biography of at least "
+                f"{MIN_PUBLIC_BIOGRAPHY_CHARS} characters before continuing"
+            ),
+        )
+
+    appointment.biography_html = biography_html
     appointment.social_links = {
         key: value.strip() for key, value in payload.social_links.items() if value.strip()
     }
@@ -309,6 +341,9 @@ async def update_executive_profile(
         },
     )
     await db.commit()
+    principal.must_complete_executive_profile = executive_public_profile_incomplete(
+        principal.user, appointment
+    )
     return summarize_executive_profile(appointment)
 
 
