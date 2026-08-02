@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'chat',
     'gallery',
     'website',
+    'utag_ug_archiver',
     
     #External libraries
     'import_export',
@@ -228,14 +229,48 @@ STATICFILES_DIRS = [
 # static root
 STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
 
-# Use WhiteNoise to serve static files directly from Gunicorn in simple deployments
+# Use WhiteNoise to serve static files directly from Gunicorn in simple deployments.
+# CompressedManifestStaticFilesStorage adds a content hash to each filename
+# (e.g. style.abc123.css) so that browsers automatically fetch new versions
+# after a deploy without needing a hard reload or cache clear.
 STATICFILES_STORAGE = os.environ.get(
-    'DJANGO_STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage'
+    'DJANGO_STATICFILES_STORAGE', 'utag_ug_archiver.storage.ForgivingManifestStaticFilesStorage'
 )
 
 
 MEDIA_URL = os.environ.get('MEDIA_URL', '/media/')
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+
+# Image optimization settings
+# Maximum dimensions for different image types
+IMAGE_MAX_DIMENSIONS = {
+    'profile': (800, 800),
+    'executive': (800, 800),
+    'event': (1200, 800),
+    'news': (1200, 800),
+    'gallery': (1920, 1080),
+    'thumbnail': (400, 400),
+}
+
+# JPEG compression quality (1-100, higher = better quality but larger file)
+IMAGE_JPEG_QUALITY = 85
+
+# WebP compression quality
+IMAGE_WEBP_QUALITY = 80
+
+# Auto-optimize images on upload
+AUTO_OPTIMIZE_IMAGES = _env_bool('AUTO_OPTIMIZE_IMAGES', default=True)
+
+# Image caching and serving
+# Use appropriate cache headers for images
+if not DEBUG:
+    # In production, serve images with long cache period
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
+else:
+    # Development: allow larger uploads for testing
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 X_FRAME_OPTIONS = 'ALLOWALL'
 
@@ -288,6 +323,9 @@ TINYMCE_DEFAULT_CONFIG = {
     'statusbar': True,
 }
 
+# TinyMCE API Key for cloud-based editor (optional)
+TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY', 'o2od9vtnj8aoy1tgpyf7siqsvkg91xau2fyy5dlo0h5sy1an')
+
 
 # Celery Configuration
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
@@ -320,12 +358,15 @@ except ImportError:
     }
 
 # Session caching for better performance
+# Use cached_db: reads from cache, writes to both cache and DB.
+# If Redis goes down, sessions still work via the database.
 if not DEBUG:
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
     SESSION_CACHE_ALIAS = 'default'
 
 # Template caching for production
 if not DEBUG:
+    TEMPLATES[0]['APP_DIRS'] = False
     TEMPLATES[0]['OPTIONS']['loaders'] = [
         ('django.template.loaders.cached.Loader', [
             'django.template.loaders.filesystem.Loader',
@@ -337,12 +378,17 @@ if not DEBUG:
 if not DEBUG:
     WHITENOISE_USE_FINDERS = False
     WHITENOISE_AUTOREFRESH = False
-    WHITENOISE_MANIFEST_STRICT = True
+    # Set to False so missing manifest entries return the unhashed URL
+    # instead of raising a 500 error. Safer for edge cases.
+    WHITENOISE_MANIFEST_STRICT = False
     # Add max-age for static files
     WHITENOISE_MAX_AGE = 31536000  # 1 year
 
 # Security settings for production
 if not DEBUG:
+    # Trust the X-Forwarded-Proto header from Nginx so Django knows
+    # the original request was HTTPS (prevents infinite redirect loop).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

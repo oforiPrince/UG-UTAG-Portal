@@ -1,3 +1,4 @@
+{% load name_filters %}
 {% for user in users %}
   <div class="modal fade bs-example-modal-lg"
        id="editUserModal_{{ user.id }}"
@@ -24,15 +25,10 @@
               <div>
                 <select id="id_title_{{ user.id }}" class="form-control select2" required name="title">
                   <option value="" selected disabled>Select a title</option>
-                  <option value="Prof." {% if user.title == 'Prof.' %}selected{% endif %}>Prof.</option>
-                  <option value="Prof. (Mrs.)"
-                          {% if user.title == 'Prof. (Mrs.)' %}selected{% endif %}>Prof. (Mrs.)</option>
-                  <option value="Dr." {% if user.title == 'Dr.' %}selected{% endif %}>Dr.</option>
-                  <option value="Dr. (Alhaji)"
-                          {% if user.title == 'Dr. (Alhaji)' %}selected{% endif %}>Dr. (Alhaji)</option>
-                  <option value="Mr." {% if user.title == 'Mr.' %}selected{% endif %}>Mr.</option>
-                  <option value="Mrs." {% if user.title == 'Mrs.' %}selected{% endif %}>Mrs.</option>
-                  <option value="Ms." {% if user.title == 'Ms.' %}selected{% endif %}>Ms.</option>
+                  {% get_title_choices as title_choices %}
+                  {% for val,label in title_choices %}
+                    <option value="{{ val }}" {% if user.title == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>

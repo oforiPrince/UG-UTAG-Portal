@@ -1,0 +1,26 @@
+FROM python:3.14-alpine AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN addgroup --system app && adduser --system --ingroup app app
+
+COPY pyproject.toml ./
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY scripts ./scripts
+COPY src ./src
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip install . \
+    && rm -rf /usr/local/lib/python3.14/site-packages/pip \
+        /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
+        /usr/local/bin/pip*
+
+USER app
+EXPOSE 8000
+
+CMD ["uvicorn", "utag_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -38,9 +38,9 @@ class IndexView(View):
         published_news = News.objects.filter(
             is_published=True
         ).select_related(
-            'created_by'
+            'author'
         ).only(
-            'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at'
+            'id', 'title', 'news_slug', 'content', 'featured_image', 'created_at', 'author'
         ).order_by('-created_at')[:5]
 
         # Get executives with optimized query
@@ -49,7 +49,7 @@ class IndexView(View):
             is_active_executive=True
         ).only(
             'id', 'other_name', 'surname', 'title', 'executive_position', 
-            'executive_image', 'bio', 'email', 'fb_profile_url', 
+            'executive_image', 'email', 'fb_profile_url', 
             'twitter_profile_url', 'linkedin_profile_url'
         )
         
@@ -184,14 +184,44 @@ class ExecutiveCommitteeMembersView(View):
     template_name = 'website_pages/executive_committee_members-v2.html'
     
     def get(self, request):
-        # Get all executives and include the committee members
-        executives = User.objects.filter(executive_position__in=executive_committee_members_position_order, is_active_executive=True)
-        # Sort the executives based on the custom order
-        executives = sorted(executives, key=executive_committee_members_custom_order)
+        from django.db.models import Q
+        from utag_ug_archiver.utils.constants import normalize_position_name
+        # Get all executives and committee members: those with positions in the order list OR marked as active executives
+        # Show all, including past executives (those whose term has ended)
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions
+        executives = User.objects.filter(
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
+        )
+        # Sort the executives based on the custom order (normalize legacy position names)
+        executives = sorted(
+            executives, 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
         context = {
             'executives': executives,
         }
         return render(request, self.template_name, context)
+
+class ExecutivesListView(View):
+    template_name = 'website_pages/executives_list.html'
+
+    def get(self, request):
+        executives = (
+            User.objects.filter(is_active_executive=True)
+            .select_related('school', 'college', 'department')
+            .order_by('surname', 'other_name')
+        )
+        return render(request, self.template_name, {'executives': executives})
+
+
+class ExecutiveDetailView(View):
+    template_name = 'website_pages/executive_detail.html'
+
+    def get(self, request, pk):
+        exec_user = get_object_or_404(User.objects.select_related('school', 'college', 'department'), pk=pk)
+        return render(request, self.template_name, {'exec': exec_user})
     
 @method_decorator(cache_page(60 * 10), name='dispatch')  # Cache for 10 minutes
 class GalleryView(View):

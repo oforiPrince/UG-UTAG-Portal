@@ -1,6 +1,8 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.utils.decorators import method_decorator
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 
@@ -34,9 +36,18 @@ class NewsCreateUpdateView(View):
     @method_decorator(MustLogin)
     def get(self, request, news_id=None):
         tags = Tag.objects.all()
+        news = None
         try:
             if news_id:
                 news = get_object_or_404(News, id=news_id)
+                # Prefill form including created_at for backdating support (use datetime, not formatted string)
+                try:
+                    created_at_val = timezone.localtime(news.created_at) if news.created_at else None
+                    created_at_iso = created_at_val.strftime('%Y-%m-%dT%H:%M') if created_at_val else None
+                except Exception:
+                    created_at_val = None
+                    created_at_iso = None
+
                 initial_data = {
                     'title': news.title,
                     'content': news.content,
@@ -45,8 +56,18 @@ class NewsCreateUpdateView(View):
                     'tags': [tag.id for tag in news.tags.all()],
                     'citations': news.citations.all(),
                     'attached_documents': news.attached_documents.all(),
+                    'created_at': created_at_val,
+                    'created_at_iso': created_at_iso,
                 }
             else:
+                # Default created_at to now for new news entries (timezone-aware datetime)
+                try:
+                    default_created_at = timezone.localtime(timezone.now())
+                    default_created_at_iso = default_created_at.strftime('%Y-%m-%dT%H:%M') if default_created_at else None
+                except Exception:
+                    default_created_at = None
+                    default_created_at_iso = None
+
                 initial_data = {
                     'title': '',
                     'content': '',
@@ -55,8 +76,10 @@ class NewsCreateUpdateView(View):
                     'citations': [],
                     'attached_documents': [],
                     'featured_image': None,
+                    'created_at': default_created_at,
+                    'created_at_iso': default_created_at_iso,
                 }
-            return render(request, self.template_name, {'initial_data': initial_data, 'tags': tags})
+            return render(request, self.template_name, {'initial_data': initial_data, 'news': news, 'tags': tags, 'active_menu': 'news'})
         except Exception as e:
             messages.error(request, f"Error loading news form: {e}")
             return redirect('dashboard:news')
@@ -68,11 +91,36 @@ class NewsCreateUpdateView(View):
         content = request.POST.get('content')
         is_published = request.POST.get('is_published') == 'on'
         featured_image = request.FILES.get('featured_image')
+        created_at_raw = request.POST.get('created_at')
+        created_at_dt = None
+        if created_at_raw:
+            try:
+                dt = parse_datetime(created_at_raw)
+                if dt is None:
+                    # parse_datetime may return None for date-only or unsupported formats
+                    # try a simple ISO parse fallback
+                    dt = timezone.datetime.fromisoformat(created_at_raw)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, timezone.get_current_timezone())
+                created_at_dt = dt
+            except Exception:
+                created_at_dt = None
 
         try:
             # Handle tags
-            tag_ids = request.POST.getlist('tags')
-            tags = Tag.objects.filter(id__in=tag_ids)
+            raw_tags = [tag.strip() for tag in request.POST.getlist('tags')]
+            tags = []
+            for tag_value in raw_tags:
+                if not tag_value:
+                    continue
+                if tag_value.isdigit():
+                    try:
+                        tags.append(Tag.objects.get(pk=int(tag_value)))
+                    except Tag.DoesNotExist:
+                        continue
+                else:
+                    tag, _ = Tag.objects.get_or_create(name=tag_value)
+                    tags.append(tag)
 
             if news_id:
                 news = get_object_or_404(News, id=news_id)
@@ -81,6 +129,9 @@ class NewsCreateUpdateView(View):
                 news.is_published = is_published
                 if featured_image:
                     news.featured_image = featured_image
+                # Allow backdating created_at if provided
+                if created_at_dt:
+                    news.created_at = created_at_dt
                 news.save()
                 # Update tags
                 news.tags.clear()
@@ -90,13 +141,17 @@ class NewsCreateUpdateView(View):
                 self._handle_documents(request, news)
                 messages.success(request, "News updated successfully!")
             else:
-                news = News.objects.create(
+                # Create with optional created_at override for backdating
+                create_kwargs = dict(
                     author=user,
                     title=title,
                     content=content,
                     is_published=is_published,
                     featured_image=featured_image
                 )
+                if created_at_dt:
+                    create_kwargs['created_at'] = created_at_dt
+                news = News.objects.create(**create_kwargs)
                 for tag in tags:
                     news.tags.add(tag)
                 self._handle_citations(request, news)
@@ -168,6 +223,19 @@ class NewsUpdateView(View):
         content = request.POST.get('content')
         is_published = request.POST.get('is_published')
         featured_image = request.FILES.get('featured_image')
+        created_at_raw = request.POST.get('created_at')
+        if created_at_raw:
+            try:
+                dt = parse_datetime(created_at_raw)
+                if dt is None:
+                    dt = timezone.datetime.fromisoformat(created_at_raw)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, timezone.get_current_timezone())
+                created_at_dt = dt
+            except Exception:
+                created_at_dt = None
+        else:
+            created_at_dt = None
         if is_published == 'on':
             is_published = True
         else:
@@ -179,10 +247,31 @@ class NewsUpdateView(View):
         news.is_published = is_published
         if featured_image:
             news.featured_image = featured_image
+        if created_at_dt:
+            news.created_at = created_at_dt
         news.save()
         messages.info(request, "News Updated Successfully")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
+class NewsDetailView(View):
+    template_name = 'dashboard_pages/news_detail.html'
+    
+    @method_decorator(MustLogin)
+    def get(self, request, news_id):
+        news = get_object_or_404(News, id=news_id)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
+        context = {
+            'news': news,
+            'notifications': notifications,
+            'notification_count': notification_count,
+            'active_menu': 'news'
+        }
+        return render(request, self.template_name, context)
+
+
 class NewsDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):

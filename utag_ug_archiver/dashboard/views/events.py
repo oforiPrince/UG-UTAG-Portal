@@ -51,14 +51,17 @@ class EventCreateUpdateView(View):
                 'end_date': event.end_date,
                 'start_time': event.start_time,
                 'end_time': event.end_time,
+                'photos_link': event.photos_link,
                 'notifications':notifications,
-                'notification_count': notification_count
+                'notification_count': notification_count,
+                'active_menu': 'events'
             }
         else:
             context = {
                 'is_published': 'off',
                 'notifications':notifications,
-                'notification_count': notification_count
+                'notification_count': notification_count,
+                'active_menu': 'events'
             }
         return render(request, self.template_name, {'context': context})
 
@@ -73,6 +76,7 @@ class EventCreateUpdateView(View):
         start_time_str = request.POST.get('start_time')
         end_time_str = request.POST.get('end_time')
         is_published = request.POST.get('is_published')
+        photos_link = request.POST.get('photos_link', '')
         featured_image = request.FILES.get('image')
 
         # Parse dates and times
@@ -95,12 +99,14 @@ class EventCreateUpdateView(View):
             event.title = title
             event.description = description
             event.is_published = is_published
-            event.featured_image = featured_image
+            if featured_image:
+                event.featured_image = featured_image
             event.venue = venue
             event.start_date = start_date
             event.end_date = end_date
             event.start_time = start_time
             event.end_time = end_time
+            event.photos_link = photos_link
             event.save()
             messages.info(request, "Event Updated Successfully")
         else:
@@ -115,17 +121,40 @@ class EventCreateUpdateView(View):
                 end_date=end_date,
                 start_time=start_time,
                 end_time=end_time,
+                photos_link=photos_link,
             )
             messages.info(request, "Event Created Successfully")
 
         return redirect('dashboard:events')
+
+
+class EventDetailView(View):
+    template_name = 'dashboard_pages/event_detail.html'
     
+    @method_decorator(MustLogin)
+    def get(self, request, event_id):
+        event = Event.objects.get(id=event_id)
+        # Get notifications
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
+        notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
+        
+        context = {
+            'event': event,
+            'notifications': notifications,
+            'notification_count': notification_count,
+            'active_menu': 'events'
+        }
+        return render(request, self.template_name, context)
+
+
 class EventDeleteView(View):
     @method_decorator(MustLogin)
     def get(self, request, *args, **kwargs):
         event_id = kwargs.get('event_id')
-        event = Event.objects.get(id=event_id)
-        event.delete()
-        messages.success(request, 'Event deleted successfully!')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    
+        try:
+            event = Event.objects.get(id=event_id)
+            event.delete()
+            messages.success(request, "Event deleted successfully")
+        except Event.DoesNotExist:
+            messages.error(request, "Event not found")
+        return redirect('dashboard:events')

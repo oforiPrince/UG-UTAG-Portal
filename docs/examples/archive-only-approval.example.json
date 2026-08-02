@@ -1,0 +1,10 @@
+{
+  "approved_at": "2026-07-22T00:00:00Z",
+  "approved_by": "REPLACE WITH DATA OWNER NAME AND ROLE",
+  "approved_tables": [
+    "django_migrations",
+    "django_session"
+  ],
+  "decision": "REPLACE WITH THE APPROVED ARCHIVE-ACCESS, LATER-BACKFILL, OR RETENTION DECISION",
+  "evidence_reference": "REPLACE WITH CHANGE/TICKET/MEETING RECORD IDENTIFIER"
+}

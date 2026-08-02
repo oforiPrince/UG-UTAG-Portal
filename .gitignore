@@ -138,3 +138,33 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
+# New Next.js / FastAPI stack
+!apps/web/lib/
+!apps/web/lib/**
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+pnpm-debug.log*
+.ruff_cache/
+.venv/
+apps/api/.venv/
+apps/api/.coverage
+apps/api/htmlcov/
+apps/api/.pytest_cache/
+apps/api/.mypy_cache/
+apps/web/playwright-report/
+apps/web/test-results/
+.env.*.local
+!.env.example
+uploads/
+data/
+migration-evidence/
+utag-dev.db
+*.dump
+*.dump.sha256
+
+# OS and editor artefacts
+.DS_Store
+~$*

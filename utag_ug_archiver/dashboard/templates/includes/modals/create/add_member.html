@@ -1,10 +1,11 @@
 <!-- Modal for Add Member -->
+{% load name_filters %}
 <div class="modal fade bs-example-modal-lg"
      id="addMemberModal"
      tabindex="-1"
      aria-labelledby="addMemberModalLabel"
      aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="addMemberModalLabel">Register New Association Member</h5>
@@ -23,13 +24,10 @@
             <div>
               <select id="id_title" class="form-select select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
-                <option value="Prof.">Prof.</option>
-                <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
-                <option value="Dr.">Dr.</option>
-                <option value="Dr. (Alhaji)">Dr. (Alhaji)</option>
-                <option value="Mr.">Mr.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Ms.">Ms.</option>
+                {% get_title_choices as title_choices %}
+                {% for val,label in title_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -157,9 +155,8 @@
                      data-parsley-pattern="[0-9]{4,20}"
                      data-parsley-pattern-message="Staff ID must be 4-20 digits only"
                      data-parsley-remote="/dashboard/account_management/check-staff-id/"
-                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id").val(); } } }'
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "text", "data": { "staff_id": function() { return $("#id_staff_id").val(); } } }'
                      data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
-                     data-parsley-remote-reverse="true"
                      title="Staff ID must be 4-20 digits" />
               <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique (4-20 digits).</small>
               <div id="staff_id_feedback" class="invalid-feedback"></div>
@@ -200,25 +197,20 @@
             data: {
               staff_id: staffId
             },
-            dataType: 'json',
+            dataType: 'text',
             success: function(response) {
-              if (response.available) {
+              const available = (String(response).trim() === 'true');
+              if (available) {
                 $input.removeClass('is-invalid').addClass('is-valid');
                 $feedback.text('').hide();
               } else {
                 $input.removeClass('is-valid').addClass('is-invalid');
-                $feedback.text(response.message || 'Staff ID already taken').show();
+                $feedback.text('Staff ID already taken').show();
               }
             },
-            error: function(xhr) {
-              // Only show error if it's a validation error, not a 405
-              if (xhr.status === 400 && xhr.responseJSON) {
-                $input.removeClass('is-valid').addClass('is-invalid');
-                $feedback.text(xhr.responseJSON.message || 'Invalid Staff ID').show();
-              } else {
-                $input.removeClass('is-valid is-invalid');
-                $feedback.text('').hide();
-              }
+            error: function() {
+              $input.removeClass('is-valid is-invalid');
+              $feedback.text('').hide();
             }
           });
         } else if (staffId) {

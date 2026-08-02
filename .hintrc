@@ -7,6 +7,8 @@
     "no-inline-styles": "off",
     "axe/text-alternatives": "off",
     "axe/name-role-value": "off",
-    "meta-viewport": "off"
+    "meta-viewport": "off",
+    "disown-opener": "off",
+    "compat-api/css": "off"
   }
 }

@@ -12,7 +12,7 @@
 }
 
 .style-customizer a.button:hover {
-    color: #01004e !important
+    color: #1A3551 !important
 }
 
 .style-customizer.closed {
@@ -28,8 +28,8 @@
 }
 
 .style-customizer a.button.button-border {
-    background: #01004e;
-    border: 1px solid #01004e;
+    background: #1A3551;
+    border: 1px solid #1A3551;
     font-size: 15px;
     padding: 8px 30px;
     text-transform: uppercase;
@@ -133,11 +133,11 @@
 }
 
 .style-customizer .skin-default {
-    background: #01004e
+    background: #1A3551
 }
 
 .style-customizer .skin-chill {
-    background: #13909C
+    background: #1A3551
 }
 
 .style-customizer .skin-dixie {
@@ -145,7 +145,7 @@
 }
 
 .style-customizer .skin-dodger {
-    background: #01004e
+    background: #1A3551
 }
 
 .style-customizer .skin-froly {

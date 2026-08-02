@@ -2,6 +2,8 @@
 <div class="modal fade bs-example-modal-lg"
      id="existingMemberModal"
      tabindex="-1"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false"
      aria-labelledby="existingMemberModalLabel"
      aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -42,14 +44,8 @@
           </div>
           <div class="mb-3">
             <label for="member" class="form-label">Member</label>
-            <select class="form-control select2" id="member" name="member_id">
+            <select class="form-control select2 member-search" id="member" name="member_id">
               <option value="">Select a member</option>
-              {% for member in members %}
-                <option value="{{ member.id }}"
-                        {% if member.id == initial_data.member.id %}selected{% endif %}>
-                  {{ member.get_full_name }}
-                </option>
-              {% endfor %}
             </select>
           </div>
           <hr class="mt-4 mb-4">
@@ -58,14 +54,15 @@
             <select id="id_position_existing" class="form-control select2" required name="position">
               <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
-              <option value="Vice President">Vice President</option>
+              <option value="Vice President">Vice-President</option>
               <option value="Secretary">Secretary</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Women's Executive Officer">Women's Executive Officer</option>
-              <option value="Past President">Past President</option>
-              <option value="CBAS Rep">CBAS Rep</option>
-              <option value="College of Humanities Rep">College of Humanities Rep</option>
-              <option value="College of Health Rep">College of Health Rep</option>
+              <option value="National President">National President</option>
+              <option value="CBAS Rep">Rep CBAS</option>
+              <option value="CHS Rep">Rep CHS</option>
+              <option value="COE Rep">Rep COE</option>
+              <option value="COH Rep">Rep COH</option>
             </select>
           </div>
           <div class="row mb-3">
@@ -103,10 +100,18 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Date Appointed</label>
-            <div class="input-group" id="datepickerContainer">
-              <input type="date" class="form-control" name="date_appointed" />
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Date Appointed</label>
+              <div class="input-group" id="datepickerContainer">
+                <input type="date" class="form-control" name="date_appointed" required />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date Ended (Optional)</label>
+              <div class="input-group">
+                <input type="date" class="form-control" name="date_ended" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -122,8 +127,28 @@
   document.addEventListener("DOMContentLoaded", function () {
     // Initialize Select2
     $('#existingMemberModal').on('shown.bs.modal', function () {
-      $('#member, #id_position_existing').select2({
+      $('#id_position_existing').select2({
         dropdownParent: $('#existingMemberModal')
+      });
+
+      $('#member').select2({
+        dropdownParent: $('#existingMemberModal'),
+        placeholder: 'Search member by name, email, or staff ID',
+        minimumInputLength: 2,
+        allowClear: true,
+        ajax: {
+          url: '/dashboard/account_management/member-search',
+          dataType: 'json',
+          delay: 250,
+          data: function (params) {
+            return {
+              q: params.term
+            };
+          },
+          processResults: function (data) {
+            return data;
+          }
+        }
       });
     });
 

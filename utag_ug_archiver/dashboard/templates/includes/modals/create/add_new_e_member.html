@@ -1,4 +1,5 @@
 <!-- New Member Modal with Bootstrap Tabs -->
+{% load name_filters %}
 <div class="modal fade bs-example-modal-lg"
      id="newMemberModal"
      tabindex="-1"
@@ -48,13 +49,10 @@
             <div>
               <select id="id_title" class="form-control select2" required name="title">
                 <option value="" selected disabled>Select a title</option>
-                <option value="Prof.">Prof.</option>
-                <option value="Prof. (Mrs.)">Prof. (Mrs.)</option>
-                <option value="Dr.">Dr.</option>
-                <option value="Dr. (Alhaji)">Dr. (Alhaji)</option>
-                <option value="Mr.">Mr.</option>
-                <option value="Mrs.">Mrs.</option>
-                <option value="Ms.">Ms.</option>
+                {% get_title_choices as title_choices %}
+                {% for val,label in title_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -142,9 +140,8 @@
                      data-parsley-pattern="[0-9]{4,20}"
                      data-parsley-pattern-message="Staff ID must be 4-20 digits only"
                      data-parsley-remote="/dashboard/account_management/check-staff-id/"
-                     data-parsley-remote-options='{ "type": "GET", "dataType": "json", "data": { "staff_id": function() { return $("#id_staff_id_exec").val(); } } }'
+                     data-parsley-remote-options='{ "type": "GET", "dataType": "text", "data": { "staff_id": function() { return $("#id_staff_id_exec").val(); } } }'
                      data-parsley-remote-message="This Staff ID is already taken. Please use a different one."
-                     data-parsley-remote-reverse="true"
                      title="Staff ID must be 4-20 digits" />
               <small class="form-text text-muted">Staff ID will be used as temporary password. Must be unique.</small>
             </div>
@@ -192,15 +189,15 @@
             <select id="id_position" class="form-control select2" required name="position">
               <option value="" selected disabled>Select a position</option>
               <option value="President">President</option>
-              <option value="Vice President">Vice President</option>
+              <option value="Vice President">Vice-President</option>
               <option value="Secretary">Secretary</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Women's Executive Officer">Women's Executive Officer</option>
-              <option value="Past President">Past President</option>
-              <option value="CBAS Rep">CBAS Rep</option>
-              <option value="College of Humanities Rep">College of Humanities Rep</option>
-              <option value="College of Health Rep">College of Health Rep</option>
-              <option value="College of Education Rep">College of Education Rep</option>
+              <option value="National President">National President</option>
+              <option value="CBAS Rep">Rep CBAS</option>
+              <option value="CHS Rep">Rep CHS</option>
+              <option value="COE Rep">Rep COE</option>
+              <option value="COH Rep">Rep COH</option>
             </select>
           </div>
           <div class="row mb-3">
@@ -238,10 +235,18 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Date Appointed</label>
-            <div class="input-group" id="datepicker2">
-              <input type="date" class="form-control" name="date_appointed">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Date Appointed</label>
+              <div class="input-group" id="datepicker2">
+                <input type="date" class="form-control" name="date_appointed" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date Ended (Optional)</label>
+              <div class="input-group">
+                <input type="date" class="form-control" name="date_ended">
+              </div>
             </div>
           </div>
           <!-- Submit and Cancel Buttons -->

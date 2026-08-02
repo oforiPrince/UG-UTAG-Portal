@@ -88,20 +88,24 @@ class DashboardView(PermissionRequiredMixin, View):
         published_news = News.objects.filter(is_published=True).order_by('-created_at')[:5]
 
         # Get recent documents based on user role
-        if 'Admin' in user_groups:
-            # Admins see all documents
-            recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
-        elif 'Executive' in user_groups:
-            # Executives see internal and external documents
+        if request.user.is_superuser or 'Admin' in user_groups:
+            # Superusers and Admins see all documents
             recent_added_documents = Document.objects.all().order_by('-created_at')[:5]
         else:
-            # Members see only internal documents that are visible to everyone or their groups
-            user_groups_queryset = user_groups
+            # All other users see documents visible to everyone or to their groups
+            user_groups_queryset = request.user.groups.all()
             recent_added_documents = Document.objects.filter(
-                models.Q(category='internal') & 
-                (models.Q(visibility='everyone') | models.Q(visible_to_groups__name__in=user_groups_queryset))
+                models.Q(visibility='everyone') | 
+                models.Q(visibility='selected_groups', visible_to_groups__in=user_groups_queryset)
             ).distinct().order_by('-created_at')[:5]
-        
+
+        # Compute a real last-updated timestamp across core content
+        latest_times = []
+        for model in (Document, Event, Announcement, News, Ad):
+            ts = model.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+            if ts:
+                latest_times.append(ts)
+        last_updated = max(latest_times) if latest_times else timezone.now()
         context = {
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
@@ -121,6 +125,7 @@ class DashboardView(PermissionRequiredMixin, View):
             'is_admin': 'Admin' in user_groups,
             'is_executive': 'Executive' in user_groups,
             'is_member': 'Member' in user_groups,
+            'last_updated': last_updated,
         }
         print(context)
         return render(request, self.template_name, context)

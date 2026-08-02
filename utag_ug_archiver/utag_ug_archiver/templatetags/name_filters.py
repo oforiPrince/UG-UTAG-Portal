@@ -1,0 +1,140 @@
+from django import template
+import json
+from django.utils.safestring import mark_safe
+
+register = template.Library()
+
+
+@register.filter(is_safe=False)
+def format_full_name(value):
+    """Format a user object or string into the canonical display form:
+
+    Desired format for User-like objects: "Title. Other names Surname" (no comma).
+    - `title` (if present) is shown first (assumed already punctuated, but a
+      trailing period is added if missing).
+    - `other_name` (if present) follows the title.
+    - `surname` is placed after a comma when other_name is present, or alone
+      if other_name is missing.
+
+    If a plain string is provided, return it unchanged. If the value is
+    falsy, return an empty string.
+    """
+    if not value:
+        return ''
+
+    # If it's a model/namespace with explicit fields, build the canonical form
+    try:
+        title = getattr(value, 'title', None)
+        other = getattr(value, 'other_name', None) or getattr(value, 'othernames', None)
+        surname = getattr(value, 'surname', None) or getattr(value, 'last_name', None)
+
+        if title or other or surname:
+            parts = []
+            if title:
+                t = str(title).strip().title()
+                if t and not t.endswith('.'):
+                    t = t + '.'
+                parts.append(t)
+
+            name_body = ''
+            if other:
+                name_body = str(other).strip().title()
+
+            if surname:
+                if name_body:
+                    # Join other names and surname with a space (no comma)
+                    name_body = f"{name_body} {surname.strip().title()}"
+                else:
+                    name_body = surname.strip().title()
+
+            if name_body:
+                parts.append(name_body)
+
+            return ' '.join([p for p in parts if p])
+    except Exception:
+        # Fall back to get_full_name if present
+        try:
+            if hasattr(value, 'get_full_name') and callable(value.get_full_name):
+                return value.get_full_name()
+        except Exception:
+            pass
+
+    # Final fallback: string representation
+    return str(value)
+
+
+@register.filter(is_safe=True)
+def position_label(value):
+    """Map stored executive position values to desired display labels.
+
+    Keeps the stored value unchanged (so form submissions and comparisons
+    continue to use the same canonical keys), but provides a human-friendly
+    label for rendering in templates.
+    """
+    if not value:
+        return ''
+    try:
+        s = str(value).strip()
+        # normalize non-breaking spaces to normal spaces for matching
+        s_norm = s.replace('\xa0', ' ').replace('\u00A0', ' ')
+        mapping = {
+            'Vice President': 'Vice-President',
+            'College of Humanities Rep': 'COH Rep',
+            'College of Humanities\xa0Rep': 'COH Rep',
+            'College of Health Rep': 'CHS Rep',
+            'College of Health\xa0Rep': 'CHS Rep',
+            'College of Education Rep': 'COE Rep',
+            "Women's Executive\xa0Officer": "Women's Executive Officer",
+        }
+        # Try normalized key first, then raw
+        return mapping.get(s_norm, mapping.get(s, s))
+    except Exception:
+        return str(value)
+
+
+@register.filter(is_safe=True)
+def position_order_index(value):
+    """Return the custom ordering index for executive positions."""
+    if not value:
+        return 999
+    try:
+        from utag_ug_archiver.utils.constants import (
+            executive_committee_members_position_order,
+            normalize_position_name,
+        )
+        normalized = normalize_position_name(value)
+        if normalized in executive_committee_members_position_order:
+            return executive_committee_members_position_order.index(normalized)
+    except Exception:
+        pass
+    return 999
+
+
+@register.simple_tag
+def get_title_choices():
+    """Return the `TITLE_CHOICES` defined on the `User` model.
+
+    Templates can use `{% get_title_choices as title_choices %}` then iterate
+    over the `(value, label)` pairs so dropdowns stay in-sync with the model.
+    """
+    try:
+        from accounts.models import User
+        return getattr(User, 'TITLE_CHOICES', ())
+    except Exception:
+        return ()
+
+
+@register.simple_tag
+def title_choices_json():
+    """Return `TITLE_CHOICES` as safe JSON for use in client-side scripts.
+
+    Usage in templates:
+      <script>window.TITLE_CHOICES = {% title_choices_json %};</script>
+    """
+    try:
+        from accounts.models import User
+        choices = getattr(User, 'TITLE_CHOICES', ())
+        items = [{'value': v, 'label': l} for v, l in choices]
+        return mark_safe(json.dumps(items))
+    except Exception:
+        return mark_safe('[]')

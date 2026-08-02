@@ -1,5 +1,8 @@
 from django.urls import path
 from . import views
+from .views.members_api import MembersDataTableAPIView, MemberDetailAPIView, MemberPasswordResetAPIView, MemberUpdateAPIView
+from .views.executives import ExecutiveBioUpdateView
+from .views.document_detail import DocumentDetailView
 app_name = 'dashboard'
 
 urlpatterns =[
@@ -14,14 +17,19 @@ urlpatterns += [
     path('account_management/admins/upload',views.UploadAdminData.as_view(), name='upload_admins'),
     path('account_management/admin/delete/<int:admin_id>',views.AdminDeleteView.as_view(), name='delete_admin'),
     path('account_management/members/upload',views.UploadMemberData.as_view(), name='upload_members'),
+    path('account_management/members/reference-csv',views.OrgReferenceCSVView.as_view(), name='members_reference_csv'),
     path('account_management/members/delete/<int:member_id>',views.MemberDeleteView.as_view(), name='delete_member'),
     path('account_management/members',views.MemberListView.as_view(), name='members'),
+    path('account_management/members/api', MembersDataTableAPIView.as_view(), name='members_api'),
+    path('account_management/members/detail/<int:member_id>/api', MemberDetailAPIView.as_view(), name='member_detail_api'),
     path('account_management/members/create',views.MemberCreateView.as_view(), name='create_member'),
+    path('account_management/member-search', views.MemberSearchView.as_view(), name='member_search'),
     path('account_management/check-staff-id/', views.CheckStaffIdView.as_view(), name='check_staff_id'),
 ]
 #For executive management
 urlpatterns += [
     path('executives/executive_members',views.ExecutiveMembersView.as_view(), name='executive_members'),
+    path('executives/executive_members/print',views.PrintAllExecutivesView.as_view(), name='print_all_executives'),
     path('executives/executive_members/create/new_member',views.NewExecutiveMemberCreateView.as_view(), name='create_new_executive_member'),
     path('executives/executive_members/create/existing_member',views.ExistingExecutiveMemberCreateView.as_view(), name='create_existing_executive_member'),
     path('executives/executive_members/update/',views.UpdateExecutiveMemberView.as_view(), name='update_executive_member'),
@@ -31,11 +39,13 @@ urlpatterns += [
     # path('executives/committee_members/create',views.ExecutiveCommitteeMemberCreateView.as_view(), name='create_existing_committee_member'),
     # path('executives/committee_members/update/',views.CommitteeMemberUpdateView.as_view(), name='update_committee_member'),
     # path('executives/committee_members/delete/<int:c_member_id>',views.CommitteeMemberDeleteView.as_view(), name='delete_committee_member'),
+    path('executives/bio/edit/', ExecutiveBioUpdateView.as_view(), name='executive_bio_edit'),
 ]
 
 #For event management
 urlpatterns += [
     path('events',views.EventsView.as_view(), name='events'),
+    path('events/<int:event_id>',views.EventDetailView.as_view(), name='view_event'),
     path('events/create',views.EventCreateUpdateView.as_view(), name='create_event'),
     path('events/update/<int:event_id>',views.EventCreateUpdateView.as_view(), name='update_event'),
     path('events/delete/<int:event_id>',views.EventDeleteView.as_view(), name='delete_event'),
@@ -44,6 +54,7 @@ urlpatterns += [
 #For news management
 urlpatterns += [
     path('news',views.NewsView.as_view(), name='news'),
+    path('news/<int:news_id>',views.NewsDetailView.as_view(), name='news_detail'),
     path('news/create',views.NewsCreateUpdateView.as_view(), name='create_news'),
     path('news/update/<int:news_id>',views.NewsCreateUpdateView.as_view(), name='update_news'),
     path('news/delete/<int:news_id>',views.NewsDeleteView.as_view(), name='delete_news'),
@@ -63,6 +74,7 @@ urlpatterns += [
 #For Document management
 urlpatterns += [
     path('documents/',views.DocumentsView.as_view(), name='documents'),
+    path('documents/<int:document_id>/', DocumentDetailView.as_view(), name='document_detail'),
     path('documents/create',views.DocumentCreateUpdateView.as_view(), name='create_document'),
     path('documents/update/<int:document_id>',views.DocumentCreateUpdateView.as_view(), name='update_document'),
     path('documents/delete_file/',views.DeleteFileView.as_view(), name='delete_file'),
@@ -88,8 +100,7 @@ urlpatterns += [
 
 #For Adverts
 urlpatterns +={
-    path('adverts',views.AdvertsView.as_view(), name='adverts'),
-    path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
+    path('adverts',views.AdvertsView.as_view(), name='adverts'),    path('adverts/<int:advert_id>',views.AdvertDetailView.as_view(), name='advert_detail'),    path('adverts/create',views.AdvertCreateView.as_view(), name='create_advert'),
     path('adverts/update/',views.AdvertUpdateView.as_view(), name='update_advert'),
     path('adverts/delete/<int:advert_id>',views.AdvertDeleteView.as_view(), name='delete_advert'),
     path('adverts/orders', views.AdvertOrdersView.as_view(), name='advert_orders'),
@@ -104,6 +115,8 @@ urlpatterns +={
 urlpatterns += [
     path('profile',views.ProfileView.as_view(), name='profile'),
     path('profile/update_profile_pic',views.ChangeProfilePicView.as_view(), name='update_profile_pic'),
+    path('account_management/members/reset-password/<int:member_id>/', MemberPasswordResetAPIView.as_view(), name='reset_member_password'),
+    path('account_management/members/update/<int:member_id>/', MemberUpdateAPIView.as_view(), name='update_member'),
 ]
 
 # Carousel Slider

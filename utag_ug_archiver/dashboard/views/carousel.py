@@ -58,7 +58,7 @@ class CarouselSlideCreateUpdateView(View):
         else:
             form = CarouselSlideForm()
             initial_data = {}
-        return render(request, self.template_name, {'form': form, 'initial_data': initial_data, 'carousel_slide': slide if slide_id else None})
+        return render(request, self.template_name, {'form': form, 'initial_data': initial_data, 'carousel_slide': slide if slide_id else None, 'active_menu': 'carousel'})
 
     def post(self, request, slide_id=None):
         if slide_id:

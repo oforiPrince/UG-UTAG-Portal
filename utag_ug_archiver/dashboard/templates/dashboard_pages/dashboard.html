@@ -39,7 +39,7 @@
                     </div>
                     <div class="col-md-4 text-end">
                         <p class="text-muted mb-0">
-                            Last updated: <strong>{{ "now"|date:"M d, Y H:i" }}</strong>
+                            Last updated: <strong>{{ last_updated|date:"M d, Y H:i" }}</strong>
                         </p>
                     </div>
                 </div>
@@ -227,31 +227,33 @@
                                     {% if published_events %}
                                         <div class="events-list">
                                             {% for event in published_events|slice:":5" %}
-                                                <div class="event-item">
-                                                    <div class="event-marker event-marker-primary"></div>
-                                                    <div class="event-content">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <div>
-                                                                <h6 class="mb-1 font-weight-600">{{ event.title }}</h6>
-                                                                <p class="text-muted mb-0 font-size-12">
-                                                                    <i class="ri-calendar-2-line"></i>
+                                                <a href="{% url 'dashboard:view_event' event.id %}" style="text-decoration: none; color: inherit;">
+                                                    <div class="event-item" style="cursor: pointer; transition: all 0.3s ease;">
+                                                        <div class="event-marker event-marker-primary"></div>
+                                                        <div class="event-content">
+                                                            <div class="d-flex justify-content-between align-items-start">
+                                                                <div>
+                                                                    <h6 class="mb-1 font-weight-600">{{ event.title }}</h6>
+                                                                    <p class="text-muted mb-0 font-size-12">
+                                                                        <i class="ri-calendar-2-line"></i>
+                                                                        {% if event.start_date %}
+                                                                            {{ event.start_date|date:"M d, Y" }}
+                                                                        {% else %}
+                                                                            TBD
+                                                                        {% endif %}
+                                                                    </p>
+                                                                </div>
+                                                                <span class="badge bg-primary">
                                                                     {% if event.start_date %}
-                                                                        {{ event.start_date|date:"M d, Y" }}
+                                                                        {{ event.start_date|date:"E" }}
                                                                     {% else %}
-                                                                        TBD
+                                                                        TBA
                                                                     {% endif %}
-                                                                </p>
+                                                                </span>
                                                             </div>
-                                                            <span class="badge bg-primary">
-                                                                {% if event.start_date %}
-                                                                    {{ event.start_date|date:"E" }}
-                                                                {% else %}
-                                                                    TBA
-                                                                {% endif %}
-                                                            </span>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </a>
                                             {% endfor %}
                                         </div>
                                     {% else %}
@@ -279,21 +281,23 @@
                                     {% if published_news %}
                                         <div class="news-list">
                                             {% for news in published_news|slice:":5" %}
-                                                <div class="news-item">
-                                                    <div class="news-marker news-marker-primary"></div>
-                                                    <div class="news-content">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <div>
-                                                                <h6 class="mb-1 font-weight-600">{{ news.title }}</h6>
-                                                                <p class="text-muted mb-0 font-size-12">
-                                                                    <i class="ri-calendar-2-line"></i>
-                                                                    {{ news.created_at|date:"M d, Y" }}
-                                                                </p>
+                                                <a href="{% url 'dashboard:news_detail' news.id %}" style="text-decoration: none; color: inherit;">
+                                                    <div class="news-item" style="cursor: pointer; transition: all 0.3s ease;">
+                                                        <div class="news-marker news-marker-primary"></div>
+                                                        <div class="news-content">
+                                                            <div class="d-flex justify-content-between align-items-start">
+                                                                <div>
+                                                                    <h6 class="mb-1 font-weight-600">{{ news.title }}</h6>
+                                                                    <p class="text-muted mb-0 font-size-12">
+                                                                        <i class="ri-calendar-2-line"></i>
+                                                                        {{ news.created_at|date:"M d, Y" }}
+                                                                    </p>
+                                                                </div>
+                                                                <span class="badge bg-success">New</span>
                                                             </div>
-                                                            <span class="badge bg-success">New</span>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </a>
                                             {% endfor %}
                                         </div>
                                     {% else %}
@@ -337,7 +341,7 @@
                                             </thead>
                                             <tbody>
                                                 {% for document in recent_added_documents|slice:":5" %}
-                                                    <tr class="document-row">
+                                                    <tr class="document-row" style="cursor: pointer; transition: all 0.3s ease;" onclick="window.location='{% url 'dashboard:document_detail' document.id %}'">
                                                         <th scope="row">{{ forloop.counter }}</th>
                                                         <td>
                                                             <div class="d-flex align-items-center">
@@ -397,7 +401,7 @@
                                             </thead>
                                             <tbody>
                                                 {% for ad in active_adverts|slice:":5" %}
-                                                    <tr class="advert-row">
+                                                    <tr class="advert-row" style="cursor: pointer; transition: all 0.3s ease;" onclick="window.location='{% url 'dashboard:advert_detail' ad.id %}'">
                                                         <th scope="row">{{ forloop.counter }}</th>
                                                         <td>
                                                             <div class="d-flex align-items-center">
@@ -488,7 +492,7 @@
     <style>
     /* Modern Header Styles */
     .modern-header {
-        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
+        background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%);
         border-radius: 12px;
         padding: 30px;
         color: white;
@@ -570,27 +574,27 @@
 
     .modern-card-primary .mini-stat-icon-box {
         background: rgba(1, 0, 78, 0.2);
-        color: #01004e;
+        color: #1A3551;
     }
 
     .modern-card-info .mini-stat-icon-box {
         background: rgba(1, 0, 78, 0.15);
-        color: #01004e;
+        color: #1A3551;
     }
 
     .modern-card-warning .mini-stat-icon-box {
         background: rgba(1, 0, 78, 0.1);
-        color: #01004e;
+        color: #1A3551;
     }
 
     .modern-card-danger .mini-stat-icon-box {
         background: rgba(1, 0, 78, 0.12);
-        color: #01004e;
+        color: #1A3551;
     }
 
     .counter {
         font-weight: 700;
-        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
+        background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -611,19 +615,19 @@
     }
 
     .bg-gradient-primary {
-        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%) !important;
+        background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%) !important;
     }
 
     .bg-gradient-success {
-        background: linear-gradient(135deg, #01004e 0%, #003d99 100%) !important;
+        background: linear-gradient(135deg, #1A3551 0%, #003d99 100%) !important;
     }
 
     .bg-gradient-info {
-        background: linear-gradient(135deg, #01004e 0%, #0d003a 100%) !important;
+        background: linear-gradient(135deg, #1A3551 0%, #0d003a 100%) !important;
     }
 
     .bg-gradient-warning {
-        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%) !important;
+        background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%) !important;
     }
 
     .modern-card-full .card-header .btn-light {
@@ -658,7 +662,7 @@
 
     .events-list::-webkit-scrollbar-thumb,
     .news-list::-webkit-scrollbar-thumb {
-        background: #01004e;
+        background: #1A3551;
         border-radius: 3px;
     }
 
@@ -688,7 +692,7 @@
 
     .event-marker-primary,
     .news-marker-primary {
-        background: linear-gradient(135deg, #01004e 0%, #1a0066 100%);
+        background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%);
     }
 
     .event-marker,

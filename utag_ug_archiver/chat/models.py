@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.core.files.storage import default_storage
 from django.conf import settings
 import os
+import secrets
+import base64
 
 from cryptography.fernet import Fernet
 
@@ -70,6 +72,7 @@ class ChatThread(models.Model):
 	updated_at = models.DateTimeField(auto_now=True)
 	last_message_at = models.DateTimeField(default=timezone.now)
 	encryption_key = models.BinaryField(editable=False, null=True, blank=True)
+	access_token = models.CharField(max_length=64, unique=True, editable=False, db_index=True, null=True)
 
 	objects = ChatThreadManager()
 
@@ -90,6 +93,8 @@ class ChatThread(models.Model):
 				self.user_one_id, self.user_two_id = self.user_two_id, self.user_one_id
 		if self.encryption_key in (None, b''):
 			self.encryption_key = generate_encryption_key()
+		if not self.access_token:
+			self.access_token = secrets.token_urlsafe(48)
 		super().save(*args, **kwargs)
 
 	def __str__(self):
@@ -132,6 +137,7 @@ class ChatThread(models.Model):
 class Message(models.Model):
 	thread = models.ForeignKey(ChatThread, on_delete=models.CASCADE, related_name='messages')
 	sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='messages_sent')
+	reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
 	ciphertext = models.BinaryField(editable=False, null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	read_at = models.DateTimeField(null=True, blank=True)
@@ -198,6 +204,8 @@ class ChatGroup(models.Model):
 		related_name='chat_groups_created',
 	)
 	encryption_key = models.BinaryField(editable=False, null=True, blank=True)
+	invite_token = models.CharField(max_length=64, unique=True, editable=False, db_index=True)
+	access_token = models.CharField(max_length=64, unique=True, editable=False, db_index=True, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 	members = models.ManyToManyField(
@@ -217,6 +225,10 @@ class ChatGroup(models.Model):
 	def save(self, *args, **kwargs):
 		if self.encryption_key in (None, b''):
 			self.encryption_key = generate_encryption_key()
+		if not self.invite_token:
+			self.invite_token = secrets.token_urlsafe(48)
+		if not self.access_token:
+			self.access_token = secrets.token_urlsafe(48)
 		super().save(*args, **kwargs)
 
 	def _fernet(self):
@@ -238,7 +250,16 @@ class ChatGroup(models.Model):
 		return self.members.filter(pk=user.pk).exists()
 
 	def can_manage_members(self, user):
-		return user == self.created_by or user.is_superuser
+		# Allow group creator, superusers, or members marked as admins to manage membership
+		if user == self.created_by or user.is_superuser:
+			return True
+		return self.membership_records.filter(user=user, is_admin=True).exists()
+
+	def is_user_admin(self, user):
+		"""Check if user is admin (creator or marked as admin)"""
+		if user == self.created_by or user.is_superuser:
+			return True
+		return self.membership_records.filter(user=user, is_admin=True).exists()
 
 
 class GroupMembership(models.Model):
@@ -251,6 +272,8 @@ class GroupMembership(models.Model):
 		blank=True,
 		related_name='group_memberships_added',
 	)
+	# Flag for group administrators (can manage members, invite links, moderate)
+	is_admin = models.BooleanField(default=False)
 	added_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -260,9 +283,28 @@ class GroupMembership(models.Model):
 		return f'{self.user.get_full_name()} in {self.group.name}'
 
 
+class ChatGroupInvite(models.Model):
+	"""Invite token for joining a group via a shareable link."""
+	group = models.ForeignKey(ChatGroup, on_delete=models.CASCADE, related_name='invites')
+	token = models.CharField(max_length=64, unique=True)
+	created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='group_invites_created')
+	created_at = models.DateTimeField(auto_now_add=True)
+	expires_at = models.DateTimeField(null=True, blank=True)
+
+	def is_valid(self):
+		from django.utils import timezone
+		if self.expires_at and timezone.now() > self.expires_at:
+			return False
+		return True
+
+	def __str__(self):
+		return f'Invite {self.token} for {self.group.name}'
+
+
 class GroupMessage(models.Model):
 	group = models.ForeignKey(ChatGroup, on_delete=models.CASCADE, related_name='messages')
 	sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='group_messages_sent')
+	reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
 	ciphertext = models.BinaryField(editable=False, null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	read_by = models.ManyToManyField(
@@ -502,3 +544,29 @@ class GroupMessageAttachment(models.Model):
 	@property
 	def is_image(self):
 		return bool(self.content_type and self.content_type.startswith('image/'))
+
+
+class MessageDelivery(models.Model):
+	"""Per-recipient delivery acknowledgement for direct messages."""
+	message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='deliveries')
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='message_deliveries')
+	delivered_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('message', 'user')
+
+	def __str__(self):
+		return f"Delivered {self.message_id} to {self.user.get_full_name()} at {self.delivered_at}"
+
+
+class GroupMessageDelivery(models.Model):
+	"""Per-recipient delivery acknowledgement for group messages."""
+	message = models.ForeignKey(GroupMessage, on_delete=models.CASCADE, related_name='deliveries')
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='group_message_deliveries')
+	delivered_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('message', 'user')
+
+	def __str__(self):
+		return f"Delivered group {self.message_id} to {self.user.get_full_name()} at {self.delivered_at}"

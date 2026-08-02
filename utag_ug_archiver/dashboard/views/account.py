@@ -1,6 +1,9 @@
 import logging
 import random
 import string
+import csv
+import os
+import uuid
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -9,14 +12,19 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import render
 from django.db import transaction
 from django.views import View
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
+from dashboard.views.members_api import MembersDataTableAPIView
 from accounts.models import User, School, College, Department
-from dashboard.models import Announcement, Document, Notification
+from dashboard.models import  Document, Notification
 from utag_ug_archiver.utils.functions import process_bulk_admins, process_bulk_members, ensure_staff_id
+from dashboard.tasks_bulk_import import import_members_from_upload
 from utag_ug_archiver.utils.decorators import MustLogin
 # Configure the logger
 logger = logging.getLogger(__name__)
@@ -27,8 +35,10 @@ class AdminListView(PermissionRequiredMixin, View):
     permission_required = 'accounts.view_admin'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Fetch users
-        users = User.objects.filter(groups__name='Admin').order_by('surname')
+        # Fetch users — include users in the Admin group AND superusers
+        users = User.objects.filter(
+            Q(groups__name='Admin') | Q(is_superuser=True)
+        ).distinct().order_by('surname')
         
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
@@ -281,22 +291,59 @@ class UploadMemberData(PermissionRequiredMixin, View):
         excel_file = request.FILES.get('excel')
         csv_file = request.FILES.get('csv')
 
-        if excel_file:
-            return process_bulk_members(request, excel_file)
-        elif csv_file:
-            return process_bulk_members(request, csv_file)
-        else:
+        upload = excel_file or csv_file
+        if not upload:
             messages.error(request, 'No file uploaded.')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+        # Always process asynchronously to avoid long-running requests/timeouts.
+        ext = os.path.splitext(upload.name)[1].lower()
+        safe_ext = ext if ext in {'.csv', '.xlsx', '.xls'} else ''
+        rel_dir = 'bulk_uploads'
+        rel_name = f"{uuid.uuid4().hex}{safe_ext}"
+        rel_path = os.path.join(rel_dir, rel_name)
+
+        saved_path = default_storage.save(rel_path, ContentFile(upload.read()))
+        task = import_members_from_upload.delay(saved_path, uploaded_by_user_id=request.user.id)
+
+        messages.success(
+            request,
+            f'Upload received. Import is running in the background (task id: {task.id}). '
+            'You can refresh the Members page in a minute to see new members.'
+        )
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+class OrgReferenceCSVView(PermissionRequiredMixin, View):
+    """Download a reference CSV of School/College/Department combos."""
+
+    permission_required = 'accounts.view_member'
+
+    @method_decorator(MustLogin)
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="org_units_reference.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['School', 'College', 'Department'])
+
+        departments = (
+            Department.objects.select_related('college__school')
+            .order_by('college__school__name', 'college__name', 'name')
+        )
+
+        for dept in departments:
+            school_name = dept.college.school.name if dept.college and dept.college.school else ''
+            college_name = dept.college.name if dept.college else ''
+            writer.writerow([school_name, college_name, dept.name])
+
+        return response
 
 class MemberListView(PermissionRequiredMixin, View):
     permission_required = 'accounts.view_member'
     template_name = 'dashboard_pages/members.html'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Fetch users
-        users = User.objects.filter(groups__name='Member').order_by('surname', 'other_name')
-        
         # Fetch document counts
         total_documents = Document.objects.filter(category='internal').count()
         total_external_documents = Document.objects.filter(category='external').count()
@@ -306,8 +353,9 @@ class MemberListView(PermissionRequiredMixin, View):
         notification_count = Notification.objects.filter(user=request.user, status='UNREAD').count()
         
         # Prepare context
+        # Note: Members data is loaded via server-side DataTables API call to MembersDataTableAPIView
+        # Modals are loaded dynamically via AJAX to avoid loading all members on page load
         context = {
-            'users': users,
             'total_documents': total_documents,
             'total_external_documents': total_external_documents,
             'notifications': notifications,
@@ -341,28 +389,49 @@ class CheckStaffIdView(View):
     def _check_staff_id(self, staff_id):
         """Common logic for checking staff_id availability."""
         if not staff_id:
-            # Return 200 with error message for Parsley
             return JsonResponse({'available': False, 'message': 'Staff ID is required'}, status=200)
         
         # Validate format (4-20 digits)
         import re
         if not re.match(r'^[0-9]{4,20}$', staff_id):
-            # Return 200 with error message for Parsley
             return JsonResponse({
                 'available': False, 
                 'message': 'Staff ID must be 4-20 digits only'
             }, status=200)
         
-        # Check if staff_id exists
         exists = User.objects.filter(staff_id=staff_id).exists()
-        
+
+        # Parsley treats non-true-ish responses as invalid, so return simple booleans
         if exists:
-            # Return 200 with false - Parsley treats this as invalid when reverse is true
-            return JsonResponse({
-                'available': False,
-                'message': 'This Staff ID is already taken. Please use a different one.'
-            }, status=200)
-        else:
-            # Return 404 - Parsley treats 404 as "valid" when reverse is true
-            from django.http import HttpResponse
-            return HttpResponse(status=404)
+            return HttpResponse('false', status=200)
+
+        return HttpResponse('true', status=200)
+
+
+@method_decorator(MustLogin, name='dispatch')
+class MemberSearchView(View):
+    """AJAX endpoint for Select2 member search."""
+
+    def get(self, request):
+        term = request.GET.get('q', '').strip()
+
+        qs = User.objects.all()
+        if term:
+            qs = qs.filter(
+                Q(other_name__icontains=term)
+                | Q(surname__icontains=term)
+                | Q(email__icontains=term)
+                | Q(staff_id__icontains=term)
+            )
+
+        qs = qs.order_by('surname', 'other_name')[:20]
+
+        results = [
+            {
+                'id': user.id,
+                'text': f"{user.get_full_name()} ({user.staff_id or 'No Staff ID'})",
+            }
+            for user in qs
+        ]
+
+        return JsonResponse({'results': results})

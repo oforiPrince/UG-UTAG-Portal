@@ -1,0 +1,16 @@
+services:
+  web:
+    command: daphne -b 0.0.0.0 -p 8000 -v 2 utag_ug_archiver.asgi:application
+    volumes:
+      - .:/app
+    environment:
+      RUN_MIGRATIONS: "1"
+      RUN_COLLECTSTATIC: "0"
+
+  worker:
+    volumes:
+      - .:/app
+
+  beat:
+    volumes:
+      - .:/app

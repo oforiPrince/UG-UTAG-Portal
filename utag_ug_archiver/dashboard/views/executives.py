@@ -1,20 +1,55 @@
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views import View
+
+from accounts.models import User
+from dashboard.forms import ExecutiveBioForm
+
+
+class ExecutiveBioUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    template_name = 'dashboard_pages/executive_bio_edit.html'
+
+    def test_func(self):
+        # Executives and staff can edit their bio; staff can edit any executive via ?user_id=
+        user = self.request.user
+        return getattr(user, 'is_executive', False) or user.is_staff or user.is_superuser
+
+    def get_target_user(self):
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            user_id = self.request.GET.get('user_id')
+            if user_id:
+                return get_object_or_404(User, pk=user_id)
+        return self.request.user
+
+    def get(self, request):
+        target = self.get_target_user()
+        form = ExecutiveBioForm(instance=target)
+        return render(request, self.template_name, {'form': form, 'target': target})
+
+    def post(self, request):
+        target = self.get_target_user()
+        form = ExecutiveBioForm(request.POST, request.FILES, instance=target)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('dashboard:executive_bio_edit') + (f'?user_id={target.pk}' if request.user.is_staff and target.pk != request.user.pk else ''))
+        return render(request, self.template_name, {'form': form, 'target': target})
 from datetime import datetime
-import random
-import string
 
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from accounts.models import User, School, College, Department
-from dashboard.models import Announcement, Notification
-from utag_ug_archiver.utils.constants import executive_committee_members_position_order
+from dashboard.models import Notification
+from utag_ug_archiver.utils.constants import executive_committee_members_position_order, executive_members_position_order
 from utag_ug_archiver.utils.functions import executive_members_custom_order
 from django.contrib.auth.models import Group
 from utag_ug_archiver.utils.decorators import MustLogin
+from django.core.cache import cache
 
 
 def _parse_date(value):
@@ -30,22 +65,34 @@ def _parse_date(value):
 
 #For Executives
 class ExecutiveMembersView(PermissionRequiredMixin,View):
-    template_name = 'dashboard_pages/executive_members.html'
+    template_name = 'dashboard_pages/all_executives.html'
     permission_required = 'accounts.view_dashboard'
     @method_decorator(MustLogin)
     def get(self, request):
-        # Get all executive officers
-        executive_officers = User.objects.filter(executive_position__in=executive_committee_members_position_order, is_active_executive=True)
-        # Sort the executive officers based on the custom order
-        executive_officers = sorted(executive_officers, key=lambda x: executive_committee_members_position_order.index(x.executive_position) if x.executive_position in executive_committee_members_position_order else len(executive_committee_members_position_order))
+        from django.db.models import Q
+        from datetime import date
+        # Get all executives: those with positions in the committee members order list OR marked as active executives
+        # Show all, including past executives (those whose term has ended)
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions, normalize_position_name
+        executive_officers = User.objects.filter(
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
+        )
+        # Sort the executive officers based on the custom order (normalize legacy names)
+        executive_officers = sorted(
+            executive_officers, 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
+        
+        # Separate executives into main executives and committee members
+        executive_members = [e for e in executive_officers if normalize_position_name(e.executive_position) in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position and normalize_position_name(e.executive_position) not in executive_members_position_order]
 
-        # Get all members
-        members = User.objects.all()
-
-        # Get schools, colleges, and departments
-        schools = School.objects.all()
-        colleges = College.objects.all()
-        departments = Department.objects.all()
+        # Cached static lists
+        schools = cache.get_or_set('schools_all', lambda: list(School.objects.all()), 60 * 60)
+        colleges = cache.get_or_set('colleges_all', lambda: list(College.objects.all()), 60 * 60)
+        departments = cache.get_or_set('departments_all', lambda: list(Department.objects.all()), 60 * 60)
 
         # Get notifications
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
@@ -53,7 +100,8 @@ class ExecutiveMembersView(PermissionRequiredMixin,View):
 
         context = {
             'executive_officers': executive_officers,
-            'members': members,
+            'executive_members': executive_members,
+            'committee_members': committee_members,
             'schools': schools,
             'colleges': colleges,
             'departments': departments,
@@ -82,6 +130,7 @@ class NewExecutiveMemberCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed_str = request.POST.get('date_appointed')
+        date_ended_str = request.POST.get('date_ended')
         print(date_appointed_str)
         executive_image = request.FILES.get('image')
         print(executive_image)
@@ -112,6 +161,15 @@ class NewExecutiveMemberCreateView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        date_ended = None
+        if date_ended_str:
+            try:
+                date_ended = _parse_date(date_ended_str)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Create User
         member = User.objects.create(
@@ -131,6 +189,7 @@ class NewExecutiveMemberCreateView(View):
             twitter_profile_url=twitter_username,
             linkedin_profile_url=linkedin_username,
             date_appointed=date_appointed,
+            date_ended=date_ended,
             is_active_executive=True,          # Mark as active executive
             must_change_password=True,
         )
@@ -154,6 +213,7 @@ class ExistingExecutiveMemberCreateView(View):
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
+        date_ended = request.POST.get('date_ended')
         executive_image = request.FILES.get('image')
         print(position)
         print(member_id)
@@ -188,6 +248,15 @@ class ExistingExecutiveMemberCreateView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        parsed_end_date = None
+        if date_ended:
+            try:
+                parsed_end_date = _parse_date(date_ended)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update member to executive
         # If the member was previously an executive but inactive, increment terms
@@ -199,6 +268,7 @@ class ExistingExecutiveMemberCreateView(View):
         member.twitter_profile_url = twitter_username
         member.linkedin_profile_url = linkedin_username
         member.date_appointed = parsed_date
+        member.date_ended = parsed_end_date
         member.executive_image = executive_image
         member.is_active_executive = True
 
@@ -217,12 +287,13 @@ class ExistingExecutiveMemberCreateView(View):
 class UpdateExecutiveMemberView(View):
     def post(self, request):
         executive_id = request.POST.get('executive_id')
+        user_title = request.POST.get('user_title')
         position = request.POST.get('position')
         fb_username = request.POST.get('fb_username')
         twitter_username = request.POST.get('twitter_username')
         linkedin_username = request.POST.get('linkedin_username')
         date_appointed = request.POST.get('date_appointed')
-        # date_ended removed; expiry is computed automatically
+        date_ended = request.POST.get('date_ended')
         active = request.POST.get('active')
         executive_image = request.FILES.get('image')
         
@@ -243,13 +314,25 @@ class UpdateExecutiveMemberView(View):
         except Exception:
             messages.info(request, 'Invalid date format! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
             return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        # Parse date_ended if provided
+        parsed_ended = None
+        if date_ended:
+            try:
+                parsed_ended = _parse_date(date_ended)
+            except Exception:
+                messages.info(request, 'Invalid date format for end date! Use "YYYY-MM-DD" or "dd Mon, yyyy".')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
         # Update the executive officer's details
+        if user_title:
+            executive.title = user_title
         executive.executive_position = position
         executive.fb_profile_url = fb_username
         executive.twitter_profile_url = twitter_username
         executive.linkedin_profile_url = linkedin_username
         executive.date_appointed = parsed_appointed
+        executive.date_ended = parsed_ended
         # If reactivating an inactive executive, increment their terms
         was_active_before = executive.is_active_executive
         executive.is_active_executive = True if active == 'on' else False
@@ -283,3 +366,39 @@ class ExecutiveMemberDeleteView(View):
 
         messages.success(request, 'Member removed from executive successfully!')
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+class PrintAllExecutivesView(PermissionRequiredMixin, View):
+    template_name = 'dashboard_pages/print_all_executives.html'
+    permission_required = 'accounts.view_dashboard'
+    
+    @method_decorator(MustLogin)
+    def get(self, request):
+        from django.db.models import Q
+        from datetime import date, datetime
+        
+        from utag_ug_archiver.utils.constants import executive_committee_members_all_positions, normalize_position_name
+        # Get all executives: those with positions in the committee members order list OR marked as active executives
+        executive_officers = User.objects.filter(
+            Q(executive_position__in=executive_committee_members_all_positions) | Q(is_active_executive=True)
+        )
+        # Sort the executive officers based on the custom order (normalize legacy names)
+        executive_officers = sorted(
+            executive_officers, 
+            key=lambda x: executive_committee_members_position_order.index(normalize_position_name(x.executive_position)) 
+                         if x.executive_position and normalize_position_name(x.executive_position) in executive_committee_members_position_order 
+                         else len(executive_committee_members_position_order)
+        )
+        
+        # Separate executives into main executives and committee members
+        executive_members = [e for e in executive_officers if normalize_position_name(e.executive_position) in executive_members_position_order]
+        committee_members = [e for e in executive_officers if e.executive_position and normalize_position_name(e.executive_position) not in executive_members_position_order]
+        
+        context = {
+            'executive_officers': executive_officers,
+            'executive_members': executive_members,
+            'committee_members': committee_members,
+            'now': datetime.now(),
+            'today': date.today(),
+        }
+        return render(request, self.template_name, context)

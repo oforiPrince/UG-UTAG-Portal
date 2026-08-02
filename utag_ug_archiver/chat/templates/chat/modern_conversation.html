@@ -1,0 +1,2385 @@
+{% extends "base/dashboard_base.html" %}
+{% load static %}
+{% load chat_filters %}
+{% block title %}
+    {% if chat_type == 'group' %}
+        {{ group.name }} - UTAG Portal
+    {% else %}
+        {{ other_user.other_name }} {{ other_user.surname }} - UTAG Portal
+    {% endif %}
+{% endblock %}
+{% block my_styles %}
+    {{ block.super }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+/* ============================================
+   MODERN PROFESSIONAL CHAT UI
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.conversation-page {
+    background: #f5f7fa;
+    padding: 10px 20px 20px;
+    padding-top: 80px;
+    height: calc(100vh - 50px);
+    display: flex;
+    flex-direction: column;
+}
+
+.conversation-container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    height: 100%;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Header */
+.conversation-header {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 10;
+    min-height: 60px;
+    width: 100%;
+}
+
+.back-button {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.2s;
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+.back-button:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.chat-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+.chat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-name {
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-status {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.chat-status.online {
+    color: #4ade80;
+}
+
+.chat-status.offline {
+    color: #94a3b8;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.header-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.header-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Dropdown Menu */
+.dropdown-wrapper {
+    position: relative;
+}
+
+.options-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.options-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #1A3551;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background: #f1f5f9;
+}
+
+.dropdown-item i {
+    width: 18px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.dropdown-item.danger {
+    color: #dc2626;
+}
+
+.dropdown-item.danger:hover {
+    background: #fee2e2;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 4px 0;
+}
+
+/* Messages Area */
+#messagesArea {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #fafbfc;
+    min-height: 300px;
+}
+
+#messagesArea::-webkit-scrollbar {
+    width: 6px;
+}
+
+#messagesArea::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#messagesArea::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+#messagesArea::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.empty-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.empty-messages svg {
+    width: 64px;
+    height: 64px;
+    opacity: 0.5;
+    margin-bottom: 16px;
+}
+
+.empty-messages p {
+    font-size: 16px;
+}
+
+/* Message Styles */
+.message {
+    display: flex;
+    margin-bottom: 8px;
+    animation: messageSlideIn 0.3s ease;
+    position: relative;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.sent {
+    justify-content: flex-end;
+}
+
+.message.received {
+    justify-content: flex-start;
+}
+
+.message-content {
+    max-width: 65%;
+}
+
+.message.received .message-content {
+    max-width: 70%;
+}
+
+.sender-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 4px;
+    padding: 0 12px;
+}
+
+.message-bubble {
+    background: white;
+    border-radius: 16px;
+    padding: 12px 16px;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.message-actions {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) translateX(10px);
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.message.received .message-actions {
+    left: calc(100% + 8px);
+}
+
+.message.sent .message-actions {
+    right: calc(100% + 8px);
+}
+
+.message.swiped .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) translateX(0);
+}
+
+.message-action-btn {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f172a;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.message-action-btn:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+.message-action-btn.delete {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.message-action-btn.delete:hover {
+    background: #fecaca;
+}
+
+.reply-preview {
+    background: #eef2ff;
+    color: #1A3551;
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.reply-preview .reply-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reply-preview .reply-cancel {
+    border: none;
+    background: transparent;
+    color: #1A3551;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.message.sent .message-bubble {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    border-radius: 16px 4px 16px 16px;
+    box-shadow: 0 2px 8px rgba(1, 0, 78, 0.15);
+}
+
+.message.received .message-bubble {
+    background: #e2e8f0;
+    color: #1A3551;
+    border-radius: 4px 16px 16px 16px;
+}
+
+.message-bubble:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.message-text {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.message-quote {
+    background: rgba(0,0,0,0.1);
+    border-left: 3px solid currentColor;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.message-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.message.sent .message-meta {
+    color: rgba(255,255,255,0.8);
+    justify-content: flex-end;
+}
+
+.message.received .message-meta {
+    color: #64748b;
+}
+
+.message-time {
+    font-size: 12px;
+}
+
+.read-receipt {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.read-receipt.sent {
+    color: #94a3b8;
+}
+
+.read-receipt.read {
+    color: #4ade80;
+}
+
+.message-attachments {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.attachment-image {
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 360px;
+}
+
+.attachment-image img {
+    width: 100%;
+    max-width: 360px;
+    max-height: 240px;
+    height: auto;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+}
+
+.attachment-file {
+    background: rgba(0,0,0,0.05);
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #1A3551;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.attachment-file:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        opacity: 0.5;
+        transform: translateY(0);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(-8px);
+    }
+}
+
+/* Input Area */
+.input-area {
+    background: white;
+    padding: 16px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+}
+
+.input-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-input {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    max-height: 120px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.message-input:focus {
+    border-color: #1A3551;
+    box-shadow: 0 0 0 3px rgba(1, 0, 78, 0.1);
+    background: #fafbfc;
+}
+
+.message-input::placeholder {
+    color: #94a3b8;
+}
+
+.attach-button, .send-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.2s;
+    font-size: 18px;
+}
+
+.attach-button {
+    color: #1A3551;
+}
+
+.attach-button:hover {
+    background: #f0f4f8;
+    color: #1A3551;
+}
+
+.send-button {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    font-size: 16px;
+}
+
+.send-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1A3551 0%, #1a0066 100%);
+    box-shadow: 0 4px 12px rgba(1, 0, 78, 0.3);
+    transform: translateY(-2px);
+}
+
+.send-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#attachmentPreview {
+    margin-bottom: 8px;
+}
+
+#attachmentPreview img {
+    max-width: 100%;
+    max-height: 120px;
+    border-radius: 8px;
+}
+
+/* Group Info Sidebar */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.info-sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 380px;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.info-sidebar.active {
+    right: 0;
+}
+
+.info-header {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.info-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-sidebar {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-sidebar:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
+}
+
+.info-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.info-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.info-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.info-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.info-section {
+    margin-bottom: 24px;
+}
+
+.info-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-section h4 i {
+    color: #1A3551;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+
+.member-item:hover {
+    background: #f8fafc;
+}
+
+.member-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 600;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(1, 0, 78, 0.12);
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.member-title {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.member-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+    text-transform: uppercase;
+}
+
+.member-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.member-action-btn {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.member-action-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.member-action-btn.danger {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.member-action-btn.danger:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.group-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.group-action-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.group-action-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateX(4px);
+}
+
+.group-action-btn i {
+    width: 20px;
+    color: #1A3551;
+}
+
+.group-action-btn.danger {
+    color: #dc2626;
+}
+
+.group-action-btn.danger i {
+    color: #dc2626;
+}
+
+.group-action-btn.danger:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.group-link-input {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #475569;
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    animation: modalSlideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(80vh - 140px);
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #1A3551;
+    box-shadow: 0 0 0 3px rgba(1, 0, 78, 0.1);
+}
+
+.member-select-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 8px;
+}
+
+.member-select-item {
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.member-select-item:last-child {
+    border-bottom: none;
+}
+
+.member-select-item:hover {
+    background: #f8fafc;
+}
+
+.member-select-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    background: #fafbfc;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #1A3551 0%, #1A3551 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(1, 0, 78, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(1, 0, 78, 0.35);
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.alert-info {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .conversation-container {
+        height: calc(100vh - 180px);
+        border-radius: 0;
+    }
+
+    .message-content {
+        max-width: 85%;
+    }
+
+    .chat-name {
+        font-size: 14px;
+    }
+
+    .message-input {
+        font-size: 13px;
+    }
+    
+    .info-sidebar {
+        width: 100%;
+        right: -100%;
+    }
+}
+    </style>
+{% endblock %}
+
+{% block content %}
+<!-- Django Messages Display -->
+{% if messages %}
+    <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 5000; max-width: 500px; width: 90%;">
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}" style="margin-bottom: 10px; animation: slideDown 0.3s ease;">
+                {% if 'success' in message.tags %}
+                    <i class="fas fa-check-circle" style="margin-right: 10px;"></i>
+                {% elif 'error' in message.tags %}
+                    <i class="fas fa-exclamation-circle" style="margin-right: 10px;"></i>
+                {% elif 'warning' in message.tags %}
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>
+                {% else %}
+                    <i class="fas fa-info-circle" style="margin-right: 10px;"></i>
+                {% endif %}
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    </div>
+    <style>
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+{% endif %}
+
+<div class="conversation-page">
+    <div class="conversation-container">
+        <!-- Header -->
+        <div class="conversation-header">
+            <a href="{% url 'chat:thread_list' %}" class="back-button" title="Back">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <div class="chat-avatar">
+                {% if chat_type == 'group' %}
+                    {{ group.name|slice:":2"|upper }}
+                {% else %}
+                    {{ other_user.other_name|slice:":1"|upper }}{{ other_user.surname|slice:":1"|upper }}
+                {% endif %}
+            </div>
+            <div class="chat-info">
+                <div class="chat-name">
+                    {% if chat_type == 'group' %}
+                        {{ group.name }}
+                    {% else %}
+                        {{ other_user.title }} {{ other_user.other_name }} {{ other_user.surname }}
+                    {% endif %}
+                </div>
+                <div class="chat-status online">
+                    <i class="fas fa-circle" style="font-size:6px; margin-right:4px;"></i> Active
+                </div>
+            </div>
+            <div class="header-actions">
+                {% if chat_type == 'group' %}
+                <button class="header-btn" onclick="toggleInfoSidebar()" title="Group info">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+                {% endif %}
+                <div class="dropdown-wrapper">
+                    <button class="header-btn" id="optionsMenuBtn" onclick="toggleOptionsMenu()" title="Options">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="options-dropdown" id="optionsDropdown">
+                        {% if chat_type == 'group' %}
+                            <a href="#" onclick="viewGroupMembers(); return false;" class="dropdown-item">
+                                <i class="fas fa-users"></i> View Members
+                            </a>
+                            <a href="#" onclick="toggleInfoSidebar(); toggleOptionsMenu(); return false;" class="dropdown-item">
+                                <i class="fas fa-info-circle"></i> Group Info
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="leaveGroup(); return false;" class="dropdown-item danger">
+                                <i class="fas fa-sign-out-alt"></i> Leave Group
+                            </a>
+                        {% else %}
+                            <a href="#" onclick="clearChat(); return false;" class="dropdown-item">
+                                <i class="fas fa-eraser"></i> Clear Chat
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="blockUser(); return false;" class="dropdown-item danger">
+                                <i class="fas fa-ban"></i> Block User
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="messagesArea">
+            {% if message_list %}
+                {% for msg in message_list %}
+                    <div class="message {% if msg.sender_id == request.user.id %}sent{% else %}received{% endif %}" data-message-id="{{ msg.id }}" data-message-text="{{ msg.plaintext|escapejs }}">
+                        <div class="message-content">
+                            {% if chat_type == 'group' and msg.sender_id != request.user.id %}
+                                <div class="sender-name">{{ msg.sender.title }} {{ msg.sender.other_name }}</div>
+                            {% endif %}
+                            <div class="message-bubble">
+                                {% if msg.reply_to %}
+                                    <div class="message-quote">{{ msg.reply_to.plaintext }}</div>
+                                {% endif %}
+                                <div class="message-text">{{ msg.plaintext }}</div>
+                                {% if msg.attachments.exists %}
+                                    <div class="message-attachments">
+                                        {% for att in msg.attachments.all %}
+                                            {% if att.is_image %}
+                                                <div class="attachment-image">
+                                                    <img src="{{ att.download_url }}" alt="Image">
+                                                </div>
+                                            {% else %}
+                                                <a href="{{ att.download_url }}" class="attachment-file">
+                                                    <i class="fas fa-paperclip"></i> {{ att.filename|truncatechars:30 }}
+                                                </a>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="message-meta">
+                                    <span class="message-time">{{ msg.created_at|time:"H:i" }}</span>
+                                    {% if msg.sender_id == request.user.id %}
+                                        <span class="read-receipt {% if msg.read_at %}read{% else %}sent{% endif %}">
+                                            {% if msg.read_at %}<i class="fas fa-check-double"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="message-actions">
+                            <button class="message-action-btn reply" type="button" data-action="reply" title="Reply">
+                                <i class="fas fa-reply"></i>
+                            </button>
+                            {% if msg.sender_id == request.user.id %}
+                            <button class="message-action-btn delete" type="button" data-action="delete" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-messages">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <p>No messages yet. Start the conversation!</p>
+                </div>
+            {% endif %}
+            <!-- Typing Indicator -->
+            <div class="message received" style="display:none;">
+                <div class="message-content">
+                    <div class="typing-indicator" id="typingIndicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <form id="messageForm" class="input-area" onsubmit="sendMessage(event)">
+            {% csrf_token %}
+            <div class="input-wrapper">
+                <div id="replyPreview" class="reply-preview" style="display:none;"></div>
+                <div id="attachmentPreview" style="display:none;"></div>
+                <textarea class="message-input" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                <input type="file" id="fileInput" style="display:none;" />
+            </div>
+            <button type="button" class="attach-button" id="attachBtn" title="Attach file">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <button type="submit" class="send-button" id="sendButton" disabled title="Send message">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Group Info Sidebar (for groups) -->
+{% if chat_type == 'group' %}
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleInfoSidebar()"></div>
+    <div class="info-sidebar" id="infoSidebar">
+        <div class="info-header">
+            <h3>Group Info</h3>
+            <button class="close-sidebar" onclick="toggleInfoSidebar()">×</button>
+        </div>
+        <div class="info-body">
+            <!-- Group Actions -->
+            <div class="info-section">
+                <div class="group-actions">
+                    {% if user_is_admin %}
+                    <button class="group-action-btn" onclick="openAddMembersModal()">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Add Members</span>
+                    </button>
+                    {% endif %}
+                    <button class="group-action-btn" onclick="showGroupLink()">
+                        <i class="fas fa-link"></i>
+                        <span>Share Group Link</span>
+                    </button>
+                    {% if user_is_admin %}
+                    <button class="group-action-btn" onclick="openEditGroupModal()">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Group Info</span>
+                    </button>
+                    {% endif %}
+                    <button class="group-action-btn danger" onclick="confirmLeaveGroup()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Leave Group</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Members List -->
+            <div class="info-section">
+                <h4><i class="fas fa-users"></i> Members ({{ group.members.count }})</h4>
+                {% for member in members %}
+                    <div class="member-item" data-user-id="{{ member.user.id }}" data-member-id="{{ member.id }}">
+                        <div class="member-avatar">{{ member.user.other_name.0|upper }}{{ member.user.surname.0|upper }}</div>
+                        <div class="member-info">
+                            <div class="member-name">
+                                {{ member.user.title }} {{ member.user.other_name }} {{ member.user.surname }}
+                                {% if member.role == 'admin' %}
+                                    <span class="member-badge">Admin</span>
+                                {% elif member.role == 'moderator' %}
+                                    <span class="member-badge" style="background: linear-gradient(135deg, #0891b2, #06b6d4);">Mod</span>
+                                {% endif %}
+                            </div>
+                            <div class="member-title">{{ member.user.executive_position|default:"Member" }}</div>
+                        </div>
+                        {% if user_is_admin and member.user.id != user.id %}
+                        <div class="member-actions">
+                            {% if member.role != 'admin' %}
+                            <button class="member-action-btn" onclick="promoteMember({{ member.id }}, '{{ member.role }}')" title="Promote">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                            {% endif %}
+                            <button class="member-action-btn danger" onclick="confirmRemoveMember({{ member.id }}, '{{ member.user.other_name }} {{ member.user.surname }}')" title="Remove">
+                                <i class="fas fa-user-times"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Members Modal -->
+    <div class="modal" id="addMembersModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Add Members</h3>
+                <button class="modal-close" onclick="closeAddMembersModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Search Members</label>
+                    <input type="text" id="memberSearchInput" placeholder="Search by name..." oninput="filterAvailableMembers()">
+                </div>
+                <div class="member-select-list" id="availableMembersList">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddMembersModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addSelectedMembers()" id="addMembersBtn">Add Members</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Group Modal -->
+    <div class="modal" id="editGroupModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Edit Group Info</h3>
+                <button class="modal-close" onclick="closeEditGroupModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Group Name</label>
+                    <input type="text" id="editGroupName" value="{{ group.name }}" maxlength="100">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditGroupModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveGroupInfo()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Group Link Modal -->
+    <div class="modal" id="groupLinkModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Share Group Link</h3>
+                <button class="modal-close" onclick="closeGroupLinkModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Anyone with this link can join the group</span>
+                </div>
+                <div class="form-group">
+                    <label>Group Invite Link</label>
+                    <input type="text" class="group-link-input" id="groupLinkInput" readonly>
+                    <button class="btn btn-primary" onclick="copyGroupLink()" style="margin-top: 12px; width: 100%;">
+                        <i class="fas fa-copy"></i> Copy Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm Action</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="executeConfirmAction()" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+// ============================================
+// MODERN CHAT APPLICATION
+// ============================================
+
+// Track message IDs to prevent duplicates
+const renderedMessages = new Set();
+const CHAT_TYPE = '{{ chat_type }}';
+
+// Auto-resize textarea
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    
+    const sendButton = document.getElementById('sendButton');
+    sendButton.disabled = !textarea.value.trim();
+}
+
+// Handle Enter key
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (!document.getElementById('sendButton').disabled) {
+            sendMessage(event);
+        }
+    }
+}
+
+// Send Message
+function sendMessage(event) {
+    event.preventDefault();
+    
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    const fileInput = document.getElementById('fileInput');
+    const hasAttachment = fileInput && fileInput.files && fileInput.files[0];
+    const replyId = window.__replyMessageId || null;
+
+    if (hasAttachment || !chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+        sendMessageViaAJAX(message, fileInput, replyId);
+    } else {
+        try {
+            chatSocket.send(JSON.stringify({
+                type: 'message',
+                message: message,
+                reply_to: replyId
+            }));
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendButton.disabled = true;
+            clearReplyPreview();
+            
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            const preview = document.getElementById('attachmentPreview');
+            if (preview) preview.style.display = 'none';
+        } catch (error) {
+            console.error('WebSocket send error:', error);
+            sendMessageViaAJAX(message, fileInput, replyId);
+        }
+    }
+}
+
+// Send via AJAX
+function sendMessageViaAJAX(message, fileInput, replyId) {
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const formData = new FormData();
+    formData.append('body', message);
+    if (replyId) {
+        formData.append('reply_to', replyId);
+    }
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        formData.append('attachment', fileInput.files[0]);
+    }
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+                        // Add the sent message to sender's UI
+                        if (data.message) {
+                            addMessageToUI({
+                                id: data.message.id,
+                                sender: 'me',
+                                text: data.message.body || data.message.plaintext,
+                                time: data.message.created_at,
+                                is_read: false,
+                                sender_name: data.message.sender_name || '{{ request.user.get_full_name|escapejs }}',
+                                attachments: data.message.attachments || [],
+                                reply_to: null
+                            });
+                        }
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            clearReplyPreview();
+            
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            const preview = document.getElementById('attachmentPreview');
+            if (preview) preview.style.display = 'none';
+        } else {
+            alert(data.error || 'Failed to send message');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    })
+    .finally(() => {
+        messageInput.disabled = false;
+        messageInput.focus();
+        sendButton.disabled = message.trim() === '';
+    });
+}
+
+// Add message to UI (with deduplication)
+function addMessageToUI(data) {
+    // Prevent duplicate messages
+    if (data.id && renderedMessages.has(data.id)) {
+        return;
+    }
+    if (data.id) {
+        renderedMessages.add(data.id);
+    }
+
+    const messagesArea = document.getElementById('messagesArea');
+    const emptyState = messagesArea.querySelector('.empty-messages');
+    
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${data.sender === 'me' ? 'sent' : 'received'}`;
+    
+    if (data.id) {
+        messageDiv.setAttribute('data-message-id', data.id);
+    }
+    if (data.text) {
+        messageDiv.setAttribute('data-message-text', data.text);
+    }
+    
+    let timeStr;
+    if (data.time) {
+        const time = new Date(data.time);
+        timeStr = time.getHours().toString().padStart(2, '0') + ':' + 
+                  time.getMinutes().toString().padStart(2, '0');
+    } else {
+        const now = new Date();
+        timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                  now.getMinutes().toString().padStart(2, '0');
+    }
+    
+    const quotedHtml = data.reply_to ? `<div class="message-quote">${escapeHtml(data.reply_to.body)}</div>` : '';
+
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            ${data.sender !== 'me' && '{{ chat_type }}' === 'group' ? 
+                `<div class="sender-name">${escapeHtml(data.sender_name || 'Member')}</div>` : ''}
+            <div class="message-bubble">
+                ${quotedHtml}
+                <div class="message-text">${escapeHtml(data.text)}</div>
+                ${data.attachments && data.attachments.length ? `
+                    <div class="message-attachments">
+                        ${data.attachments.map(a => {
+                            if (a.content_type && a.content_type.startsWith('image/')) {
+                                return `<div class="attachment-image"><img src="${a.url}" /></div>`;
+                            }
+                            return `<div class="attachment-file"><i class="fas fa-paperclip"></i> <a href="${a.url}">${escapeHtml(a.filename)}</a></div>`;
+                        }).join('')}
+                    </div>
+                ` : ''}
+                <div class="message-meta">
+                    <span class="message-time">${timeStr}</span>
+                    ${data.sender === 'me' ? 
+                        `<span class="read-receipt ${data.is_read ? 'read' : 'sent'}"><i class="fas fa-check${data.is_read ? '-double' : ''}"></i></span>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="message-actions">
+            <button class="message-action-btn reply" type="button" data-action="reply" title="Reply">
+                <i class="fas fa-reply"></i>
+            </button>
+            ${data.sender === 'me' ? `
+            <button class="message-action-btn delete" type="button" data-action="delete" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>` : ''}
+        </div>
+    `;
+    
+    const typingIndicator = messagesArea.querySelector('.typing-indicator');
+    if (typingIndicator) {
+        const typingContainer = typingIndicator.closest('.message');
+        if (typingContainer) {
+            messagesArea.insertBefore(messageDiv, typingContainer);
+        } else {
+            messagesArea.appendChild(messageDiv);
+        }
+    } else {
+        messagesArea.appendChild(messageDiv);
+    }
+
+    initMessageSwipe(messageDiv);
+
+    scrollToBottom(true);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function scrollToBottom(smooth = false) {
+    const messagesArea = document.getElementById('messagesArea');
+    messagesArea.scrollTo({
+        top: messagesArea.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+    });
+}
+
+function showReplyPreview(text) {
+    const replyPreview = document.getElementById('replyPreview');
+    if (!replyPreview) return;
+    replyPreview.innerHTML = `
+        <span class="reply-text">Replying to: ${escapeHtml(text)}</span>
+        <button type="button" class="reply-cancel" onclick="clearReplyPreview()">×</button>
+    `;
+    replyPreview.style.display = 'flex';
+}
+
+function clearReplyPreview() {
+    const replyPreview = document.getElementById('replyPreview');
+    if (!replyPreview) return;
+    replyPreview.innerHTML = '';
+    replyPreview.style.display = 'none';
+    window.__replyMessageId = null;
+}
+
+function setReplyFromMessage(messageEl) {
+    const messageId = messageEl.getAttribute('data-message-id');
+    const messageText = messageEl.getAttribute('data-message-text') || '';
+    if (!messageId) return;
+    window.__replyMessageId = messageId;
+    showReplyPreview(messageText);
+}
+
+function deleteMessageById(messageId) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const formData = new FormData();
+    formData.append('message_id', messageId);
+    formData.append('type', CHAT_TYPE === 'group' ? 'group' : 'direct');
+
+    fetch('{% url "chat:delete_message" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || 'Unable to delete message');
+        }
+    })
+    .catch(() => alert('Unable to delete message'));
+}
+
+function initMessageSwipe(messageEl) {
+    if (!messageEl) return;
+    let startX = 0;
+    let currentX = 0;
+    let swiped = false;
+
+    messageEl.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        swiped = false;
+    }, { passive: true });
+
+    messageEl.addEventListener('touchmove', (e) => {
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        if (deltaX < -30) {
+            messageEl.classList.add('swiped');
+            swiped = true;
+        }
+        if (deltaX > 30) {
+            messageEl.classList.remove('swiped');
+        }
+    }, { passive: true });
+
+    messageEl.addEventListener('touchend', () => {
+        if (!swiped) {
+            messageEl.classList.remove('swiped');
+        }
+    });
+}
+
+// WebSocket
+let chatSocket = null;
+
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    
+    {% if chat_type == 'group' %}
+    const wsUrl = `${protocol}//${host}/ws/chat/group/{{ group.id }}/`;
+    {% else %}
+    const wsUrl = `${protocol}//${host}/ws/chat/thread/{{ thread.id }}/`;
+    {% endif %}
+    
+    try {
+        chatSocket = new WebSocket(wsUrl);
+
+        chatSocket.onopen = function(e) {
+            console.log('WebSocket connected');
+        };
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+
+            if (data.type === 'message') {
+                const message = data.message;
+                const isFromMe = message.sender_id === {{ request.user.id }};
+
+                addMessageToUI({
+                    id: message.id,
+                    sender: isFromMe ? 'me' : 'other',
+                    text: message.body || message.plaintext,
+                    time: message.created_at,
+                    is_read: message.read_at !== null,
+                    sender_name: message.sender_name || 'User',
+                    attachments: message.attachments || [],
+                    reply_to: message.reply_to || null,
+                });
+            }
+        };
+
+        chatSocket.onclose = function(e) {
+            console.log('WebSocket closed');
+            setTimeout(function() {
+                try {
+                    if (chatSocket && chatSocket.readyState === WebSocket.CLOSED) {
+                        initWebSocket();
+                    }
+                } catch (err) {}
+            }, 3000);
+        };
+
+        chatSocket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+    } catch (error) {
+        console.warn('WebSocket not available:', error);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    scrollToBottom(false);
+    
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('input', function() {
+            try { if (typeof autoResize === 'function') autoResize(this); } catch (e) {}
+        });
+
+        messageInput.addEventListener('keydown', function(e) {
+            try { if (typeof handleKeyPress === 'function') handleKeyPress(e); } catch (err) {}
+        });
+    }
+    
+    initWebSocket();
+
+    const messagesArea = document.getElementById('messagesArea');
+    if (messagesArea) {
+        messagesArea.querySelectorAll('.message').forEach((msg) => initMessageSwipe(msg));
+
+        messagesArea.addEventListener('click', function(e) {
+            const actionBtn = e.target.closest('.message-action-btn');
+            if (!actionBtn) return;
+            const messageEl = e.target.closest('.message');
+            if (!messageEl) return;
+
+            const action = actionBtn.getAttribute('data-action');
+            if (action === 'reply') {
+                setReplyFromMessage(messageEl);
+            }
+            if (action === 'delete') {
+                const messageId = messageEl.getAttribute('data-message-id');
+                if (messageId) {
+                    deleteMessageById(messageId);
+                    messageEl.remove();
+                }
+            }
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.message-action-btn')) return;
+        document.querySelectorAll('.message.swiped').forEach((msg) => msg.classList.remove('swiped'));
+    });
+
+    // Attachment handling
+    document.getElementById('attachBtn').addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById('attachmentPreview');
+        if (!file) {
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+            return;
+        }
+        if (file.size > 20971520) {
+            alert('File is too large. Maximum is 20 MB.');
+            e.target.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedImageTypes.includes(file.type)) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                preview.innerHTML = `<img src="${ev.target.result}" style="max-width:150px; max-height:120px; border-radius:8px; display:block;" />`;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.innerHTML = `<div style="padding:8px; border-radius:6px; background:#f5f6f6; display:inline-block;"><i class="fas fa-file"></i> ${file.name}</div>`;
+            preview.style.display = 'block';
+        }
+    });
+});
+
+// Toggle sidebar
+function toggleInfoSidebar() {
+    const sidebar = document.getElementById('infoSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+}
+
+// ============================================
+// GROUP MANAGEMENT FUNCTIONS
+// ============================================
+
+let confirmAction = null;
+let availableMembers = [];
+
+// Add Members Modal
+function openAddMembersModal() {
+    fetchAvailableMembers();
+    document.getElementById('addMembersModal').classList.add('active');
+}
+
+function closeAddMembersModal() {
+    document.getElementById('addMembersModal').classList.remove('active');
+    document.getElementById('memberSearchInput').value = '';
+}
+
+function fetchAvailableMembers() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    fetch(`/chat/group/${groupId}/available-members/`, {
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        availableMembers = data.members || [];
+        renderAvailableMembers();
+    })
+    .catch(error => console.error('Error fetching members:', error));
+}
+
+function renderAvailableMembers(filter = '') {
+    const listEl = document.getElementById('availableMembersList');
+    const filtered = availableMembers.filter(m => 
+        filter === '' || 
+        m.name.toLowerCase().includes(filter.toLowerCase())
+    );
+    
+    if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #64748b;">No members available</div>';
+        return;
+    }
+    
+    listEl.innerHTML = filtered.map(member => `
+        <label class="member-select-item">
+            <input type="checkbox" value="${member.id}" onchange="updateAddMembersBtn()">
+            <div class="member-avatar">${member.initials}</div>
+            <div class="member-info">
+                <div class="member-name">${member.name}</div>
+                <div class="member-title">${member.position || 'Member'}</div>
+            </div>
+        </label>
+    `).join('');
+}
+
+function filterAvailableMembers() {
+    const filter = document.getElementById('memberSearchInput').value;
+    renderAvailableMembers(filter);
+}
+
+function updateAddMembersBtn() {
+    const selected = document.querySelectorAll('#availableMembersList input[type="checkbox"]:checked');
+    document.getElementById('addMembersBtn').disabled = selected.length === 0;
+}
+
+function addSelectedMembers() {
+    const selected = Array.from(document.querySelectorAll('#availableMembersList input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+    
+    if (selected.length === 0) return;
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    document.getElementById('addMembersBtn').disabled = true;
+    document.getElementById('addMembersBtn').textContent = 'Adding...';
+    
+    fetch(`/chat/group/${groupId}/add-members/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ member_ids: selected })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddMembersModal();
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to add members');
+            document.getElementById('addMembersBtn').disabled = false;
+            document.getElementById('addMembersBtn').textContent = 'Add Members';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+        document.getElementById('addMembersBtn').disabled = false;
+        document.getElementById('addMembersBtn').textContent = 'Add Members';
+    });
+}
+
+// Edit Group Modal
+function openEditGroupModal() {
+    document.getElementById('editGroupModal').classList.add('active');
+}
+
+function closeEditGroupModal() {
+    document.getElementById('editGroupModal').classList.remove('active');
+}
+
+function saveGroupInfo() {
+    const newName = document.getElementById('editGroupName').value.trim();
+    if (!newName) {
+        alert('Group name cannot be empty');
+        return;
+    }
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    fetch(`/chat/group/${groupId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ name: newName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditGroupModal();
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update group');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
+}
+
+// Group Link Modal
+function showGroupLink() {
+    const inviteToken = '{{ group_invite_token }}';
+    const inviteLink = `${window.location.origin}/chat/group/join/${inviteToken}/`;
+    document.getElementById('groupLinkInput').value = inviteLink;
+    document.getElementById('groupLinkModal').classList.add('active');
+}
+
+function closeGroupLinkModal() {
+    document.getElementById('groupLinkModal').classList.remove('active');
+}
+
+function copyGroupLink() {
+    const input = document.getElementById('groupLinkInput');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy link');
+        console.error('Copy error:', err);
+    });
+}
+
+// Member Management
+function promoteMember(memberId, currentRole) {
+    const newRole = currentRole === 'member' ? 'moderator' : 'admin';
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    fetch(`/chat/group/${groupId}/member/${memberId}/promote/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ role: newRole })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to promote member');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
+}
+
+function confirmRemoveMember(memberId, memberName) {
+    confirmAction = () => removeMember(memberId);
+    document.getElementById('confirmTitle').textContent = 'Remove Member';
+    document.getElementById('confirmMessage').textContent = 
+        `Are you sure you want to remove ${memberName} from this group?`;
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function removeMember(memberId) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    fetch(`/chat/group/${groupId}/member/${memberId}/remove/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeConfirmModal();
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to remove member');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
+}
+
+function confirmLeaveGroup() {
+    confirmAction = leaveGroup;
+    document.getElementById('confirmTitle').textContent = 'Leave Group';
+    document.getElementById('confirmMessage').textContent = 
+        'Are you sure you want to leave this group? You will need to be re-invited to join again.';
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function leaveGroup() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const groupId = '{{ group.id }}';
+    
+    fetch(`/chat/group/${groupId}/leave/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '{% url "chat:thread_list" %}';
+        } else {
+            alert(data.error || 'Failed to leave group');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred');
+    });
+}
+
+// Confirmation Modal
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('active');
+    confirmAction = null;
+}
+
+function executeConfirmAction() {
+    if (confirmAction) {
+        confirmAction();
+    }
+}
+
+// Close modals on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAddMembersModal();
+        closeEditGroupModal();
+        closeGroupLinkModal();
+        closeConfirmModal();
+    }
+});
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+});
+
+// ============================================
+// OPTIONS MENU DROPDOWN
+// ============================================
+function toggleOptionsMenu() {
+    const dropdown = document.getElementById('optionsDropdown');
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('optionsDropdown');
+    const menuBtn = document.getElementById('optionsMenuBtn');
+    
+    if (dropdown && menuBtn && !dropdown.contains(e.target) && !menuBtn.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// Menu Actions
+function clearChat() {
+    if (confirm('Are you sure you want to clear all messages in this chat? This cannot be undone.')) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        {% if chat_type == 'thread' %}
+        const threadId = '{{ thread.id }}';
+        {% else %}
+        const threadId = '';
+        {% endif %}
+        
+        fetch(`/chat/thread/${threadId}/clear/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to clear chat');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+    }
+    toggleOptionsMenu();
+}
+
+function blockUser() {
+    {% if chat_type == 'thread' %}
+    const userName = '{{ other_user.get_full_name }}';
+    {% else %}
+    const userName = '';
+    {% endif %}
+    if (confirm(`Are you sure you want to block ${userName}? You will no longer receive messages from this user.`)) {
+        alert('Block user feature coming soon!');
+        // TODO: Implement block user API
+    }
+    toggleOptionsMenu();
+}
+
+function viewGroupMembers() {
+    toggleInfoSidebar();
+    toggleOptionsMenu();
+}
+
+function leaveGroup() {
+    {% if chat_type == 'group' %}
+    const groupName = '{{ group.name }}';
+    const groupId = '{{ group.id }}';
+    {% else %}
+    const groupName = '';
+    const groupId = '';
+    {% endif %}
+    if (confirm(`Are you sure you want to leave "${groupName}"? You can only rejoin if someone adds you again.`)) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`/chat/group/${groupId}/leave/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/chat/';
+            } else {
+                alert(data.error || 'Failed to leave group');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+    }
+    toggleOptionsMenu();
+}
+    </script>
+{% endblock %}

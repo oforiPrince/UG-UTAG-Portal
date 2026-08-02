@@ -1,4 +1,6 @@
 <!-- Modal for News Details -->
+{% load image_tags %}
+{% load name_filters %}
 {% for news in newss %}
     <!-- Modernized Modal for News Details -->
     <div class="modal fade"
@@ -21,17 +23,17 @@
                     <!-- News Content -->
                     <div class="row">
                         <!-- Featured Image -->
-                        <div class="col-md-6">
-                            <img src="{{ news.get_featured_image_url }}"
-                                 alt="{{ news.title }}"
-                                 class="img-fluid rounded shadow-sm mb-3" />
-                        </div>
+                        {% if news.featured_image %}
+                            <div class="col-md-6">
+                                {% lazy_img news.featured_image.url news.title "img-fluid rounded shadow-sm mb-3" "news" %}
+                            </div>
+                        {% endif %}
                         <!-- News Details -->
-                        <div class="col-md-6">
+                        <div class="{% if news.featured_image %}col-md-6{% else %}col-12{% endif %}">
                             <p class="mb-2">{{ news.content|safe }}</p>
                             <p class="mb-2">
                                 <strong>Author:</strong>
-                                {{ news.author.get_full_name }}
+                                {{ news.author|format_full_name }}
                             </p>
                             {% if news.tags.exists %}
                                 <p class="mb-2">

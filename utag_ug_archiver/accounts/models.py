@@ -42,14 +42,42 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Prof.', 'Prof.'),
         ("Prof. (Mrs.)", "Prof. (Mrs.)"),
         ('Dr.', 'Dr.'),
-        ("Dr. (Alhaji)", "Dr. (Alhaji)"),
+        ("Dr. (Mrs.)", "Dr. (Mrs.)"),
+        ("Dr. (Miss)", "Dr. (Miss)"),
         ('Mr.', 'Mr.'),
         ('Mrs.', 'Mrs.'),
+        ('Miss', 'Miss'),
+        ('Ms.', 'Ms.'),
+        ('Mx.', 'Mx.'),
+        ('Rev.', 'Rev.'),
+        ('Hon.', 'Hon.'),
+        ('Eng.', 'Eng.'),
+        ('Sir', 'Sir'),
+        ('Dame', 'Dame'),
     )
     
     GENDER_CHOICES = (
         ('Male', 'Male'),
         ('Female', 'Female')
+    )
+    
+    RANK_CHOICES = (
+        ('Senior Lecturer', 'Senior Lecturer'),
+        ('Lecturer', 'Lecturer'),
+        ('Professor', 'Professor'),
+        ('Associate Professor', 'Associate Professor'),
+        ('Senior Research Fellow', 'Senior Research Fellow'),
+        ('Assistant Lecturer', 'Assistant Lecturer'),
+        ('Research Fellow', 'Research Fellow'),
+        ('Senior Librarian', 'Senior Librarian'),
+        ('Research Associate', 'Research Associate'),
+        ('Dean', 'Dean'),
+        ('Pro-Vice-Chancellor', 'Pro-Vice-Chancellor'),
+        ('Tutor', 'Tutor'),
+        ('Librarian', 'Librarian'),
+        ('Director', 'Director'),
+        ('Assistant Research Fellow', 'Assistant Research Fellow'),
+        ('Visiting Scholar', 'Visiting Scholar'),
     )
     
     EXECUTIVE_POSITION_CHOICES = (
@@ -58,17 +86,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('Secretary', 'Secretary'),
         ('Treasurer', 'Treasurer'),
         ("Women's Executive Officer", "Women's Executive Officer"),
-        ('Past President', 'Past President'),
-        ('CBAS Rep', 'CBAS Rep'),
-        ('College of Humanities Rep', 'College of Humanities Rep'),
-        ('College of Health Rep', 'College of Health Rep'),
-        ("College of Education Rep", "College of Education Rep"),
-    )
+        ('National President', 'National President'),
+        ('CBAS Rep', 'CBAS Rep'),
+        ('CHS Rep', 'CHS Rep'),
+        ('COE Rep', 'COE Rep'),
+        ('COH Rep', 'COH Rep'),        # Legacy support for old position names (for backward compatibility with existing records)
+        ('College of Humanities Rep', 'College of Humanities Rep'),
+        ('College of Health Rep', 'College of Health Rep'),
+        ('College of Education Rep', 'College of Education Rep'),
+        ('Past President', 'Past President'),    )
     staff_id = models.CharField(max_length=20, unique=True, blank=True, null=True)
     title = models.CharField(max_length=15, choices=TITLE_CHOICES)
+    academic_rank = models.CharField(max_length=100, blank=True, null=True)
     # first_name removed: use other_name and surname instead
-    other_name = models.CharField(max_length=30)
-    surname = models.CharField(max_length=30)
+    other_name = models.CharField(max_length=100)
+    surname = models.CharField(max_length=100)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     profile_pic = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     email = models.EmailField(unique=True)
@@ -79,6 +111,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+
+    # Executive bio profile fields
+    executive_summary = models.CharField(max_length=300, blank=True, null=True)
+    executive_bio = models.TextField(blank=True, null=True)
+    linkedin_url = models.URLField(blank=True, null=True)
+    twitter_url = models.URLField(blank=True, null=True)
+    personal_website_url = models.URLField(blank=True, null=True)
     created_from_dashboard = models.BooleanField(default=False)
     created_by = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True)
     is_bulk_creation = models.BooleanField(default=False)
@@ -107,7 +146,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def get_full_name(self):
        
-        return f'{self.title} {self.surname} {self.other_name}'
+        return f'{self.title} {self.other_name} {self.surname}'
     
     def get_short_name(self):
         return self.other_name
@@ -168,10 +207,80 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.filter(name='Member').exists()
     
     def is_acting(self):
-        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer', 'Past President']).exists() and self.is_active_executive and self.date_ended is None
+        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer']).exists() and self.is_active_executive and self.date_ended is None
 
     def __str__(self):
         return self.get_full_name()
+    
+    def save(self, *args, **kwargs):
+        """Override save to optimize images on upload."""
+        from utag_ug_archiver.utils.image_optimizer import ImageOptimizer
+        
+        # Check if profile_pic or executive_image changed
+        if self.pk:
+            try:
+                old_instance = User.objects.get(pk=self.pk)
+                
+                # Optimize profile_pic if changed
+                if self.profile_pic and old_instance.profile_pic != self.profile_pic:
+                    if hasattr(self.profile_pic, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.profile_pic,
+                            image_type='profile',
+                            max_size_kb=300
+                        )
+                        if optimized:
+                            self.profile_pic.save(
+                                self.profile_pic.name,
+                                optimized,
+                                save=False
+                            )
+                
+                # Optimize executive_image if changed
+                if self.executive_image and old_instance.executive_image != self.executive_image:
+                    if hasattr(self.executive_image, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.executive_image,
+                            image_type='executive',
+                            max_size_kb=400
+                        )
+                        if optimized:
+                            self.executive_image.save(
+                                self.executive_image.name,
+                                optimized,
+                                save=False
+                            )
+            except User.DoesNotExist:
+                pass
+        else:
+            # New instance - optimize images
+            if self.profile_pic and hasattr(self.profile_pic, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.profile_pic,
+                    image_type='profile',
+                    max_size_kb=300
+                )
+                if optimized:
+                    self.profile_pic.save(
+                        self.profile_pic.name,
+                        optimized,
+                        save=False
+                    )
+            
+            if self.executive_image and hasattr(self.executive_image, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.executive_image,
+                    image_type='executive',
+                    max_size_kb=400
+                )
+                if optimized:
+                    self.executive_image.save(
+                        self.executive_image.name,
+                        optimized,
+                        save=False
+                    )
+        
+        super().save(*args, **kwargs)
     
     class Meta:
         permissions = [

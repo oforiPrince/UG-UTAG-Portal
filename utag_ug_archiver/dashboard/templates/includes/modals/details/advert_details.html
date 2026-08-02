@@ -1,4 +1,5 @@
 <!-- advertisement_detail.html -->
+{% load image_tags %}
 {% for ad in adverts %}
   <div class="modal fade "
        id="advertDetailsModal_{{ ad.id }}"
@@ -19,10 +20,8 @@
         </div>
         <div class="modal-body">
           <div class="text-center">
-            {% if ad.get_image_url %}
-              <img src="{{ ad.get_image_url }}"
-                   alt="Advertisement Image"
-                   class="img-fluid">
+            {% if ad.image %}
+              {% lazy_img ad.image.url ad.title "img-fluid" "advert" %}
             {% endif %}
           </div>
           <hr>

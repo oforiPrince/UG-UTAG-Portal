@@ -14,7 +14,7 @@ admin.site.site_header = "UTAG-UG Archiver Admin"
 admin.site.site_title = "UTAG-UG Archiver Admin Portal"
 admin.site.index_title = "Welcome to UTAG-UG Archiver Portal"
 
-from .models import User
+from .models import User, School, College, Department
 
 
 class UserCreationForm(forms.ModelForm):
@@ -73,11 +73,33 @@ class UserAdmin(BaseUserAdmin):
 	ordering = ('email',)
 	filter_horizontal = ()
 
+	readonly_fields = ('last_login', 'created_at', 'updated_at')
+
 	fieldsets = (
 		(None, {'fields': ('email', 'password')}),
-		('Personal info', {'fields': ('title', 'other_name', 'surname', 'gender', 'phone_number', 'profile_pic')}),
+		('Personal info', {
+			'fields': (
+				'title', 'other_name', 'surname', 'gender', 'phone_number',
+				'profile_pic', 'staff_id', 'academic_rank'
+			)
+		}),
+		('Organization', {'fields': ('school', 'college', 'department')}),
+		('Executive Profile', {
+			'fields': (
+				'executive_image', 'executive_position', 'executive_terms', 'is_active_executive',
+				'date_appointed', 'date_ended', 'executive_summary', 'executive_bio'
+			)
+		}),
+		('Executive Links', {
+			'fields': (
+				'fb_profile_url', 'twitter_profile_url', 'linkedin_profile_url',
+				'linkedin_url', 'twitter_url', 'personal_website_url'
+			)
+		}),
+		('Flags', {'fields': ('email_sent', 'must_change_password', 'created_from_dashboard', 'is_bulk_creation')}),
+		('Audit', {'fields': ('created_by', 'created_at', 'updated_at')}),
 		('Permissions', {'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-		('Important dates', {'fields': ('last_login', 'created_at')}),
+		('Important dates', {'fields': ('last_login',)}),
 	)
 
 	# add_fieldsets is used when creating a user via the admin
@@ -90,3 +112,25 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(User, UserAdmin)
+
+
+class SchoolAdmin(admin.ModelAdmin):
+	list_display = ('name',)
+	search_fields = ('name',)
+
+
+class CollegeAdmin(admin.ModelAdmin):
+	list_display = ('name', 'school')
+	search_fields = ('name', 'school__name')
+	list_filter = ('school',)
+
+
+class DepartmentAdmin(admin.ModelAdmin):
+	list_display = ('name', 'college')
+	search_fields = ('name', 'college__name')
+	list_filter = ('college',)
+
+
+admin.site.register(School, SchoolAdmin)
+admin.site.register(College, CollegeAdmin)
+admin.site.register(Department, DepartmentAdmin)

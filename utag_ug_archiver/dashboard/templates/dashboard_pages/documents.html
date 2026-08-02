@@ -30,18 +30,18 @@
                   <h4 class="card-title">Documents</h4>
                 </div>
                 {% if has_add_permission %}
-                  <div class="col-md-4">
-                    <div class="float-end d-none d-md-block">
-                      <a class="btn btn-primary"href="{% url 'dashboard:create_document' %}">
-                        <i class="mdi mdi-plus me-1"></i> Add Document
-                      </a>
-                    </div>
+                  <div class="col-md-4 d-flex justify-content-end align-items-center">
+                    {% url 'dashboard:create_document' as create_document_url %}
+                    {% include "includes/create_button.html" with create_url=create_document_url create_label="Add Document" %}
                   </div>
                 {% endif %}
               </div>
               <div class="mt-3">
                 <table id="datatable"
-                       class="table table-bordered dt-responsive nowrap datatable-custom">
+                       class="table table-bordered dt-responsive nowrap w-100 datatable-custom"
+                       style="border-collapse: collapse;
+                              border-spacing: 0;
+                              width: 100%">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -79,10 +79,8 @@
                           <span class="badge bg-success">{{ document.status_label|default:document.get_status_display|default:"N/A" }}</span>
                         </td>
                         <td>
-                          <a href="#"
+                          <a href="{% url 'dashboard:document_detail' document.id %}"
                              class="btn btn-primary btn-sm"
-                             data-bs-toggle="modal"
-                             data-bs-target="#documentDetailModal_{{ document.id }}"
                              title="View">
                             <i class="mdi mdi-eye"></i>
                           </a>
@@ -107,12 +105,11 @@
                   </tbody>
                 </table>
               </div>
-            </div>
+          </div>
           </div>
         </div>
       </div>
     </div>
-    {% include 'includes/modals/details/file_details.html' %}
   </div>
 {% endblock content %}
 {% block my_styles %}
@@ -133,6 +130,25 @@
       border-collapse: collapse;
       border-spacing: 0;
       width: 100%;
+      /* allow DataTables responsive to calculate column widths more reliably */
+      table-layout: auto;
+    }
+
+    /* Make table cells wrap and break long words on small screens to avoid overflow */
+    .datatable-custom th,
+    .datatable-custom td {
+      white-space: normal !important;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    @media (max-width: 768px) {
+      .datatable-custom {
+        font-size: 13px;
+      }
+      .datatable-custom thead {
+        display: table-header-group;
+      }
     }
   </style>
 {% endblock my_styles %}

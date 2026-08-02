@@ -382,10 +382,11 @@ $('.teachers-column-carousel').owlCarousel({
     Venubox
 ---------------------------- */	
     $('.venobox').venobox({    
-        border: '10px',          
-        titleattr: 'data-title',  
+        border: '0',          
+        titleattr: 'title',  
         numeratio: true,           
-        infinigall: true      
+        infinigall: true,
+        bgcolor: 'transparent'
     });
     
 

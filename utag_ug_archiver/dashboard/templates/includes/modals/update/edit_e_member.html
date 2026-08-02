@@ -1,4 +1,5 @@
 <!-- Existing Member Modal -->
+{% load name_filters %}
 {% for executive in executive_officers %}
   <div class="modal fade bs-example-modal-lg"
        id="editOfficerModal_{{ executive.id }}"
@@ -22,15 +23,22 @@
             <input type="hidden" name="executive_id" value="{{ executive.id }}">
             <div class="mb-3">
               <label class="form-label">Select a member</label>
-              <select class="form-control select2" id="member_{{ executive.id }}" name="member_id">
-                <option value="">Select a member</option>
-                {% for member in members %}
-                  <option value="{{ member.id }}"
-                          {% if executive.id == member.id %}selected{% endif %}>{{ member.get_full_name }}</option>
-                {% endfor %}
+              <select class="form-control select2 member-search" id="member_{{ executive.id }}" name="member_id">
+                <option value="{{ executive.id }}" selected>{{ executive|format_full_name }}</option>
               </select>
             </div>
             <hr class="mt-4 mb-4">
+            <div class="mb-3">
+              <label class="form-label" for="id_user_title_{{ executive.id }}">Title</label>
+              <select id="id_user_title_{{ executive.id }}"
+                      class="form-control select2"
+                      name="user_title">
+                {% get_title_choices as title_choices %}
+                {% for value, label in title_choices %}
+                  <option value="{{ value }}" {% if executive.title == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
             <div class="mb-3">
               <label class="form-label" for="id_title_{{ executive.id }}">Position</label>
               <select id="id_title_{{ executive.id }}"
@@ -42,7 +50,7 @@
                         {% if executive.executive_position == 'President' %}selected{% endif %}>President</option>
                 <option value="Vice President"
                         {% if executive.executive_position == 'Vice President' %}selected{% endif %}>
-                  Vice President
+                  Vice-President
                 </option>
                 <option value="Secretary"
                         {% if executive.executive_position == 'Secretary' %}selected{% endif %}>Secretary</option>
@@ -52,23 +60,23 @@
                         {% if executive.executive_position == "Women's Executive Officer" %}selected{% endif %}>
                   Women's Executive Officer
                 </option>
-                <option value="Past President"
-                        {% if executive.executive_position == 'Past President' %}selected{% endif %}>
-                  Past President
+                <option value="National President"
+                        {% if executive.executive_position == 'National President' %}selected{% endif %}>
+                  National President
                 </option>
-                <option value="CBAS Rep"
-                        {% if executive.executive_position == 'CBAS Rep' %}selected{% endif %}>CBAS Rep</option>
-                <option value="College of Humanities Rep"
-                        {% if executive.executive_position == 'College of Humanities Rep' %}selected{% endif %}>
-                  College of Humanities Rep
+                <option value="CBAS Rep"
+                  {% if executive.executive_position == 'CBAS Rep' %}selected{% endif %}>CBAS Rep</option>
+                <option value="CHS Rep"
+                        {% if executive.executive_position == 'CHS Rep' or executive.executive_position == 'College of Health Rep' %}selected{% endif %}>
+                  CHS Rep
                 </option>
-                <option value="College of Health Rep"
-                        {% if executive.executive_position == 'College of Health Rep' %}selected{% endif %}>
-                  College of Health Rep
+                <option value="COE Rep"
+                        {% if executive.executive_position == 'COE Rep' or executive.executive_position == 'College of Education Rep' %}selected{% endif %}>
+                  COE Rep
                 </option>
-                <option value="College of Education Rep"
-                        {% if executive.executive_position == 'College of Education Rep' %}selected{% endif %}>
-                  College of Education Rep
+                <option value="COH Rep"
+                        {% if executive.executive_position == 'COH Rep' or executive.executive_position == 'College of Humanities Rep' %}selected{% endif %}>
+                  COH Rep
                 </option>
               </select>
             </div>
@@ -137,7 +145,15 @@
                          value="{{ executive.date_appointed|date:'Y-m-d' }}" />
                 </div>
               </div>
-              <!-- Date Ended removed: expiry is computed automatically -->
+              <div class="col-md-6">
+                <label class="form-label">Date Ended (Optional)</label>
+                <div class="input-group">
+                  <input type="date"
+                         class="form-control"
+                         name="date_ended"
+                         value="{% if executive.date_ended %}{{ executive.date_ended|date:'Y-m-d' }}{% endif %}" />
+                </div>
+              </div>
             </div>
             <hr class="mt-4 mb-4">
             <div class="mb-3">
@@ -156,9 +172,9 @@
               </div>
             </div>
           </div>
-          <div class="mb-0 text-end">
-            <button type="submit" class="btn btn-primary">Submit</button>
+          <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
           </div>
         </form>
       </div>

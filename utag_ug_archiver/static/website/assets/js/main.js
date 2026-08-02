@@ -1,9 +1,9 @@
-(function($) {
+(function ($) {
 
     'use strict';
 
     // Check if element exists
-    $.fn.elExists = function() {
+    $.fn.elExists = function () {
         return this.length > 0;
     };
 
@@ -28,7 +28,7 @@
      *Background Color settings
      ***********************/
     var $bgcolor = $('.bg-color');
-    $bgcolor.each(function() {
+    $bgcolor.each(function () {
         var $this = $(this),
             $color = $this.data('bg-color');
         $this.css('background-color', $color);
@@ -39,7 +39,7 @@
      ***********************/
 
     var $bgimage = $('.bg-image');
-    $bgimage.each(function() {
+    $bgimage.each(function () {
         var $this = $(this),
             $image = $this.data('bg-image');
 
@@ -65,7 +65,7 @@
     $offcanvasNavSubMenu.slideUp();
 
     /*Category Sub Menu Toggle*/
-    $offcanvasNav.on('click', 'li a, li .menu-expand', function(e) {
+    $offcanvasNav.on('click', 'li a, li .menu-expand', function (e) {
         var $this = $(this);
         if (($this.parent().attr('class').match(/\b(menu-item-has-children|has-children|has-sub-menu)\b/)) && ($this.attr('href') === '#' || $this.hasClass('menu-expand'))) {
             e.preventDefault();
@@ -88,7 +88,7 @@
      ***********************/
 
 
-    $(window).on('scroll', function() {
+    $(window).on('scroll', function () {
         if ($(window).scrollTop() >= $headerTotalHeight) {
             $('.fixed-header').addClass('sticky-header');
         } else {
@@ -102,7 +102,7 @@
      ***********************/
 
     var scrollTop = $(".scroll-to-top");
-    $(window).on('scroll', function() {
+    $(window).on('scroll', function () {
         var topPos = $(this).scrollTop();
 
         if (topPos > 100) {
@@ -114,7 +114,7 @@
 
     });
 
-    $(scrollTop).on('click', function() {
+    $(scrollTop).on('click', function () {
         $('html, body').animate({
             scrollTop: 0
         }, 800);
@@ -130,7 +130,7 @@
     var $form = $('#contact-form');
     var $formMessages = $('.form__output');
     // Set up an event listener for the contact form.
-    $form.submit(function(e) {
+    $form.submit(function (e) {
         // Stop the browser from submitting the form.
         e.preventDefault();
 
@@ -138,11 +138,11 @@
         var formData = $(this).serialize();
         // Submit the form using AJAX.
         $.ajax({
-                type: 'POST',
-                url: $($form).attr('action'),
-                data: formData
-            })
-            .done(function(response) {
+            type: 'POST',
+            url: $($form).attr('action'),
+            data: formData
+        })
+            .done(function (response) {
                 // Make sure that the formMessages div has the 'success' class.
                 $formMessages.removeClass('error');
                 $formMessages.addClass('success');
@@ -153,7 +153,7 @@
                 // Clear the form.
                 $('#contact-form input,#contact-form textarea').val('');
             })
-            .fail(function(data) {
+            .fail(function (data) {
                 // Make sure that the formMessages div has the 'error' class.
                 $formMessages.removeClass('success');
                 $formMessages.addClass('error');
@@ -172,10 +172,10 @@
      * Countdown Activation
      ***********************/
 
-    $('[data-countdown]').each(function() {
+    $('[data-countdown]').each(function () {
         var $this = $(this),
             finalDate = $(this).data('countdown');
-        $this.countdown(finalDate, function(event) {
+        $this.countdown(finalDate, function (event) {
             $this.html(event.strftime('<div class="single-countdown"><span class="single-countdown__time">%D</span><span class="single-countdown__text">Days</span></div><div class="single-countdown"><span class="single-countdown__time">%H</span><span class="single-countdown__text">Hours</span></div><div class="single-countdown"><span class="single-countdown__time">%M</span><span class="single-countdown__text">Minutes</span></div><div class="single-countdown"><span class="single-countdown__time">%S</span><span class="single-countdown__text">Seconds</span></div>'));
         });
     });
@@ -184,7 +184,7 @@
      *Header Toolbar Sidenav Expand
      ***********************/
 
-    $('.toolbar-btn').on('click', function(e) {
+    $('.toolbar-btn').on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         var $this = $(this);
@@ -204,7 +204,7 @@
      *Click on Documnet
      ***********************/
 
-    $body.on('click', function(e) {
+    $body.on('click', function (e) {
         var $target = e.target;
         var dom = $('.wrapper').children();
 
@@ -220,7 +220,7 @@
      *Close Button Actions
      ***********************/
 
-    $('.btn-close').on('click', function(e) {
+    $('.btn-close').on('click', function (e) {
         e.preventDefault();
         var $this = $(this);
         $this.parents('.open').removeClass('open');
@@ -233,11 +233,11 @@
      *Adding Slide effect to dropdown
      ***********************/
 
-    $('.dropdown').on('show.bs.dropdown', function(e) {
+    $('.dropdown').on('show.bs.dropdown', function (e) {
         $(this).find('.dropdown-menu').first().stop(true, true).slideDown(300);
     });
 
-    $('.dropdown').on('hide.bs.dropdown', function(e) {
+    $('.dropdown').on('hide.bs.dropdown', function (e) {
         $(this).find('.dropdown-menu').first().stop(true, true).slideUp(200);
     });
 
@@ -249,9 +249,9 @@
 
 
 
-    $('.skill-progress').waypoint(function() {
+    $('.skill-progress').waypoint(function () {
         var delay = 500;
-        $(".progress-bar").each(function(i) {
+        $(".progress-bar").each(function (i) {
             var $this = $(this),
                 $width = $(this).attr('aria-valuenow'),
                 $span = $(this).children('span');
@@ -260,7 +260,7 @@
             }, {
                 duration: delay,
                 easing: 'swing',
-                step: function(now) {
+                step: function (now) {
                     $span.text(Math.ceil(now) + '%').css('left', 'calc(100% - 50px)');
                 }
             });
@@ -276,27 +276,27 @@
     var funFact = $('#fun-fact');
     if (funFact.elExists()) {
         var a = 0;
-        $(window).scroll(function() {
+        $(window).scroll(function () {
 
             var oTop = $('#fun-fact').offset().top - window.innerHeight;
             if (a == 0 && $(window).scrollTop() > oTop) {
-                $('.counter').each(function() {
+                $('.counter').each(function () {
                     var $this = $(this),
                         countTo = $this.attr('data-count');
                     $({
                         countNum: $this.text()
                     }).animate({
-                            countNum: countTo
-                        },
+                        countNum: countTo
+                    },
 
                         {
 
                             duration: 2000,
                             easing: 'swing',
-                            step: function() {
+                            step: function () {
                                 $this.text(Math.floor(this.countNum));
                             },
-                            complete: function() {
+                            complete: function () {
                                 $this.text(this.countNum);
                                 //alert('finished');
                             }
@@ -315,7 +315,7 @@
 
     $(".quantity").append('<div class="dec qtybutton">-</div><div class="inc qtybutton">+</div>');
 
-    $(".qtybutton").on("click", function() {
+    $(".qtybutton").on("click", function () {
         var $button = $(this);
         var oldValue = $button.parent().find("input").val();
         if ($button.hasClass("inc")) {
@@ -337,7 +337,7 @@
      * Expand User Activation
      ***********************/
 
-    $(".expand-btn").on('click', function(e) {
+    $(".expand-btn").on('click', function (e) {
         e.preventDefault();
         var target = $(this).attr('href');
         $(target).slideToggle('slow');
@@ -347,7 +347,7 @@
      *Expand new shipping info  
      ***********************/
 
-    $("#shipdifferetads").on('change', function() {
+    $("#shipdifferetads").on('change', function () {
         if ($("#shipdifferetads").prop("checked")) {
             $(".ship-box-info").slideToggle('slow');
         } else {
@@ -360,7 +360,7 @@
      * Expand payment Info
      ***********************/
 
-    $('input[name="payment-method"]').on('click', function() {
+    $('input[name="payment-method"]').on('click', function () {
         var $value = $(this).attr('value');
         $(this).parents('.payment-group').siblings('.payment-group').children('.payment-info').slideUp('300');
         $('[data-method="' + $value + '"]').slideToggle('300');
@@ -381,7 +381,7 @@
         }
 
 
-        $elementCarousel.each(function(index, element) {
+        $elementCarousel.each(function (index, element) {
             var $this = $(this);
 
             // Carousel Options
@@ -441,7 +441,7 @@
                 $this.addClass('slick-gutter-xl-' + $spaceBetween_xl);
             }
             var $slideCount = null;
-            $this.on('init', function(event, slick) {
+            $this.on('init', function (event, slick) {
                 $slideCount = slick.slideCount;
                 if ($slideCount <= $slidesToShow) {
                     $this.children('.slick-dots').hide();
@@ -476,14 +476,14 @@
                 responsive: $responsiveArray,
             });
 
-            $this.on('beforeChange', function(e, slick, currentSlide, nextSlide) {
+            $this.on('beforeChange', function (e, slick, currentSlide, nextSlide) {
                 var $animatingElements = $('.slick-slide[data-slick-index="' + nextSlide + '"]').find('[data-animation]');
                 doAnimations($animatingElements);
             });
 
             function doAnimations(elements) {
                 var animationEndEvents = 'webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend';
-                elements.each(function() {
+                elements.each(function () {
                     var $el = $(this);
                     var $animationDelay = $el.data('delay');
                     var $animationDuration = $el.data('duration');
@@ -492,14 +492,14 @@
                         'animation-delay': $animationDelay,
                         'animation-duration': $animationDuration,
                     });
-                    $el.addClass($animationType).one(animationEndEvents, function() {
+                    $el.addClass($animationType).one(animationEndEvents, function () {
                         $el.removeClass($animationType);
                     });
                 });
             }
 
             // Updating the sliders in tab
-            $('body').on('shown.bs.tab', 'button[data-bs-toggle="tab"], button[data-toggle="pill"]', function(e) {
+            $('body').on('shown.bs.tab', 'button[data-bs-toggle="tab"], button[data-toggle="pill"]', function (e) {
                 $this.slick('setPosition');
             });
         });
@@ -538,7 +538,7 @@
 
     $gallery.imagesLoaded({
         background: true
-    }, function() {
+    }, function () {
         $boxes.fadeIn();
         $gallery.isotope({
             itemSelector: '.project-item-wrap',
@@ -546,7 +546,7 @@
         });
     });
 
-    $('.project-filters button').on('click', function() {
+    $('.project-filters button').on('click', function () {
         var filterValue = $(this).attr('data-filter');
         $gallery.isotope({
             filter: filterValue
@@ -588,7 +588,7 @@
      ***********************/
 
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
 
@@ -600,7 +600,7 @@
         min: 35,
         max: 40,
         values: [35, 45],
-        slide: function(event, ui) {
+        slide: function (event, ui) {
             $("#amount").val("$" + ui.values[0] + "  $" + ui.values[1]);
         }
     });
@@ -613,7 +613,7 @@
         Accordion 
     ==================================*/
 
-    $('.accordion__link').on('click', function(e) {
+    $('.accordion__link').on('click', function (e) {
         e.preventDefault();
         var $this = $(this);
         var $target = $(this).data('target');
@@ -649,17 +649,17 @@
     ==================================*/
 
 
-    $('.color-switcher-reveal').on('click', function(e) {
+    $('.color-switcher-reveal').on('click', function (e) {
         e.preventDefault();
         $('.color-switcher').toggleClass('open');
     });
 
     /*************************
-       		Left sidebar
-		*************************/
+                    Left sidebar
+        *************************/
     var style_switcher = $('.style-customizer'),
         panelWidth = style_switcher.outerWidth(true);
-    $('.style-customizer .opener').on("click", function() {
+    $('.style-customizer .opener').on("click", function () {
         var $this = $(this);
         if ($(".style-customizer.closed").length > 0) {
             style_switcher.animate({
@@ -678,14 +678,14 @@
     });
 
     /*************************
-       		style change 
-		*************************/
+                    style change 
+        *************************/
     var link = $('link[data-style="styles"]'),
         link_no_cookie = $('link[data-style="styles-no-cookie"]');
 
     /**************************************** 
          Resume from last selected style
-		****************************************/
+        ****************************************/
     var tp_stylesheet = $.cookie('tp_stylesheet');
 
     $(".style-customizer .selected").removeClass("selected");
@@ -702,9 +702,9 @@
 
 
     /*************************
-       		 Color Changer
-		*************************/
-    $('.style-customizer .styleChange li').on('click', function() {
+                     Color Changer
+        *************************/
+    $('.style-customizer .styleChange li').on('click', function () {
         if (link.length > 0) {
             var $this = $(this),
                 tp_stylesheet = $this.data('style');
@@ -713,12 +713,12 @@
             link.attr('href', 'assets/css/' + tp_stylesheet + '.css');
             $.cookie('tp_stylesheet', tp_stylesheet, 30);
             var $value = $(this).data('color');
-            $dom.each(function() {
+            $dom.each(function () {
                 var $bgColor = $(this).find('.bg-color');
                 if ($bgColor.length !== 0) {
-                    $bgColor.each(function() {
+                    $bgColor.each(function () {
                         var $data = $(this).data('bg-color');
-                        if ($data === '#01004e' || $data === '#01004e') {
+                        if ($data === '#1A3551' || $data === '#1A3551') {
                             $(this).css('background-color', $value);
                         }
                     });

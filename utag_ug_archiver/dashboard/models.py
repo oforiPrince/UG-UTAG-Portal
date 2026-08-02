@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 import datetime
+import os
 
 
 class EventSpeaker(models.Model):
@@ -137,6 +138,12 @@ class Event(models.Model):
     is_published = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     
+    # Event Photos
+    photos_link = models.URLField(
+        blank=True,
+        help_text="External link to event photos (e.g. Google Photos, Flickr)"
+    )
+
     # Metadata
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -264,6 +271,40 @@ class Event(models.Model):
                 unique_slug = f"{self.event_slug}-{num}"
                 num += 1
             self.event_slug = unique_slug
+        
+        # Optimize featured image on upload
+        from utag_ug_archiver.utils.image_optimizer import ImageOptimizer
+        if self.pk:
+            try:
+                old_instance = Event.objects.get(pk=self.pk)
+                if self.featured_image and old_instance.featured_image != self.featured_image:
+                    if hasattr(self.featured_image, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.featured_image,
+                            image_type='event',
+                            max_size_kb=500
+                        )
+                        if optimized:
+                            self.featured_image.save(
+                                self.featured_image.name,
+                                optimized,
+                                save=False
+                            )
+            except Event.DoesNotExist:
+                pass
+        else:
+            if self.featured_image and hasattr(self.featured_image, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.featured_image,
+                    image_type='event',
+                    max_size_kb=500
+                )
+                if optimized:
+                    self.featured_image.save(
+                        self.featured_image.name,
+                        optimized,
+                        save=False
+                    )
             
         # Auto-update status based on dates AND times
         now = timezone.now()
@@ -335,8 +376,8 @@ class AttachedDocument(models.Model):
 
 class News(models.Model):
     featured_image = models.ImageField(upload_to='news_images/', blank=True, null=True)
-    title = models.CharField(max_length=150)
-    news_slug = models.SlugField(max_length=150, unique=True, blank=True)
+    title = models.CharField(max_length=250)
+    news_slug = models.SlugField(max_length=250, unique=True, blank=True)
     content = HTMLField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='author')
     tags = models.ManyToManyField('Tag', blank=True)
@@ -348,6 +389,7 @@ class News(models.Model):
         return self.featured_image.url if self.featured_image else None
 
     def save(self, *args, **kwargs):
+        # Auto-generate slug
         if not self.news_slug:
             self.news_slug = slugify(self.title)
             unique_slug = self.news_slug
@@ -356,6 +398,41 @@ class News(models.Model):
                 unique_slug = f"{self.news_slug}-{num}"
                 num += 1
             self.news_slug = unique_slug
+        
+        # Optimize featured image on upload
+        from utag_ug_archiver.utils.image_optimizer import ImageOptimizer
+        if self.pk:
+            try:
+                old_instance = News.objects.get(pk=self.pk)
+                if self.featured_image and old_instance.featured_image != self.featured_image:
+                    if hasattr(self.featured_image, 'file'):
+                        optimized = ImageOptimizer.optimize_image(
+                            self.featured_image,
+                            image_type='news',
+                            max_size_kb=500
+                        )
+                        if optimized:
+                            self.featured_image.save(
+                                self.featured_image.name,
+                                optimized,
+                                save=False
+                            )
+            except News.DoesNotExist:
+                pass
+        else:
+            if self.featured_image and hasattr(self.featured_image, 'file'):
+                optimized = ImageOptimizer.optimize_image(
+                    self.featured_image,
+                    image_type='news',
+                    max_size_kb=500
+                )
+                if optimized:
+                    self.featured_image.save(
+                        self.featured_image.name,
+                        optimized,
+                        save=False
+                    )
+        
         super().save(*args, **kwargs)
 
     def __str__(self):

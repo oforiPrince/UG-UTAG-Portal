@@ -1,5 +1,6 @@
 {% extends "base/base-v2.html" %}
 {% load static %}
+{% load image_tags %}
 {% block title %}
   {{ event.title|default:"Event Details" }}
 {% endblock title %}
@@ -62,10 +63,13 @@
             </div>
             <!-- Event Image Carousel -->
             <div class="class-details-carousel carousel-style-one owl-carousel">
-              <img src="{{ event.featured_image.url }}" alt="{{ event.title }}" />
+              {% if event.featured_image %}
+                {% lazy_img event.featured_image.url event.title "img-fluid" "event" %}
+              {% endif %}
               {% for image in event.additional_images.all %}
-                <img src="{{ image.image.url }}"
-                     alt="{{ image.caption|default:event.title }}" />
+                {% if image.image %}
+                  {% lazy_img image.image.url image.caption|default:event.title "img-fluid" "event" %}
+                {% endif %}
               {% endfor %}
             </div>
           </div>
@@ -290,6 +294,16 @@
                 {% if event.event_type != 'online' %}
                   <li>
                     <i class="fa fa-tag"></i>Event Type: {{ event.get_event_type_display }}
+                  </li>
+                {% endif %}
+                {% if event.photos_link %}
+                  <li>
+                    <a href="{{ event.photos_link }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn btn-sm btn-outline-primary w-100">
+                      <i class="fa fa-picture-o me-1"></i> View Event Photos
+                    </a>
                   </li>
                 {% endif %}
               </ul>

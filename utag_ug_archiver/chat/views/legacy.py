@@ -20,7 +20,7 @@ from ..models import ChatGroup, ChatThread, GroupMembership, GroupMessage, Messa
 class ThreadListView(LoginRequiredMixin, ListView):
     """View to display all chat threads and groups for the current user"""
     model = ChatThread
-    template_name = 'chat/simple_list.html'
+    template_name = 'chat/simple_list_modern.html'
     context_object_name = 'threads'
 
     def get(self, request, *args, **kwargs):
@@ -58,30 +58,38 @@ class ThreadListView(LoginRequiredMixin, ListView):
             
             chats.append({
                 'id': thread.id,
+                'access_token': thread.access_token,  # Add token for secure URL
                 'is_group': False,
+                'is_pinned': False,
                 'display_name': f"{other_user.title} {other_user.other_name} {other_user.surname}" if other_user else 'Unknown User',
                 'avatar_initials': f"{other_user.other_name[0]}{other_user.surname[0]}" if other_user else '?',
+                'profile_pic_url': other_user.profile_pic.url if (other_user and other_user.profile_pic) else None,
                 'last_message': last_msg.plaintext if last_msg else '',
-                'last_message_time': thread.last_message_time or thread.created_at,
+                'last_message_time': thread.last_message_at or thread.created_at,
                 'unread_count': thread.unread_count,
             })
         
         # Add groups
         for group in groups:
             last_msg = group.messages.order_by('-created_at').first() if group.messages.exists() else None
+            is_official = group.name.strip().lower() == 'utag ug'
+            is_pinned = is_official
             
             chats.append({
                 'id': group.id,
+                'access_token': group.access_token,  # Add token for secure URL
                 'is_group': True,
+                'is_pinned': is_pinned,
+                'is_official': is_official,
                 'display_name': group.name,
                 'avatar_initials': group.name[0].upper() if group.name else 'G',
                 'last_message': last_msg.plaintext if last_msg else '',
-                'last_message_time': group.last_message_time or group.created_at,
+                'last_message_time': last_msg.created_at if last_msg else group.created_at,
                 'unread_count': group.unread_count,
             })
         
         # Sort all chats by last activity
-        chats.sort(key=lambda x: x['last_message_time'], reverse=True)
+        chats.sort(key=lambda x: (x['is_pinned'], x['last_message_time']), reverse=True)
         
         # Get all users except current user for the modal
         available_users = User.objects.exclude(id=request.user.id).order_by('other_name', 'surname')
@@ -115,7 +123,7 @@ class ThreadStartView(LoginRequiredMixin, View):
                 messages.success(request, 'Chat thread created successfully.')
             else:
                 messages.info(request, 'You already had a conversation with this member. We took you there.')
-            return redirect('chat:thread_detail', pk=thread.pk)
+            return redirect('chat:thread_detail', pk=thread.access_token)
         return render(request, self.template_name, {'form': form})
 
 
@@ -181,7 +189,7 @@ class ThreadDetailView(LoginRequiredMixin, View):
             message.set_plaintext(form.cleaned_data['body'])
             message.save()
             messages.success(request, 'Message sent.')
-            return redirect(reverse('chat:thread_detail', kwargs={'pk': thread.pk}))
+            return redirect(reverse('chat:thread_detail', kwargs={'pk': thread.access_token}))
         
         context = {
             'thread': thread,

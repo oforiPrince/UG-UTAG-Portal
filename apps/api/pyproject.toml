@@ -1,0 +1,82 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ug-utag-api"
+version = "2.0.0"
+description = "UG UTAG FastAPI backend"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic==1.18.5",
+  "argon2-cffi==25.1.0",
+  "boto3==1.40.40",
+  "celery[redis]==5.6.3",
+  "cryptography==48.0.1",
+  "email-validator==2.3.0",
+  "defusedxml==0.7.1",
+  "fastapi==0.139.2",
+  "httpx==0.28.1",
+  "nh3==0.3.2",
+  "orjson==3.11.9",
+  "openpyxl==3.1.5",
+  "pillow==12.3.0",
+  "prometheus-client==0.25.0",
+  "psycopg[binary,pool]==3.2.10",
+  "pydantic-settings==2.11.0",
+  "python-multipart==0.0.32",
+  "redis==6.4.0",
+  "sqlalchemy[asyncio]==2.0.51",
+  "structlog==25.4.0",
+  "uvicorn[standard]==0.37.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "aiosqlite==0.21.0",
+  "mypy==1.18.2",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-cov==7.0.0",
+  "ruff==0.13.2"
+]
+
+[project.scripts]
+utag-api = "utag_api.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/utag_api"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers --cov=utag_api --cov-report=term-missing"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "SIM", "RUF"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+packages = ["utag_api"]
+
+[[tool.mypy.overrides]]
+module = [
+  "boto3",
+  "boto3.*",
+  "botocore",
+  "botocore.*",
+  "celery",
+  "celery.*",
+  "openpyxl",
+  "openpyxl.*"
+]
+ignore_missing_imports = true
