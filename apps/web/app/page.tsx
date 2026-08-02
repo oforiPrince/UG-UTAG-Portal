@@ -23,6 +23,7 @@ import {
   type HomeCarouselSlide,
 } from "@/components/public/home-hero";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
@@ -287,15 +288,12 @@ export default async function Home() {
                   href={`/events/${event.slug}`}
                   className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div
-                    className="relative h-44 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url('${
-                        event.featured_media_id
-                          ? `/api/v1/public/media/${event.featured_media_id}`
-                          : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                      }')`,
-                    }}
+                  <MediaCover
+                    assetId={event.featured_media_id}
+                    fallbackSrc={`/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                    alt=""
+                    className="h-44"
+                    variant="w480"
                   >
                     <div className="absolute inset-0 bg-[#102a48]/25" />
                     <time
@@ -309,7 +307,7 @@ export default async function Home() {
                         {format(new Date(event.start_date), "MMM yyyy")}
                       </span>
                     </time>
-                  </div>
+                  </MediaCover>
                   <div className="p-6">
                     <p className="text-[.68rem] font-bold tracking-wide text-coral uppercase">
                       {event.event_type}
@@ -350,15 +348,21 @@ export default async function Home() {
             <div className="mt-10 grid gap-3 md:grid-cols-[1.25fr_.75fr]">
               <Link
                 href={`/gallery/${galleryHighlights[0].gallerySlug}`}
-                className="group relative min-h-72 overflow-hidden rounded-md bg-cover bg-center md:min-h-[26rem]"
-                style={{
-                  backgroundImage: `url('${galleryHighlights[0].url}')`,
-                }}
+                className="group relative min-h-72 overflow-hidden rounded-md md:min-h-[26rem]"
                 aria-label={
                   galleryHighlights[0].alt_text ??
                   galleryHighlights[0].galleryTitle
                 }
               >
+                <MediaCover
+                  assetId={galleryHighlights[0].id}
+                  alt={
+                    galleryHighlights[0].alt_text ??
+                    galleryHighlights[0].galleryTitle
+                  }
+                  className="absolute inset-0"
+                  variant="w960"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0b2744]/85 via-transparent to-transparent" />
                 <div className="absolute right-0 bottom-0 left-0 p-6 text-white">
                   <p className="text-[.68rem] font-bold tracking-widest text-gold uppercase">
@@ -375,10 +379,15 @@ export default async function Home() {
                   <Link
                     key={image.id}
                     href={`/gallery/${image.gallerySlug}`}
-                    className="group relative min-h-48 overflow-hidden rounded-md bg-cover bg-center"
-                    style={{ backgroundImage: `url('${image.url}')` }}
+                    className="group relative min-h-48 overflow-hidden rounded-md"
                     aria-label={image.alt_text ?? image.galleryTitle}
                   >
+                    <MediaCover
+                      assetId={image.id}
+                      alt={image.alt_text ?? image.galleryTitle}
+                      className="absolute inset-0"
+                      variant="w480"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0b2744]/80 via-transparent to-transparent" />
                     <span className="absolute right-5 bottom-4 left-5 font-extrabold text-white">
                       {image.caption ?? image.galleryTitle}
@@ -461,18 +470,15 @@ export default async function Home() {
                   href={`/news/${article.slug}`}
                   className="group flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div
-                    className="relative h-44 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url('${
-                        article.featured_media_id
-                          ? `/api/v1/public/media/${article.featured_media_id}`
-                          : `/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                      }')`,
-                    }}
+                  <MediaCover
+                    assetId={article.featured_media_id}
+                    fallbackSrc={`/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                    alt=""
+                    className="h-44"
+                    variant="w480"
                   >
                     <div className="absolute inset-0 bg-[#102a48]/22" />
-                  </div>
+                  </MediaCover>
                   <div className="flex flex-1 flex-col p-6">
                     <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
                       {article.tags[0] ?? "Association news"}

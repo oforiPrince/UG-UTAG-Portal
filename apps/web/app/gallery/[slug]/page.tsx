@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
+import { publicMediaUrl } from "@/lib/public-media";
 
 type GalleryImage = {
   id: string;
@@ -107,10 +108,12 @@ export default async function GalleryDetailPage({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={image.url}
+                  src={publicMediaUrl(image.id, "w960") ?? image.url}
                   alt={image.alt_text ?? image.caption ?? gallery.title}
                   className="h-auto w-full"
                   loading="lazy"
+                  decoding="async"
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                 />
                 {image.caption || image.credit || image.allow_download ? (
                   <figcaption className="grid gap-3 border-t border-line px-4 py-3 text-xs leading-5 text-muted">

@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
+import { publicMediaUrl } from "@/lib/public-media";
 
 type Article = {
   slug: string;
@@ -45,15 +46,19 @@ export default async function ArticlePage({
   return (
     <PublicShell>
       <header className="relative isolate overflow-hidden bg-[#122b48] text-white">
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('${
-              article.featured_media_id
-                ? `/api/v1/public/media/${article.featured_media_id}`
-                : "/brand/hero-meeting.jpg"
-            }')`,
-          }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={
+            publicMediaUrl(article.featured_media_id, "w1600") ??
+            "/brand/hero-meeting.jpg"
+          }
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 -z-20 size-full object-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          sizes="100vw"
         />
         <div className="absolute inset-0 -z-10 bg-[#0d2947]/90" />
         <div className="mx-auto max-w-[82rem] px-5 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">

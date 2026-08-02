@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { publicMediaUrl } from "@/lib/public-media";
 
 export type HomeCarouselSlide = {
   id: string;
@@ -29,9 +30,8 @@ export function HomeHero({
 }) {
   const [active, setActive] = useState(0);
   const slide = slides[active];
-  const background = slide
-    ? `/api/v1/public/media/${slide.media_asset_id}`
-    : "/brand/hero-meeting.jpg";
+  const background =
+    publicMediaUrl(slide?.media_asset_id, "w1600") ?? "/brand/hero-meeting.jpg";
   const title =
     slide?.title || headline || "Advancing academic excellence. Protecting member welfare.";
   const copy =
@@ -48,10 +48,18 @@ export function HomeHero({
       aria-roledescription={slides.length > 1 ? "carousel" : undefined}
       aria-label="UG UTAG highlights"
     >
-      <div
+      {/* Prefer a real img for LCP: browsers can prioritize/decode without waiting on CSS. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         key={background}
-        className="absolute inset-0 -z-20 bg-cover bg-[56%_center] transition-opacity duration-500 lg:bg-center"
-        style={{ backgroundImage: `url('${background}')` }}
+        src={background}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 -z-20 size-full object-cover object-[56%_center] transition-opacity duration-500 lg:object-center"
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
+        sizes="100vw"
       />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(10,34,59,.95)_0%,rgba(10,34,59,.82)_45%,rgba(10,34,59,.3)_100%)]" />
       <div className="mx-auto w-full max-w-[82rem] px-5 py-16 sm:px-6 lg:px-8">

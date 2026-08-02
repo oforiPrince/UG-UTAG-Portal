@@ -26,6 +26,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const safePath = path.map(encodeURIComponent).join("/");
   const upstreamUrl = new URL(`/api/v1/${safePath}${incoming.search}`, apiOrigin());
   const requestHeaders = new Headers(request.headers);
+  const isPublicMediaGet =
+    request.method === "GET" &&
+    path[0] === "public" &&
+    path[1] === "media" &&
+    path.length >= 3;
 
   for (const header of HOP_BY_HOP_HEADERS) requestHeaders.delete(header);
   requestHeaders.set("x-forwarded-host", incoming.host);
@@ -37,7 +42,10 @@ async function proxy(request: NextRequest, context: RouteContext) {
       method: request.method,
       headers: requestHeaders,
       body,
-      cache: "no-store",
+      // Browser caching is driven by upstream Cache-Control; allow Next to
+      // briefly reuse public media responses during SSR navigations.
+      cache: isPublicMediaGet ? "force-cache" : "no-store",
+      next: isPublicMediaGet ? { revalidate: 3600 } : undefined,
       redirect: "manual",
     });
     const responseHeaders = new Headers(upstream.headers);

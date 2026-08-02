@@ -15,6 +15,7 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { PublicExecutiveProfile } from "@/lib/leadership";
+import { publicMediaUrl } from "@/lib/public-media";
 import { cn, humanize, initials } from "@/lib/utils";
 
 type ExecutiveProfileButtonProps = {
@@ -115,7 +116,7 @@ function ExecutiveProfileModal({
                 alt={profile.full_name}
                 className="size-28 rounded-full border-4 border-white/18 object-cover shadow-xl md:size-36"
                 height={144}
-                src={`/api/v1/public/media/${profile.profile_media_id}`}
+                src={publicMediaUrl(profile.profile_media_id, "w480")!}
                 unoptimized
                 width={144}
               />

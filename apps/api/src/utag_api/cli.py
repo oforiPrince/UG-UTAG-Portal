@@ -105,7 +105,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="UG UTAG API management commands")
     parser.add_argument(
         "command",
-        choices=["seed", "seed-demo", "sync-chat-groups"],
+        choices=["seed", "seed-demo", "sync-chat-groups", "backfill-media-variants"],
     )
     args = parser.parse_args()
     if args.command == "seed":
@@ -119,6 +119,26 @@ def main() -> None:
             f"{result.memberships_added} memberships added, "
             f"{result.memberships_removed} memberships removed"
         )
+    if args.command == "backfill-media-variants":
+        from utag_api.models import MediaAsset
+        from utag_api.worker.tasks import ensure_media_variants
+
+        async def collect_ids() -> list[str]:
+            async with SessionFactory() as db:
+                rows = (
+                    await db.scalars(
+                        select(MediaAsset.id).where(
+                            MediaAsset.status == "ready",
+                            MediaAsset.content_type.startswith("image/"),
+                        )
+                    )
+                ).all()
+                return [str(row) for row in rows]
+
+        ids = asyncio.run(collect_ids())
+        for asset_id in ids:
+            ensure_media_variants(asset_id)
+        print(f"Ensured display variants for {len(ids)} ready image assets")
 
 
 if __name__ == "__main__":

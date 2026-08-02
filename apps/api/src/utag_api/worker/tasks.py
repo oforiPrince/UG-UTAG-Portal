@@ -507,3 +507,61 @@ def process_media(asset_id: str) -> None:
             await db.commit()
 
     asyncio.run(mark_ready())
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.media.ensure_variants",
+    autoretry_for=(OSError,),
+    retry_backoff=True,
+    max_retries=3,
+)
+def ensure_media_variants(asset_id: str) -> None:
+    """Generate WebP display variants for an already-ready public/private image."""
+
+    async def load() -> tuple[MediaAsset | None, set[str]]:
+        async with SessionFactory() as db:
+            asset = await db.get(MediaAsset, UUID(asset_id))
+            if asset is None:
+                return None, set()
+            existing = {
+                row.variant
+                for row in (
+                    await db.scalars(
+                        select(MediaVariant).where(MediaVariant.asset_id == asset.id)
+                    )
+                ).all()
+            }
+            return asset, existing
+
+    asset, existing = asyncio.run(load())
+    if asset is None or asset.status != "ready" or not asset.content_type.startswith("image/"):
+        return
+    if {"w480", "w960", "w1600"}.issubset(existing):
+        return
+
+    client = s3_client()
+    body = client.get_object(Bucket=settings.media_bucket, Key=asset.storage_key)["Body"]
+    with tempfile.TemporaryFile() as source:
+        for chunk in iter(lambda: body.read(1024 * 1024), b""):
+            source.write(chunk)
+        variant_rows = [
+            row
+            for row in _image_variants(asset, source)
+            if row["variant"] not in existing
+        ]
+
+    async def persist() -> None:
+        async with SessionFactory() as db:
+            row = await db.get(MediaAsset, UUID(asset_id))
+            if row is None:
+                return
+            for variant in variant_rows:
+                db.add(MediaVariant(**variant))
+            await db.commit()
+
+    asyncio.run(persist())
+    logger.info(
+        "media_variants_ensured",
+        asset_id=asset_id,
+        created=[str(row["variant"]) for row in variant_rows],
+    )

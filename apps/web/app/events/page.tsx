@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { PageHero } from "@/components/public/page-hero";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicEmptyState } from "@/components/public/public-empty-state";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
@@ -54,15 +55,12 @@ export default async function EventsPage() {
                 href={`/events/${event.slug}`}
                 className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_26px_rgb(23_43_69_/_8%)]"
               >
-                <div
-                  className="relative h-52 bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url('${
-                      event.featured_media_id
-                        ? `/api/v1/public/media/${event.featured_media_id}`
-                        : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                    }')`,
-                  }}
+                <MediaCover
+                  assetId={event.featured_media_id}
+                  fallbackSrc={`/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                  alt=""
+                  className="h-52"
+                  variant="w480"
                 >
                   <div className="absolute inset-0 bg-[#102a48]/22" />
                   <time
@@ -76,7 +74,7 @@ export default async function EventsPage() {
                       {format(new Date(event.start_date), "MMM yyyy")}
                     </span>
                   </time>
-                </div>
+                </MediaCover>
                 <div className="p-6">
                   <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
                     {event.event_type}
