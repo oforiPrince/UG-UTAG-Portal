@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Logo } from "@/components/logo";
+import type { PublicContact, PublicFeatures } from "@/lib/public-site";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -33,11 +34,20 @@ const leadershipLinks = [
   ],
 ] as const;
 
-export function PublicHeader() {
+export function PublicHeader({
+  contact,
+  features,
+}: {
+  contact: PublicContact;
+  features: PublicFeatures;
+}) {
   const [open, setOpen] = useState(false);
   const [leadershipOpen, setLeadershipOpen] = useState(false);
   const pathname = usePathname();
   const leadershipActive = pathname.startsWith("/leadership");
+  const visibleLinks = links.filter(
+    ([, href]) => href !== "/gallery" || features["public-gallery"],
+  );
 
   function closeMobileNavigation() {
     setOpen(false);
@@ -50,15 +60,16 @@ export function PublicHeader() {
         <div className="mx-auto flex min-h-9 max-w-[82rem] items-center justify-between px-6 text-[.69rem] lg:px-8">
           <div className="flex items-center gap-5 text-white/78">
             <span className="inline-flex items-center gap-2">
-              <Clock3 className="size-3.5 text-gold" /> Monday–Friday, 9:00
-              AM–6:00 PM
+              <Clock3 className="size-3.5 text-gold" /> {contact.office_hours}
             </span>
-            <a
-              className="hidden items-center gap-2 hover:text-white md:inline-flex"
-              href="mailto:utagoffice@ug.edu.gh"
-            >
-              <Mail className="size-3.5 text-gold" /> utagoffice@ug.edu.gh
-            </a>
+            {contact.email ? (
+              <a
+                className="hidden items-center gap-2 hover:text-white md:inline-flex"
+                href={`mailto:${contact.email}`}
+              >
+                <Mail className="size-3.5 text-gold" /> {contact.email}
+              </a>
+            ) : null}
           </div>
           <Link
             href="/login"
@@ -75,7 +86,7 @@ export function PublicHeader() {
           className="hidden items-center gap-0.5 xl:flex"
           aria-label="Main navigation"
         >
-          {links.slice(0, 2).map(([label, href]) => {
+          {visibleLinks.slice(0, 2).map(([label, href]) => {
             const active =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
@@ -120,7 +131,7 @@ export function PublicHeader() {
               ))}
             </nav>
           </div>
-          {links.slice(2).map(([label, href]) => {
+          {visibleLinks.slice(2).map(([label, href]) => {
             const active = pathname.startsWith(href);
             return (
               <Link
@@ -163,7 +174,7 @@ export function PublicHeader() {
           aria-label="Mobile navigation"
         >
           <div className="mx-auto grid max-w-2xl sm:grid-cols-2">
-            {links.slice(0, 2).map(([label, href]) => (
+            {visibleLinks.slice(0, 2).map(([label, href]) => (
               <Link
                 key={href}
                 href={href}
@@ -207,7 +218,7 @@ export function PublicHeader() {
                 </div>
               )}
             </div>
-            {links.slice(2).map(([label, href]) => (
+            {visibleLinks.slice(2).map(([label, href]) => (
               <Link
                 key={href}
                 href={href}

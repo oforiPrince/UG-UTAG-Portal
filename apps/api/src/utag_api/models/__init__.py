@@ -34,6 +34,7 @@ from utag_api.models.identity import (
     UserRole,
 )
 from utag_api.models.platform import (
+    AdAdvertiser,
     AdCampaign,
     AdOrder,
     AdPlan,
@@ -50,6 +51,7 @@ from utag_api.models.platform import (
 
 __all__ = [
     "AccountToken",
+    "AdAdvertiser",
     "AdCampaign",
     "AdOrder",
     "AdPlan",

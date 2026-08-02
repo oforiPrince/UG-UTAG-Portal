@@ -1,9 +1,13 @@
+from math import ceil
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
+from starlette.concurrency import run_in_threadpool
 
+from utag_api.config import get_settings
 from utag_api.database import new_id
 from utag_api.dependencies import (
     DbSession,
@@ -21,12 +25,24 @@ from utag_api.schemas.domain import (
     DocumentVersionCreate,
     DocumentView,
 )
+from utag_api.services.audiences import includes_general_public
 from utag_api.services.content import sanitize_html
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
-from utag_api.services.query import paginate
+from utag_api.services.storage import s3_client, safe_filename
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+def ensure_document_audience_category(
+    category: str, audiences: list[dict[str, str]]
+) -> None:
+    if category != "external" and includes_general_public(audiences):
+        raise ApiError(
+            422,
+            "invalid_document_audience",
+            "General Public visibility is available only for External documents",
+        )
 
 
 def audiences_allow(audiences: list[dict[str, str]], principal: Principal) -> bool:
@@ -46,7 +62,7 @@ def audiences_allow(audiences: list[dict[str, str]], principal: Principal) -> bo
     for audience in audiences:
         kind = audience.get("type")
         value = audience.get("value")
-        if kind in {"all_members", "everyone"}:
+        if kind in {"all_members", "everyone", "general_public"}:
             return True
         if kind == "role" and value in principal.roles:
             return True
@@ -86,9 +102,9 @@ async def document_view(db: DbSession, item: Document) -> DocumentView:
             "filename": asset.original_filename,
             "content_type": asset.content_type,
             "byte_size": asset.byte_size,
-            "content_url": f"/api/v1/media/{asset.id}/content",
+            "content_url": f"/api/v1/documents/{item.id}/files/{file.id}/content",
         }
-        for _file, asset in latest_rows
+        for file, asset in latest_rows
     ]
     return DocumentView.model_validate(
         {
@@ -120,24 +136,31 @@ async def list_documents(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     category: str | None = None,
+    status: str | None = None,
     q: str | None = None,
 ) -> Page[DocumentView]:
-    statement = select(Document).where(Document.status != "archived")
+    statement = select(Document)
+    if status:
+        statement = statement.where(Document.status == status)
+    else:
+        statement = statement.where(Document.status != "archived")
     if category:
         statement = statement.where(Document.category == category)
     if q:
         statement = statement.where(Document.title.ilike(f"%{q.strip()}%"))
     statement = statement.order_by(Document.document_date.desc(), Document.created_at.desc())
-    # Fetch extra rows before applying audience rules, then paginate the authorized subset.
-    result = await paginate(db, statement, page=page, page_size=min(page_size * 3, 100))
-    authorized = [item for item in result.items if audience_allows(item, principal)]
-    views = [await document_view(db, item) for item in authorized[:page_size]]
+    rows = list((await db.scalars(statement)).all())
+    authorized = [item for item in rows if audience_allows(item, principal)]
+    total = len(authorized)
+    start = (page - 1) * page_size
+    page_items = authorized[start : start + page_size]
+    views = [await document_view(db, item) for item in page_items]
     return Page[DocumentView](
         items=views,
         page=page,
         page_size=page_size,
-        total=len(views) if result.pages == 1 else result.total,
-        pages=result.pages,
+        total=total,
+        pages=max(1, ceil(total / page_size)),
     )
 
 
@@ -181,10 +204,62 @@ async def document_versions(
             "content_type": asset.content_type,
             "byte_size": asset.byte_size,
             "status": asset.status,
+            "content_url": (
+                f"/api/v1/documents/{document.id}/files/{version.id}/content"
+                if asset.status == "ready"
+                else None
+            ),
             "created_at": version.created_at,
         }
         for version, asset in rows
     ]
+
+
+@router.get("/{document_id}/files/{document_file_id}/content")
+async def stream_document_file(
+    document_id: UUID,
+    document_file_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("documents.view"))],
+) -> StreamingResponse:
+    document = await db.get(Document, document_id)
+    if (
+        document is None
+        or not audience_allows(document, principal)
+        or (document.status == "archived" and "documents.manage" not in principal.permissions)
+    ):
+        raise ApiError(404, "document_not_found", "Document not found")
+    row = (
+        await db.execute(
+            select(DocumentFile, MediaAsset)
+            .join(MediaAsset, MediaAsset.id == DocumentFile.media_asset_id)
+            .where(
+                DocumentFile.id == document_file_id,
+                DocumentFile.document_id == document.id,
+                MediaAsset.status == "ready",
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise ApiError(404, "document_file_not_found", "Document file not found")
+    _document_file, asset = row
+    try:
+        stored = await run_in_threadpool(
+            lambda: s3_client().get_object(
+                Bucket=get_settings().media_bucket,
+                Key=asset.storage_key,
+            )
+        )
+    except Exception as exc:
+        raise ApiError(404, "document_file_not_found", "Document file not found") from exc
+    return StreamingResponse(
+        stored["Body"].iter_chunks(chunk_size=1024 * 1024),
+        media_type=asset.content_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_filename(asset.original_filename)}"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.post("", response_model=DocumentView, status_code=201)
@@ -195,6 +270,7 @@ async def create_document(
     principal: Annotated[Principal, Depends(require_mutation_permissions("documents.manage"))],
 ) -> DocumentView:
     ensure_publish_permission(principal.permissions, payload.status)
+    ensure_document_audience_category(payload.category, payload.audiences)
     assets = await ready_document_assets(db, payload.media_asset_ids)
     document = Document(
         id=new_id(),
@@ -254,6 +330,10 @@ async def update_document(
         raise ApiError(404, "document_not_found", "Document not found")
     if if_match != f'"{document.version}"':
         raise ApiError(412, "version_conflict", "Refresh this document before saving")
+    ensure_document_audience_category(
+        payload.category if payload.category is not None else document.category,
+        payload.audiences if payload.audiences is not None else document.audiences,
+    )
     changes = payload.model_dump(exclude_unset=True)
     ensure_publish_permission(principal.permissions, changes.get("status"))
     if "description_html" in changes:

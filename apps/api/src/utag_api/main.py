@@ -1,3 +1,4 @@
+import socket
 from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
@@ -8,6 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from redis.asyncio import Redis
 from sqlalchemy import text
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
@@ -40,6 +42,8 @@ from utag_api.routers.notifications import router as notifications_router
 from utag_api.routers.organization import router as organization_router
 from utag_api.routers.public import router as public_router
 from utag_api.security import constant_time_equal
+from utag_api.services.storage import s3_client
+from utag_api.worker.celery_app import celery_app
 
 settings = get_settings()
 configure_logging(settings.debug)
@@ -88,6 +92,11 @@ async def request_context(request: Request, call_next):  # type: ignore[no-untyp
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["X-Frame-Options"] = "DENY"
+    if request.url.path.startswith(f"{settings.api_prefix}/") and not request.url.path.startswith(
+        f"{settings.api_prefix}/public/"
+    ):
+        response.headers.setdefault("Cache-Control", "no-store")
     if settings.is_production:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     route_object = request.scope.get("route")
@@ -120,7 +129,41 @@ async def readiness() -> dict[str, str]:
         await redis.ping()
     finally:
         await redis.aclose()
-    return {"status": "ready", "database": "ok", "redis": "ok"}
+
+    def check_background_services() -> None:
+        with celery_app.connection_for_read() as connection:
+            connection.ensure_connection(max_retries=0)
+        if not celery_app.control.ping(timeout=2):
+            raise RuntimeError("No background worker responded")
+
+    def check_object_storage() -> None:
+        s3_client().head_bucket(Bucket=settings.media_bucket)
+
+    def check_malware_scanner() -> None:
+        if not settings.malware_scan_required:
+            return
+        if not settings.clamav_host:
+            raise RuntimeError("Malware scanner is not configured")
+        with socket.create_connection(
+            (settings.clamav_host, settings.clamav_port), timeout=2
+        ) as connection:
+            connection.sendall(b"zPING\0")
+            if b"PONG" not in connection.recv(32):
+                raise RuntimeError("Malware scanner did not respond")
+
+    await run_in_threadpool(check_background_services)
+    await run_in_threadpool(check_object_storage)
+    await run_in_threadpool(check_malware_scanner)
+    return {
+        "status": "ready",
+        "database": "ok",
+        "redis": "ok",
+        "broker": "ok",
+        "worker": "ok",
+        "object_storage": "ok",
+        "malware_scanner": "ok" if settings.malware_scan_required else "disabled",
+        "email": "configured" if settings.smtp_host else "disabled",
+    }
 
 
 @app.get("/metrics", include_in_schema=False)

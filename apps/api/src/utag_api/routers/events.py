@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 
 from utag_api.database import new_id
 from utag_api.dependencies import (
@@ -144,12 +144,19 @@ async def list_events(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     status: str | None = None,
+    publication_status: str | None = None,
+    q: str | None = None,
 ) -> Page[EventView]:
     statement = select(Event).order_by(Event.start_date.desc(), Event.start_time.desc())
     if "events.manage" not in principal.permissions:
         statement = statement.where(Event.publication_status == "published")
     if status:
         statement = statement.where(Event.status == status)
+    if publication_status:
+        statement = statement.where(Event.publication_status == publication_status)
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        statement = statement.where(or_(Event.title.ilike(pattern), Event.venue.ilike(pattern)))
     result = await paginate(db, statement, page=page, page_size=page_size)
     counts, registered = await event_counts(
         db, [item.id for item in result.items], principal.user.id
@@ -269,7 +276,7 @@ async def update_event(
     principal: Annotated[Principal, Depends(require_mutation_permissions("events.manage"))],
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ) -> EventView:
-    item = await db.get(Event, event_id)
+    item = await db.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if item is None:
         raise ApiError(404, "event_not_found", "Event not found")
     if if_match != f'"{item.version}"':
@@ -376,7 +383,7 @@ async def register_for_event(
     db: DbSession,
     principal: MutationPrincipal,
 ) -> MessageResponse:
-    item = await db.get(Event, event_id)
+    item = await db.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if item is None or item.publication_status != "published":
         raise ApiError(404, "event_not_found", "Event not found")
     now = datetime.now(UTC)
@@ -384,6 +391,14 @@ async def register_for_event(
         raise ApiError(409, "registration_not_required", "This event does not use registration")
     if item.registration_deadline and item.registration_deadline < now:
         raise ApiError(409, "registration_closed", "Registration has closed")
+    registration = await db.scalar(
+        select(EventRegistration).where(
+            EventRegistration.event_id == item.id,
+            EventRegistration.user_id == principal.user.id,
+        )
+    )
+    if registration is not None and registration.status == "registered":
+        return MessageResponse(message="Registration confirmed")
     count = int(
         (
             await db.scalar(
@@ -397,12 +412,6 @@ async def register_for_event(
     )
     if item.max_participants and count >= item.max_participants:
         raise ApiError(409, "event_full", "This event is at capacity")
-    registration = await db.scalar(
-        select(EventRegistration).where(
-            EventRegistration.event_id == item.id,
-            EventRegistration.user_id == principal.user.id,
-        )
-    )
     if registration is None:
         registration = EventRegistration(
             id=new_id(), event_id=item.id, user_id=principal.user.id, status="registered"
@@ -457,7 +466,10 @@ async def event_access(
     event_id: UUID, db: DbSession, principal: CurrentPrincipal
 ) -> dict[str, str | None]:
     item = await db.get(Event, event_id)
-    if item is None:
+    if item is None or (
+        "events.manage" not in principal.permissions
+        and (item.publication_status != "published" or item.status in {"cancelled", "completed"})
+    ):
         raise ApiError(404, "event_not_found", "Event not found")
     registration = await db.scalar(
         select(EventRegistration.id).where(

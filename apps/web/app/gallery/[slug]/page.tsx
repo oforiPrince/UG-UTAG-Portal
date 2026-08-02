@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { AdSlotBanner } from "@/components/public/ad-slot-banner";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
 
@@ -73,6 +74,7 @@ export default async function GalleryDetailPage({
         </div>
         <div className="h-1 bg-gold" />
       </header>
+      <AdSlotBanner slotKey="content-inline" context="article" />
       <section className="mx-auto max-w-[82rem] px-5 py-14 sm:px-6 lg:px-8 lg:py-18">
         {gallery.images.length === 0 ? (
           <div className="grid min-h-64 place-items-center rounded-md border border-dashed border-line bg-panel text-center">

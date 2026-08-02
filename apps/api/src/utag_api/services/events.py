@@ -53,3 +53,29 @@ def record_change(
             created_at=now,
         )
     )
+
+
+def enqueue_task(
+    db: AsyncSession,
+    *,
+    task_name: str,
+    aggregate_type: str,
+    aggregate_id: UUID,
+    args: list[object],
+    queue: str | None = None,
+) -> None:
+    db.add(
+        OutboxEvent(
+            id=new_id(),
+            event_type="task.dispatch",
+            topic="tasks",
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            payload={
+                "task_name": task_name,
+                "args": args,
+                "queue": queue,
+            },
+            created_at=datetime.now(UTC),
+        )
+    )

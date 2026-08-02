@@ -91,7 +91,7 @@ function profileFromUser(user?: User): ProfileForm {
 }
 
 const inputClass =
-  "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none transition focus:border-sky";
+  "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none transition focus:border-ink/25";
 
 const profileUnitFields: Record<
   "school" | "college" | "department",

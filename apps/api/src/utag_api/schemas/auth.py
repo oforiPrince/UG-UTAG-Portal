@@ -9,7 +9,7 @@ from utag_api.services.content import validate_social_links
 
 class LoginRequest(ApiModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class UserSummary(ApiModel):
@@ -48,7 +48,7 @@ class SessionSummary(ApiModel):
 
 
 class ChangePasswordRequest(ApiModel):
-    current_password: str = Field(min_length=8, max_length=256)
+    current_password: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=8, max_length=256)
 
 

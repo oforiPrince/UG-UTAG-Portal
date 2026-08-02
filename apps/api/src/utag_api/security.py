@@ -5,7 +5,7 @@ import secrets
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, MultiFernet
 
 from utag_api.config import get_settings
 
@@ -57,10 +57,30 @@ def constant_time_equal(left: str, right: str) -> bool:
     return hmac.compare_digest(left.encode(), right.encode())
 
 
-def field_cipher() -> Fernet:
-    secret = get_settings().app_secret_key.get_secret_value().encode()
-    key = base64.urlsafe_b64encode(hashlib.sha256(b"ug-utag-fields:" + secret).digest())
+def _field_fernet(secret: str) -> Fernet:
+    secret_bytes = secret.encode()
+    key = base64.urlsafe_b64encode(hashlib.sha256(b"ug-utag-fields:" + secret_bytes).digest())
     return Fernet(key)
+
+
+def field_cipher() -> MultiFernet:
+    settings = get_settings()
+    configured = settings.field_encryption_keys
+    current = configured.get(settings.field_encryption_key_version)
+    secrets = [
+        current.get_secret_value()
+        if current is not None
+        else settings.app_secret_key.get_secret_value()
+    ]
+    secrets.extend(
+        secret.get_secret_value()
+        for version, secret in configured.items()
+        if version != settings.field_encryption_key_version
+    )
+    legacy_secret = settings.app_secret_key.get_secret_value()
+    if legacy_secret not in secrets:
+        secrets.append(legacy_secret)
+    return MultiFernet([_field_fernet(secret) for secret in secrets])
 
 
 def encrypt_text(value: str | None) -> bytes | None:

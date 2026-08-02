@@ -9,8 +9,8 @@
   --color-gold: var(--gold);
   --color-coral: var(--coral);
   --color-sky: var(--sky);
-  --font-sans: var(--font-sans);
-  --font-display: var(--font-display);
+  --font-sans: var(--site-font-sans);
+  --font-display: var(--site-font-display);
 }
 
 :root {
@@ -22,9 +22,10 @@
   --gold: #c79a2b;
   --coral: #1f5f99;
   --sky: #2d74b5;
-  --font-sans: "Avenir Next", Avenir, Inter, "Segoe UI", system-ui, sans-serif;
-  --font-display:
-    "Avenir Next", Avenir, Inter, "Segoe UI", system-ui, sans-serif;
+  --site-font-sans:
+    var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Arial, sans-serif;
+  --site-font-display: var(--site-font-sans);
 }
 
 .dark {
@@ -65,7 +66,7 @@ body {
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--site-font-sans);
   text-rendering: optimizeLegibility;
 }
 
@@ -74,20 +75,28 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--sky) 65%, transparent);
-  outline-offset: 3px;
+  outline: 2px solid color-mix(in srgb, var(--ink) 28%, transparent);
+  outline-offset: 2px;
+}
+
+/* Form controls manage their own border; skip the global focus ring. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: none;
 }
 
 .display-type {
-  font-family: var(--font-display);
+  font-family: var(--site-font-display);
   font-feature-settings: "liga", "kern";
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -0.03em;
 }
 
 .eyebrow {
   font-size: 0.72rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -249,6 +258,109 @@ body {
   color: color-mix(in srgb, var(--muted) 72%, transparent);
   content: attr(data-placeholder);
   pointer-events: none;
+}
+
+.public-ad {
+  container-type: inline-size;
+  color: var(--muted);
+}
+
+.public-ad__label-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.45rem;
+}
+
+.public-ad__label {
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.public-ad__frame {
+  width: 100%;
+  max-width: min(100%, var(--ad-max-width, 970px));
+  margin-inline: auto;
+  overflow: hidden;
+  aspect-ratio: var(--ad-aspect, 16 / 3);
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 92%, white) 0%,
+      color-mix(in srgb, var(--panel) 100%, #eef2f7) 100%
+    );
+}
+
+.public-ad__frame--strip,
+.public-ad__frame--footer {
+  border-radius: 0.35rem;
+}
+
+.public-ad__frame--rail {
+  border-radius: 0.45rem;
+  box-shadow: 0 10px 28px rgb(16 39 66 / 5%);
+}
+
+.public-ad__frame--inline {
+  border-radius: 0.3rem;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--line) 75%, transparent);
+  background: color-mix(in srgb, var(--panel) 70%, white);
+}
+
+.public-ad__frame--footer {
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: transparent;
+}
+
+.public-ad__link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.public-ad__link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.public-ad__creative {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.public-ad[data-ready="true"] .public-ad__frame {
+  animation: public-ad-in 420ms ease both;
+}
+
+@keyframes public-ad-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-ad[data-ready="true"] .public-ad__frame {
+    animation: none;
+  }
+}
+
+@media print {
+  .public-ad {
+    display: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

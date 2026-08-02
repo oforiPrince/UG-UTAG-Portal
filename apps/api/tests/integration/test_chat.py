@@ -114,4 +114,28 @@ async def test_chat_attachments_and_secure_group_invites(
     assert accepted.status_code == 200
     assert accepted.json()["id"] == group_id
     conversations = await client.get("/api/v1/chat/conversations")
-    assert any(item["id"] == group_id for item in conversations.json())
+    joined_conversation = next(item for item in conversations.json() if item["id"] == group_id)
+    assert joined_conversation["unread_count"] == 1
+
+    joined_messages = await client.get(f"/api/v1/chat/conversations/{group_id}/messages")
+    assert joined_messages.json()["items"][0]["read_by"] == 0
+    marked_read = await client.post(
+        f"/api/v1/chat/conversations/{group_id}/read",
+        headers=member_headers,
+    )
+    assert marked_read.status_code == 200
+
+    admin_headers = await login(client, "admin@example.edu.gh", "StrongPassword123")
+    read_messages = await client.get(f"/api/v1/chat/conversations/{group_id}/messages")
+    assert read_messages.json()["items"][0]["read_by"] == 1
+    transferred = await client.patch(
+        f"/api/v1/chat/conversations/{group_id}/owner",
+        headers=admin_headers,
+        json={"user_id": str(joining_member.id)},
+    )
+    assert transferred.status_code == 200
+
+    members = await client.get(f"/api/v1/chat/conversations/{group_id}/members")
+    roles = {item["user_id"]: item["role"] for item in members.json()}
+    assert roles[str(joining_member.id)] == "owner"
+    assert roles[group.json()["created_by_id"]] == "admin"

@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 
 from utag_api.database import new_id
 from utag_api.dependencies import (
@@ -137,10 +137,16 @@ async def list_articles(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     status: str | None = None,
+    q: str | None = None,
 ) -> Page[ArticleView]:
     statement = select(Article).order_by(Article.updated_at.desc())
     if status:
         statement = statement.where(Article.status == status)
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        statement = statement.where(
+            or_(Article.title.ilike(pattern), Article.excerpt.ilike(pattern))
+        )
     result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[ArticleView](
         items=await article_views(db, list(result.items)),
@@ -242,6 +248,14 @@ async def update_article(
     )
     if "content_html" in changes:
         changes["content_html"] = sanitize_html(changes["content_html"])
+    next_status = changes.get("status", article.status)
+    next_published_at = changes.get("published_at", article.published_at)
+    if next_status == "scheduled" and next_published_at is None:
+        raise ApiError(
+            422,
+            "publication_time_required",
+            "Scheduled articles require a publication time",
+        )
     if changes.get("status") == "published" and not changes.get("published_at"):
         changes["published_at"] = datetime.now(UTC)
     for key, value in changes.items():
@@ -311,10 +325,20 @@ async def list_announcements(
     principal: Annotated[Principal, Depends(require_permissions("content.view"))],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
+    status: str | None = None,
+    priority: str | None = None,
+    q: str | None = None,
 ) -> Page[AnnouncementView]:
+    statement = select(Announcement)
+    if status:
+        statement = statement.where(Announcement.status == status)
+    if priority:
+        statement = statement.where(Announcement.priority == priority)
+    if q and q.strip():
+        statement = statement.where(Announcement.title.ilike(f"%{q.strip()}%"))
     result = await paginate(
         db,
-        select(Announcement).order_by(Announcement.updated_at.desc()),
+        statement.order_by(Announcement.updated_at.desc()),
         page=page,
         page_size=page_size,
     )

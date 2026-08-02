@@ -30,6 +30,7 @@ async def authorized_topics(principal: Principal) -> list[str]:
         topics.add("utag:organization")
     if "content.view" in principal.permissions:
         topics.add("utag:content")
+        topics.add("utag:moderation")
     if "media.manage" in principal.permissions:
         topics.add("utag:media")
     if "adverts.manage" in principal.permissions:
@@ -55,21 +56,21 @@ async def realtime(websocket: WebSocket) -> None:
     raw_token = websocket.cookies.get(settings.session_cookie_name)
     async with SessionFactory() as db:
         principal = await resolve_principal(db, raw_token, touch=False)
-    if principal is None:
+    if principal is None or principal.user.must_change_password:
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
         )
         return
     await websocket.accept(subprotocol="utag.v1")
-    topics = await authorized_topics(principal)
+    topics = set(await authorized_topics(principal))
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     pubsub = redis.pubsub()
-    await pubsub.subscribe(*topics)
+    await pubsub.subscribe(*sorted(topics))
     await websocket.send_json(
         {
             "type": "connection.ready",
             "user_id": str(principal.user.id),
-            "topics": [topic.removeprefix("utag:") for topic in topics],
+            "topics": [topic.removeprefix("utag:") for topic in sorted(topics)],
             "heartbeat_seconds": settings.realtime_heartbeat_seconds,
             "resync_required": True,
         }
@@ -94,8 +95,36 @@ async def realtime(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "resync.acknowledged"})
 
     async def heartbeat() -> None:
+        nonlocal principal, topics
         while True:
             await asyncio.sleep(settings.realtime_heartbeat_seconds)
+            async with SessionFactory() as db:
+                refreshed = await resolve_principal(db, raw_token, touch=False)
+            if refreshed is None or refreshed.user.must_change_password:
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION,
+                    reason="Session is no longer authorized",
+                )
+                raise WebSocketDisconnect
+            refreshed_topics = set(await authorized_topics(refreshed))
+            added = refreshed_topics - topics
+            removed = topics - refreshed_topics
+            if added:
+                await pubsub.subscribe(*sorted(added))
+            if removed:
+                await pubsub.unsubscribe(*sorted(removed))
+            if added or removed:
+                await websocket.send_json(
+                    {
+                        "type": "subscriptions.changed",
+                        "topics": [
+                            topic.removeprefix("utag:") for topic in sorted(refreshed_topics)
+                        ],
+                        "resync_required": True,
+                    }
+                )
+            principal = refreshed
+            topics = refreshed_topics
             await websocket.send_json({"type": "heartbeat"})
 
     tasks = [

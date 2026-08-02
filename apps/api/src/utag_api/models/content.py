@@ -43,7 +43,14 @@ class MediaAsset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "media_assets"
 
     legacy_id: Mapped[int | None] = mapped_column(Integer, unique=True)
-    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    owner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(
+            "users.id",
+            name="fk_media_assets_owner_id_users",
+            ondelete="SET NULL",
+            use_alter=True,
+        )
+    )
     storage_key: Mapped[str] = mapped_column(String(500), unique=True)
     original_filename: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str] = mapped_column(String(150))

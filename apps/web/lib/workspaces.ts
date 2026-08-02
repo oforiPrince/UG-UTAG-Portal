@@ -1,3 +1,5 @@
+import { documentAudiencesForCategory } from "./workspace-options";
+
 export type WorkspaceRow = Record<string, unknown>;
 export type WorkspaceFieldType =
   | "text"
@@ -32,6 +34,7 @@ export type WorkspaceField = {
   permission?: string;
   options?: string[];
   optionsFor?: (permissions: string[]) => string[];
+  optionsForValues?: (values: WorkspaceRow) => string[];
   optionSource?: {
     endpoint: string;
     queryKey: string;
@@ -91,6 +94,10 @@ export type WorkspaceConfig = {
   exportUrl?: string;
   exportPermission?: string;
   filters?: { key: string; label: string; options: string[] }[];
+  serverPagination?: {
+    searchParam?: string;
+    filterParams?: Record<string, string>;
+  };
   create?: WorkspaceMutation;
   update?: WorkspaceMutation;
   archive?: WorkspaceMutation;
@@ -382,6 +389,20 @@ const executiveFields: WorkspaceField[] = [
     type: "checkbox",
     defaultValue: true,
   },
+  {
+    key: "show_email",
+    label: "Show member email on the public profile",
+    type: "checkbox",
+    defaultValue: false,
+    help: "Enable only after the office-holder has consented to publishing their email address.",
+  },
+  {
+    key: "show_phone",
+    label: "Show member phone on the public profile",
+    type: "checkbox",
+    defaultValue: false,
+    help: "Enable only after the office-holder has consented to publishing their phone number.",
+  },
 ];
 
 const editorialFields: WorkspaceField[] = [
@@ -511,7 +532,8 @@ const announcementFields: WorkspaceField[] = [
     label: "Audience",
     type: "multiselect",
     options: [
-      "everyone",
+      "general_public",
+      "all_members",
       "member",
       "executive",
       "editor",
@@ -744,6 +766,17 @@ const eventFields: WorkspaceField[] = [
   },
 ];
 
+const documentAudienceOptions = [
+  "general_public",
+  "all_members",
+  "member",
+  "executive",
+  "editor",
+  "publisher",
+  "secretary",
+  "administrator",
+];
+
 const documentFields: WorkspaceField[] = [
   {
     key: "title",
@@ -772,29 +805,29 @@ const documentFields: WorkspaceField[] = [
     key: "audiences",
     label: "Visible to",
     type: "multiselect",
-    options: [
-      "everyone",
-      "member",
-      "executive",
-      "editor",
-      "publisher",
-      "secretary",
-      "administrator",
-    ],
+    options: documentAudienceOptions,
+    optionsForValues: (values) =>
+      values.category === "external"
+        ? documentAudienceOptions
+        : documentAudienceOptions.filter(
+            (option) => option !== "general_public",
+          ),
     defaultValue: "member",
     valueFromRow: (row) =>
       Array.isArray(row.audiences)
         ? row.audiences.flatMap((rule) => {
             if (!rule || typeof rule !== "object") return [];
             const item = rule as WorkspaceRow;
-            return item.type === "everyone" || item.type === "all_members"
-              ? ["everyone"]
-              : item.type === "role" && item.value
-                ? [String(item.value)]
-                : [];
+            return item.type === "general_public"
+              ? ["general_public"]
+              : item.type === "everyone" || item.type === "all_members"
+                ? ["all_members"]
+                : item.type === "role" && item.value
+                  ? [String(item.value)]
+                  : [];
           })
         : [],
-    help: "Choose Everyone or the member roles allowed to open this document.",
+    help: "General Public publishes the approved document on the website. All Members and role choices remain protected behind member login.",
   },
   { key: "retention_class", label: "Retention class" },
   { key: "legal_hold", label: "Legal hold", type: "checkbox" },
@@ -842,7 +875,10 @@ const campaignFields: WorkspaceField[] = [
       value: (row) => String(row.id),
       label: (row) =>
         `${String(row.name)} · ${String(row.width)}×${String(row.height)}`,
+      filter: (row) => row.is_active === true,
+      emptyLabel: "No active placements available",
     },
+    help: "Key must match a public-site mount. Creative should match the placement size.",
   },
   {
     key: "title",
@@ -871,15 +907,23 @@ const campaignFields: WorkspaceField[] = [
         String(row.content_type).startsWith("image/"),
       emptyLabel: "No ready public images",
     },
-    help: "Upload the campaign creative here or reuse a ready public image.",
+    help: "Required before a campaign can be scheduled or activated.",
   },
-  { key: "target_url", label: "Destination URL" },
+  { key: "target_url", label: "Destination URL", type: "url" },
+  {
+    key: "is_house_ad",
+    label: "House ad (UG UTAG own promotion)",
+    type: "checkbox",
+    defaultValue: false,
+    help: "House ads can go live without an advertiser order. Paid inventory must stay unchecked and be linked from Orders.",
+  },
   {
     key: "status",
     label: "Status",
     type: "select",
     defaultValue: "draft",
     options: ["draft", "scheduled", "active", "paused", "completed"],
+    help: "Paid campaigns need a paid, approved/active order before scheduled or active.",
   },
   { key: "priority", label: "Priority", type: "number", defaultValue: 0 },
   { key: "starts_at", label: "Starts at", type: "datetime-local" },
@@ -919,16 +963,24 @@ const eventPrepare = (payload: WorkspaceRow) => ({
   schedule: payload.schedule ?? [],
 });
 
-const documentPrepare = (payload: WorkspaceRow) => ({
-  ...payload,
-  audiences: Array.isArray(payload.audiences)
-    ? payload.audiences.map((audience) =>
-        audience === "everyone"
+const documentPrepare = (payload: WorkspaceRow) => {
+  const category = String(payload.category ?? "internal");
+  const selectedAudiences = documentAudiencesForCategory(
+    category,
+    Array.isArray(payload.audiences) ? payload.audiences.map(String) : [],
+  );
+  return {
+    ...payload,
+    category,
+    audiences: selectedAudiences.map((audience) =>
+      audience === "general_public"
+        ? { type: "general_public", value: "all" }
+        : audience === "all_members"
           ? { type: "all_members", value: "all" }
           : { type: "role", value: audience },
-      )
-    : [],
-});
+    ),
+  };
+};
 
 export const workspaces: Record<string, WorkspaceConfig> = {
   members: {
@@ -937,6 +989,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "One account directory for members and administrators. Roles provide standard access; selected accounts can also receive audited extra permissions.",
     endpoint: "/api/v1/members?page_size=100",
     queryKey: "members",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { status: "status", roles: "role" },
+    },
     exportUrl: "/api/v1/members/exports/csv",
     exportPermission: "members.export",
     filters: [
@@ -1258,6 +1314,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Draft, review, schedule and publish the news that appears on the public website.",
     endpoint: "/api/v1/content/articles?page_size=100",
     queryKey: "content",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { status: "status" },
+    },
     filters: [
       {
         key: "status",
@@ -1325,6 +1385,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Create official association broadcasts. Publishing delivers the notice once to each targeted member's notification inbox.",
     endpoint: "/api/v1/content/announcements?page_size=100",
     queryKey: "announcements",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { priority: "priority", status: "status" },
+    },
     filters: [
       {
         key: "priority",
@@ -1380,6 +1444,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Planning, schedules, registration, CPD details and protected online access.",
     endpoint: "/api/v1/events?page_size=100",
     queryKey: "events",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: {
+        status: "status",
+        publication_status: "publication_status",
+      },
+    },
     filters: [
       {
         key: "status",
@@ -1457,6 +1528,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Audience-controlled records, immutable file versions, retention and legal-hold metadata.",
     endpoint: "/api/v1/documents?page_size=100",
     queryKey: "documents",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { category: "category", status: "status" },
+    },
     filters: [
       { key: "category", label: "Category", options: ["internal", "external"] },
       {
@@ -1502,6 +1577,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       danger: true,
     },
     actions: [
+      {
+        label: "Preview",
+        permission: "documents.view",
+        endpoint: (row) => `/api/v1/documents/${row.id}`,
+        href: (row) => `/dashboard/documents/${row.id}/preview`,
+        successMessage: "Preview opened",
+        open: true,
+      },
       {
         label: "Add file version",
         permission: "documents.manage",
@@ -1552,6 +1635,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Secure uploads, malware scanning, private delivery and reusable visual assets.",
     endpoint: "/api/v1/media?page_size=100",
     queryKey: "media",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { status: "status" },
+    },
     filters: [
       {
         key: "status",
@@ -1772,14 +1859,16 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           ) ??
           [];
         const blocked = new Set(
-          ((payload.blocked_download_media_ids as string[] | undefined) ?? []).map(
-            String,
-          ),
+          (
+            (payload.blocked_download_media_ids as string[] | undefined) ?? []
+          ).map(String),
         );
         return {
           ...payload,
           media_asset_ids: mediaIds,
-          blocked_download_media_ids: mediaIds.filter((id) => blocked.has(String(id))),
+          blocked_download_media_ids: mediaIds.filter((id) =>
+            blocked.has(String(id)),
+          ),
         };
       },
     },
@@ -1928,7 +2017,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   adverts: {
     title: "Advertising campaigns",
     description:
-      "Creative scheduling, placement, status, impressions and click performance.",
+      "Creatives that run on the public site. Paid campaigns must be linked to a paid order; house ads are for UG UTAG’s own promotions only.",
     endpoint: "/api/v1/adverts/campaigns",
     queryKey: "adverts",
     filters: [
@@ -1941,7 +2030,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     columns: [
       { key: "title", label: "Campaign" },
       { key: "placement_name", label: "Placement" },
-      { key: "media_name", label: "Creative" },
+      { key: "fulfilment", label: "Fulfilment" },
+      { key: "advertiser_name", label: "Advertiser" },
       { key: "status", label: "Status" },
       { key: "starts_at", label: "Starts" },
       { key: "impressions", label: "Impressions" },
@@ -1976,14 +2066,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   "advert-slots": {
     title: "Advertising placements",
     description:
-      "Available portal placements and their required creative dimensions.",
+      "Public-site mounts, required creative dimensions, and where each placement appears.",
     endpoint: "/api/v1/adverts/slots",
     queryKey: "adverts",
     columns: [
       { key: "name", label: "Placement" },
       { key: "key", label: "Key" },
-      { key: "width", label: "Width" },
-      { key: "height", label: "Height" },
+      { key: "location", label: "Site location" },
+      { key: "size", label: "Size" },
       { key: "is_active", label: "Active" },
     ],
     create: {
@@ -1991,10 +2081,22 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       permission: "adverts.manage",
       endpoint: "/api/v1/adverts/slots",
       fields: [
-        { key: "key", label: "Key", required: true },
+        {
+          key: "key",
+          label: "Key",
+          required: true,
+          help: "Must match a public-site mount key (for example home-after-hero).",
+        },
         { key: "name", label: "Name", required: true },
-        { key: "width", label: "Width", type: "number" },
-        { key: "height", label: "Height", type: "number" },
+        {
+          key: "location",
+          label: "Site location",
+          required: true,
+          placeholder: "Home · after hero",
+          help: "Short description of where this placement appears on the public site.",
+        },
+        { key: "width", label: "Width (px)", type: "number", required: true },
+        { key: "height", label: "Height (px)", type: "number", required: true },
         {
           key: "description",
           label: "Description",
@@ -2016,10 +2118,21 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       endpoint: (row) => `/api/v1/adverts/slots/${row.id}`,
       method: "PUT",
       fields: [
-        { key: "key", label: "Key", required: true },
+        {
+          key: "key",
+          label: "Key",
+          required: true,
+          help: "Must match a public-site mount key.",
+        },
         { key: "name", label: "Name", required: true },
-        { key: "width", label: "Width", type: "number" },
-        { key: "height", label: "Height", type: "number" },
+        {
+          key: "location",
+          label: "Site location",
+          required: true,
+          placeholder: "Home · after hero",
+        },
+        { key: "width", label: "Width (px)", type: "number", required: true },
+        { key: "height", label: "Height (px)", type: "number", required: true },
         {
           key: "description",
           label: "Description",
@@ -2033,12 +2146,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   },
   "advert-plans": {
     title: "Advertising plans",
-    description: "Rate-card plans, durations, prices and availability.",
+    description:
+      "Rate-card plans priced per placement, with duration and availability.",
     endpoint: "/api/v1/adverts/plans",
     queryKey: "adverts",
     columns: [
       { key: "name", label: "Plan" },
-      { key: "price", label: "Price" },
+      { key: "placement_name", label: "Placement" },
+      { key: "price", label: "Price (GHS)" },
       { key: "duration_days", label: "Days" },
       { key: "is_active", label: "Active" },
     ],
@@ -2047,6 +2162,21 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       permission: "adverts.manage",
       endpoint: "/api/v1/adverts/plans",
       fields: [
+        {
+          key: "slot_id",
+          label: "Placement",
+          type: "select",
+          required: true,
+          optionSource: {
+            endpoint: "/api/v1/adverts/slots",
+            queryKey: "advert-slots",
+            value: (row) => String(row.id),
+            label: (row) =>
+              `${String(row.name)} · ${String(row.width)}×${String(row.height)}`,
+            filter: (row) => row.is_active === true,
+            emptyLabel: "No active placements available",
+          },
+        },
         { key: "name", label: "Name", required: true },
         {
           key: "description",
@@ -2076,6 +2206,21 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       endpoint: (row) => `/api/v1/adverts/plans/${row.id}`,
       method: "PATCH",
       fields: [
+        {
+          key: "slot_id",
+          label: "Placement",
+          type: "select",
+          required: true,
+          optionSource: {
+            endpoint: "/api/v1/adverts/slots",
+            queryKey: "advert-slots",
+            value: (row) => String(row.id),
+            label: (row) =>
+              `${String(row.name)} · ${String(row.width)}×${String(row.height)}`,
+            filter: (row) => row.is_active === true,
+            emptyLabel: "No active placements available",
+          },
+        },
         { key: "name", label: "Name", required: true },
         {
           key: "description",
@@ -2103,7 +2248,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   "advert-orders": {
     title: "Advertising orders",
     description:
-      "Advertiser orders, campaign assignment, payment and fulfilment status.",
+      "Bookings from external clients or companies. Creating an order auto-creates a draft campaign on the plan’s placement. Mark paid and approved/active before activating the campaign.",
     endpoint: "/api/v1/adverts/orders",
     queryKey: "adverts",
     filters: [
@@ -2119,8 +2264,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       },
     ],
     columns: [
-      { key: "advertiser_name", label: "Advertiser" },
+      { key: "advertiser_name", label: "Client" },
       { key: "plan_name", label: "Plan" },
+      { key: "campaign_name", label: "Campaign" },
       { key: "status", label: "Status" },
       { key: "payment_status", label: "Payment" },
       { key: "starts_on", label: "Starts" },
@@ -2131,18 +2277,20 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       endpoint: "/api/v1/adverts/orders",
       fields: [
         {
-          key: "user_id",
-          label: "Advertiser",
+          key: "advertiser_id",
+          label: "Client / company",
           type: "select",
           required: true,
           optionSource: {
-            endpoint: "/api/v1/members?status=active&page_size=100",
-            queryKey: "active-members",
-            searchParam: "q",
+            endpoint: "/api/v1/adverts/advertisers",
+            queryKey: "advert-advertisers",
             value: (row) => String(row.id),
-            label: (row) => `${String(row.full_name)} · ${String(row.email)}`,
-            emptyLabel: "No active members available",
+            label: (row) =>
+              `${String(row.organization_name)} · ${String(row.email)}`,
+            filter: (row) => row.is_active === true,
+            emptyLabel: "No active advertisers — add one under Clients first",
           },
+          help: "External companies and other non-member clients. Add them under the Clients tab.",
         },
         {
           key: "plan_id",
@@ -2154,22 +2302,25 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             queryKey: "advert-plans",
             value: (row) => String(row.id),
             label: (row) =>
-              `${String(row.name)} · GHS ${String(row.price)} · ${String(row.duration_days)} days`,
+              `${String(row.name)} · ${String(row.placement_name ?? "Placement")} · GHS ${String(row.price)} · ${String(row.duration_days)} days`,
             filter: (row) => row.is_active === true,
             emptyLabel: "No active advertising plans available",
           },
         },
         {
           key: "campaign_id",
-          label: "Campaign",
+          label: "Existing campaign (optional)",
           type: "select",
           optionSource: {
             endpoint: "/api/v1/adverts/campaigns",
             queryKey: "advert-campaigns",
             value: (row) => String(row.id),
-            label: (row) => `${String(row.title)} · ${String(row.status)}`,
+            label: (row) =>
+              `${String(row.title)} · ${String(row.placement_name ?? "Placement")} · ${String(row.status)}`,
+            filter: (row) => row.is_house_ad !== true,
             emptyLabel: "No campaigns available",
           },
+          help: "Leave empty to auto-create a draft campaign for this order. One campaign can only belong to one order.",
         },
         {
           key: "status",
@@ -2177,6 +2328,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           type: "select",
           defaultValue: "pending",
           options: ["pending", "approved", "active", "completed", "cancelled"],
+          help: "Active requires a linked campaign and paid payment status.",
         },
         {
           key: "payment_status",
@@ -2198,6 +2350,20 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       method: "PATCH",
       fields: [
         {
+          key: "advertiser_id",
+          label: "Client / company",
+          type: "select",
+          optionSource: {
+            endpoint: "/api/v1/adverts/advertisers",
+            queryKey: "advert-advertisers",
+            value: (row) => String(row.id),
+            label: (row) =>
+              `${String(row.organization_name)} · ${String(row.email)}`,
+            filter: (row) => row.is_active === true,
+            emptyLabel: "No active advertisers available",
+          },
+        },
+        {
           key: "campaign_id",
           label: "Campaign",
           type: "select",
@@ -2205,9 +2371,12 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             endpoint: "/api/v1/adverts/campaigns",
             queryKey: "advert-campaigns",
             value: (row) => String(row.id),
-            label: (row) => `${String(row.title)} · ${String(row.status)}`,
+            label: (row) =>
+              `${String(row.title)} · ${String(row.placement_name ?? "Placement")} · ${String(row.status)}`,
+            filter: (row) => row.is_house_ad !== true,
             emptyLabel: "No campaigns available",
           },
+          help: "Campaign placement must match the order plan. Active orders require a campaign and paid status.",
         },
         {
           key: "status",
@@ -2234,9 +2403,78 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       method: "DELETE",
       successMessage: "Advertising order cancelled",
       confirm:
-        "Cancel this order? Its payment and campaign history will be retained.",
+        "Cancel this order? Its linked campaign will be paused if it was live.",
       danger: true,
       when: (row) => row.status !== "cancelled",
+    },
+  },
+  "advert-advertisers": {
+    title: "Advertiser clients",
+    description:
+      "External companies and individuals buying ad inventory. They do not need a portal membership.",
+    endpoint: "/api/v1/adverts/advertisers",
+    queryKey: "adverts",
+    columns: [
+      { key: "organization_name", label: "Organization" },
+      { key: "contact_name", label: "Contact" },
+      { key: "email", label: "Email" },
+      { key: "phone", label: "Phone" },
+      { key: "is_active", label: "Active" },
+    ],
+    create: {
+      label: "New client",
+      permission: "adverts.manage",
+      endpoint: "/api/v1/adverts/advertisers",
+      fields: [
+        {
+          key: "organization_name",
+          label: "Organization / company",
+          required: true,
+        },
+        { key: "contact_name", label: "Contact name", emptyValue: "" },
+        { key: "email", label: "Email", type: "email", required: true },
+        { key: "phone", label: "Phone", emptyValue: "" },
+        { key: "website", label: "Website", type: "url", emptyValue: null },
+        { key: "notes", label: "Notes", type: "textarea", emptyValue: "" },
+        {
+          key: "is_active",
+          label: "Active",
+          type: "checkbox",
+          defaultValue: true,
+        },
+      ],
+      successMessage: "Advertiser client created",
+    },
+    update: {
+      label: "Edit client",
+      permission: "adverts.manage",
+      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+      method: "PATCH",
+      fields: [
+        {
+          key: "organization_name",
+          label: "Organization / company",
+          required: true,
+        },
+        { key: "contact_name", label: "Contact name", emptyValue: "" },
+        { key: "email", label: "Email", type: "email", required: true },
+        { key: "phone", label: "Phone", emptyValue: "" },
+        { key: "website", label: "Website", type: "url", emptyValue: null },
+        { key: "notes", label: "Notes", type: "textarea", emptyValue: "" },
+        { key: "is_active", label: "Active", type: "checkbox" },
+      ],
+      successMessage: "Advertiser client updated",
+    },
+    archive: {
+      label: "Deactivate client",
+      permission: "adverts.manage",
+      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+      method: "DELETE",
+      successMessage: "Advertiser client deactivated",
+      confirm:
+        "Deactivate this client? Existing orders stay on record; new orders will require an active client.",
+      danger: true,
+      when: (row) => row.is_active === true,
     },
   },
   analytics: {
@@ -2253,6 +2491,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Immutable evidence of sensitive reads, writes, decisions and security events.",
     endpoint: "/api/v1/admin/audit?page_size=100",
     queryKey: "audit",
+    serverPagination: { searchParam: "q" },
     columns: [
       { key: "actor_name", label: "Actor" },
       { key: "action", label: "Action" },
@@ -2331,6 +2570,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Imports, exports, contact requests and long-running processing with progress.",
     endpoint: "/api/v1/admin/jobs?page_size=100",
     queryKey: "jobs",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { status: "status" },
+    },
     filters: [
       {
         key: "status",

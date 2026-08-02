@@ -111,8 +111,10 @@ async def create_gallery(
     ensure_publish_permission(principal.permissions, payload.status)
     unique_ids = list(dict.fromkeys(payload.media_asset_ids))
     assets = (
-        await db.scalars(select(MediaAsset).where(MediaAsset.id.in_(unique_ids)))
-    ).all() if unique_ids else []
+        (await db.scalars(select(MediaAsset).where(MediaAsset.id.in_(unique_ids)))).all()
+        if unique_ids
+        else []
+    )
     if len(assets) != len(unique_ids) or any(
         asset.status != "ready" or asset.is_private or not asset.content_type.startswith("image/")
         for asset in assets
@@ -177,8 +179,10 @@ async def update_gallery(
     ensure_publish_permission(principal.permissions, payload.status)
     unique_ids = list(dict.fromkeys(payload.media_asset_ids))
     assets = (
-        await db.scalars(select(MediaAsset).where(MediaAsset.id.in_(unique_ids)))
-    ).all() if unique_ids else []
+        (await db.scalars(select(MediaAsset).where(MediaAsset.id.in_(unique_ids)))).all()
+        if unique_ids
+        else []
+    )
     if len(assets) != len(unique_ids) or any(
         asset.status != "ready" or asset.is_private or not asset.content_type.startswith("image/")
         for asset in assets

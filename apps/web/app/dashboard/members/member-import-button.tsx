@@ -9,7 +9,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ type ImportPreview = {
   full_name: string;
   academic_rank: string | null;
   roles: string[];
+  chat_groups: string[];
 };
 type ImportResult = {
   dry_run: boolean;
@@ -31,6 +32,8 @@ type ImportResult = {
   invalid_rows: number;
   imported_rows: number;
   duplicate_rows: number;
+  chat_groups_created: number;
+  chat_memberships_added: number;
   issues: ImportIssue[];
   preview: ImportPreview[];
   preview_truncated: boolean;
@@ -78,10 +81,13 @@ function ImportDialog({ close }: { close: () => void }) {
         toast.error("Fix the reported rows before importing");
         return;
       }
-      toast.success(`${imported.imported_rows} account(s) imported`);
+      toast.success(
+        `${imported.imported_rows} account(s) created with ${imported.chat_memberships_added} chat membership(s)`,
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["members"] }),
         queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+        queryClient.invalidateQueries({ queryKey: ["chat"] }),
       ]);
       close();
     },
@@ -92,12 +98,23 @@ function ImportDialog({ close }: { close: () => void }) {
           : "The members could not be imported",
       ),
   });
+  const busy = preview.isPending || commit.isPending;
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !busy) close();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [busy, close]);
 
   return (
     <div
       className="fixed inset-0 z-[90] flex justify-end bg-black/45 backdrop-blur-sm"
       role="presentation"
-      onMouseDown={close}
+      onMouseDown={() => {
+        if (!busy) close();
+      }}
     >
       <section
         role="dialog"
@@ -111,15 +128,15 @@ function ImportDialog({ close }: { close: () => void }) {
             <p className="eyebrow text-coral">Bulk account workflow</p>
             <h2 className="display-type mt-3 text-4xl">Import members</h2>
             <p className="mt-2 max-w-xl text-xs leading-6 text-muted">
-              Preview CSV or XLSX rows before creating accounts. Valid imports
-              send secure invitations and appear in the audit and jobs
-              workspaces.
+              Preview CSV or XLSX rows before creating active accounts and
+              their UTAG, school, and department chats.
             </p>
           </div>
           <Button
             size="icon"
             variant="ghost"
             onClick={close}
+            disabled={busy}
             aria-label="Close import"
           >
             <X className="size-5" />
@@ -156,16 +173,31 @@ function ImportDialog({ close }: { close: () => void }) {
 
         <div className="mt-4 rounded-xl bg-ink/[.035] p-4 text-[.68rem] leading-6 text-muted">
           Required columns:{" "}
-          <b className="text-ink">email, other_name, surname</b>. Optional:
-          staff_id, title, gender, academic_rank, phone_number, roles. Role
+          <b className="text-ink">
+            staff_id, email, other_name, surname, college, school, department
+          </b>
+          . Optional: title, gender, academic_rank, phone_number, roles. Role
           values may be separated by commas or semicolons.
-          <a
-            href="/api/v1/members/organization-reference.csv"
-            className="mt-2 flex w-fit items-center gap-2 font-bold text-coral"
-          >
-            <ArrowDownToLine className="size-3.5" /> Download organization
-            reference
-          </a>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+            <a
+              href="/api/v1/members/import-template.xlsx"
+              className="flex w-fit items-center gap-2 font-bold text-coral"
+            >
+              <ArrowDownToLine className="size-3.5" /> Download Excel template
+            </a>
+            <a
+              href="/api/v1/members/organization-reference.csv"
+              className="flex w-fit items-center gap-2 font-bold text-coral"
+            >
+              <ArrowDownToLine className="size-3.5" /> Organization reference
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gold/35 bg-gold/10 p-4 text-[.68rem] leading-6 text-ink">
+          <b>First sign-in:</b> each member uses their university email and
+          exact staff ID as the temporary password. The portal requires a new
+          private password before any dashboard or chat access.
         </div>
 
         {result ? (
@@ -209,14 +241,16 @@ function ImportDialog({ close }: { close: () => void }) {
             {result.preview.length ? (
               <div className="overflow-hidden rounded-2xl border border-line">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[42rem] text-left text-xs">
+                  <table className="w-full min-w-[64rem] text-left text-xs">
                     <thead className="bg-ink/[.035] text-[.62rem] font-black uppercase">
                       <tr>
                         <th className="px-4 py-3">Row</th>
                         <th className="px-4 py-3">Member</th>
+                        <th className="px-4 py-3">Staff ID</th>
                         <th className="px-4 py-3">Email</th>
                         <th className="px-4 py-3">Rank</th>
                         <th className="px-4 py-3">Roles</th>
+                        <th className="px-4 py-3">Chat groups</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -226,12 +260,18 @@ function ImportDialog({ close }: { close: () => void }) {
                           <td className="px-4 py-3 font-bold">
                             {member.full_name}
                           </td>
+                          <td className="px-4 py-3 font-mono">
+                            {member.staff_id}
+                          </td>
                           <td className="px-4 py-3">{member.email}</td>
                           <td className="px-4 py-3 text-muted">
                             {member.academic_rank ?? "—"}
                           </td>
                           <td className="px-4 py-3">
                             {member.roles.join(", ")}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            {member.chat_groups.join(" · ")}
                           </td>
                         </tr>
                       ))}
@@ -249,7 +289,7 @@ function ImportDialog({ close }: { close: () => void }) {
         ) : null}
 
         <div className="mt-7 flex flex-wrap justify-end gap-2 border-t border-line pt-5">
-          <Button variant="outline" onClick={close}>
+          <Button variant="outline" onClick={close} disabled={busy}>
             Cancel
           </Button>
           <Button
@@ -273,7 +313,7 @@ function ImportDialog({ close }: { close: () => void }) {
             ) : (
               <Upload className="size-4" />
             )}
-            Import and invite{" "}
+            Create accounts and chats{" "}
             {result?.valid_rows ? `(${result.valid_rows})` : ""}
           </Button>
         </div>

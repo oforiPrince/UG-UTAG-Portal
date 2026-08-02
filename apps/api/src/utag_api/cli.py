@@ -10,6 +10,29 @@ from utag_api.models import Role, User, UserRole
 from utag_api.security import hash_password, normalize_email
 from utag_api.seed_data import seed_portal_defaults
 from utag_api.services.identity import seed_authorization, strong_password_errors
+from utag_api.services.system_chat_groups import (
+    SystemChatSyncResult,
+    sync_system_chat_groups,
+)
+
+
+async def reconcile_chat_groups() -> SystemChatSyncResult:
+    async with SessionFactory() as db:
+        users = (await db.scalars(select(User))).all()
+        administrator_id = await db.scalar(
+            select(User.id)
+            .join(UserRole, UserRole.user_id == User.id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(User.status == "active", Role.key == "administrator")
+            .limit(1)
+        )
+        result = await sync_system_chat_groups(
+            db,
+            users,
+            created_by_id=administrator_id,
+        )
+        await db.commit()
+        return result
 
 
 async def seed() -> None:
@@ -56,6 +79,7 @@ async def seed() -> None:
                     )
                 )
             await db.commit()
+    await reconcile_chat_groups()
 
 
 async def seed_demo() -> None:
@@ -70,6 +94,7 @@ async def seed_demo() -> None:
         raise RuntimeError("DEMO_DATA_PASSWORD is too weak: " + "; ".join(errors))
     async with SessionFactory() as db:
         result = await seed_demo_data(db, password)
+    await reconcile_chat_groups()
     print(
         f"Seeded {result.accounts} demo accounts and "
         f"{result.executive_appointments} executive appointments"
@@ -78,12 +103,22 @@ async def seed_demo() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="UG UTAG API management commands")
-    parser.add_argument("command", choices=["seed", "seed-demo"])
+    parser.add_argument(
+        "command",
+        choices=["seed", "seed-demo", "sync-chat-groups"],
+    )
     args = parser.parse_args()
     if args.command == "seed":
         asyncio.run(seed())
     if args.command == "seed-demo":
         asyncio.run(seed_demo())
+    if args.command == "sync-chat-groups":
+        result = asyncio.run(reconcile_chat_groups())
+        print(
+            f"System chat groups synchronized: {result.groups_created} created, "
+            f"{result.memberships_added} memberships added, "
+            f"{result.memberships_removed} memberships removed"
+        )
 
 
 if __name__ == "__main__":

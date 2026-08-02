@@ -10,8 +10,10 @@ from utag_api.services.member_import import parse_member_import
 def test_csv_member_import_normalizes_legacy_headers_and_roles() -> None:
     rows = parse_member_import(
         "members.csv",
-        b"Email Address,Staff ID,First Name,Last Name,Rank,Groups\n"
-        b"ama@example.edu.gh,UG001,Ama,Mensah,Professor,Member; Executive\n",
+        b"Email Address,Staff ID,First Name,Last Name,Rank,College,"
+        b"Faculty (School),Department,Groups\n"
+        b"ama@example.edu.gh,UG001,Ama,Mensah,Professor,College A,"
+        b"School A,Department A,Member; Executive\n",
     )
 
     assert rows == [
@@ -21,6 +23,9 @@ def test_csv_member_import_normalizes_legacy_headers_and_roles() -> None:
             "other_name": "Ama",
             "surname": "Mensah",
             "academic_rank": "Professor",
+            "college": "College A",
+            "school": "School A",
+            "department": "Department A",
             "roles": ["executive", "member"],
         }
     ]

@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdSlotBanner } from "@/components/public/ad-slot-banner";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
 
@@ -80,6 +81,7 @@ export default async function ArticlePage({
         </div>
         <div className="h-1 bg-gold" />
       </header>
+      <AdSlotBanner slotKey="content-inline" context="article" />
       <article className="mx-auto max-w-4xl px-5 py-14 sm:px-6 lg:py-18">
         <div
           className="prose prose-lg max-w-none text-ink prose-headings:text-[#172f4d] prose-headings:font-bold prose-a:text-coral prose-a:font-semibold"

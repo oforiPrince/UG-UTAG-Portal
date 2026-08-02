@@ -9,18 +9,21 @@ from starlette.concurrency import run_in_threadpool
 
 from utag_api.config import get_settings
 from utag_api.database import new_id
-from utag_api.dependencies import DbSession, event_context
+from utag_api.dependencies import DbSession, client_ip, event_context
 from utag_api.errors import ApiError
 from utag_api.models import (
     AdCampaign,
     AdSlot,
     Article,
+    ArticleAttachment,
     BackgroundJob,
     Document,
     DocumentFile,
     Event,
+    EventAttachment,
     EventRegistration,
     ExecutiveAppointment,
+    FeatureFlag,
     Gallery,
     GalleryItem,
     MediaAsset,
@@ -40,12 +43,14 @@ from utag_api.schemas.domain import (
     PublicExecutiveView,
     SearchResult,
 )
+from utag_api.services.audiences import includes_general_public
 from utag_api.services.content import sanitize_html
-from utag_api.services.events import record_change
+from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.executives import (
     executive_row_order_key,
     is_executive_officer_position,
 )
+from utag_api.services.features import feature_enabled
 from utag_api.services.query import paginate
 from utag_api.services.storage import s3_client, safe_filename
 
@@ -77,8 +82,8 @@ async def public_executive_views(
             title=user.title,
             academic_rank=user.academic_rank,
             profile_media_id=user.profile_media_id,
-            email=user.email,
-            phone_number=user.phone_number,
+            email=user.email if appointment.show_email else None,
+            phone_number=user.phone_number if appointment.show_phone else None,
             school_name=unit_names.get(user.school_id) if user.school_id else None,
             college_name=unit_names.get(user.college_id) if user.college_id else None,
             department_name=unit_names.get(user.department_id) if user.department_id else None,
@@ -101,6 +106,110 @@ def public_setting_value(setting: SiteSetting) -> dict[str, Any]:
         and slide.get("archived") is not True
     ]
     return {**setting.value, "slides": sorted(public_slides, key=lambda row: row.get("order", 0))}
+
+
+async def public_document_media_is_referenced(db: DbSession, asset_id: UUID) -> bool:
+    latest_versions = (
+        select(
+            DocumentFile.document_id,
+            func.max(DocumentFile.version_number).label("version_number"),
+        )
+        .group_by(DocumentFile.document_id)
+        .subquery()
+    )
+    document_audiences = (
+        await db.scalars(
+            select(Document.audiences)
+            .join(DocumentFile, DocumentFile.document_id == Document.id)
+            .join(
+                latest_versions,
+                (latest_versions.c.document_id == DocumentFile.document_id)
+                & (latest_versions.c.version_number == DocumentFile.version_number),
+            )
+            .where(
+                DocumentFile.media_asset_id == asset_id,
+                Document.category == "external",
+                Document.status == "published",
+            )
+        )
+    ).all()
+    return any(includes_general_public(audiences) for audiences in document_audiences)
+
+
+async def public_media_is_referenced(db: DbSession, asset_id: UUID, now: datetime) -> bool:
+    published_article = (
+        Article.status == "published",
+        Article.published_at <= now,
+    )
+    published_event = (
+        Event.publication_status == "published",
+        Event.published_at <= now,
+    )
+    statements = (
+        select(Article.id).where(
+            Article.featured_media_id == asset_id,
+            *published_article,
+        ),
+        select(ArticleAttachment.id)
+        .join(Article, Article.id == ArticleAttachment.article_id)
+        .where(ArticleAttachment.media_asset_id == asset_id, *published_article),
+        select(Event.id).where(
+            Event.featured_media_id == asset_id,
+            *published_event,
+        ),
+        select(EventAttachment.id)
+        .join(Event, Event.id == EventAttachment.event_id)
+        .where(EventAttachment.media_asset_id == asset_id, *published_event),
+        select(ExecutiveAppointment.id)
+        .join(User, User.id == ExecutiveAppointment.user_id)
+        .where(
+            User.profile_media_id == asset_id,
+            User.status == "active",
+            ExecutiveAppointment.is_active.is_(True),
+            ExecutiveAppointment.is_public.is_(True),
+        ),
+        select(AdCampaign.id).where(
+            AdCampaign.media_asset_id == asset_id,
+            AdCampaign.status == "active",
+            or_(AdCampaign.starts_at.is_(None), AdCampaign.starts_at <= now),
+            or_(AdCampaign.ends_at.is_(None), AdCampaign.ends_at >= now),
+        ),
+    )
+    for statement in statements:
+        if await db.scalar(statement.limit(1)) is not None:
+            return True
+
+    if await feature_enabled(db, "public-gallery"):
+        gallery_reference = await db.scalar(
+            select(GalleryItem.id)
+            .join(Gallery, Gallery.id == GalleryItem.gallery_id)
+            .where(
+                GalleryItem.media_asset_id == asset_id,
+                Gallery.status == "published",
+            )
+            .limit(1)
+        )
+        if gallery_reference is not None:
+            return True
+
+    if await feature_enabled(db, "public-resources") and await public_document_media_is_referenced(
+        db, asset_id
+    ):
+        return True
+
+    carousel = await db.scalar(
+        select(SiteSetting).where(
+            SiteSetting.key == "site.carousel",
+            SiteSetting.is_public.is_(True),
+        )
+    )
+    if carousel is None:
+        return False
+    slides = public_setting_value(carousel).get("slides", [])
+    return any(
+        isinstance(slide, dict) and str(slide.get("media_asset_id")) == str(asset_id)
+        for slide in slides
+    )
 
 
 @router.get("/home")
@@ -136,6 +245,7 @@ async def home(db: DbSession) -> dict[str, Any]:
                     .where(
                         ExecutiveAppointment.is_active.is_(True),
                         ExecutiveAppointment.is_public.is_(True),
+                        User.status == "active",
                     )
                 )
             ).all()
@@ -270,7 +380,10 @@ async def leadership(db: DbSession, include_past: bool = False) -> list[PublicEx
     statement = (
         select(ExecutiveAppointment, User)
         .join(User, User.id == ExecutiveAppointment.user_id)
-        .where(ExecutiveAppointment.is_public.is_(True))
+        .where(
+            ExecutiveAppointment.is_public.is_(True),
+            User.status == "active",
+        )
     )
     if not include_past:
         statement = statement.where(ExecutiveAppointment.is_active.is_(True))
@@ -326,6 +439,8 @@ async def public_gallery_data(db: DbSession, gallery: Gallery) -> dict[str, Any]
 
 @router.get("/galleries")
 async def galleries(db: DbSession) -> list[dict[str, Any]]:
+    if not await feature_enabled(db, "public-gallery"):
+        return []
     rows = (
         await db.scalars(
             select(Gallery)
@@ -338,6 +453,8 @@ async def galleries(db: DbSession) -> list[dict[str, Any]]:
 
 @router.get("/galleries/{slug}")
 async def gallery(slug: str, db: DbSession) -> dict[str, Any]:
+    if not await feature_enabled(db, "public-gallery"):
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
     item = await db.scalar(
         select(Gallery).where(Gallery.slug == slug, Gallery.status == "published")
     )
@@ -347,9 +464,9 @@ async def gallery(slug: str, db: DbSession) -> dict[str, Any]:
 
 
 @router.get("/galleries/{slug}/media/{asset_id}/download")
-async def download_gallery_media(
-    slug: str, asset_id: UUID, db: DbSession
-) -> StreamingResponse:
+async def download_gallery_media(slug: str, asset_id: UUID, db: DbSession) -> StreamingResponse:
+    if not await feature_enabled(db, "public-gallery"):
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
     gallery = await db.scalar(
         select(Gallery).where(Gallery.slug == slug, Gallery.status == "published")
     )
@@ -396,8 +513,11 @@ async def download_gallery_media(
     )
 
 
-@router.get("/documents")
-async def public_documents(db: DbSession) -> list[dict[str, Any]]:
+async def public_document_views(
+    db: DbSession, document_id: UUID | None = None
+) -> list[dict[str, Any]]:
+    if not await feature_enabled(db, "public-resources"):
+        return []
     latest_versions = (
         select(
             DocumentFile.document_id,
@@ -406,32 +526,42 @@ async def public_documents(db: DbSession) -> list[dict[str, Any]]:
         .group_by(DocumentFile.document_id)
         .subquery()
     )
+    statement = (
+        select(Document, DocumentFile, MediaAsset)
+        .join(latest_versions, latest_versions.c.document_id == Document.id)
+        .join(
+            DocumentFile,
+            (DocumentFile.document_id == Document.id)
+            & (DocumentFile.version_number == latest_versions.c.version_number),
+        )
+        .join(MediaAsset, MediaAsset.id == DocumentFile.media_asset_id)
+        .where(
+            Document.category == "external",
+            Document.status == "published",
+            MediaAsset.status == "ready",
+        )
+    )
+    if document_id is not None:
+        statement = statement.where(Document.id == document_id)
     rows = (
         await db.execute(
-            select(Document, DocumentFile, MediaAsset)
-            .join(latest_versions, latest_versions.c.document_id == Document.id)
-            .join(
-                DocumentFile,
-                (DocumentFile.document_id == Document.id)
-                & (DocumentFile.version_number == latest_versions.c.version_number),
+            statement.order_by(
+                Document.document_date.desc(),
+                Document.created_at.desc(),
+                DocumentFile.position,
             )
-            .join(MediaAsset, MediaAsset.id == DocumentFile.media_asset_id)
-            .where(
-                Document.category == "external",
-                Document.status == "published",
-                MediaAsset.status == "ready",
-                MediaAsset.is_private.is_(False),
-            )
-            .order_by(Document.document_date.desc(), Document.created_at.desc())
         )
     ).all()
     documents: dict[UUID, dict[str, Any]] = {}
     for document, _version, asset in rows:
+        if not includes_general_public(document.audiences):
+            continue
         file_data = {
             "media_asset_id": asset.id,
             "filename": asset.original_filename,
             "content_type": asset.content_type,
             "byte_size": asset.byte_size,
+            "content_url": f"/api/v1/public/media/{asset.id}",
             "download_url": f"/api/v1/public/media/{asset.id}",
         }
         entry = documents.setdefault(
@@ -447,12 +577,26 @@ async def public_documents(db: DbSession) -> list[dict[str, Any]]:
                 "filename": asset.original_filename,
                 "content_type": asset.content_type,
                 "byte_size": asset.byte_size,
+                "content_url": f"/api/v1/public/media/{asset.id}",
                 "download_url": f"/api/v1/public/media/{asset.id}",
                 "files": [],
             },
         )
         entry["files"].append(file_data)
     return list(documents.values())
+
+
+@router.get("/documents")
+async def public_documents(db: DbSession) -> list[dict[str, Any]]:
+    return await public_document_views(db)
+
+
+@router.get("/documents/{document_id}")
+async def public_document(document_id: UUID, db: DbSession) -> dict[str, Any]:
+    documents = await public_document_views(db, document_id)
+    if not documents:
+        raise ApiError(404, "document_not_found", "Document not found")
+    return documents[0]
 
 
 @router.get("/settings")
@@ -465,10 +609,28 @@ async def public_settings(db: DbSession) -> dict[str, Any]:
     return {item.key: public_setting_value(item) for item in rows}
 
 
+@router.get("/features")
+async def public_features(db: DbSession) -> dict[str, bool]:
+    keys = ("association-pulse", "public-resources", "public-gallery")
+    values = {
+        row.key: row.enabled
+        for row in (await db.scalars(select(FeatureFlag).where(FeatureFlag.key.in_(keys)))).all()
+    }
+    return {key: bool(values.get(key, True)) for key in keys}
+
+
 @router.get("/media/{asset_id}")
 async def public_media(asset_id: UUID, db: DbSession) -> StreamingResponse:
     asset = await db.get(MediaAsset, asset_id)
-    if asset is None or asset.status != "ready" or asset.is_private:
+    if asset is None or asset.status != "ready":
+        raise ApiError(404, "media_not_found", "Media asset not found")
+    document_reference = await feature_enabled(
+        db, "public-resources"
+    ) and await public_document_media_is_referenced(db, asset_id)
+    is_referenced = document_reference or (
+        not asset.is_private and await public_media_is_referenced(db, asset_id, datetime.now(UTC))
+    )
+    if not is_referenced:
         raise ApiError(404, "media_not_found", "Media asset not found")
     try:
         stored = await run_in_threadpool(
@@ -492,13 +654,14 @@ async def public_media(asset_id: UUID, db: DbSession) -> StreamingResponse:
 @router.get("/ads/{slot_key}", response_model=list[AdCampaignView])
 async def live_ads(slot_key: str, db: DbSession) -> list[AdCampaignView]:
     now = datetime.now(UTC)
+    slot = await db.scalar(select(AdSlot).where(AdSlot.key == slot_key, AdSlot.is_active.is_(True)))
+    if slot is None:
+        return []
     rows = (
         await db.scalars(
             select(AdCampaign)
-            .join(AdSlot, AdSlot.id == AdCampaign.slot_id)
             .where(
-                AdSlot.key == slot_key,
-                AdSlot.is_active.is_(True),
+                AdCampaign.slot_id == slot.id,
                 AdCampaign.status == "active",
                 or_(AdCampaign.starts_at.is_(None), AdCampaign.starts_at <= now),
                 or_(AdCampaign.ends_at.is_(None), AdCampaign.ends_at >= now),
@@ -506,7 +669,18 @@ async def live_ads(slot_key: str, db: DbSession) -> list[AdCampaignView]:
             .order_by(AdCampaign.priority.desc(), AdCampaign.created_at.desc())
         )
     ).all()
-    return [AdCampaignView.model_validate(row) for row in rows]
+    return [
+        AdCampaignView.model_validate(
+            {
+                **{key: value for key, value in vars(row).items() if not key.startswith("_")},
+                "placement_name": slot.name,
+                "slot_key": slot.key,
+                "width": slot.width,
+                "height": slot.height,
+            }
+        )
+        for row in rows
+    ]
 
 
 @router.get("/search", response_model=list[SearchResult])
@@ -515,12 +689,14 @@ async def search_public(
     q: Annotated[str, Query(min_length=2, max_length=120)],
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> list[SearchResult]:
+    now = datetime.now(UTC)
     pattern = f"%{q.strip()}%"
     article_rows = (
         await db.scalars(
             select(Article)
             .where(
                 Article.status == "published",
+                Article.published_at <= now,
                 or_(Article.title.ilike(pattern), Article.excerpt.ilike(pattern)),
             )
             .limit(limit)
@@ -531,6 +707,7 @@ async def search_public(
             select(Event)
             .where(
                 Event.publication_status == "published",
+                Event.published_at <= now,
                 or_(Event.title.ilike(pattern), Event.short_description.ilike(pattern)),
             )
             .limit(limit)
@@ -547,6 +724,7 @@ async def search_public(
             .limit(limit)
         )
     ).all()
+    document_rows = [item for item in document_rows if includes_general_public(item.audiences)]
     results = [
         SearchResult(
             id=item.id,
@@ -592,8 +770,8 @@ async def contact(
     # Honeypot submissions receive the same response but are not persisted.
     if payload.website:
         return MessageResponse(message="Thank you. Your message has been received")
-    client_ip = request.client.host if request.client else "unknown"
-    await enforce_rate_limit("contact", client_ip, limit=5, period_seconds=3600)
+    request_ip = client_ip(request)
+    await enforce_rate_limit("contact", request_ip, limit=5, period_seconds=3600)
     job = BackgroundJob(
         id=new_id(),
         kind="contact_message",
@@ -615,8 +793,13 @@ async def contact(
         topic="admin:communications",
         payload={"job_id": str(job.id), "subject": payload.subject},
     )
+    enqueue_task(
+        db,
+        task_name="utag.contact.deliver",
+        aggregate_type="background_job",
+        aggregate_id=job.id,
+        args=[str(job.id)],
+        queue="communications",
+    )
     await db.commit()
-    from utag_api.worker.tasks import deliver_contact_message
-
-    deliver_contact_message.delay(str(job.id))
     return MessageResponse(message="Thank you. Your message has been received")

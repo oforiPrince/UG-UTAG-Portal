@@ -3,11 +3,14 @@ import type { Metadata } from "next";
 
 import { PageHero } from "@/components/public/page-hero";
 import { PublicShell } from "@/components/public/public-shell";
+import { getPublicSite, phoneHref } from "@/lib/public-site";
 import { ContactForm } from "./contact-form";
 
 export const metadata: Metadata = { title: "Contact" };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { contact } = await getPublicSite();
+  const telephoneHref = phoneHref(contact.phone);
   return (
     <PublicShell>
       <PageHero
@@ -35,9 +38,7 @@ export default function ContactPage() {
               <div>
                 <p className="font-extrabold text-[#172f4d]">Office</p>
                 <p className="mt-1 text-sm leading-6 text-muted">
-                  University of Ghana
-                  <br />
-                  Legon, Accra, Ghana
+                  {contact.address}
                 </p>
               </div>
             </div>
@@ -49,9 +50,9 @@ export default function ContactPage() {
                 <p className="font-extrabold text-[#172f4d]">Email</p>
                 <a
                   className="mt-1 block text-sm text-muted hover:text-coral"
-                  href="mailto:utagoffice@ug.edu.gh"
+                  href={`mailto:${contact.email}`}
                 >
-                  utagoffice@ug.edu.gh
+                  {contact.email}
                 </a>
               </div>
             </div>
@@ -63,9 +64,9 @@ export default function ContactPage() {
                 <p className="font-extrabold text-[#172f4d]">Telephone</p>
                 <a
                   className="mt-1 block text-sm text-muted hover:text-coral"
-                  href="tel:+233244277275"
+                  href={`tel:${telephoneHref}`}
                 >
-                  +233 (0) 24 427 7275
+                  {contact.phone}
                 </a>
               </div>
             </div>
@@ -76,9 +77,7 @@ export default function ContactPage() {
               <div>
                 <p className="font-extrabold text-[#172f4d]">Opening hours</p>
                 <p className="mt-1 text-sm leading-6 text-muted">
-                  Monday–Friday
-                  <br />
-                  9:00 AM–6:00 PM
+                  {contact.office_hours}
                 </p>
               </div>
             </div>

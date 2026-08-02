@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { workspaceOptionQueryState } from "./workspace-options";
+import {
+  documentAudiencesForCategory,
+  nextMultiSelectValue,
+  workspaceOptionQueryState,
+} from "./workspace-options";
 import { workspaces, workspaceFilterMatches } from "./workspaces";
 
 describe("workspace option loading", () => {
@@ -26,6 +30,51 @@ describe("workspace option loading", () => {
         isError: true,
       }),
     ).toEqual({ isLoading: false, isError: true });
+  });
+});
+
+describe("multiple workspace options", () => {
+  it("adds General Public without removing protected audiences", () => {
+    expect(
+      nextMultiSelectValue(["member", "executive"], "general_public", true),
+    ).toEqual(["member", "executive", "general_public"]);
+  });
+
+  it("adds a member role without removing General Public", () => {
+    expect(nextMultiSelectValue(["general_public"], "member", true)).toEqual([
+      "general_public",
+      "member",
+    ]);
+  });
+
+  it("does not duplicate an already selected audience", () => {
+    expect(nextMultiSelectValue(["member"], "member", true)).toEqual([
+      "member",
+    ]);
+  });
+});
+
+describe("document audience categories", () => {
+  it("replaces a public-only selection when a document becomes internal", () => {
+    expect(
+      documentAudiencesForCategory("internal", ["general_public"]),
+    ).toEqual(["member"]);
+  });
+
+  it("preserves protected audiences while removing public visibility", () => {
+    expect(
+      documentAudiencesForCategory("internal", ["general_public", "executive"]),
+    ).toEqual(["executive"]);
+  });
+
+  it("allows public visibility for external documents", () => {
+    expect(
+      documentAudiencesForCategory("external", ["general_public"]),
+    ).toEqual(["general_public"]);
+  });
+
+  it("preserves an intentionally empty protected audience", () => {
+    expect(documentAudiencesForCategory("internal", [])).toEqual([]);
   });
 });
 
@@ -103,11 +152,16 @@ describe("member creation", () => {
 
   it("uses related-record lookups instead of raw IDs for advertising orders", () => {
     const fields = workspaces["advert-orders"].create?.fields ?? [];
-    for (const key of ["user_id", "plan_id", "campaign_id"]) {
+    for (const key of ["advertiser_id", "plan_id", "campaign_id"]) {
       expect(fields.find((field) => field.key === key)).toMatchObject({
         type: "select",
         optionSource: expect.any(Object),
       });
     }
+    expect(
+      fields.find((field) => field.key === "advertiser_id")?.optionSource,
+    ).toMatchObject({
+      endpoint: "/api/v1/adverts/advertisers",
+    });
   });
 });

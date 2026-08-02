@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 
 from utag_api.database import new_id
 from utag_api.models import AuditEvent, MediaAsset, Role, User, UserRole
+from utag_api.routers.public import public_document_media_is_referenced
 from utag_api.security import hash_password
 
 
@@ -147,28 +148,51 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
     client: AsyncClient, session_factory
 ) -> None:  # type: ignore[no-untyped-def]
     headers = await login_headers(client)
-    asset_id = new_id()
+    document_asset_id = new_id()
+    member_asset_id = new_id()
+    gallery_asset_id = new_id()
     async with session_factory() as session:
         administrator = await session.scalar(
             select(User).where(User.email == "admin@example.edu.gh")
         )
         assert administrator is not None
-        session.add(
-            MediaAsset(
-                id=asset_id,
-                owner_id=administrator.id,
-                storage_key=f"moderation/{asset_id}.png",
-                original_filename="approved-public-file.png",
-                content_type="image/png",
-                byte_size=128,
-                sha256="1" * 64,
-                status="ready",
-                is_private=False,
-                alt_text="UG UTAG public resource",
-                metadata_json={},
-            )
+        session.add_all(
+            [
+                MediaAsset(
+                    id=asset_id,
+                    owner_id=administrator.id,
+                    storage_key=f"moderation/{asset_id}.png",
+                    original_filename=filename,
+                    content_type="image/png",
+                    byte_size=128,
+                    sha256=checksum * 64,
+                    status="ready",
+                    is_private=is_private,
+                    alt_text="UG UTAG public resource",
+                    metadata_json={},
+                )
+                for asset_id, filename, checksum, is_private in (
+                    (document_asset_id, "approved-public-file.png", "1", True),
+                    (member_asset_id, "member-only-file.png", "2", True),
+                    (gallery_asset_id, "approved-gallery-image.png", "3", False),
+                )
+            ]
         )
         await session.commit()
+
+    invalid_internal_public = await client.post(
+        "/api/v1/documents",
+        headers=headers,
+        json={
+            "title": "Invalid public committee minutes",
+            "category": "internal",
+            "audiences": [{"type": "general_public", "value": "all"}],
+            "status": "review",
+            "media_asset_id": str(document_asset_id),
+        },
+    )
+    assert invalid_internal_public.status_code == 422
+    assert invalid_internal_public.json()["error"]["code"] == "invalid_document_audience"
 
     document = await client.post(
         "/api/v1/documents",
@@ -177,11 +201,31 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
             "title": "Public policy brief",
             "category": "external",
             "description_html": "<p>Public policy resource.</p>",
+            "audiences": [{"type": "general_public", "value": "all"}],
             "status": "review",
-            "media_asset_id": str(asset_id),
+            "media_asset_id": str(document_asset_id),
         },
     )
     assert document.status_code == 201
+    invalid_internal_update = await client.patch(
+        f"/api/v1/documents/{document.json()['id']}",
+        headers={**headers, "If-Match": f'"{document.json()["version"]}"'},
+        json={"category": "internal"},
+    )
+    assert invalid_internal_update.status_code == 422
+    assert invalid_internal_update.json()["error"]["code"] == "invalid_document_audience"
+    member_document = await client.post(
+        "/api/v1/documents",
+        headers=headers,
+        json={
+            "title": "Member-only external circular",
+            "category": "external",
+            "audiences": [{"type": "role", "value": "member"}],
+            "status": "review",
+            "media_asset_id": str(member_asset_id),
+        },
+    )
+    assert member_document.status_code == 201
     internal = await client.post(
         "/api/v1/documents",
         headers=headers,
@@ -189,7 +233,7 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
             "title": "Internal committee minutes",
             "category": "internal",
             "status": "review",
-            "media_asset_id": str(asset_id),
+            "media_asset_id": str(document_asset_id),
         },
     )
     assert internal.status_code == 201
@@ -203,7 +247,7 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
                 "<script>alert('unsafe')</script>"
             ),
             "status": "review",
-            "media_asset_ids": [str(asset_id)],
+            "media_asset_ids": [str(gallery_asset_id)],
         },
     )
     assert gallery.status_code == 201
@@ -223,7 +267,7 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
         json={
             "title": "Changed without a version",
             "status": "review",
-            "media_asset_ids": [str(asset_id)],
+            "media_asset_ids": [str(gallery_asset_id)],
         },
     )
     assert stale_gallery.status_code == 412
@@ -231,10 +275,15 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
     queue = (await client.get("/api/v1/moderation", params={"status": "review"})).json()
     assert {item["title"] for item in queue} == {
         "Public policy brief",
+        "Member-only external circular",
         "Annual member forum",
     }
 
-    for kind, item in (("document", document.json()), ("gallery", gallery.json())):
+    for kind, item in (
+        ("document", document.json()),
+        ("document", member_document.json()),
+        ("gallery", gallery.json()),
+    ):
         approved = await client.post(
             f"/api/v1/moderation/{kind}/{item['id']}",
             headers=headers,
@@ -245,13 +294,26 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
     documents = (await client.get("/api/v1/public/documents")).json()
     galleries = (await client.get("/api/v1/public/galleries")).json()
     assert [item["title"] for item in documents] == ["Public policy brief"]
+    assert documents[0]["files"][0]["media_asset_id"] == str(document_asset_id)
+    assert documents[0]["files"][0]["content_url"] == (f"/api/v1/public/media/{document_asset_id}")
+    public_document = await client.get(f"/api/v1/public/documents/{document.json()['id']}")
+    assert public_document.status_code == 200
+    assert public_document.json()["title"] == "Public policy brief"
+    assert (
+        await client.get(f"/api/v1/public/documents/{member_document.json()['id']}")
+    ).status_code == 404
     assert [item["title"] for item in galleries] == ["Annual member forum"]
     assert galleries[0]["image_count"] == 1
     assert galleries[0]["description"] == (
         "<p>Approved <strong>photographs</strong> from the forum.</p>"
     )
+    member_search = (await client.get("/api/v1/public/search", params={"q": "Member-only"})).json()
+    assert all(item["title"] != "Member-only external circular" for item in member_search)
+    assert (await client.get(f"/api/v1/public/media/{member_asset_id}")).status_code == 404
 
     async with session_factory() as session:
+        assert await public_document_media_is_referenced(session, document_asset_id)
+        assert not await public_document_media_is_referenced(session, member_asset_id)
         assert (
             await session.scalar(
                 select(func.count())
@@ -262,5 +324,5 @@ async def test_only_moderated_external_documents_and_galleries_are_public(
                     )
                 )
             )
-            == 2
+            == 3
         )

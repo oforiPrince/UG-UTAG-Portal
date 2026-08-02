@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from ipaddress import ip_address, ip_network
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
@@ -15,6 +16,11 @@ from utag_api.services.events import EventContext
 from utag_api.services.identity import load_user_access
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+PASSWORD_CHANGE_PATHS = {
+    "/api/v1/auth/logout",
+    "/api/v1/auth/me",
+    "/api/v1/auth/password",
+}
 
 
 @dataclass(slots=True)
@@ -72,6 +78,12 @@ async def get_current_principal(
     principal = await resolve_principal(db, session_cookie)
     if principal is None:
         raise ApiError(401, "authentication_required", "Please sign in to continue")
+    if principal.user.must_change_password and request.url.path not in PASSWORD_CHANGE_PATHS:
+        raise ApiError(
+            403,
+            "password_change_required",
+            "Change your temporary password before continuing",
+        )
     return principal
 
 
@@ -122,13 +134,36 @@ def require_mutation_permissions(*required: str):  # type: ignore[no-untyped-def
     return permission_dependency
 
 
+def client_ip(request: Request) -> str:
+    peer = request.client.host if request.client else "unknown"
+    networks = tuple(ip_network(network) for network in get_settings().trusted_proxy_cidrs)
+    try:
+        peer_address = ip_address(peer)
+        trusted = any(peer_address in network for network in networks)
+    except ValueError:
+        trusted = False
+    if trusted:
+        forwarded_addresses = []
+        for forwarded_value in request.headers.get("X-Forwarded-For", "").split(","):
+            forwarded_value = forwarded_value.strip()
+            try:
+                forwarded_addresses.append(ip_address(forwarded_value))
+            except ValueError:
+                continue
+        for forwarded_address in reversed(forwarded_addresses):
+            if not any(forwarded_address in network for network in networks):
+                return str(forwarded_address)
+        if forwarded_addresses:
+            return str(forwarded_addresses[0])
+    return peer
+
+
 def event_context(request: Request, principal: Principal | None = None) -> EventContext:
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    ip_address = forwarded.split(",", 1)[0].strip() or (
-        request.client.host if request.client else "unknown"
-    )
     return EventContext(
         actor_id=principal.user.id if principal else None,
         request_id=request.headers.get("X-Request-ID"),
-        metadata={"ip": ip_address, "user_agent": request.headers.get("User-Agent", "")[:500]},
+        metadata={
+            "ip": client_ip(request),
+            "user_agent": request.headers.get("User-Agent", "")[:500],
+        },
     )

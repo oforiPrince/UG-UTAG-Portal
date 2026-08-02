@@ -42,6 +42,16 @@ def s3_client() -> Any:
     return boto3.client("s3", **kwargs)
 
 
+def s3_encryption_args() -> dict[str, str]:
+    settings = get_settings()
+    if not settings.s3_server_side_encryption:
+        return {}
+    values: dict[str, str] = {"ServerSideEncryption": settings.s3_server_side_encryption}
+    if settings.s3_server_side_encryption == "aws:kms" and settings.s3_kms_key_id:
+        values["SSEKMSKeyId"] = settings.s3_kms_key_id
+    return values
+
+
 def validate_upload(content_type: str, byte_size: int) -> None:
     settings = get_settings()
     if content_type not in ALLOWED_UPLOAD_TYPES:
@@ -67,15 +77,22 @@ def presign_put(
         "x-amz-meta-byte-size": str(byte_size),
         "x-amz-meta-sha256": sha256.casefold(),
     }
+    encryption = s3_encryption_args()
+    if encryption:
+        headers["x-amz-server-side-encryption"] = encryption["ServerSideEncryption"]
+        if "SSEKMSKeyId" in encryption:
+            headers["x-amz-server-side-encryption-aws-kms-key-id"] = encryption["SSEKMSKeyId"]
+    params = {
+        "Bucket": settings.media_bucket,
+        "Key": storage_key,
+        "ContentType": content_type,
+        "Metadata": {"byte-size": str(byte_size), "sha256": sha256.casefold()},
+        **encryption,
+    }
     url = str(
         s3_client().generate_presigned_url(
             "put_object",
-            Params={
-                "Bucket": settings.media_bucket,
-                "Key": storage_key,
-                "ContentType": content_type,
-                "Metadata": {"byte-size": str(byte_size), "sha256": sha256.casefold()},
-            },
+            Params=params,
             ExpiresIn=settings.presigned_url_ttl_seconds,
             HttpMethod="PUT",
         )

@@ -23,6 +23,54 @@ function configuredFields() {
 }
 
 describe("workspace content editors", () => {
+  it("opens a complete protected preview for every document", () => {
+    const preview = workspaces.documents.actions?.find(
+      (action) => action.label === "Preview",
+    );
+    expect(preview).toMatchObject({
+      permission: "documents.view",
+      open: true,
+    });
+    expect(preview?.href?.({ id: "document-1" })).toBe(
+      "/dashboard/documents/document-1/preview",
+    );
+  });
+
+  it("offers General Public only for external documents", () => {
+    const audience = workspaces.documents.create?.fields?.find(
+      (field) => field.key === "audiences",
+    );
+    expect(audience).toMatchObject({
+      options: expect.arrayContaining(["general_public", "all_members"]),
+    });
+    expect(
+      audience?.optionsForValues?.({ category: "internal" }),
+    ).not.toContain("general_public");
+    expect(audience?.optionsForValues?.({ category: "external" })).toContain(
+      "general_public",
+    );
+    expect(
+      workspaces.documents.create?.prepare?.({
+        title: "Public policy",
+        category: "internal",
+        audiences: ["general_public"],
+      }),
+    ).toMatchObject({
+      category: "internal",
+      audiences: [{ type: "role", value: "member" }],
+    });
+    expect(
+      workspaces.documents.create?.prepare?.({
+        title: "Public policy",
+        category: "external",
+        audiences: ["general_public"],
+      }),
+    ).toMatchObject({
+      category: "external",
+      audiences: [{ type: "general_public", value: "all" }],
+    });
+  });
+
   it.each([
     ["executives", "biography_html"],
     ["news", "content_html"],
@@ -64,6 +112,7 @@ describe("workspace content editors", () => {
     );
     expect(actualPlainText).toEqual(
       [
+        "advert-advertisers.notes",
         "advert-orders.notes",
         "advert-plans.description",
         "advert-slots.description",
@@ -189,5 +238,44 @@ describe("workspace content editors", () => {
     );
     expect(field?.type).toBe("media");
     expect(Boolean(field?.media?.multiple)).toBe(multiple);
+  });
+
+  it("ties advert plans to placements and surfaces site location", () => {
+    const planSlot = workspaces["advert-plans"].create?.fields?.find(
+      (field) => field.key === "slot_id",
+    );
+    expect(planSlot?.required).toBe(true);
+    expect(planSlot?.type).toBe("select");
+    expect(
+      workspaces["advert-plans"].columns.some(
+        (column) => column.key === "placement_name",
+      ),
+    ).toBe(true);
+
+    const location = workspaces["advert-slots"].create?.fields?.find(
+      (field) => field.key === "location",
+    );
+    expect(location?.required).toBe(true);
+    expect(
+      workspaces["advert-slots"].columns.some(
+        (column) => column.key === "location",
+      ),
+    ).toBe(true);
+    expect(
+      workspaces["advert-slots"].columns.some((column) => column.key === "size"),
+    ).toBe(true);
+
+    const destination = workspaces.adverts.create?.fields?.find(
+      (field) => field.key === "target_url",
+    );
+    expect(destination?.type).toBe("url");
+
+    const houseAd = workspaces.adverts.create?.fields?.find(
+      (field) => field.key === "is_house_ad",
+    );
+    expect(houseAd?.type).toBe("checkbox");
+    expect(
+      workspaces.adverts.columns.some((column) => column.key === "fulfilment"),
+    ).toBe(true);
   });
 });

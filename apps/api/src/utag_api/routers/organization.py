@@ -65,6 +65,33 @@ async def validate_parent(
     return parent
 
 
+async def validate_unit_identity(
+    db: DbSession,
+    *,
+    unit_type: str,
+    name: str,
+    parent_id: UUID | None,
+    exclude_id: UUID | None = None,
+) -> None:
+    statement = select(OrganizationUnit.id).where(
+        OrganizationUnit.unit_type == unit_type,
+        OrganizationUnit.name == name,
+        (
+            OrganizationUnit.parent_id.is_(None)
+            if parent_id is None
+            else OrganizationUnit.parent_id == parent_id
+        ),
+    )
+    if exclude_id is not None:
+        statement = statement.where(OrganizationUnit.id != exclude_id)
+    if await db.scalar(statement.limit(1)) is not None:
+        raise ApiError(
+            409,
+            "organization_unit_exists",
+            "An organization unit with this name already exists under that parent",
+        )
+
+
 @router.get("/units", response_model=list[OrganizationUnitView])
 async def units(
     db: DbSession,
@@ -99,6 +126,12 @@ async def create_unit(
     principal: Annotated[Principal, Depends(require_mutation_permissions("organization.manage"))],
 ) -> OrganizationUnitView:
     parent = await validate_parent(db, payload.unit_type, payload.parent_id)
+    await validate_unit_identity(
+        db,
+        unit_type=payload.unit_type,
+        name=payload.name,
+        parent_id=payload.parent_id,
+    )
     base_slug = slugify(payload.name)
     slug = base_slug
     suffix = 2
@@ -144,6 +177,13 @@ async def update_unit(
         if changes["parent_id"] == item.id:
             raise ApiError(422, "parent_unit_invalid", "A unit cannot be its own parent")
         parent = await validate_parent(db, item.unit_type, changes["parent_id"])
+    await validate_unit_identity(
+        db,
+        unit_type=item.unit_type,
+        name=str(changes.get("name", item.name)),
+        parent_id=changes.get("parent_id", item.parent_id),
+        exclude_id=item.id,
+    )
     for key, value in changes.items():
         setattr(item, key, value)
     record_change(

@@ -39,7 +39,12 @@ def view(appointment: ExecutiveAppointment, user: User) -> ExecutiveView:
 
 
 @router.get("", response_model=list[ExecutiveView])
-async def list_executives(db: DbSession, include_past: bool = True) -> list[ExecutiveView]:
+async def list_executives(
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("members.view"))],
+    include_past: bool = True,
+) -> list[ExecutiveView]:
+    del principal
     statement = select(ExecutiveAppointment, User).join(
         User, User.id == ExecutiveAppointment.user_id
     )
@@ -81,6 +86,8 @@ async def export_executives(
             "acting",
             "current",
             "public",
+            "show_email",
+            "show_phone",
         ]
     )
     for appointment, user in rows:
@@ -96,6 +103,8 @@ async def export_executives(
                 appointment.is_acting,
                 appointment.is_active,
                 appointment.is_public,
+                appointment.show_email,
+                appointment.show_phone,
             ]
         )
     return StreamingResponse(

@@ -27,10 +27,16 @@ from utag_api.models import (
     GalleryItem,
 )
 from utag_api.schemas.common import ApiModel
+from utag_api.services.audiences import includes_general_public
 from utag_api.services.events import record_change
+from utag_api.services.features import feature_required
 from utag_api.services.notifications import deliver_announcement_notifications
 
-router = APIRouter(prefix="/moderation", tags=["content moderation"])
+router = APIRouter(
+    prefix="/moderation",
+    tags=["content moderation"],
+    dependencies=[Depends(feature_required("content-moderation"))],
+)
 
 ContentKind = Literal["news", "announcement", "event", "document", "gallery"]
 ModeratedModel = Article | Announcement | Event | Document | Gallery
@@ -108,7 +114,7 @@ def _public_url(item: ModeratedModel) -> str | None:
     if isinstance(item, Gallery):
         return f"/gallery/{item.slug}"
     if isinstance(item, Document):
-        return f"/resources#{item.id}"
+        return f"/resources/{item.id}" if includes_general_public(item.audiences) else None
     return None
 
 

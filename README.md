@@ -10,6 +10,7 @@ The complete product, architecture, security, delivery, migration, and acceptanc
 
 - Responsive public site: home, mandate, leadership, news, events, resources, gallery, search, contact, SEO metadata, PWA shell, and constrained-connectivity fallback.
 - Secure account journeys: invitations, login, logout, session management, CSRF protection, password changes and reset links.
+- Bulk member onboarding: downloadable Excel template, row-by-row preview, staff-ID temporary passwords, mandatory first-login password change, and automatic UTAG, school, and department chats.
 - Role-aware dashboard: Association Pulse, member and executive management, organization structure, editorial workflows, announcements, events and registration, documents, media, galleries, notifications, encrypted direct/group chat, advertising, analytics, audit, settings, and background jobs.
 - Live data across dashboard pages through authenticated WebSockets, Redis Pub/Sub, transactional outbox events, query invalidation, reconnect backoff, and full resync after reconnect.
 - File security: presigned quarantine uploads, declared and actual checksum validation, ClamAV streaming scan, private delivery links, image verification, and generated WebP variants.
@@ -37,7 +38,7 @@ docker-compose.yml     Complete local/on-prem service topology
 5. Start the services:
 
 ```bash
-docker compose up --build
+docker compose --profile local up --build
 ```
 
 The web portal is available at `http://localhost:3000`, the API at `http://localhost:8000`, and development API documentation at `http://localhost:8000/docs`.
@@ -46,22 +47,33 @@ After the administrator can sign in, remove the two bootstrap administrator valu
 
 For a public TLS edge, set `SITE_DOMAIN` and `ACME_EMAIL`, then run:
 
+Production deliberately does not start the bundled development MinIO or ClamAV
+containers. Configure a maintained S3-compatible object store in
+`S3_ENDPOINT_URL` and a maintained malware scanner in `CLAMAV_HOST` first.
+
 ```bash
 docker compose --profile production up -d
 ```
 
-For Prometheus, set `METRICS_BEARER_TOKEN` and run the `observability` profile.
+The bundled Prometheus profile is for local observability only. Use a maintained
+managed or separately patched metrics platform in production.
 
 ## Local engineering workflow
 
 Backend:
 
 ```bash
+cp apps/api/.env.example apps/api/.env
+docker compose --profile local up -d postgres redis rabbitmq minio minio-init clamav
 make api-install
 make migrate
 cd apps/api && .venv/bin/python -m utag_api.cli seed
 make api-check
 ```
+
+The native API example uses loopback service addresses; keep its database,
+RabbitMQ, and object-store credentials aligned with the root Docker `.env`.
+The container stack uses internal service names instead.
 
 Frontend:
 
@@ -135,5 +147,23 @@ Production cutover still requires the full go/no-go gates in the runbook, named 
 - Alerts for readiness failure, elevated error rate, queue growth, outbox lag, failed file scanning, failed backups, and abnormal authentication attempts.
 - Key and secret rotation through the deployment platform, never through committed files.
 - Dependency and container scanning before promotion to production.
+
+`ops/scripts/backup-modern.sh` creates a matching PostgreSQL dump and object
+snapshot with SHA-256 manifests:
+
+```bash
+BACKUP_DIRECTORY=/verified/ug-utag-backups ops/scripts/backup-modern.sh
+```
+
+Restore drills must use the dump and object directory from the same timestamp.
+The restore command is deliberately guarded because it replaces the target
+database and removes object-store files absent from the selected snapshot:
+
+```bash
+RESTORE_CONFIRM=restore-ug-utag \
+DATABASE_BACKUP=/verified/ug-utag-backups/ug-utag-TIMESTAMP.dump \
+OBJECT_BACKUP_DIRECTORY=/verified/ug-utag-backups/ug-utag-TIMESTAMP-objects \
+ops/scripts/restore-modern.sh
+```
 
 The old Django containers and routes must not be added to the new production topology. All public traffic switches to the new edge only after reconciliation and acceptance pass.

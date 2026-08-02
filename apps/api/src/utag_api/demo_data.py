@@ -384,6 +384,10 @@ async def seed_demo_data(db: AsyncSession, password: str) -> DemoSeedResult:
         appointment.is_acting = False
         appointment.is_active = True
         appointment.is_public = True
+        # Demo identities are fictional and intentionally exercise both public
+        # contact fields; real appointments default to private contact details.
+        appointment.show_email = True
+        appointment.show_phone = True
 
     await db.commit()
     return DemoSeedResult(

@@ -7,6 +7,9 @@ import GalleryPage from "./page";
 
 vi.mock("@/lib/api", () => ({ publicApi: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/gallery" }));
+vi.mock("@/components/public/public-shell", () => ({
+  PublicShell: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 describe("public gallery content", () => {
   it("renders the formatted gallery introduction without exposing HTML tags", async () => {

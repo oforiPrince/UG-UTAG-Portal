@@ -25,6 +25,7 @@ from utag_api.schemas.domain import (
     NotificationView,
     PulsePoint,
 )
+from utag_api.services.features import feature_enabled
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -46,7 +47,9 @@ async def overview(
     permissions = principal.permissions
     can_manage_events = "events.manage" in permissions
     can_view_activity = "audit.view" in permissions
-    can_view_pulse = can_view_activity or "analytics.view" in permissions
+    can_view_pulse = (
+        can_view_activity or "analytics.view" in permissions
+    ) and await feature_enabled(db, "association-pulse")
     sections = ["events", "notifications"]
     metrics: list[DashboardMetric] = []
 
@@ -77,9 +80,7 @@ async def overview(
                 1 for audiences in audience_rows if audiences_allow(audiences, principal)
             )
             document_label = "Available documents"
-        metrics.append(
-            DashboardMetric(key="documents", label=document_label, value=document_count)
-        )
+        metrics.append(DashboardMetric(key="documents", label=document_label, value=document_count))
         sections.append("documents")
 
     event_filters = (
@@ -89,9 +90,7 @@ async def overview(
     event_count_statement = select(func.count(Event.id)).where(*event_filters)
     event_statement = select(Event).where(*event_filters)
     if not can_manage_events:
-        event_count_statement = event_count_statement.where(
-            Event.publication_status == "published"
-        )
+        event_count_statement = event_count_statement.where(Event.publication_status == "published")
         event_statement = event_statement.where(Event.publication_status == "published")
     upcoming_count = int((await db.scalar(event_count_statement)) or 0)
     metrics.append(DashboardMetric(key="events", label="Upcoming events", value=upcoming_count))
@@ -147,7 +146,10 @@ async def overview(
     notifications = (
         await db.scalars(
             select(Notification)
-            .where(Notification.user_id == principal.user.id)
+            .where(
+                Notification.user_id == principal.user.id,
+                Notification.archived_at.is_(None),
+            )
             .order_by(Notification.created_at.desc())
             .limit(6)
         )
@@ -208,8 +210,7 @@ async def overview(
         metrics=metrics,
         pulse=pulse_points,
         upcoming_events=[
-            event_view(item, counts.get(item.id, 0), item.id in registered_ids)
-            for item in upcoming
+            event_view(item, counts.get(item.id, 0), item.id in registered_ids) for item in upcoming
         ],
         recent_notifications=[NotificationView.model_validate(item) for item in notifications],
         recent_activity=recent_activity,

@@ -1,20 +1,26 @@
+import io
 from datetime import UTC, datetime
 from uuid import UUID
 
 from httpx import AsyncClient
+from openpyxl import load_workbook
 from sqlalchemy import select
 
 from utag_api.database import new_id
 from utag_api.models import (
     AccountToken,
     AuditEvent,
+    Conversation,
+    ConversationMember,
     ExecutiveAppointment,
     MediaAsset,
+    OrganizationUnit,
     Role,
     User,
     UserPermissionGrant,
     UserRole,
 )
+from utag_api.routers import auth as auth_router
 from utag_api.security import hash_password
 
 
@@ -28,6 +34,8 @@ async def test_login_me_and_csrf_logout(client: AsyncClient) -> None:
     assert payload["user"]["full_name"] == "Dr. Ama Mensah"
     assert "settings.manage" in payload["user"]["permissions"]
     assert client.cookies.get("utag_session")
+    assert login.headers["cache-control"] == "no-store"
+    assert login.headers["x-frame-options"] == "DENY"
 
     me = await client.get("/api/v1/auth/me")
     assert me.status_code == 200
@@ -50,6 +58,25 @@ async def test_invalid_credentials_use_generic_message(client: AsyncClient) -> N
     )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "invalid_credentials"
+
+
+async def test_unknown_account_still_runs_password_verification(
+    client: AsyncClient, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    verified_hashes: list[str] = []
+
+    def fake_verify(password_hash: str, password: str) -> tuple[bool, bool]:
+        verified_hashes.append(password_hash)
+        return False, False
+
+    monkeypatch.setattr(auth_router, "verify_password", fake_verify)
+    response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "missing@example.edu.gh", "password": "WrongPassword123"},
+    )
+
+    assert response.status_code == 401
+    assert verified_hashes == [auth_router.DUMMY_PASSWORD_HASH]
 
 
 async def test_profile_and_password_workflow(client: AsyncClient) -> None:
@@ -479,6 +506,7 @@ async def test_individual_permission_grants_merge_with_role_access(
         assert member is not None
         member.password_hash = hash_password("CustomAccessPassword123")
         member.email_verified = True
+        member.must_change_password = False
         await session.commit()
 
     member_login = await client.post(
@@ -614,18 +642,83 @@ async def test_secretary_cannot_assign_roles_or_manage_administrators(
     assert administrator_update.json()["error"]["code"] == "administrator_management_denied"
 
 
-async def test_member_import_previews_then_creates_invited_accounts(
-    client: AsyncClient, monkeypatch
+async def test_member_import_creates_staff_password_accounts_and_chat_groups(
+    client: AsyncClient,
+    session_factory,
 ) -> None:  # type: ignore[no-untyped-def]
+    async with session_factory() as session:
+        college = OrganizationUnit(
+            id=new_id(),
+            unit_type="college",
+            name="College of Import Studies",
+            slug="college-import-studies",
+            is_active=True,
+        )
+        school = OrganizationUnit(
+            id=new_id(),
+            unit_type="school",
+            name="School of Import Studies",
+            slug="school-import-studies",
+            parent_id=college.id,
+            is_active=True,
+        )
+        department = OrganizationUnit(
+            id=new_id(),
+            unit_type="department",
+            name="Department of Import Studies",
+            slug="department-import-studies",
+            parent_id=school.id,
+            is_active=True,
+        )
+        session.add_all([college, school, department])
+        await session.commit()
+
     login = await client.post(
         "/api/v1/auth/login",
         json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
     )
     headers = {"X-CSRF-Token": login.json()["csrf_token"]}
     file_content = (
-        b"email,staff_id,other_name,surname,academic_rank,roles\n"
-        b"bulk.member@example.edu.gh,UG-BULK-1,Efua,Owusu,Lecturer,member;editor\n"
+        b"email,staff_id,other_name,surname,academic_rank,college,school,department,roles\n"
+        b"bulk.member@example.edu.gh,UG1,Efua,Owusu,Lecturer,"
+        b"College of Import Studies,School of Import Studies,"
+        b"Department of Import Studies,member\n"
     )
+
+    missing_staff_id = await client.post(
+        "/api/v1/members/import",
+        headers=headers,
+        files={
+            "file": (
+                "members.csv",
+                file_content.replace(b"UG1", b""),
+                "text/csv",
+            )
+        },
+        data={"dry_run": "true"},
+    )
+    assert missing_staff_id.status_code == 200
+    assert missing_staff_id.json()["valid_rows"] == 0
+    assert missing_staff_id.json()["issues"][0]["field"] == "staff_id"
+
+    existing_email = await client.post(
+        "/api/v1/members/import",
+        headers=headers,
+        files={
+            "file": (
+                "members.csv",
+                file_content.replace(
+                    b"bulk.member@example.edu.gh",
+                    b"ADMIN@example.edu.gh",
+                ),
+                "text/csv",
+            )
+        },
+        data={"dry_run": "true"},
+    )
+    assert existing_email.status_code == 200
+    assert existing_email.json()["valid_rows"] == 0
+    assert existing_email.json()["issues"][0]["field"] == "email"
 
     preview = await client.post(
         "/api/v1/members/import",
@@ -637,8 +730,12 @@ async def test_member_import_previews_then_creates_invited_accounts(
     assert preview.json()["valid_rows"] == 1
     assert preview.json()["imported_rows"] == 0
     assert preview.json()["issues"] == []
+    assert preview.json()["preview"][0]["chat_groups"] == [
+        "UTAG UG",
+        "School: School of Import Studies",
+        "Department: Department of Import Studies",
+    ]
 
-    monkeypatch.setattr("utag_api.worker.tasks.send_invitation.delay", lambda *_: None)
     committed = await client.post(
         "/api/v1/members/import",
         headers=headers,
@@ -647,12 +744,143 @@ async def test_member_import_previews_then_creates_invited_accounts(
     )
     assert committed.status_code == 200
     assert committed.json()["imported_rows"] == 1
+    assert committed.json()["chat_groups_created"] == 3
+    assert committed.json()["chat_memberships_added"] == 3
 
     members = await client.get("/api/v1/members", params={"q": "bulk.member"})
     assert members.status_code == 200
     imported = members.json()["items"][0]
-    assert imported["status"] == "invited"
-    assert imported["roles"] == ["editor", "member"]
+    assert imported["status"] == "active"
+    assert imported["must_change_password"] is True
+    assert imported["roles"] == ["member"]
+
+    first_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "bulk.member@example.edu.gh", "password": "UG1"},
+    )
+    assert first_login.status_code == 200
+    assert first_login.json()["user"]["must_change_password"] is True
+    member_headers = {"X-CSRF-Token": first_login.json()["csrf_token"]}
+
+    blocked_chat = await client.get("/api/v1/chat/conversations")
+    assert blocked_chat.status_code == 403
+    assert blocked_chat.json()["error"]["code"] == "password_change_required"
+
+    changed = await client.post(
+        "/api/v1/auth/password",
+        headers=member_headers,
+        json={
+            "current_password": "UG1",
+            "new_password": "PrivatePassword456",
+        },
+    )
+    assert changed.status_code == 200
+
+    conversations = await client.get("/api/v1/chat/conversations")
+    assert conversations.status_code == 200
+    assert {item["title"] for item in conversations.json()} == {
+        "UTAG UG",
+        "School: School of Import Studies",
+        "Department: Department of Import Studies",
+    }
+    utag_group = next(item for item in conversations.json() if item["title"] == "UTAG UG")
+    managed_leave = await client.delete(
+        f"/api/v1/chat/conversations/{utag_group['id']}/members/{imported['id']}",
+        headers=member_headers,
+    )
+    assert managed_leave.status_code == 409
+    assert managed_leave.json()["error"]["code"] == "system_chat_membership_managed"
+
+    admin_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    admin_headers = {"X-CSRF-Token": admin_login.json()["csrf_token"]}
+    deactivated = await client.post(
+        f"/api/v1/members/{imported['id']}/deactivate",
+        headers=admin_headers,
+        json={"reason": "Membership paused for integration testing"},
+    )
+    assert deactivated.status_code == 200
+    async with session_factory() as session:
+        managed_memberships = (
+            await session.scalars(
+                select(ConversationMember)
+                .join(
+                    Conversation,
+                    Conversation.id == ConversationMember.conversation_id,
+                )
+                .where(
+                    ConversationMember.user_id == UUID(imported["id"]),
+                    Conversation.direct_key.like("system:%"),
+                )
+            )
+        ).all()
+        assert len(managed_memberships) == 3
+        assert all(item.left_at is not None for item in managed_memberships)
+
+    reactivated = await client.post(
+        f"/api/v1/members/{imported['id']}/reactivate",
+        headers=admin_headers,
+    )
+    assert reactivated.status_code == 200
+    async with session_factory() as session:
+        active_memberships = (
+            await session.scalars(
+                select(ConversationMember)
+                .join(
+                    Conversation,
+                    Conversation.id == ConversationMember.conversation_id,
+                )
+                .where(
+                    ConversationMember.user_id == UUID(imported["id"]),
+                    Conversation.direct_key.like("system:%"),
+                    ConversationMember.left_at.is_(None),
+                )
+            )
+        ).all()
+        assert len(active_memberships) == 3
+
+
+async def test_member_import_template_is_a_valid_workbook(
+    client: AsyncClient,
+) -> None:
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    assert login.status_code == 200
+
+    response = await client.get("/api/v1/members/import-template.xlsx")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert "ug-utag-member-import-template.xlsx" in response.headers["content-disposition"]
+
+    workbook = load_workbook(io.BytesIO(response.content), read_only=True)
+    try:
+        assert workbook.sheetnames == [
+            "Members",
+            "Instructions",
+            "Organization Reference",
+        ]
+        assert list(next(workbook["Members"].iter_rows(values_only=True))) == [
+            "staff_id",
+            "email",
+            "title",
+            "other_name",
+            "surname",
+            "gender",
+            "academic_rank",
+            "phone_number",
+            "college",
+            "school",
+            "department",
+            "roles",
+        ]
+    finally:
+        workbook.close()
 
 
 async def test_carousel_requires_public_media_and_archives_without_erasing(

@@ -26,7 +26,7 @@ export function SearchClient() {
   });
   return (
     <div>
-      <label className="flex min-h-16 items-center gap-4 rounded-md border border-line bg-panel px-5 shadow-sm focus-within:border-coral focus-within:ring-2 focus-within:ring-sky/15">
+      <label className="flex min-h-16 items-center gap-4 rounded-md border border-line bg-panel px-5 shadow-sm focus-within:border-coral focus-within:ring-0">
         <Search className="size-5 text-coral" />
         <input
           value={query}

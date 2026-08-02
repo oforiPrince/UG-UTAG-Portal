@@ -66,7 +66,7 @@ function ToolbarButton({
       onClick={onClick}
       className={cn(
         "grid size-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-ink/[.07] hover:text-ink disabled:cursor-not-allowed disabled:opacity-35",
-        active && "bg-sky/12 text-sky ring-1 ring-sky/20",
+        active && "bg-sky/12 text-sky ring-1 ring-ink/10",
       )}
     >
       <Icon className="size-4" />
@@ -188,7 +188,7 @@ export function RichTextEditor({
   }
 
   return (
-    <div className="overflow-clip rounded-xl border border-line bg-paper shadow-[0_8px_28px_rgb(23_43_69_/_6%)] focus-within:border-sky focus-within:ring-3 focus-within:ring-sky/20">
+    <div className="overflow-clip rounded-xl border border-line bg-paper shadow-[0_8px_28px_rgb(23_43_69_/_6%)] focus-within:border-ink/25 focus-within:ring-0">
       <div
         aria-label="Text formatting"
         role="toolbar"
@@ -216,7 +216,7 @@ export function RichTextEditor({
               command.setHeading({ level: 4 }).run();
             else command.setParagraph().run();
           }}
-          className="mr-1 h-9 min-w-28 rounded-lg border border-line bg-paper px-2 text-xs font-bold text-ink outline-none focus:border-sky"
+          className="mr-1 h-9 min-w-28 rounded-lg border border-line bg-paper px-2 text-xs font-bold text-ink outline-none focus:border-ink/25"
         >
           <option value="paragraph">Paragraph</option>
           <option value="heading-2">Heading 2</option>
@@ -364,7 +364,7 @@ export function RichTextEditor({
                 setLinkValue(event.target.value);
                 setLinkError("");
               }}
-              className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-sky"
+              className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
             />
             {linkError ? (
               <span role="alert" className="font-normal text-red-700">

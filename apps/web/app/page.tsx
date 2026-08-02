@@ -12,19 +12,18 @@ import {
   Megaphone,
   MessageCircleMore,
   Scale,
-  ShieldCheck,
   TrendingUp,
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 
 import { ExecutiveCard } from "@/components/public/executive-card";
-import { PublicShell } from "@/components/public/public-shell";
-import { PublicEmptyState } from "@/components/public/public-empty-state";
 import {
   HomeHero,
   type HomeCarouselSlide,
 } from "@/components/public/home-hero";
+import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
 import {
@@ -206,6 +205,12 @@ export default async function Home() {
         slides={carousel.slides ?? []}
       />
 
+      <AdSlotBanner
+        slotKey="home-after-hero"
+        context="home"
+        priority
+      />
+
       <section
         aria-label="Our core commitments"
         className="border-b border-line bg-white"
@@ -267,92 +272,81 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="bg-[#f5f8fb] px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-[82rem]">
-          <SectionHeading
-            kicker="Our events"
-            title="Meet, learn and shape our common work"
-            copy="Upcoming meetings and activities for members and the wider academic community."
-          />
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {data.upcoming_events.length === 0 && (
-              <PublicEmptyState
-                title="No upcoming public events"
-                description="New meetings and activities will be published here as soon as dates are confirmed."
-              />
-            )}
-            {data.upcoming_events.slice(0, 3).map((event, index) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}`}
-                className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
-              >
-                <div
-                  className="relative h-44 bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url('${
-                      event.featured_media_id
-                        ? `/api/v1/public/media/${event.featured_media_id}`
-                        : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                    }')`,
-                  }}
+      {data.upcoming_events.length > 0 ? (
+        <section className="bg-[#f5f8fb] px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-[82rem]">
+            <SectionHeading
+              kicker="Our events"
+              title="Meet, learn and shape our common work"
+              copy="Upcoming meetings and activities for members and the wider academic community."
+            />
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              {data.upcoming_events.slice(0, 3).map((event, index) => (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.slug}`}
+                  className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div className="absolute inset-0 bg-[#102a48]/25" />
-                  <time
-                    className="absolute bottom-0 left-5 grid min-w-16 bg-gold px-3 py-2 text-center text-[#172f4d]"
-                    dateTime={event.start_date}
+                  <div
+                    className="relative h-44 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url('${
+                        event.featured_media_id
+                          ? `/api/v1/public/media/${event.featured_media_id}`
+                          : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
+                      }')`,
+                    }}
                   >
-                    <span className="text-xl font-black leading-none">
-                      {format(new Date(event.start_date), "dd")}
-                    </span>
-                    <span className="mt-1 text-[.62rem] font-extrabold tracking-wide uppercase">
-                      {format(new Date(event.start_date), "MMM yyyy")}
-                    </span>
-                  </time>
-                </div>
-                <div className="p-6">
-                  <p className="text-[.68rem] font-bold tracking-wide text-coral uppercase">
-                    {event.event_type}
-                  </p>
-                  <h3 className="mt-2 text-xl font-extrabold text-[#172f4d] group-hover:text-coral">
-                    {event.title}
-                  </h3>
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted">
-                    {event.short_description}
-                  </p>
-                  <p className="mt-5 flex items-center gap-2 border-t border-line pt-4 text-xs font-bold text-muted">
-                    <MapPin className="size-4 text-gold" />{" "}
-                    {event.venue ?? "Online"}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-9 text-center">
-            <Button asChild className="rounded-md" variant="outline">
-              <Link href="/events">
-                View all events <CalendarDays className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-[82rem]">
-          <SectionHeading
-            kicker="Our gallery"
-            title="UG UTAG in action"
-            copy="A visual record of engagement, leadership and academic community life."
-          />
-          {galleryHighlights.length === 0 ? (
-            <div className="mt-10">
-              <PublicEmptyState
-                title="No public gallery highlights yet"
-                description="Approved images will be featured here after they pass the dashboard moderation workflow."
-              />
+                    <div className="absolute inset-0 bg-[#102a48]/25" />
+                    <time
+                      className="absolute bottom-0 left-5 grid min-w-16 bg-gold px-3 py-2 text-center text-[#172f4d]"
+                      dateTime={event.start_date}
+                    >
+                      <span className="text-xl font-black leading-none">
+                        {format(new Date(event.start_date), "dd")}
+                      </span>
+                      <span className="mt-1 text-[.62rem] font-extrabold tracking-wide uppercase">
+                        {format(new Date(event.start_date), "MMM yyyy")}
+                      </span>
+                    </time>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-[.68rem] font-bold tracking-wide text-coral uppercase">
+                      {event.event_type}
+                    </p>
+                    <h3 className="mt-2 text-xl font-extrabold text-[#172f4d] group-hover:text-coral">
+                      {event.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted">
+                      {event.short_description}
+                    </p>
+                    <p className="mt-5 flex items-center gap-2 border-t border-line pt-4 text-xs font-bold text-muted">
+                      <MapPin className="size-4 text-gold" />{" "}
+                      {event.venue ?? "Online"}
+                    </p>
+                  </div>
+                </Link>
+              ))}
             </div>
-          ) : (
+            <div className="mt-9 text-center">
+              <Button asChild className="rounded-md" variant="outline">
+                <Link href="/events">
+                  View all events <CalendarDays className="size-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {galleryHighlights.length > 0 ? (
+        <section className="px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-[82rem]">
+            <SectionHeading
+              kicker="Our gallery"
+              title="UG UTAG in action"
+              copy="A visual record of engagement, leadership and academic community life."
+            />
             <div className="mt-10 grid gap-3 md:grid-cols-[1.25fr_.75fr]">
               <Link
                 href={`/gallery/${galleryHighlights[0].gallerySlug}`}
@@ -393,43 +387,38 @@ export default async function Home() {
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : null}
 
-      <section className="bg-[#172f4d] px-5 py-18 text-white sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-[82rem]">
-          <SectionHeading
-            kicker="Executive officers"
-            title="Leadership in service to members"
-            copy="Meet the officers entrusted with leading the University of Ghana Branch of UTAG."
-            inverse
-          />
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {leadership.length === 0 && (
-              <PublicEmptyState
-                inverse
-                title="Leadership profiles are being prepared"
-                description="Approved executive profiles will appear here after publication by the secretariat."
-              />
-            )}
-            {leadership.map((leader) => (
-              <ExecutiveCard compact key={leader.id} profile={leader} />
-            ))}
+      {leadership.length > 0 ? (
+        <section className="bg-[#172f4d] px-5 py-18 text-white sm:px-6 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-[82rem]">
+            <SectionHeading
+              kicker="Executive officers"
+              title="Leadership in service to members"
+              copy="Meet the officers entrusted with leading the University of Ghana Branch of UTAG."
+              inverse
+            />
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+              {leadership.map((leader) => (
+                <ExecutiveCard compact key={leader.id} profile={leader} />
+              ))}
+            </div>
+            <div className="mt-9 text-center">
+              <Button
+                asChild
+                className="rounded-md border-white/30 bg-transparent text-white hover:bg-white/10"
+                variant="outline"
+              >
+                <Link href="/leadership">
+                  Meet the executive <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="mt-9 text-center">
-            <Button
-              asChild
-              className="rounded-md border-white/30 bg-transparent text-white hover:bg-white/10"
-              variant="outline"
-            >
-              <Link href="/leadership">
-                Meet the executive <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="bg-[#f5f8fb] px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-[82rem]">
@@ -457,87 +446,69 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-[82rem]">
-          <SectionHeading
-            kicker="Our news"
-            title="Latest from UG UTAG"
-            copy="Official updates, statements and stories from the association."
-          />
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {data.featured_articles.length === 0 && (
-              <PublicEmptyState
-                title="No public updates yet"
-                description="Official news, statements and member updates will appear here when published."
-              />
-            )}
-            {data.featured_articles.slice(0, 3).map((article, index) => (
-              <Link
-                key={article.id}
-                href={`/news/${article.slug}`}
-                className="group flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
-              >
-                <div
-                  className="relative h-44 bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url('${
-                      article.featured_media_id
-                        ? `/api/v1/public/media/${article.featured_media_id}`
-                        : `/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                    }')`,
-                  }}
+      {data.featured_articles.length > 0 ? (
+        <section className="px-5 py-18 sm:px-6 lg:px-8 lg:py-24">
+          <div className="mx-auto max-w-[82rem]">
+            <SectionHeading
+              kicker="Our news"
+              title="Latest from UG UTAG"
+              copy="Official updates, statements and stories from the association."
+            />
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              {data.featured_articles.slice(0, 3).map((article, index) => (
+                <Link
+                  key={article.id}
+                  href={`/news/${article.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div className="absolute inset-0 bg-[#102a48]/22" />
-                </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
-                    {article.tags[0] ?? "Association news"}
-                  </p>
-                  <h3 className="mt-3 text-xl font-extrabold leading-snug text-[#172f4d] group-hover:text-coral">
-                    {article.title}
-                  </h3>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted">
-                    {article.excerpt}
-                  </p>
-                  <div className="mt-auto flex items-center justify-between border-t border-line pt-5 text-xs font-bold text-muted">
-                    <span>
-                      {article.published_at
-                        ? format(new Date(article.published_at), "d MMMM yyyy")
-                        : "Recent"}
-                    </span>
-                    <ArrowRight className="size-4 text-coral transition group-hover:translate-x-1" />
+                  <div
+                    className="relative h-44 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url('${
+                        article.featured_media_id
+                          ? `/api/v1/public/media/${article.featured_media_id}`
+                          : `/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
+                      }')`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[#102a48]/22" />
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-1 flex-col p-6">
+                    <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
+                      {article.tags[0] ?? "Association news"}
+                    </p>
+                    <h3 className="mt-3 text-xl font-extrabold leading-snug text-[#172f4d] group-hover:text-coral">
+                      {article.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted">
+                      {article.excerpt}
+                    </p>
+                    <div className="mt-auto flex items-center justify-between border-t border-line pt-5 text-xs font-bold text-muted">
+                      <span>
+                        {article.published_at
+                          ? format(
+                              new Date(article.published_at),
+                              "d MMMM yyyy",
+                            )
+                          : "Recent"}
+                      </span>
+                      <ArrowRight className="size-4 text-coral transition group-hover:translate-x-1" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-9 text-center">
+              <Button asChild className="rounded-md">
+                <Link href="/news">
+                  View all news <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="mt-9 text-center">
-            <Button asChild className="rounded-md">
-              <Link href="/news">
-                View all news <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="mx-auto max-w-[82rem] px-5 sm:px-6 lg:px-8">
-        <div className="grid gap-8 border-l-4 border-gold bg-[#edf3f8] px-6 py-9 sm:px-9 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <p className="text-[.7rem] font-extrabold tracking-[.14em] text-coral uppercase">
-              For UG UTAG members
-            </p>
-            <h2 className="display-type mt-2 text-2xl text-[#172f4d] sm:text-3xl">
-              Documents, notices, events and communication in one secure portal.
-            </h2>
-          </div>
-          <Button asChild className="rounded-md">
-            <Link href="/login">
-              <ShieldCheck className="size-4" /> Open member portal
-            </Link>
-          </Button>
-        </div>
-      </section>
     </PublicShell>
   );
 }

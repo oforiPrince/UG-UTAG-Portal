@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { AdSlotBanner } from "@/components/public/ad-slot-banner";
 import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
@@ -110,6 +111,7 @@ export default async function EventPage({
         </div>
         <div className="h-1 bg-gold" />
       </header>
+      <AdSlotBanner slotKey="content-inline" context="article" />
       <section className="mx-auto grid max-w-[82rem] gap-10 px-5 py-14 sm:px-6 lg:grid-cols-[1fr_21rem] lg:px-8 lg:py-18">
         <div>
           <div

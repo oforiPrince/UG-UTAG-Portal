@@ -36,6 +36,7 @@ from utag_api.schemas.domain import (
     ConversationInviteView,
     ConversationMemberRoleUpdate,
     ConversationMembersUpdate,
+    ConversationOwnershipTransfer,
     ConversationUpdate,
     ConversationView,
     MediaView,
@@ -49,13 +50,15 @@ from utag_api.services.chat import (
     encrypt_message,
     new_conversation_key,
 )
-from utag_api.services.events import record_change
+from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.storage import (
     quarantine_key,
     s3_client,
+    s3_encryption_args,
     safe_filename,
     validate_upload,
 )
+from utag_api.services.system_chat_groups import is_system_chat
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -187,6 +190,7 @@ async def upload_chat_attachment(
                         "byte-size": str(byte_size),
                         "sha256": asset.sha256,
                     },
+                    **s3_encryption_args(),
                 },
             )
         )
@@ -196,10 +200,15 @@ async def upload_chat_attachment(
         await db.commit()
         raise ApiError(503, "upload_failed", "The file could not be stored") from exc
     asset.status = "scanning"
+    enqueue_task(
+        db,
+        task_name="utag.media.process",
+        aggregate_type="media_asset",
+        aggregate_id=asset.id,
+        args=[str(asset.id)],
+        queue="media",
+    )
     await db.commit()
-    from utag_api.worker.tasks import process_media
-
-    process_media.delay(str(asset.id))
     return MediaView.model_validate(asset)
 
 
@@ -295,9 +304,27 @@ async def list_conversations(
     db: DbSession,
     principal: Annotated[Principal, Depends(require_permissions("chat.use"))],
 ) -> list[ConversationView]:
+    unread_count = (
+        select(func.count(Message.id))
+        .outerjoin(
+            MessageReceipt,
+            and_(
+                MessageReceipt.message_id == Message.id,
+                MessageReceipt.user_id == principal.user.id,
+            ),
+        )
+        .where(
+            Message.conversation_id == Conversation.id,
+            Message.sender_id != principal.user.id,
+            Message.deleted_at.is_(None),
+            MessageReceipt.read_at.is_(None),
+        )
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
     rows = (
         await db.execute(
-            select(Conversation, func.count(ConversationMember.id))
+            select(Conversation, func.count(ConversationMember.id), unread_count)
             .join(ConversationMember, ConversationMember.conversation_id == Conversation.id)
             .where(
                 Conversation.id.in_(
@@ -319,8 +346,9 @@ async def list_conversations(
                 if not key.startswith("_")
             },
             member_count=member_count,
+            unread_count=unread,
         )
-        for conversation, member_count in rows
+        for conversation, member_count, unread in rows
     ]
 
 
@@ -745,6 +773,59 @@ async def update_conversation_member_role(
     return MessageResponse(message="Member role updated")
 
 
+@router.patch(
+    "/conversations/{conversation_id}/owner",
+    response_model=MessageResponse,
+)
+async def transfer_conversation_ownership(
+    conversation_id: UUID,
+    payload: ConversationOwnershipTransfer,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_mutation_permissions("chat.use"))],
+) -> MessageResponse:
+    conversation, membership = await require_group_admin(db, conversation_id, principal.user.id)
+    if membership.role != "owner":
+        raise ApiError(403, "group_owner_required", "Only the group owner can transfer ownership")
+    if payload.user_id == principal.user.id:
+        raise ApiError(409, "owner_unchanged", "You already own this group")
+    memberships = (
+        await db.scalars(
+            select(ConversationMember)
+            .where(
+                ConversationMember.conversation_id == conversation.id,
+                ConversationMember.user_id.in_([principal.user.id, payload.user_id]),
+                ConversationMember.left_at.is_(None),
+            )
+            .with_for_update()
+        )
+    ).all()
+    member_by_user = {item.user_id: item for item in memberships}
+    current_owner = member_by_user.get(principal.user.id)
+    next_owner = member_by_user.get(payload.user_id)
+    if current_owner is None or current_owner.role != "owner":
+        raise ApiError(409, "owner_changed", "Group ownership changed; refresh and try again")
+    if next_owner is None:
+        raise ApiError(404, "conversation_member_not_found", "Group member not found")
+    current_owner.role = "admin"
+    next_owner.role = "owner"
+    conversation.created_by_id = next_owner.user_id
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="chat.owner.transferred",
+        resource_type="conversation",
+        resource_id=conversation.id,
+        topic=f"conversation:{conversation.id}",
+        payload={
+            "previous_owner_id": str(principal.user.id),
+            "owner_id": str(next_owner.user_id),
+        },
+    )
+    await db.commit()
+    return MessageResponse(message="Group ownership transferred")
+
+
 @router.delete("/conversations/{conversation_id}/members/{user_id}", response_model=MessageResponse)
 async def remove_conversation_member(
     conversation_id: UUID,
@@ -756,6 +837,12 @@ async def remove_conversation_member(
     conversation, membership = await require_membership(db, conversation_id, principal.user.id)
     if conversation.kind != "group":
         raise ApiError(409, "group_required", "Direct chat membership cannot be changed")
+    if is_system_chat(conversation):
+        raise ApiError(
+            409,
+            "system_chat_membership_managed",
+            "Membership in this group is managed from the member's organization",
+        )
     if user_id != principal.user.id and membership.role not in {"owner", "admin"}:
         raise ApiError(403, "group_admin_required", "Group administrator access is required")
     target = await db.scalar(
@@ -805,6 +892,31 @@ async def list_messages(
         statement = statement.where(Message.created_at < before)
     rows = list(reversed((await db.execute(statement)).all()))
     attachments = await message_attachment_map(db, [message.id for message, _user in rows])
+    message_ids = [message.id for message, _user in rows]
+    read_counts = {
+        message_id: int(read_count)
+        for message_id, read_count in (
+            await db.execute(
+                select(MessageReceipt.message_id, func.count(MessageReceipt.user_id))
+                .where(
+                    MessageReceipt.message_id.in_(message_ids),
+                    MessageReceipt.read_at.is_not(None),
+                )
+                .group_by(MessageReceipt.message_id)
+            )
+        ).all()
+    }
+    total = int(
+        (
+            await db.scalar(
+                select(func.count(Message.id)).where(
+                    Message.conversation_id == conversation.id,
+                    Message.deleted_at.is_(None),
+                )
+            )
+        )
+        or 0
+    )
     items = [
         MessageView(
             id=message.id,
@@ -815,6 +927,7 @@ async def list_messages(
             text=decrypt_message(conversation.encryption_key_ciphertext, message.ciphertext),
             reply_to_id=message.reply_to_id,
             created_at=message.created_at,
+            read_by=read_counts.get(message.id, 0),
             attachments=attachments.get(message.id, []),
         )
         for message, user in rows
@@ -823,8 +936,8 @@ async def list_messages(
         items=items,
         page=1,
         page_size=limit,
-        total=len(items),
-        pages=1,
+        total=total,
+        pages=max(1, (total + limit - 1) // limit),
     )
 
 
@@ -913,7 +1026,9 @@ async def create_message(
             byte_size=asset.byte_size,
             storage_key=asset.storage_key,
             sha256=asset.sha256,
-            encryption_key_version="media-v1",
+            encryption_key_version=(
+                get_settings().s3_server_side_encryption or "development-unencrypted"
+            ),
             status="ready",
         )
         for asset in attachment_assets

@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    text as sa_text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -140,16 +141,37 @@ class AdSlot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     legacy_id: Mapped[int | None] = mapped_column(Integer, unique=True)
     key: Mapped[str] = mapped_column(String(100), unique=True)
     name: Mapped[str] = mapped_column(String(180))
-    width: Mapped[int | None] = mapped_column(Integer)
-    height: Mapped[int | None] = mapped_column(Integer)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    location: Mapped[str] = mapped_column(String(200), default="")
     description: Mapped[str] = mapped_column(Text, default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class AdAdvertiser(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """External commercial client buying ad inventory (not required to be a member)."""
+
+    __tablename__ = "ad_advertisers"
+
+    organization_name: Mapped[str] = mapped_column(String(200))
+    contact_name: Mapped[str] = mapped_column(String(180), default="")
+    email: Mapped[str] = mapped_column(String(255), index=True)
+    phone: Mapped[str] = mapped_column(String(40), default="")
+    website: Mapped[str | None] = mapped_column(String(1000))
+    notes: Mapped[str] = mapped_column(Text, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    member_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
 
 class AdPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "ad_plans"
 
     legacy_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    slot_id: Mapped[UUID] = mapped_column(
+        ForeignKey("ad_slots.id", ondelete="RESTRICT"), index=True
+    )
     name: Mapped[str] = mapped_column(String(180))
     description: Mapped[str] = mapped_column(Text, default="")
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
@@ -171,6 +193,7 @@ class AdCampaign(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     target_url: Mapped[str | None] = mapped_column(String(1000))
     status: Mapped[str] = mapped_column(String(30), default="draft", index=True)
+    is_house_ad: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     priority: Mapped[int] = mapped_column(Integer, default=0)
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -180,9 +203,20 @@ class AdCampaign(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class AdOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "ad_orders"
+    __table_args__ = (
+        Index(
+            "uq_ad_orders_campaign_id",
+            "campaign_id",
+            unique=True,
+            postgresql_where=sa_text("campaign_id IS NOT NULL"),
+            sqlite_where=sa_text("campaign_id IS NOT NULL"),
+        ),
+    )
 
     legacy_id: Mapped[int | None] = mapped_column(Integer, unique=True)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    advertiser_id: Mapped[UUID] = mapped_column(
+        ForeignKey("ad_advertisers.id", ondelete="RESTRICT"), index=True
+    )
     plan_id: Mapped[UUID] = mapped_column(ForeignKey("ad_plans.id", ondelete="RESTRICT"))
     campaign_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("ad_campaigns.id", ondelete="SET NULL")

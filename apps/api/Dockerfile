@@ -1,4 +1,4 @@
-FROM python:3.14-slim AS runtime
+FROM python:3.14-alpine AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -15,7 +15,10 @@ COPY scripts ./scripts
 COPY src ./src
 
 RUN python -m pip install --upgrade pip \
-    && python -m pip install .
+    && python -m pip install . \
+    && rm -rf /usr/local/lib/python3.14/site-packages/pip \
+        /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
+        /usr/local/bin/pip*
 
 USER app
 EXPOSE 8000

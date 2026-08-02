@@ -76,6 +76,14 @@ export async function publicApi<T>(
   fallback: T,
   options: { revalidate?: number | false } = {},
 ): Promise<T> {
+  return (await publicApiResult(path, fallback, options)).data;
+}
+
+export async function publicApiResult<T>(
+  path: string,
+  fallback: T,
+  options: { revalidate?: number | false } = {},
+): Promise<{ data: T; unavailable: boolean }> {
   try {
     const response = await fetch(
       `${API_URL}${path}`,
@@ -83,9 +91,9 @@ export async function publicApi<T>(
         ? { cache: "no-store" }
         : { next: { revalidate: options.revalidate ?? 30 } },
     );
-    if (!response.ok) return fallback;
-    return (await response.json()) as T;
+    if (!response.ok) return { data: fallback, unavailable: true };
+    return { data: (await response.json()) as T, unavailable: false };
   } catch {
-    return fallback;
+    return { data: fallback, unavailable: true };
   }
 }

@@ -154,6 +154,8 @@ apps/api/.coverage
 apps/api/htmlcov/
 apps/api/.pytest_cache/
 apps/api/.mypy_cache/
+apps/web/playwright-report/
+apps/web/test-results/
 .env.*.local
 !.env.example
 uploads/

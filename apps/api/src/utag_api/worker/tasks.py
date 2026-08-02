@@ -4,8 +4,10 @@ import io
 import smtplib
 import socket
 import struct
+import tempfile
 from datetime import UTC, datetime
 from email.message import EmailMessage
+from typing import BinaryIO
 from uuid import UUID
 
 from PIL import Image, UnidentifiedImageError
@@ -26,9 +28,10 @@ from utag_api.models import (
     User,
 )
 from utag_api.observability import configure_logging, get_logger
+from utag_api.security import decrypt_text
 from utag_api.services.events import EventContext, record_change
 from utag_api.services.notifications import deliver_announcement_notifications
-from utag_api.services.storage import s3_client, safe_filename
+from utag_api.services.storage import s3_client, s3_encryption_args, safe_filename
 from utag_api.worker.celery_app import celery_app
 
 settings = get_settings()
@@ -52,18 +55,31 @@ async def _relay_outbox(limit: int = 200) -> int:
             ).all()
             for event in rows:
                 try:
-                    envelope = {
-                        "id": str(event.id),
-                        "type": event.event_type,
-                        "topic": event.topic,
-                        "aggregate_type": event.aggregate_type,
-                        "aggregate_id": str(event.aggregate_id),
-                        "payload": event.payload,
-                        "occurred_at": event.created_at.isoformat(),
-                    }
-                    import orjson
+                    if event.event_type == "task.dispatch":
+                        task_name = event.payload.get("task_name")
+                        args = event.payload.get("args", [])
+                        queue = event.payload.get("queue")
+                        if not isinstance(task_name, str) or not isinstance(args, list):
+                            raise ValueError("Invalid task outbox payload")
+                        await asyncio.to_thread(
+                            celery_app.send_task,
+                            task_name,
+                            args=args,
+                            queue=queue if isinstance(queue, str) else None,
+                        )
+                    else:
+                        envelope = {
+                            "id": str(event.id),
+                            "type": event.event_type,
+                            "topic": event.topic,
+                            "aggregate_type": event.aggregate_type,
+                            "aggregate_id": str(event.aggregate_id),
+                            "payload": event.payload,
+                            "occurred_at": event.created_at.isoformat(),
+                        }
+                        import orjson
 
-                    await redis.publish(f"utag:{event.topic}", orjson.dumps(envelope))
+                        await redis.publish(f"utag:{event.topic}", orjson.dumps(envelope))
                     event.published_at = datetime.now(UTC)
                     event.attempts += 1
                     event.last_error = None
@@ -194,8 +210,7 @@ def publish_scheduled_content() -> int:
 
 def _send_message(message: EmailMessage) -> None:
     if not settings.smtp_host:
-        logger.warning("email_not_sent_smtp_unconfigured", recipient=message["To"])
-        return
+        raise RuntimeError("SMTP is not configured")
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as client:
         if settings.smtp_use_tls:
             client.starttls()
@@ -210,7 +225,7 @@ def _send_message(message: EmailMessage) -> None:
     retry_backoff=True,
     max_retries=5,
 )
-def send_password_reset(user_id: str, raw_token: str) -> None:
+def send_password_reset(user_id: str, encrypted_token: str) -> None:
     async def load_user() -> User | None:
         async with SessionFactory() as db:
             return await db.get(User, UUID(user_id))
@@ -218,6 +233,9 @@ def send_password_reset(user_id: str, raw_token: str) -> None:
     user = asyncio.run(load_user())
     if user is None:
         return
+    raw_token = decrypt_text(encrypted_token.encode())
+    if not raw_token:
+        raise RuntimeError("Password reset token could not be decrypted")
     reset_url = f"{settings.public_web_url}/reset-password?token={raw_token}"
     message = EmailMessage()
     message["Subject"] = "Reset your UG UTAG Portal password"
@@ -238,7 +256,7 @@ def send_password_reset(user_id: str, raw_token: str) -> None:
     retry_backoff=True,
     max_retries=5,
 )
-def send_invitation(user_id: str, raw_token: str) -> None:
+def send_invitation(user_id: str, encrypted_token: str) -> None:
     async def load_user() -> User | None:
         async with SessionFactory() as db:
             return await db.get(User, UUID(user_id))
@@ -246,6 +264,9 @@ def send_invitation(user_id: str, raw_token: str) -> None:
     user = asyncio.run(load_user())
     if user is None:
         return
+    raw_token = decrypt_text(encrypted_token.encode())
+    if not raw_token:
+        raise RuntimeError("Invitation token could not be decrypted")
     invitation_url = f"{settings.public_web_url}/accept-invitation?token={raw_token}"
     message = EmailMessage()
     message["Subject"] = "Welcome to the UG UTAG Portal"
@@ -319,14 +340,14 @@ def deliver_contact_message(job_id: str) -> None:
             error_code=None,
             error_message=None,
             result_json={
-                "delivered": bool(settings.smtp_host),
+                "delivered": True,
                 "recipient": settings.contact_recipient_email,
             },
         )
     )
 
 
-def _clamav_scan(chunks: list[bytes]) -> None:
+def _clamav_scan(source: BinaryIO) -> None:
     if not settings.clamav_host:
         if settings.malware_scan_required:
             raise RuntimeError("Malware scanner is required but unavailable")
@@ -335,7 +356,8 @@ def _clamav_scan(chunks: list[bytes]) -> None:
         (settings.clamav_host, settings.clamav_port), timeout=60
     ) as connection:
         connection.sendall(b"zINSTREAM\0")
-        for chunk in chunks:
+        source.seek(0)
+        while chunk := source.read(1024 * 1024):
             connection.sendall(struct.pack("!I", len(chunk)))
             connection.sendall(chunk)
         connection.sendall(struct.pack("!I", 0))
@@ -350,17 +372,35 @@ def _clamav_scan(chunks: list[bytes]) -> None:
         raise RuntimeError(f"Malware scan rejected object: {result[:200]}")
 
 
-def _image_variants(asset: MediaAsset, raw: bytes) -> list[dict[str, object]]:
+def _image_variants(asset: MediaAsset, source_stream: BinaryIO) -> list[dict[str, object]]:
     if not asset.content_type.startswith("image/"):
         return []
     variants: list[dict[str, object]] = []
     try:
-        source_file = Image.open(io.BytesIO(raw))
+        source_stream.seek(0)
+        source_file = Image.open(source_stream)
+        if source_file.width * source_file.height > 40_000_000:
+            raise RuntimeError("The uploaded image dimensions are too large")
         source_file.verify()
-        source = Image.open(io.BytesIO(raw)).convert("RGB")
+        source_stream.seek(0)
+        source = Image.open(source_stream).convert("RGB")
     except (UnidentifiedImageError, OSError) as exc:
         raise RuntimeError("The uploaded image is invalid") from exc
     client = s3_client()
+    # Keep source dimensions for placement validation (ad creatives, etc.).
+    variants.append(
+        {
+            "id": new_id(),
+            "asset_id": asset.id,
+            "variant": "original",
+            "storage_key": asset.storage_key,
+            "content_type": asset.content_type,
+            "byte_size": asset.byte_size,
+            "width": source.width,
+            "height": source.height,
+            "sha256": asset.sha256,
+        }
+    )
     for width in (480, 960, 1600):
         if source.width < width and width != 480:
             continue
@@ -377,6 +417,7 @@ def _image_variants(asset: MediaAsset, raw: bytes) -> list[dict[str, object]]:
             Body=value,
             ContentType="image/webp",
             Metadata={"sha256": hashlib.sha256(value).hexdigest()},
+            **s3_encryption_args(),
         )
         variants.append(
             {
@@ -411,22 +452,22 @@ def process_media(asset_id: str) -> None:
     client = s3_client()
     try:
         body = client.get_object(Bucket=settings.media_bucket, Key=asset.storage_key)["Body"]
-        chunks: list[bytes] = []
-        digest = hashlib.sha256()
-        for chunk in iter(lambda: body.read(1024 * 1024), b""):
-            digest.update(chunk)
-            chunks.append(chunk)
-        if digest.hexdigest() != asset.sha256:
-            raise RuntimeError("File checksum verification failed")
-        _clamav_scan(chunks)
-        raw = b"".join(chunks)
-        variant_rows = _image_variants(asset, raw)
+        with tempfile.TemporaryFile() as quarantined:
+            digest = hashlib.sha256()
+            for chunk in iter(lambda: body.read(1024 * 1024), b""):
+                digest.update(chunk)
+                quarantined.write(chunk)
+            if digest.hexdigest() != asset.sha256:
+                raise RuntimeError("File checksum verification failed")
+            _clamav_scan(quarantined)
+            variant_rows = _image_variants(asset, quarantined)
         clean_key = f"media/{asset.id}/{safe_filename(asset.original_filename)}"
         client.copy_object(
             Bucket=settings.media_bucket,
             Key=clean_key,
             CopySource={"Bucket": settings.media_bucket, "Key": asset.storage_key},
             MetadataDirective="COPY",
+            **s3_encryption_args(),
         )
     except Exception as exc:
         error_text = str(exc)[:500]

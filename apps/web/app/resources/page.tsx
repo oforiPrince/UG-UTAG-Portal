@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { ArrowDownToLine, FileText, LockKeyhole } from "lucide-react";
+import { ArrowDownToLine, Eye, FileText, LockKeyhole } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -8,39 +8,15 @@ import { PublicEmptyState } from "@/components/public/public-empty-state";
 import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
+import { type PublicDocument, fileSize } from "@/lib/documents";
 
 export const metadata: Metadata = { title: "Resources" };
-
-type PublicDocument = {
-  id: string;
-  public_id: string;
-  title: string;
-  sender: string | null;
-  receiver: string | null;
-  description_html: string;
-  document_date: string | null;
-  filename: string;
-  content_type: string;
-  byte_size: number;
-  download_url: string;
-  files: {
-    media_asset_id: string;
-    filename: string;
-    content_type: string;
-    byte_size: number;
-    download_url: string;
-  }[];
-};
-
-function fileSize(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 export default async function ResourcesPage() {
   const documents = await publicApi<PublicDocument[]>(
     "/api/v1/public/documents",
     [],
+    { revalidate: false },
   );
   return (
     <PublicShell>
@@ -94,6 +70,11 @@ export default async function ResourcesPage() {
                   </span>
                 </div>
                 <div className="mt-5 grid gap-2">
+                  <Button asChild className="w-full rounded-md">
+                    <Link href={`/resources/${document.id}`}>
+                      <Eye className="size-4" /> Preview full document
+                    </Link>
+                  </Button>
                   {document.files.map((file) => (
                     <Button
                       key={file.media_asset_id}
@@ -101,11 +82,7 @@ export default async function ResourcesPage() {
                       className="w-full justify-between rounded-md"
                       variant="outline"
                     >
-                      <a
-                        href={file.download_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <a href={file.download_url} download={file.filename}>
                         <span className="min-w-0 truncate">
                           {file.filename}
                         </span>

@@ -94,6 +94,8 @@ class MemberImportResult(ApiModel):
     invalid_rows: int
     imported_rows: int
     duplicate_rows: int
+    chat_groups_created: int = 0
+    chat_memberships_added: int = 0
     issues: list[MemberImportIssue] = Field(default_factory=list)
     preview: list[dict[str, Any]] = Field(default_factory=list)
     preview_truncated: bool = False
@@ -128,6 +130,8 @@ class ExecutiveBase(ApiModel):
     is_acting: bool = False
     is_active: bool = True
     is_public: bool = True
+    show_email: bool = False
+    show_phone: bool = False
 
     @field_validator("social_links")
     @classmethod
@@ -148,7 +152,7 @@ class ExecutiveView(ExecutiveBase):
 
 
 class PublicExecutiveView(ExecutiveView):
-    email: EmailStr
+    email: EmailStr | None
     phone_number: str | None
     school_name: str | None = None
     college_name: str | None = None
@@ -179,6 +183,12 @@ class ArticleCreate(EditorialBase):
     slug: str | None = Field(default=None, max_length=260)
     status: Literal["draft", "review", "scheduled", "published"] = "draft"
     published_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_publication_time(self) -> "ArticleCreate":
+        if self.status == "scheduled" and self.published_at is None:
+            raise ValueError("Scheduled articles require a publication time")
+        return self
 
 
 class ArticleUpdate(ApiModel):
@@ -235,14 +245,22 @@ class AnnouncementCreate(ApiModel):
         if not value or any(item.get("type") in {"everyone", "all_members"} for item in value):
             return [{"type": "everyone", "value": "all"}]
 
-        roles = {
-            item.get("value")
-            for item in value
-            if item.get("type") == "role" and item.get("value") in allowed_roles
-        }
+        roles: set[str] = set()
+        for item in value:
+            role = item.get("value")
+            if item.get("type") == "role" and isinstance(role, str) and role in allowed_roles:
+                roles.add(role)
         if len(roles) != len(value):
             raise ValueError("Choose Everyone or one or more valid member roles")
         return [{"type": "role", "value": role} for role in sorted(roles)]
+
+    @model_validator(mode="after")
+    def validate_publication_time(self) -> "AnnouncementCreate":
+        if self.status == "scheduled" and self.published_at is None:
+            raise ValueError("Scheduled announcements require a publication time")
+        if self.expires_at and self.published_at and self.expires_at <= self.published_at:
+            raise ValueError("Announcement expiry must be after publication")
+        return self
 
 
 class AnnouncementView(AnnouncementCreate):
@@ -485,6 +503,16 @@ class NotificationCreate(ApiModel):
     resource_id: UUID | None = None
     deep_link: str | None = Field(default=None, max_length=1_000)
 
+    @field_validator("deep_link")
+    @classmethod
+    def validate_deep_link(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned.startswith("/") or cleaned.startswith("//") or "\\" in cleaned:
+            raise ValueError("Notification links must be internal portal paths")
+        return cleaned
+
     @model_validator(mode="after")
     def reserve_announcement_delivery(self) -> "NotificationCreate":
         if self.category == "announcement" or self.resource_type == "announcement":
@@ -508,6 +536,10 @@ class ConversationMembersUpdate(ApiModel):
 
 class ConversationMemberRoleUpdate(ApiModel):
     role: Literal["member", "admin"]
+
+
+class ConversationOwnershipTransfer(ApiModel):
+    user_id: UUID
 
 
 class ConversationView(ApiModel):
@@ -576,17 +608,20 @@ class AdSlotView(ApiModel):
     id: UUID
     key: str
     name: str
-    width: int | None
-    height: int | None
+    width: int
+    height: int
+    location: str
     description: str
     is_active: bool
+    size: str | None = None
 
 
 class AdSlotCreate(ApiModel):
     key: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{1,98}$")
     name: str = Field(min_length=2, max_length=180)
-    width: int | None = Field(default=None, ge=1, le=10_000)
-    height: int | None = Field(default=None, ge=1, le=10_000)
+    width: int = Field(ge=1, le=10_000)
+    height: int = Field(ge=1, le=10_000)
+    location: str = Field(default="", max_length=200)
     description: str = Field(default="", max_length=2_000)
     is_active: bool = True
 
@@ -597,6 +632,7 @@ class AdCampaignCreate(ApiModel):
     media_asset_id: UUID | None = None
     target_url: HttpUrl | None = None
     status: Literal["draft", "scheduled", "active", "paused", "completed"] = "draft"
+    is_house_ad: bool = False
     priority: int = Field(default=0, ge=-100, le=100)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
@@ -608,6 +644,7 @@ class AdCampaignUpdate(ApiModel):
     media_asset_id: UUID | None = None
     target_url: HttpUrl | None = None
     status: Literal["draft", "scheduled", "active", "paused", "completed"] | None = None
+    is_house_ad: bool | None = None
     priority: int | None = Field(default=None, ge=-100, le=100)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
@@ -620,6 +657,7 @@ class AdCampaignView(ApiModel):
     media_asset_id: UUID | None
     target_url: str | None
     status: str
+    is_house_ad: bool
     priority: int
     starts_at: datetime | None
     ends_at: datetime | None
@@ -628,9 +666,18 @@ class AdCampaignView(ApiModel):
     created_at: datetime
     placement_name: str | None = None
     media_name: str | None = None
+    slot_key: str | None = None
+    width: int | None = None
+    height: int | None = None
+    order_id: UUID | None = None
+    order_status: str | None = None
+    payment_status: str | None = None
+    advertiser_name: str | None = None
+    fulfilment: str | None = None
 
 
 class AdPlanCreate(ApiModel):
+    slot_id: UUID
     name: str = Field(min_length=2, max_length=180)
     description: str = Field(default="", max_length=2_000)
     price: Decimal = Field(default=Decimal("0"), ge=0)
@@ -639,6 +686,7 @@ class AdPlanCreate(ApiModel):
 
 
 class AdPlanUpdate(ApiModel):
+    slot_id: UUID | None = None
     name: str | None = Field(default=None, min_length=2, max_length=180)
     description: str | None = Field(default=None, max_length=2_000)
     price: Decimal | None = Field(default=None, ge=0)
@@ -646,14 +694,60 @@ class AdPlanUpdate(ApiModel):
     is_active: bool | None = None
 
 
-class AdPlanView(AdPlanCreate):
+class AdPlanView(ApiModel):
     id: UUID
+    slot_id: UUID
+    name: str
+    description: str
+    price: Decimal
+    duration_days: int
+    is_active: bool
     created_at: datetime
     updated_at: datetime
+    placement_name: str | None = None
+    width: int | None = None
+    height: int | None = None
+
+
+class AdAdvertiserCreate(ApiModel):
+    organization_name: str = Field(min_length=2, max_length=200)
+    contact_name: str = Field(default="", max_length=180)
+    email: EmailStr
+    phone: str = Field(default="", max_length=40)
+    website: HttpUrl | None = None
+    notes: str = Field(default="", max_length=5_000)
+    is_active: bool = True
+    member_user_id: UUID | None = None
+
+
+class AdAdvertiserUpdate(ApiModel):
+    organization_name: str | None = Field(default=None, min_length=2, max_length=200)
+    contact_name: str | None = Field(default=None, max_length=180)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=40)
+    website: HttpUrl | None = None
+    notes: str | None = Field(default=None, max_length=5_000)
+    is_active: bool | None = None
+    member_user_id: UUID | None = None
+
+
+class AdAdvertiserView(ApiModel):
+    id: UUID
+    organization_name: str
+    contact_name: str
+    email: EmailStr
+    phone: str
+    website: str | None
+    notes: str
+    is_active: bool
+    member_user_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    member_name: str | None = None
 
 
 class AdOrderCreate(ApiModel):
-    user_id: UUID
+    advertiser_id: UUID
     plan_id: UUID
     campaign_id: UUID | None = None
     status: Literal["pending", "approved", "active", "completed", "cancelled"] = "pending"
@@ -670,6 +764,7 @@ class AdOrderCreate(ApiModel):
 
 
 class AdOrderUpdate(ApiModel):
+    advertiser_id: UUID | None = None
     campaign_id: UUID | None = None
     status: Literal["pending", "approved", "active", "completed", "cancelled"] | None = None
     payment_status: Literal["unpaid", "pending", "paid", "refunded"] | None = None
@@ -680,7 +775,7 @@ class AdOrderUpdate(ApiModel):
 
 class AdOrderView(ApiModel):
     id: UUID
-    user_id: UUID
+    advertiser_id: UUID
     plan_id: UUID
     campaign_id: UUID | None
     status: str
@@ -792,9 +887,7 @@ class GalleryCreate(ApiModel):
         blocked = set(self.blocked_download_media_ids)
         selected = set(self.media_asset_ids)
         if blocked - selected:
-            raise ValueError(
-                "blocked_download_media_ids must only include selected gallery images"
-            )
+            raise ValueError("blocked_download_media_ids must only include selected gallery images")
         return self
 
 

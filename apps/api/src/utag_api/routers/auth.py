@@ -7,13 +7,18 @@ from sqlalchemy import select, update
 
 from utag_api.config import Settings, get_settings
 from utag_api.database import new_id
-from utag_api.dependencies import CurrentPrincipal, DbSession, MutationPrincipal, event_context
+from utag_api.dependencies import (
+    CurrentPrincipal,
+    DbSession,
+    MutationPrincipal,
+    client_ip,
+    event_context,
+)
 from utag_api.errors import ApiError
 from utag_api.models import (
     AccountToken,
     ExecutiveAppointment,
     MediaAsset,
-    OrganizationUnit,
     Session,
     User,
 )
@@ -33,6 +38,7 @@ from utag_api.schemas import (
     UserSummary,
 )
 from utag_api.security import (
+    encrypt_text,
     hash_password,
     new_token,
     normalize_email,
@@ -40,10 +46,12 @@ from utag_api.security import (
     verify_password,
 )
 from utag_api.services.content import sanitize_html
-from utag_api.services.events import EventContext, record_change
+from utag_api.services.events import EventContext, enqueue_task, record_change
 from utag_api.services.identity import strong_password_errors
+from utag_api.services.organization import validate_organization_assignment
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+DUMMY_PASSWORD_HASH = hash_password(new_token())
 
 
 def summarize_user(principal: CurrentPrincipal) -> UserSummary:
@@ -135,15 +143,14 @@ async def login(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthResponse:
     email = normalize_email(str(payload.email))
-    client_ip = request.client.host if request.client else "unknown"
-    await enforce_rate_limit("login-ip", client_ip, limit=25, period_seconds=900)
+    request_ip = client_ip(request)
+    await enforce_rate_limit("login-ip", request_ip, limit=25, period_seconds=900)
     await enforce_rate_limit("login-account", email, limit=8, period_seconds=900)
 
     user = await db.scalar(select(User).where(User.email == email))
-    if user is None:
-        raise ApiError(401, "invalid_credentials", "The email or password is incorrect")
-    valid, upgrade = verify_password(user.password_hash, payload.password)
-    if not valid:
+    password_hash = user.password_hash if user is not None else DUMMY_PASSWORD_HASH
+    valid, upgrade = verify_password(password_hash, payload.password)
+    if user is None or not valid:
         raise ApiError(401, "invalid_credentials", "The email or password is incorrect")
     if user.status != "active":
         raise ApiError(403, "account_unavailable", "This account is not currently active")
@@ -158,7 +165,7 @@ async def login(
         token_hash=token_digest(session_token),
         csrf_hash=token_digest(csrf_token),
         user_agent=request.headers.get("User-Agent", "")[:500],
-        ip_prefix=client_ip[:80],
+        ip_prefix=request_ip[:80],
         created_at=now,
         last_seen_at=now,
         expires_at=expires_at,
@@ -225,18 +232,12 @@ async def update_profile(
     db: DbSession,
 ) -> UserSummary:
     changes = payload.model_dump(exclude_unset=True)
-    unit_types = {
-        "school_id": "school",
-        "college_id": "college",
-        "department_id": "department",
-    }
-    for field, expected_type in unit_types.items():
-        unit_id = changes.get(field)
-        if unit_id is None:
-            continue
-        unit = await db.get(OrganizationUnit, unit_id)
-        if unit is None or unit.unit_type != expected_type or not unit.is_active:
-            raise ApiError(422, "organization_unit_invalid", f"Select a valid {expected_type}")
+    await validate_organization_assignment(
+        db,
+        school_id=changes.get("school_id", principal.user.school_id),
+        college_id=changes.get("college_id", principal.user.college_id),
+        department_id=changes.get("department_id", principal.user.department_id),
+    )
     profile_media_id = changes.get("profile_media_id")
     if profile_media_id is not None:
         asset = await db.get(MediaAsset, profile_media_id)
@@ -420,8 +421,8 @@ async def forgot_password(
     db: DbSession,
 ) -> MessageResponse:
     email = normalize_email(str(payload.email))
-    client_ip = request.client.host if request.client else "unknown"
-    await enforce_rate_limit("password-reset", client_ip, limit=8, period_seconds=3600)
+    request_ip = client_ip(request)
+    await enforce_rate_limit("password-reset", request_ip, limit=8, period_seconds=3600)
     user = await db.scalar(select(User).where(User.email == email, User.status == "active"))
     if user is not None:
         now = datetime.now(UTC)
@@ -435,11 +436,18 @@ async def forgot_password(
                 expires_at=now + timedelta(minutes=30),
             )
         )
-        # The worker sends the token. It is intentionally never returned by the API.
-        from utag_api.worker.tasks import send_password_reset
-
+        encrypted_token = encrypt_text(raw_token)
+        if encrypted_token is None:
+            raise RuntimeError("Password reset token encryption failed")
+        enqueue_task(
+            db,
+            task_name="utag.email.password_reset",
+            aggregate_type="user",
+            aggregate_id=user.id,
+            args=[str(user.id), encrypted_token.decode()],
+            queue="communications",
+        )
         await db.commit()
-        send_password_reset.delay(str(user.id), raw_token)
     return MessageResponse(
         message="If the account exists, password reset instructions will be sent"
     )
@@ -452,12 +460,14 @@ async def reset_password(payload: ResetPasswordRequest, db: DbSession) -> Messag
         raise ApiError(422, "weak_password", "Choose a stronger password", details=errors)
     now = datetime.now(UTC)
     account_token = await db.scalar(
-        select(AccountToken).where(
+        select(AccountToken)
+        .where(
             AccountToken.kind == "password_reset",
             AccountToken.token_hash == token_digest(payload.token),
             AccountToken.used_at.is_(None),
             AccountToken.expires_at > now,
         )
+        .with_for_update()
     )
     if account_token is None:
         raise ApiError(400, "reset_token_invalid", "The reset link is invalid or has expired")
@@ -492,12 +502,14 @@ async def accept_invitation(payload: AcceptInvitationRequest, db: DbSession) -> 
         raise ApiError(422, "weak_password", "Choose a stronger password", details=errors)
     now = datetime.now(UTC)
     account_token = await db.scalar(
-        select(AccountToken).where(
+        select(AccountToken)
+        .where(
             AccountToken.kind == "invitation",
             AccountToken.token_hash == token_digest(payload.token),
             AccountToken.used_at.is_(None),
             AccountToken.expires_at > now,
         )
+        .with_for_update()
     )
     if account_token is None:
         raise ApiError(400, "invitation_invalid", "The invitation is invalid or has expired")

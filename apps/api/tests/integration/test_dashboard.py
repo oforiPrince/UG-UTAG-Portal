@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from utag_api.database import new_id
-from utag_api.models import Document, Event, Role, User, UserRole
+from utag_api.models import Document, Event, FeatureFlag, Role, User, UserRole
 from utag_api.security import hash_password
 
 MEMBER_EMAIL = "kofi.member@example.edu.gh"
@@ -98,6 +98,20 @@ async def test_overview_scopes_privileged_blocks_to_permitted_roles(
         "Unpublished negotiation briefing",
     }
 
+    async with session_factory() as session:
+        session.add(
+            FeatureFlag(
+                id=new_id(),
+                key="association-pulse",
+                description="Dashboard activity chart",
+                enabled=False,
+            )
+        )
+        await session.commit()
+    administrator_without_pulse = (await client.get("/api/v1/dashboard/overview")).json()
+    assert "pulse" not in administrator_without_pulse["sections"]
+    assert administrator_without_pulse["pulse"] == []
+
     await login(client, MEMBER_EMAIL)
     member = (await client.get("/api/v1/dashboard/overview")).json()
 
@@ -108,9 +122,7 @@ async def test_overview_scopes_privileged_blocks_to_permitted_roles(
     assert member["pulse"] == []
     assert member["executive_appointment"] is None
     # A member must never learn about unpublished events from the overview.
-    assert [event["title"] for event in member["upcoming_events"]] == [
-        "Published congregation"
-    ]
+    assert [event["title"] for event in member["upcoming_events"]] == ["Published congregation"]
 
     metrics = {metric["key"]: metric for metric in member["metrics"]}
     assert "members" not in metrics

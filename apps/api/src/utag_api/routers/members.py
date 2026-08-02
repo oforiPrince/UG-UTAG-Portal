@@ -6,9 +6,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import ValidationError
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 
 from utag_api.database import new_id
 from utag_api.dependencies import (
@@ -42,8 +44,8 @@ from utag_api.schemas.domain import (
     MemberView,
     PermissionOption,
 )
-from utag_api.security import hash_password, new_token, normalize_email, token_digest
-from utag_api.services.events import record_change
+from utag_api.security import encrypt_text, hash_password, new_token, normalize_email, token_digest
+from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.identity import (
     UserAccess,
     load_user_access,
@@ -51,9 +53,100 @@ from utag_api.services.identity import (
     require_public_profile_image,
 )
 from utag_api.services.member_import import MAX_IMPORT_BYTES, parse_member_import
+from utag_api.services.organization import (
+    organization_assignment_errors,
+    validate_organization_assignment,
+)
 from utag_api.services.query import paginate
+from utag_api.services.system_chat_groups import sync_system_chat_groups
 
 router = APIRouter(prefix="/members", tags=["members"])
+
+
+def normalized_organization_name(value: object) -> str:
+    return " ".join(str(value or "").split()).casefold()
+
+
+def resolve_import_organization(
+    raw: dict[str, object],
+    units: dict[UUID, OrganizationUnit],
+) -> tuple[dict[str, object], list[tuple[str, str]]]:
+    values = dict(raw)
+    issues: list[tuple[str, str]] = []
+
+    def resolve_unit(
+        field: str,
+        unit_type: str,
+        parent_id: UUID | None,
+    ) -> OrganizationUnit | None:
+        raw_id = values.get(f"{field}_id")
+        if raw_id:
+            try:
+                unit_id = UUID(str(raw_id))
+            except ValueError:
+                issues.append((f"{field}_id", f"Select a valid {unit_type}"))
+                return None
+            unit = units.get(unit_id)
+            if (
+                unit is None
+                or unit.unit_type != unit_type
+                or not unit.is_active
+                or unit.parent_id != parent_id
+            ):
+                issues.append((f"{field}_id", f"Select a valid active {unit_type}"))
+                return None
+            return unit
+
+        name = normalized_organization_name(values.get(field))
+        if not name:
+            issues.append((field, f"Enter the member's {unit_type}"))
+            return None
+        matches = [
+            unit
+            for unit in units.values()
+            if unit.unit_type == unit_type
+            and unit.is_active
+            and unit.parent_id == parent_id
+            and normalized_organization_name(unit.name) == name
+        ]
+        if len(matches) != 1:
+            issues.append(
+                (
+                    field,
+                    f"{unit_type.title()} was not found in the organization reference",
+                )
+            )
+            return None
+        return matches[0]
+
+    college = resolve_unit("college", "college", None)
+    school = resolve_unit("school", "school", college.id if college else None)
+    department = resolve_unit(
+        "department",
+        "department",
+        school.id if school else None,
+    )
+    if college:
+        values["college_id"] = college.id
+    if school:
+        values["school_id"] = school.id
+    if department:
+        values["department_id"] = department.id
+    for field in ("college", "school", "department"):
+        values.pop(field, None)
+    return values, issues
+
+
+def import_chat_group_titles(
+    candidate: MemberCreate,
+    units: dict[UUID, OrganizationUnit],
+) -> list[str]:
+    titles = ["UTAG UG"]
+    if candidate.school_id and candidate.school_id in units:
+        titles.append(f"School: {units[candidate.school_id].name}")
+    if candidate.department_id and candidate.department_id in units:
+        titles.append(f"Department: {units[candidate.department_id].name}")
+    return titles
 
 
 async def revoke_member_sessions(db: DbSession, user_id: UUID, now: datetime) -> None:
@@ -90,6 +183,53 @@ async def ensure_privileged_target_permission(
             403,
             "administrator_management_denied",
             "Only an administrator can manage another administrator account",
+        )
+
+
+async def active_administrator_ids(db: DbSession) -> list[UUID]:
+    return list(
+        (
+            await db.scalars(
+                select(User.id)
+                .join(UserRole, UserRole.user_id == User.id)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(User.status == "active", Role.key == "administrator")
+                .with_for_update()
+            )
+        ).all()
+    )
+
+
+async def protect_administrator_removal(
+    db: DbSession,
+    *,
+    target: User,
+    principal: Principal,
+    replacement_roles: set[str] | None = None,
+) -> None:
+    target_is_administrator = bool(
+        await db.scalar(
+            select(UserRole.user_id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(UserRole.user_id == target.id, Role.key == "administrator")
+        )
+    )
+    if not target_is_administrator:
+        return
+    if replacement_roles is not None and "administrator" in replacement_roles:
+        return
+    if target.id == principal.user.id:
+        raise ApiError(
+            409,
+            "self_administrator_change_denied",
+            "Another administrator must change your administrator access",
+        )
+    active_ids = await active_administrator_ids(db)
+    if target.status == "active" and active_ids == [target.id]:
+        raise ApiError(
+            409,
+            "last_administrator_required",
+            "At least one active administrator must remain",
         )
 
 
@@ -246,6 +386,12 @@ async def create_member(
         raise ApiError(409, "email_exists", "A member already uses this email")
     if payload.profile_media_id is not None:
         await require_public_profile_image(db, payload.profile_media_id)
+    await validate_organization_assignment(
+        db,
+        school_id=payload.school_id,
+        college_id=payload.college_id,
+        department_id=payload.department_id,
+    )
     requested_roles = (await db.scalars(select(Role).where(Role.key.in_(set(payload.roles))))).all()
     if len(requested_roles) != len(set(payload.roles)):
         raise ApiError(422, "invalid_role", "One or more roles do not exist")
@@ -298,6 +444,22 @@ async def create_member(
                 expires_at=now + timedelta(days=7),
             )
         )
+        encrypted_token = encrypt_text(invitation_token)
+        if encrypted_token is None:
+            raise RuntimeError("Invitation token encryption failed")
+        enqueue_task(
+            db,
+            task_name="utag.email.invitation",
+            aggregate_type="user",
+            aggregate_id=user.id,
+            args=[str(user.id), encrypted_token.decode()],
+            queue="communications",
+        )
+    await sync_system_chat_groups(
+        db,
+        [user],
+        created_by_id=principal.user.id,
+    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -308,10 +470,6 @@ async def create_member(
         payload={"user_id": str(user.id), "status": user.status},
     )
     await db.commit()
-    if invitation_token:
-        from utag_api.worker.tasks import send_invitation
-
-        send_invitation.delay(str(user.id), invitation_token)
     return member_view(
         user,
         await load_user_access(db, user.id),
@@ -405,13 +563,27 @@ async def import_members(
     issues: list[MemberImportIssue] = []
     candidates: list[tuple[int, MemberCreate]] = []
     seen_emails: set[str] = set()
+    seen_staff_ids: set[str] = set()
     duplicate_rows = 0
+    units = {
+        unit.id: unit
+        for unit in (
+            await db.scalars(select(OrganizationUnit).where(OrganizationUnit.is_active.is_(True)))
+        ).all()
+    }
 
     for row_number, raw in enumerate(raw_rows, start=2):
+        resolved, organization_issues = resolve_import_organization(raw, units)
+        if organization_issues:
+            issues.extend(
+                MemberImportIssue(row=row_number, field=field, message=message)
+                for field, message in organization_issues
+            )
+            continue
         try:
-            roles = [force_role] if force_role else raw.get("roles") or ["member"]
+            roles = [force_role] if force_role else resolved.get("roles") or ["member"]
             candidate = MemberCreate.model_validate(
-                {**raw, "send_invitation": True, "roles": roles}
+                {**resolved, "send_invitation": False, "roles": roles}
             )
         except ValidationError as exc:
             for error in exc.errors(include_url=False):
@@ -423,6 +595,15 @@ async def import_members(
                         message=str(error["msg"]),
                     )
                 )
+            continue
+        if not candidate.staff_id:
+            issues.append(
+                MemberImportIssue(
+                    row=row_number,
+                    field="staff_id",
+                    message="Staff ID is required and becomes the temporary password",
+                )
+            )
             continue
         normalized = normalize_email(str(candidate.email))
         if normalized in seen_emails:
@@ -436,17 +617,36 @@ async def import_members(
             )
             continue
         seen_emails.add(normalized)
+        normalized_staff_id = candidate.staff_id.casefold()
+        if normalized_staff_id in seen_staff_ids:
+            duplicate_rows += 1
+            issues.append(
+                MemberImportIssue(
+                    row=row_number,
+                    field="staff_id",
+                    message="This staff ID appears more than once in the file",
+                )
+            )
+            continue
+        seen_staff_ids.add(normalized_staff_id)
         candidates.append((row_number, candidate))
 
+    candidate_emails = [normalize_email(str(candidate.email)) for _, candidate in candidates]
     existing_emails = set(
-        (
-            await db.scalars(
-                select(User.email).where(
-                    User.email.in_([str(item.email) for _, item in candidates])
+        (await db.scalars(select(User.email).where(User.email.in_(candidate_emails)))).all()
+    )
+    existing_staff_ids = {
+        str(staff_id).casefold(): email
+        for staff_id, email in (
+            await db.execute(
+                select(User.staff_id, User.email).where(
+                    User.staff_id.is_not(None),
+                    func.lower(User.staff_id).in_(seen_staff_ids),
                 )
             )
         ).all()
-    )
+        if staff_id
+    }
     valid_roles = set((await db.scalars(select(Role.key))).all())
     requested_role_keys = {role for _, candidate in candidates for role in candidate.roles}
     if (
@@ -459,18 +659,6 @@ async def import_members(
             "role_assignment_denied",
             "You do not have permission to import privileged roles",
         )
-    unit_ids = {
-        unit_id
-        for _, item in candidates
-        for unit_id in (item.school_id, item.college_id, item.department_id)
-        if unit_id is not None
-    }
-    units = {
-        unit.id: unit
-        for unit in (
-            await db.scalars(select(OrganizationUnit).where(OrganizationUnit.id.in_(unit_ids)))
-        ).all()
-    }
     accepted: list[tuple[int, MemberCreate]] = []
     for row_number, candidate in candidates:
         email = normalize_email(str(candidate.email))
@@ -483,6 +671,17 @@ async def import_members(
                     row=row_number,
                     field="email",
                     message="A member already uses this email",
+                )
+            )
+        staff_owner = existing_staff_ids.get((candidate.staff_id or "").casefold())
+        if staff_owner is not None:
+            duplicate_rows += 1
+            row_has_error = True
+            issues.append(
+                MemberImportIssue(
+                    row=row_number,
+                    field="staff_id",
+                    message=f"Another member already uses this staff ID ({staff_owner})",
                 )
             )
         unknown_roles = sorted(set(candidate.roles) - valid_roles)
@@ -513,6 +712,26 @@ async def import_members(
                         message=f"Select a valid active {expected_type}",
                     )
                 )
+        hierarchy_errors = organization_assignment_errors(
+            units,
+            school_id=candidate.school_id,
+            college_id=candidate.college_id,
+            department_id=candidate.department_id,
+        )
+        for field, message in hierarchy_errors:
+            if any(
+                issue.row == row_number and issue.field == field and issue.message == message
+                for issue in issues
+            ):
+                continue
+            row_has_error = True
+            issues.append(
+                MemberImportIssue(
+                    row=row_number,
+                    field=field,
+                    message=message,
+                )
+            )
         if not row_has_error:
             accepted.append((row_number, candidate))
 
@@ -529,6 +748,7 @@ async def import_members(
             ),
             "academic_rank": candidate.academic_rank,
             "roles": candidate.roles,
+            "chat_groups": import_chat_group_titles(candidate, units),
         }
         for row_number, candidate in accepted[:50]
     ]
@@ -547,17 +767,19 @@ async def import_members(
         return result
 
     roles_by_key = {role.key: role for role in (await db.scalars(select(Role))).all()}
-    invitations: list[tuple[UUID, str]] = []
     now = datetime.now(UTC)
+    imported_users: list[User] = []
     for _, candidate in accepted:
+        if candidate.staff_id is None:
+            raise RuntimeError("Validated member import is missing a staff ID")
         user = User(
             id=new_id(),
             email=normalize_email(str(candidate.email)),
             staff_id=candidate.staff_id,
-            password_hash=hash_password(new_token()),
+            password_hash=hash_password(candidate.staff_id),
             must_change_password=True,
             email_verified=False,
-            status="invited",
+            status="active",
             title=candidate.title,
             other_name=candidate.other_name,
             surname=candidate.surname,
@@ -569,6 +791,7 @@ async def import_members(
             department_id=candidate.department_id,
         )
         db.add(user)
+        imported_users.append(user)
         await db.flush()
         for role_key in candidate.roles:
             db.add(
@@ -580,18 +803,6 @@ async def import_members(
                     assigned_at=now,
                 )
             )
-        raw_token = new_token()
-        db.add(
-            AccountToken(
-                id=new_id(),
-                user_id=user.id,
-                kind="invitation",
-                token_hash=token_digest(raw_token),
-                created_at=now,
-                expires_at=now + timedelta(days=7),
-            )
-        )
-        invitations.append((user.id, raw_token))
         record_change(
             db,
             context=event_context(request, principal),
@@ -601,7 +812,14 @@ async def import_members(
             topic="members",
             payload={"user_id": str(user.id), "status": user.status},
         )
+    chat_sync = await sync_system_chat_groups(
+        db,
+        imported_users,
+        created_by_id=principal.user.id,
+    )
     result.imported_rows = len(accepted)
+    result.chat_groups_created = chat_sync.groups_created
+    result.chat_memberships_added = chat_sync.memberships_added
     db.add(
         BackgroundJob(
             id=new_id(),
@@ -614,14 +832,12 @@ async def import_members(
                 "imported": result.imported_rows,
                 "duplicates": result.duplicate_rows,
                 "invalid": result.invalid_rows,
+                "chat_groups_created": result.chat_groups_created,
+                "chat_memberships_added": result.chat_memberships_added,
             },
         )
     )
     await db.commit()
-    from utag_api.worker.tasks import send_invitation
-
-    for user_id, raw_token in invitations:
-        send_invitation.delay(str(user_id), raw_token)
     return result
 
 
@@ -644,6 +860,12 @@ async def update_member(
             "Use the deactivate, reactivate, or archive action to change account status",
         )
     changes = payload.model_dump(exclude_unset=True, exclude={"roles", "status"})
+    await validate_organization_assignment(
+        db,
+        school_id=changes.get("school_id", user.school_id),
+        college_id=changes.get("college_id", user.college_id),
+        department_id=changes.get("department_id", user.department_id),
+    )
     profile_media_id = changes.get("profile_media_id")
     if profile_media_id is not None:
         await require_public_profile_image(db, profile_media_id)
@@ -659,6 +881,12 @@ async def update_member(
         roles = (await db.scalars(select(Role).where(Role.key.in_(set(payload.roles))))).all()
         if len(roles) != len(set(payload.roles)):
             raise ApiError(422, "invalid_role", "One or more roles do not exist")
+        await protect_administrator_removal(
+            db,
+            target=user,
+            principal=principal,
+            replacement_roles=set(payload.roles),
+        )
         await db.execute(delete(UserRole).where(UserRole.user_id == user.id))
         now = datetime.now(UTC)
         for role in roles:
@@ -670,6 +898,11 @@ async def update_member(
                     assigned_at=now,
                 )
             )
+    await sync_system_chat_groups(
+        db,
+        [user],
+        created_by_id=principal.user.id,
+    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -728,15 +961,18 @@ async def send_access_link(
         topic=f"user:{user.id}",
         payload={"user_id": str(user.id), "kind": token_kind},
     )
+    encrypted_token = encrypt_text(raw_token)
+    if encrypted_token is None:
+        raise RuntimeError("Access token encryption failed")
+    enqueue_task(
+        db,
+        task_name=("utag.email.invitation" if is_invitation else "utag.email.password_reset"),
+        aggregate_type="user",
+        aggregate_id=user.id,
+        args=[str(user.id), encrypted_token.decode()],
+        queue="communications",
+    )
     await db.commit()
-    if is_invitation:
-        from utag_api.worker.tasks import send_invitation
-
-        send_invitation.delay(str(user.id), raw_token)
-    else:
-        from utag_api.worker.tasks import send_password_reset
-
-        send_password_reset.delay(str(user.id), raw_token)
     return MessageResponse(
         message="Invitation sent" if is_invitation else "Password reset instructions sent"
     )
@@ -788,10 +1024,18 @@ async def force_password_reset(
         payload={"user_id": str(user.id)},
         reason="Administrator required a password reset",
     )
+    encrypted_token = encrypt_text(raw_token)
+    if encrypted_token is None:
+        raise RuntimeError("Password reset token encryption failed")
+    enqueue_task(
+        db,
+        task_name="utag.email.password_reset",
+        aggregate_type="user",
+        aggregate_id=user.id,
+        args=[str(user.id), encrypted_token.decode()],
+        queue="communications",
+    )
     await db.commit()
-    from utag_api.worker.tasks import send_password_reset
-
-    send_password_reset.delay(str(user.id), raw_token)
     return MessageResponse(message="Password reset link sent and existing sessions revoked")
 
 
@@ -813,6 +1057,7 @@ async def deactivate_member(
     if user is None:
         raise ApiError(404, "member_not_found", "Member not found")
     await ensure_privileged_target_permission(db, principal, user.id)
+    await protect_administrator_removal(db, target=user, principal=principal)
     if user.status == "archived":
         raise ApiError(
             409,
@@ -825,6 +1070,11 @@ async def deactivate_member(
     user.status = "suspended"
     await revoke_member_sessions(db, user.id, now)
     await invalidate_member_access_tokens(db, user.id, now)
+    await sync_system_chat_groups(
+        db,
+        [user],
+        created_by_id=principal.user.id,
+    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -860,6 +1110,11 @@ async def reactivate_member(
         )
     previous_status = user.status
     user.status = "active"
+    await sync_system_chat_groups(
+        db,
+        [user],
+        created_by_id=principal.user.id,
+    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -920,12 +1175,18 @@ async def archive_member(
     if user is None:
         raise ApiError(404, "member_not_found", "Member not found")
     await ensure_privileged_target_permission(db, principal, user.id)
+    await protect_administrator_removal(db, target=user, principal=principal)
     if user.status == "archived":
         return MessageResponse(message="Member is already archived")
     user.status = "archived"
     now = datetime.now(UTC)
     await revoke_member_sessions(db, user.id, now)
     await invalidate_member_access_tokens(db, user.id, now)
+    await sync_system_chat_groups(
+        db,
+        [user],
+        created_by_id=principal.user.id,
+    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -979,6 +1240,146 @@ async def export_members(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=ug-utag-members.csv"},
+    )
+
+
+@router.get("/import-template.xlsx")
+async def member_import_template(
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("members.create"))],
+) -> Response:
+    del principal
+    units = (
+        await db.scalars(
+            select(OrganizationUnit)
+            .where(OrganizationUnit.is_active.is_(True))
+            .order_by(OrganizationUnit.name)
+        )
+    ).all()
+    by_id = {unit.id: unit for unit in units}
+    departments = sorted(
+        (unit for unit in units if unit.unit_type == "department"),
+        key=lambda unit: unit.name,
+    )
+
+    workbook = Workbook()
+    members = workbook.active
+    members.title = "Members"
+    headers = [
+        "staff_id",
+        "email",
+        "title",
+        "other_name",
+        "surname",
+        "gender",
+        "academic_rank",
+        "phone_number",
+        "college",
+        "school",
+        "department",
+        "roles",
+    ]
+    members.append(headers)
+    members.freeze_panes = "A2"
+    members.auto_filter.ref = "A1:L1"
+    widths = {
+        "A": 18,
+        "B": 34,
+        "C": 12,
+        "D": 22,
+        "E": 22,
+        "F": 14,
+        "G": 26,
+        "H": 20,
+        "I": 38,
+        "J": 42,
+        "K": 52,
+        "L": 22,
+    }
+    for column, width in widths.items():
+        members.column_dimensions[column].width = width
+    for row_number in range(2, 2002):
+        members.cell(row=row_number, column=1).number_format = "@"
+
+    header_fill = PatternFill("solid", fgColor="172F4D")
+    for cell in members[1]:
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.alignment = Alignment(vertical="center")
+    members.row_dimensions[1].height = 24
+
+    instructions = workbook.create_sheet("Instructions")
+    instructions.column_dimensions["A"].width = 28
+    instructions.column_dimensions["B"].width = 105
+    instructions.append(["Requirement", "Guidance"])
+    instruction_rows = [
+        (
+            "Required fields",
+            "staff_id, email, other_name, surname, college, school, and department",
+        ),
+        (
+            "Temporary password",
+            "The exact staff_id becomes the first password. Members must change "
+            "it immediately after sign-in.",
+        ),
+        (
+            "Staff ID format",
+            "Keep staff_id cells as text. The template is preformatted to preserve leading zeroes.",
+        ),
+        (
+            "Organization names",
+            "Copy exact college, school, and department names from the "
+            "Organization Reference sheet.",
+        ),
+        (
+            "Roles",
+            "Leave blank for member. Separate multiple roles with commas or semicolons.",
+        ),
+        (
+            "Account and chats",
+            "Import activates the account and adds it to UTAG UG plus its "
+            "school and department chats.",
+        ),
+        (
+            "Safety",
+            "Preview validates every row. Nothing is created until the file "
+            "has no reported issues.",
+        ),
+    ]
+    for instruction_row in instruction_rows:
+        instructions.append(instruction_row)
+    for cell in instructions[1]:
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+    for instruction_row in instructions.iter_rows(min_row=2, max_col=2):
+        for cell in instruction_row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    reference = workbook.create_sheet("Organization Reference")
+    reference.append(["college", "school", "department"])
+    reference.freeze_panes = "A2"
+    reference.auto_filter.ref = "A1:C1"
+    reference.column_dimensions["A"].width = 40
+    reference.column_dimensions["B"].width = 46
+    reference.column_dimensions["C"].width = 58
+    for cell in reference[1]:
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+    for department in departments:
+        school = by_id.get(department.parent_id) if department.parent_id else None
+        college = by_id.get(school.parent_id) if school and school.parent_id else None
+        if school and college:
+            reference.append([college.name, school.name, department.name])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    workbook.close()
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": 'attachment; filename="ug-utag-member-import-template.xlsx"'
+        },
     )
 
 

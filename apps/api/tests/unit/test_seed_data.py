@@ -1,7 +1,8 @@
 from sqlalchemy import func, select
 
-from utag_api.models import AdSlot, FeatureFlag, OrganizationUnit, SiteSetting
+from utag_api.models import AdPlan, AdSlot, FeatureFlag, OrganizationUnit, SiteSetting
 from utag_api.seed_data import (
+    AD_PLANS,
     AD_SLOTS,
     FEATURE_FLAGS,
     ORGANIZATION_STRUCTURE,
@@ -55,3 +56,26 @@ async def test_portal_seed_is_complete_and_idempotent(session_factory) -> None: 
             FEATURE_FLAGS
         )
         assert await session.scalar(select(func.count()).select_from(AdSlot)) == len(AD_SLOTS)
+        assert await session.scalar(select(func.count()).select_from(AdPlan)) == len(AD_PLANS)
+
+        active_keys = {
+            row.key
+            for row in (
+                await session.scalars(select(AdSlot).where(AdSlot.is_active.is_(True)))
+            ).all()
+        }
+        assert active_keys == {
+            "home-after-hero",
+            "news-sidebar",
+            "events-sidebar",
+            "content-inline",
+            "footer",
+        }
+        footer = await session.scalar(select(AdSlot).where(AdSlot.key == "footer"))
+        assert footer is not None
+        assert footer.width == 970
+        assert footer.height == 90
+        assert footer.location.startswith("All public pages")
+        plan = await session.scalar(select(AdPlan).where(AdPlan.name == "Site footer · 30 days"))
+        assert plan is not None
+        assert plan.slot_id == footer.id

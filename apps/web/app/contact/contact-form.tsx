@@ -10,16 +10,22 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
 const schema = z.object({
-  name: z.string().min(2),
-  email: z.email(),
-  subject: z.string().min(3),
-  message: z.string().min(10),
+  name: z.string().trim().min(2, "Enter your name"),
+  email: z.email("Enter a valid email address"),
+  subject: z
+    .string()
+    .trim()
+    .min(3, "Enter a subject using at least 3 characters"),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Enter a message using at least 10 characters"),
   website: z.string().optional(),
 });
 type ContactData = z.infer<typeof schema>;
 
 const input =
-  "min-h-12 w-full rounded-md border border-line bg-white px-4 text-sm outline-none transition focus:border-sky focus:ring-2 focus:ring-sky/15";
+  "min-h-12 w-full rounded-md border border-line bg-white px-4 text-sm outline-none transition focus:border-ink/25 focus:ring-0";
 
 export function ContactForm() {
   const {
@@ -45,6 +51,7 @@ export function ContactForm() {
   return (
     <form
       onSubmit={submit}
+      noValidate
       className="grid gap-5 rounded-md border border-line bg-panel p-6 shadow-[0_10px_32px_rgb(23_43_69_/_8%)] sm:grid-cols-2 sm:p-8"
     >
       <div className="sm:col-span-2">
@@ -57,26 +64,74 @@ export function ContactForm() {
       </div>
       <label className="grid gap-2 text-xs font-bold text-[#2d4056]">
         Name
-        <input className={input} {...register("name")} />
-        {errors.name && <span className="text-red-600">Enter your name</span>}
+        <input
+          className={input}
+          autoComplete="name"
+          aria-invalid={Boolean(errors.name)}
+          aria-describedby={errors.name ? "contact-name-error" : undefined}
+          {...register("name")}
+        />
+        {errors.name && (
+          <span id="contact-name-error" role="alert" className="text-red-600">
+            {errors.name.message}
+          </span>
+        )}
       </label>
       <label className="grid gap-2 text-xs font-bold text-[#2d4056]">
         Email
-        <input className={input} type="email" {...register("email")} />
+        <input
+          className={input}
+          type="email"
+          autoComplete="email"
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? "contact-email-error" : undefined}
+          {...register("email")}
+        />
         {errors.email && (
-          <span className="text-red-600">Enter a valid email</span>
+          <span id="contact-email-error" role="alert" className="text-red-600">
+            {errors.email.message}
+          </span>
         )}
       </label>
       <label className="grid gap-2 text-xs font-bold text-[#2d4056] sm:col-span-2">
         Subject
-        <input className={input} {...register("subject")} />
+        <input
+          className={input}
+          aria-invalid={Boolean(errors.subject)}
+          aria-describedby={
+            errors.subject ? "contact-subject-error" : undefined
+          }
+          {...register("subject")}
+        />
+        {errors.subject && (
+          <span
+            id="contact-subject-error"
+            role="alert"
+            className="text-red-600"
+          >
+            {errors.subject.message}
+          </span>
+        )}
       </label>
       <label className="grid gap-2 text-xs font-bold text-[#2d4056] sm:col-span-2">
         Message
         <textarea
           className={`${input} min-h-40 py-4`}
+          aria-invalid={Boolean(errors.message)}
+          aria-describedby={
+            errors.message ? "contact-message-error" : undefined
+          }
           {...register("message")}
         />
+        {errors.message && (
+          <span
+            id="contact-message-error"
+            role="alert"
+            className="text-red-600"
+          >
+            {errors.message.message}
+          </span>
+        )}
       </label>
       <input
         className="hidden"

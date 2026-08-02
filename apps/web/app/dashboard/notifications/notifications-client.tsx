@@ -145,7 +145,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
               onChange={(event) => setTitle(event.target.value)}
               required
               placeholder="Enter the alert title"
-              className="min-h-15 rounded-xl border border-line bg-panel px-5 text-base font-semibold outline-none focus:border-sky"
+              className="min-h-15 rounded-xl border border-line bg-panel px-5 text-base font-semibold outline-none focus:border-ink/25"
             />
           </label>
           <div className="grid gap-2 text-xs font-bold">

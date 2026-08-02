@@ -146,7 +146,7 @@ function SelectedAsset({
         type="button"
         onClick={remove}
         aria-label={`Remove ${asset?.original_filename ?? field.label}`}
-        className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-paper/95 text-ink shadow-md transition hover:bg-red-700 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky"
+        className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-paper/95 text-ink shadow-md transition hover:bg-red-700 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/30"
       >
         <X className="size-4" />
       </button>
@@ -457,7 +457,7 @@ export function WorkspaceMediaField({
                       maxLength={500}
                       onChange={(event) => setAltText(event.target.value)}
                       placeholder="Describe the image for screen readers"
-                      className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-sky"
+                      className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
                     />
                   </label>
                 ) : null}
@@ -511,7 +511,7 @@ export function WorkspaceMediaField({
         <>
           <button
             type="button"
-            className={`grid min-h-28 place-items-center rounded-xl border-2 border-dashed px-5 py-4 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky ${
+            className={`grid min-h-28 place-items-center rounded-xl border-2 border-dashed px-5 py-4 text-center transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/30 ${
               dragging
                 ? "border-coral bg-coral/5"
                 : "border-line hover:border-sky hover:bg-sky/[.025]"

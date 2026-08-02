@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +40,14 @@ class OrganizationUnit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint("unit_type", "name", "parent_id", name="unit_identity"),
         UniqueConstraint("unit_type", "legacy_id", name="organization_legacy_identity"),
         Index("ix_organization_units_parent_type", "parent_id", "unit_type"),
+        Index(
+            "uq_organization_root_identity",
+            "unit_type",
+            "name",
+            unique=True,
+            postgresql_where=text("parent_id IS NULL"),
+            sqlite_where=text("parent_id IS NULL"),
+        ),
     )
 
     legacy_id: Mapped[int | None] = mapped_column(Integer)
@@ -184,3 +193,5 @@ class ExecutiveAppointment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_acting: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    show_email: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    show_phone: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

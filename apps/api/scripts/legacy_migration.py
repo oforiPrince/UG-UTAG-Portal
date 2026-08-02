@@ -605,18 +605,42 @@ def promote_ad_slot(session: OrmSession, row: dict[str, Any]) -> AdSlot:
     existing = lookup_legacy(session, AdSlot, identifier)
     if existing:
         return existing
+    width = int(restore_value(row.get("width")) or 728)
+    height = int(restore_value(row.get("height")) or 90)
     item = AdSlot(
         id=new_id(),
         legacy_id=identifier,
         key=str(restore_value(row["key"])),
         name=str(restore_value(row["name"])),
-        width=restore_value(row.get("width")),
-        height=restore_value(row.get("height")),
+        width=width,
+        height=height,
+        location=str(restore_value(row.get("location")) or ""),
         description=str(restore_value(row.get("description")) or ""),
     )
     session.add(item)
     session.flush()
     return item
+
+
+def _default_ad_slot(session: OrmSession) -> AdSlot:
+    slot = session.scalar(select(AdSlot).where(AdSlot.key == "footer"))
+    if slot is not None:
+        return slot
+    slot = session.scalar(select(AdSlot).order_by(AdSlot.created_at).limit(1))
+    if slot is not None:
+        return slot
+    slot = AdSlot(
+        id=new_id(),
+        key="footer",
+        name="Site footer strip",
+        width=970,
+        height=90,
+        location="All public pages · above footer",
+        is_active=True,
+    )
+    session.add(slot)
+    session.flush()
+    return slot
 
 
 def promote_ad_plan(session: OrmSession, row: dict[str, Any]) -> AdPlan:
@@ -627,6 +651,7 @@ def promote_ad_plan(session: OrmSession, row: dict[str, Any]) -> AdPlan:
     item = AdPlan(
         id=new_id(),
         legacy_id=identifier,
+        slot_id=_default_ad_slot(session).id,
         name=str(restore_value(row["name"])),
         description=str(restore_value(row.get("description")) or ""),
         price=restore_value(row.get("price")) or Decimal("0"),

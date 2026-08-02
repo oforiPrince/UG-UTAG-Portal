@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   Check,
@@ -45,6 +50,7 @@ type Message = {
   text: string;
   created_at: string;
   client_message_id: string;
+  read_by: number;
   attachments: {
     id: string;
     filename: string;
@@ -67,7 +73,13 @@ type GroupMember = {
   role: "owner" | "admin" | "member";
 };
 type User = { id: string; full_name: string };
-type Page<T> = { items: T[] };
+type Page<T> = {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
+};
 type ChatUpload = {
   id: string;
   original_filename: string;
@@ -178,7 +190,7 @@ function NewConversationDialog({ close }: { close: () => void }) {
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="min-h-11 rounded-xl border border-line bg-panel px-4 outline-none focus:border-sky"
+                className="min-h-11 rounded-xl border border-line bg-panel px-4 outline-none focus:border-ink/25"
                 required
               />
             </label>
@@ -345,6 +357,8 @@ function GroupPanel({
       <aside
         className="h-full w-full max-w-xl overflow-y-auto bg-paper p-6 shadow-2xl sm:p-8"
         onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
         aria-label="Manage group"
       >
         <div className="flex items-start justify-between">
@@ -407,21 +421,42 @@ function GroupPanel({
                   </small>
                 </span>
                 {me?.role === "owner" && member.role !== "owner" ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      mutate.mutate({
-                        endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${member.user_id}/role`,
-                        method: "PATCH",
-                        body: {
-                          role: member.role === "admin" ? "member" : "admin",
-                        },
-                      })
-                    }
-                  >
-                    {member.role === "admin" ? "Remove admin" : "Make admin"}
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        mutate.mutate({
+                          endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${member.user_id}/role`,
+                          method: "PATCH",
+                          body: {
+                            role: member.role === "admin" ? "member" : "admin",
+                          },
+                        })
+                      }
+                    >
+                      {member.role === "admin" ? "Remove admin" : "Make admin"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            `Transfer group ownership to ${member.full_name}? You will remain an administrator.`,
+                          )
+                        )
+                          return;
+                        mutate.mutate({
+                          endpoint: `/api/v1/chat/conversations/${conversation.id}/owner`,
+                          method: "PATCH",
+                          body: { user_id: member.user_id },
+                        });
+                      }}
+                    >
+                      Make owner
+                    </Button>
+                  </>
                 ) : null}
                 {canManage && member.role !== "owner" ? (
                   <Button
@@ -595,14 +630,28 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
     );
   }, [conversations.data, search]);
   const activeConversationId = active ?? conversations.data?.[0]?.id ?? null;
-  const messages = useQuery({
+  const messages = useInfiniteQuery({
     queryKey: ["chat", "messages", activeConversationId],
-    queryFn: () =>
-      api<Page<Message>>(
-        `/api/v1/chat/conversations/${activeConversationId}/messages?limit=100`,
-      ),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "50" });
+      if (pageParam) params.set("before", pageParam);
+      return api<Page<Message>>(
+        `/api/v1/chat/conversations/${activeConversationId}/messages?${params}`,
+      );
+    },
     enabled: Boolean(activeConversationId),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === lastPage.page_size
+        ? lastPage.items[0]?.created_at
+        : undefined,
   });
+  const messageItems = useMemo(
+    () =>
+      [...(messages.data?.pages ?? [])].reverse().flatMap((page) => page.items),
+    [messages.data?.pages],
+  );
+  const latestMessageId = messageItems.at(-1)?.id;
   const selected = conversations.data?.find(
     (item) => item.id === activeConversationId,
   );
@@ -644,10 +693,10 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.data?.items.length]);
+  }, [activeConversationId, latestMessageId]);
 
   useEffect(() => {
-    if (!activeConversationId || !messages.data) return;
+    if (!activeConversationId || !messages.data?.pages.length) return;
     api(`/api/v1/chat/conversations/${activeConversationId}/read`, {
       method: "POST",
     })
@@ -655,7 +704,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
         queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] }),
       )
       .catch(() => undefined);
-  }, [activeConversationId, messages.data, queryClient]);
+  }, [activeConversationId, messages.data?.pages.length, queryClient]);
 
   useEffect(() => {
     if (attachmentStatus.data?.status === "rejected") {
@@ -719,11 +768,10 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
           },
         },
       ),
-    onSuccess: (message) => {
-      queryClient.setQueryData<Page<Message>>(
-        ["chat", "messages", activeConversationId],
-        (current) => ({ items: [...(current?.items ?? []), message] }),
-      );
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["chat", "messages", activeConversationId],
+      });
       setText("");
       setPendingAttachment(null);
       setPendingFilePreview(null);
@@ -911,13 +959,27 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                   {messages.isLoading ? (
                     <LoaderCircle className="mx-auto mt-20 size-5 animate-spin text-muted" />
                   ) : null}
-                  {messages.data?.items.map((message, index) => {
+                  {messages.hasNextPage ? (
+                    <Button
+                      className="mx-auto"
+                      size="sm"
+                      variant="ghost"
+                      disabled={messages.isFetchingNextPage}
+                      onClick={() => messages.fetchNextPage()}
+                    >
+                      {messages.isFetchingNextPage ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : null}
+                      Load older messages
+                    </Button>
+                  ) : null}
+                  {messageItems.map((message, index) => {
                     const mine = message.sender_id === me.data?.id;
                     const showDay =
                       index === 0 ||
                       new Date(message.created_at).toDateString() !==
                         new Date(
-                          messages.data!.items[index - 1]!.created_at,
+                          messageItems[index - 1]!.created_at,
                         ).toDateString();
                     return (
                       <div key={message.id} className="group/message">
@@ -1005,7 +1067,16 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                               className={`mt-1.5 flex items-center justify-end gap-1 text-[.52rem] ${mine ? "text-paper/50" : "text-muted"}`}
                             >
                               {format(new Date(message.created_at), "HH:mm")}
-                              {mine ? <CheckCheck className="size-3" /> : null}
+                              {mine ? (
+                                <CheckCheck
+                                  className="size-3"
+                                  aria-label={
+                                    message.read_by
+                                      ? `Read by ${message.read_by}`
+                                      : "Sent"
+                                  }
+                                />
+                              ) : null}
                             </span>
                           </div>
                         </div>
@@ -1129,7 +1200,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                       }
                     }}
                     placeholder="Write a private message"
-                    className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-sky"
+                    className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-ink/25"
                   />
                   <Button
                     size="icon"

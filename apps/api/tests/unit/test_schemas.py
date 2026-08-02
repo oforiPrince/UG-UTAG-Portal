@@ -8,6 +8,7 @@ from utag_api.schemas.domain import (
     DocumentCreate,
     EventCreate,
     MessageCreateRequest,
+    NotificationCreate,
     NotificationView,
 )
 
@@ -116,3 +117,26 @@ def test_notification_view_sanitizes_legacy_stored_html() -> None:
     )
 
     assert notification.body == "<p>Safe <strong>formatting</strong>.</p>"
+
+
+@pytest.mark.parametrize(
+    "deep_link",
+    ["https://example.org/phishing", "//example.org/phishing", r"/\\example.org"],
+)
+def test_notification_rejects_external_deep_links(deep_link: str) -> None:
+    with pytest.raises(ValidationError):
+        NotificationCreate(
+            user_ids=[UUID("35a55a4e-9482-4ce9-9f66-dfc328f97aec")],
+            title="Member update",
+            deep_link=deep_link,
+        )
+
+
+def test_notification_accepts_internal_deep_link() -> None:
+    notification = NotificationCreate(
+        user_ids=[UUID("35a55a4e-9482-4ce9-9f66-dfc328f97aec")],
+        title="Member update",
+        deep_link=" /dashboard/events?tab=upcoming ",
+    )
+
+    assert notification.deep_link == "/dashboard/events?tab=upcoming"

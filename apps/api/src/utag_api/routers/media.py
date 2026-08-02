@@ -27,13 +27,14 @@ from utag_api.schemas.domain import (
     PresignUploadRequest,
     PresignUploadResponse,
 )
-from utag_api.services.events import record_change
+from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.query import paginate
 from utag_api.services.storage import (
     presign_get,
     presign_put,
     quarantine_key,
     s3_client,
+    s3_encryption_args,
     safe_filename,
     validate_upload,
 )
@@ -175,6 +176,7 @@ async def upload_media(
                         "byte-size": str(byte_size),
                         "sha256": asset.sha256,
                     },
+                    **s3_encryption_args(),
                 },
             )
         )
@@ -193,10 +195,15 @@ async def upload_media(
         topic="media",
         payload={"asset_id": str(asset.id), "status": asset.status},
     )
+    enqueue_task(
+        db,
+        task_name="utag.media.process",
+        aggregate_type="media_asset",
+        aggregate_id=asset.id,
+        args=[str(asset.id)],
+        queue="media",
+    )
     await db.commit()
-    from utag_api.worker.tasks import process_media
-
-    process_media.delay(str(asset.id))
     return MediaView.model_validate(asset)
 
 
@@ -233,10 +240,15 @@ async def complete_upload(
         topic="media",
         payload={"asset_id": str(asset.id), "status": asset.status},
     )
+    enqueue_task(
+        db,
+        task_name="utag.media.process",
+        aggregate_type="media_asset",
+        aggregate_id=asset.id,
+        args=[str(asset.id)],
+        queue="media",
+    )
     await db.commit()
-    from utag_api.worker.tasks import process_media
-
-    process_media.delay(str(asset.id))
     return MessageResponse(message="Upload complete. Security scanning has started")
 
 

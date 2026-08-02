@@ -51,6 +51,9 @@ const filters: { value: ModerationStatus; label: string }[] = [
 ];
 
 function previewUrl(item: ModerationItem) {
+  if (item.kind === "document") {
+    return `/dashboard/documents/${item.id}/preview`;
+  }
   return `/dashboard/preview/${item.kind}/${item.id}`;
 }
 
@@ -292,7 +295,7 @@ export function ModerationClient() {
                     ? "Optional internal publication note"
                     : "Give the editor a clear, actionable reason"
                 }
-                className="min-h-32 rounded-xl border border-line bg-panel p-4 text-sm font-normal outline-none focus:border-sky"
+                className="min-h-32 rounded-xl border border-line bg-panel p-4 text-sm font-normal outline-none focus:border-ink/25"
               />
             </label>
             <div className="mt-6 flex justify-end gap-2">

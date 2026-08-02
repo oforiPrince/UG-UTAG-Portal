@@ -15,7 +15,7 @@ import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Logo } from "@/components/logo";
@@ -75,6 +75,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const commandDialogRef = useRef<HTMLDivElement>(null);
   const user = useQuery({
     queryKey: ["auth", "me"],
     queryFn: () => api<User>("/api/v1/auth/me"),
@@ -99,6 +100,41 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+  useEffect(() => {
+    if (!commandOpen) return;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setCommandOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(
+        commandDialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleDialogKeyDown);
+      previousFocus?.focus();
+    };
+  }, [commandOpen]);
   const items = useMemo(
     () =>
       navigation.filter(
@@ -304,8 +340,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div
           className="fixed inset-0 z-[80] flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-sm"
           onMouseDown={() => setCommandOpen(false)}
+          role="presentation"
         >
           <div
+            ref={commandDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Workspace search"
             onMouseDown={(event) => event.stopPropagation()}
             className="w-full max-w-xl overflow-hidden rounded-[1.4rem] border border-line bg-panel shadow-2xl"
           >
@@ -316,10 +357,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 value={commandQuery}
                 onChange={(event) => setCommandQuery(event.target.value)}
                 placeholder="Go to a workspace…"
+                aria-label="Search workspaces"
                 className="min-h-16 w-full bg-transparent text-sm outline-none"
               />
               <button
                 onClick={() => setCommandOpen(false)}
+                aria-label="Close workspace search"
                 className="text-xs text-muted"
               >
                 ESC

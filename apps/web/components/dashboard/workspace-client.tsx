@@ -29,7 +29,11 @@ import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-fiel
 import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { API_URL, api } from "@/lib/api";
 import { display, displayChoice } from "@/lib/workspace-display";
-import { workspaceOptionQueryState } from "@/lib/workspace-options";
+import {
+  documentAudiencesForCategory,
+  nextMultiSelectValue,
+  workspaceOptionQueryState,
+} from "@/lib/workspace-options";
 import {
   workspaceDetailFields,
   workspaceFilterMatches,
@@ -48,6 +52,13 @@ type FormValues = Record<string, FormValue>;
 type User = { id: string; permissions: string[] };
 
 const PAGE_SIZE = 15;
+type PageResponse = {
+  items: WorkspaceRow[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
+};
 
 function useDebouncedValue(value: string, delay = 250) {
   const [debounced, setDebounced] = useState(value);
@@ -65,6 +76,52 @@ function optionEndpoint(
   if (!source.searchParam || !search.trim()) return source.endpoint;
   const separator = source.endpoint.includes("?") ? "&" : "?";
   return `${source.endpoint}${separator}${encodeURIComponent(source.searchParam)}=${encodeURIComponent(search.trim())}`;
+}
+
+function workspaceEndpoint(
+  config: WorkspaceConfig,
+  page: number,
+  search: string,
+  filters: Record<string, string>,
+) {
+  if (!config.serverPagination) return config.endpoint;
+  const [path, existing = ""] = config.endpoint.split("?", 2);
+  const params = new URLSearchParams(existing);
+  params.set("page", String(page));
+  params.set("page_size", String(PAGE_SIZE));
+  if (config.serverPagination.searchParam) {
+    const value = search.trim();
+    if (value) params.set(config.serverPagination.searchParam, value);
+    else params.delete(config.serverPagination.searchParam);
+  }
+  for (const [field, parameter] of Object.entries(
+    config.serverPagination.filterParams ?? {},
+  )) {
+    const value = filters[field];
+    if (value) params.set(parameter, value);
+    else params.delete(parameter);
+  }
+  return `${path}?${params}`;
+}
+
+function pageResponse(data: unknown): PageResponse | null {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("items" in data) ||
+    !Array.isArray((data as { items: unknown }).items)
+  ) {
+    return null;
+  }
+  const result = data as Partial<PageResponse>;
+  if (
+    typeof result.page !== "number" ||
+    typeof result.total !== "number" ||
+    typeof result.pages !== "number"
+  ) {
+    return null;
+  }
+  return result as PageResponse;
 }
 
 export function rowsFrom(data: unknown): WorkspaceRow[] {
@@ -190,7 +247,7 @@ export function WorkspaceSelect({
           autoFocus={autoFocus}
           disabled={disabled}
           onClick={() => setOpen((current) => !current)}
-          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none focus:border-sky disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <span className={selectedOption ? "text-ink" : "text-muted"}>
             {selectedOption?.label ?? emptyLabel}
@@ -307,7 +364,7 @@ export function WorkspaceSelect({
         (optionState.isLoading || optionState.isError || options.length === 0)
       }
       onChange={(event) => onChange(event.target.value)}
-      className="min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-sky disabled:cursor-not-allowed disabled:opacity-70"
+      className="min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
     >
       <option value="">{emptyLabel}</option>
       {options.map((option) => (
@@ -417,9 +474,11 @@ function WorkspaceMultiSelect({
               checked={selected.includes(option.value)}
               onChange={(event) =>
                 onChange(
-                  event.target.checked
-                    ? [...selected, option.value]
-                    : selected.filter((item) => item !== option.value),
+                  nextMultiSelectValue(
+                    selected,
+                    option.value,
+                    event.target.checked,
+                  ),
                 )
               }
               className="size-4 accent-sky"
@@ -895,7 +954,7 @@ function WorkspaceStructuredEditor({
                           )}
                           placeholder={itemField.placeholder}
                           onChange={updateItem}
-                          className="min-h-24 resize-y rounded-lg border border-line bg-panel p-3 text-xs leading-5 font-normal outline-none focus:border-sky"
+                          className="min-h-24 resize-y rounded-lg border border-line bg-panel p-3 text-xs leading-5 font-normal outline-none focus:border-ink/25"
                         />
                       ) : (
                         <input
@@ -905,7 +964,7 @@ function WorkspaceStructuredEditor({
                           )}
                           placeholder={itemField.placeholder}
                           onChange={updateItem}
-                          className="min-h-11 rounded-lg border border-line bg-panel px-3 text-xs font-normal outline-none focus:border-sky"
+                          className="min-h-11 rounded-lg border border-line bg-panel px-3 text-xs font-normal outline-none focus:border-ink/25"
                         />
                       )}
                     </label>
@@ -986,7 +1045,7 @@ function WorkspaceStructuredEditor({
                   onChange={(event) =>
                     updateRecord({ ...record, [entry.key]: event.target.value })
                   }
-                  className="min-h-24 resize-y rounded-lg border border-line bg-paper p-3 text-xs leading-5 font-normal outline-none focus:border-sky"
+                  className="min-h-24 resize-y rounded-lg border border-line bg-paper p-3 text-xs leading-5 font-normal outline-none focus:border-ink/25"
                 />
               ) : (
                 <input
@@ -996,7 +1055,7 @@ function WorkspaceStructuredEditor({
                   onChange={(event) =>
                     updateRecord({ ...record, [entry.key]: event.target.value })
                   }
-                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-sky"
+                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
                 />
               )}
             </label>
@@ -1014,7 +1073,7 @@ function WorkspaceStructuredEditor({
                     }
                     updateRecord(next);
                   }}
-                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-sky"
+                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
                 />
               </label>
               <label className="grid gap-1.5 text-[.68rem] font-bold">
@@ -1027,7 +1086,7 @@ function WorkspaceStructuredEditor({
                       [entry.key]: event.target.value,
                     })
                   }
-                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-sky"
+                  className="min-h-11 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
                 />
               </label>
               <Button
@@ -1164,17 +1223,46 @@ function MutationForm({
   cancelLabel?: string;
 }) {
   const queryClient = useQueryClient();
-  const fields = fieldsFor(mutation, mode, permissions).map((field) =>
-    field.optionsFor
-      ? { ...field, options: field.optionsFor(permissions) }
-      : field,
+  const configuredFields = fieldsFor(mutation, mode, permissions).map(
+    (field) =>
+      field.optionsFor
+        ? { ...field, options: field.optionsFor(permissions) }
+        : field,
   );
   const [values, setValues] = useState<FormValues>(() =>
     Object.fromEntries(
-      fields.map((field) => [field.key, initialFieldValue(field, row)]),
+      configuredFields.map((field) => [
+        field.key,
+        initialFieldValue(field, row),
+      ]),
     ),
   );
+  const fields = configuredFields.map((field) =>
+    field.optionsForValues
+      ? { ...field, options: field.optionsForValues(values) }
+      : field,
+  );
   const [busyFields, setBusyFields] = useState<string[]>([]);
+
+  const updateFieldValue = (field: WorkspaceField, nextValue: FormValue) => {
+    setValues((current) => {
+      const next = { ...current, [field.key]: nextValue };
+      if (
+        config.queryKey !== "documents" ||
+        field.key !== "category" ||
+        typeof nextValue !== "string"
+      ) {
+        return next;
+      }
+      const selectedAudiences = Array.isArray(current.audiences)
+        ? current.audiences.map(String)
+        : [];
+      return {
+        ...next,
+        audiences: documentAudiencesForCategory(nextValue, selectedAudiences),
+      };
+    });
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -1251,283 +1339,275 @@ function MutationForm({
           save.mutate();
         }}
       >
-          {fields.map((field, index) => {
-            if (field.hidden) return null;
-            const value =
-              values[field.key] ?? (field.type === "checkbox" ? false : "");
-            const wide =
-              ["textarea", "richtext", "json"].includes(field.type ?? "") ||
-              field.help ||
-              field.prominent ||
-              field.type === "media";
-            const fieldId = `workspace-${mode}-${field.key}`;
-            const labelId = `${fieldId}-label`;
-            return (
-              <div
-                key={field.key}
-                className={`grid content-start gap-2 text-xs font-bold ${wide ? "sm:col-span-2" : ""}`}
-              >
-                <label id={labelId} htmlFor={fieldId}>
-                  {field.label}
-                  {field.required ? (
-                    <span className="ml-1 text-coral" aria-hidden="true">
-                      *
-                    </span>
-                  ) : null}
-                </label>
-                {field.type === "checkbox" ? (
-                  <label
-                    htmlFor={fieldId}
-                    className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-panel px-4"
-                  >
-                    <input
-                      id={fieldId}
-                      type="checkbox"
-                      checked={Boolean(value)}
-                      onChange={(event) =>
-                        setValues((current) => ({
-                          ...current,
-                          [field.key]: event.target.checked,
-                        }))
-                      }
-                      className="size-4 accent-sky"
-                    />
-                    <span className="font-normal text-muted">
-                      {field.checkboxLabel ?? "Enabled"}
-                    </span>
-                  </label>
-                ) : field.type === "json" ? (
-                  <WorkspaceStructuredEditor
-                    id={fieldId}
-                    labelledBy={labelId}
-                    field={field}
-                    value={value}
-                    onChange={(nextValue) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: nextValue,
-                      }))
-                    }
-                  />
-                ) : field.type === "textarea" ? (
-                  <textarea
-                    id={fieldId}
-                    autoFocus={index === 0}
-                    required={field.required}
-                    value={String(value)}
-                    placeholder={field.placeholder}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: event.target.value,
-                      }))
-                    }
-                    className="min-h-32 rounded-xl border border-line bg-panel p-4 text-sm font-normal outline-none focus:border-sky"
-                  />
-                ) : field.type === "richtext" ? (
-                  <RichTextEditor
-                    id={fieldId}
-                    labelledBy={labelId}
-                    required={field.required}
-                    value={String(value)}
-                    placeholder={
-                      field.placeholder ?? `Write ${field.label.toLowerCase()}…`
-                    }
-                    onChange={(nextValue) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: nextValue,
-                      }))
-                    }
-                  />
-                ) : field.type === "media" ? (
-                  <WorkspaceMediaField
-                    field={field}
-                    value={Array.isArray(value) ? value : String(value)}
-                    downloadBlockedIds={
-                      field.media?.downloadControl
-                        ? Array.isArray(values.blocked_download_media_ids)
-                          ? values.blocked_download_media_ids.map(String)
-                          : []
-                        : undefined
-                    }
-                    onBusyChange={(busy) =>
-                      setBusyFields((current) =>
-                        busy
-                          ? [...new Set([...current, field.key])]
-                          : current.filter((key) => key !== field.key),
-                      )
-                    }
-                    onChange={(nextValue) =>
-                      setValues((current) => {
-                        const next = {
-                          ...current,
-                          [field.key]: nextValue,
-                        };
-                        if (field.media?.downloadControl) {
-                          const selected = Array.isArray(nextValue)
-                            ? nextValue.map(String)
-                            : nextValue
-                              ? [String(nextValue)]
-                              : [];
-                          const blocked = new Set(
-                            (
-                              Array.isArray(current.blocked_download_media_ids)
-                                ? current.blocked_download_media_ids
-                                : []
-                            ).map(String),
-                          );
-                          next.blocked_download_media_ids = selected.filter(
-                            (id) => blocked.has(id),
-                          );
-                        }
-                        return next;
-                      })
-                    }
-                    onDownloadBlockedChange={
-                      field.media?.downloadControl
-                        ? (ids) =>
-                            setValues((current) => ({
-                              ...current,
-                              blocked_download_media_ids: ids,
-                            }))
-                        : undefined
-                    }
-                    picker={
-                      field.media?.multiple ? (
-                        <WorkspaceMultiSelect
-                          id={fieldId}
-                          labelledBy={labelId}
-                          field={field}
-                          value={value}
-                          onChange={(nextValue) =>
-                            setValues((current) => {
-                              const next = {
-                                ...current,
-                                [field.key]: nextValue,
-                              };
-                              if (field.media?.downloadControl) {
-                                const selected = Array.isArray(nextValue)
-                                  ? nextValue.map(String)
-                                  : [];
-                                const blocked = new Set(
-                                  (
-                                    Array.isArray(
-                                      current.blocked_download_media_ids,
-                                    )
-                                      ? current.blocked_download_media_ids
-                                      : []
-                                  ).map(String),
-                                );
-                                next.blocked_download_media_ids =
-                                  selected.filter((id) => blocked.has(id));
-                              }
-                              return next;
-                            })
-                          }
-                        />
-                      ) : (
-                        <WorkspaceSelect
-                          id={fieldId}
-                          labelledBy={labelId}
-                          field={field}
-                          value={value}
-                          autoFocus={index === 0}
-                          onChange={(nextValue) =>
-                            setValues((current) => ({
-                              ...current,
-                              [field.key]: nextValue,
-                            }))
-                          }
-                        />
-                      )
-                    }
-                  />
-                ) : field.type === "select" ? (
-                  <WorkspaceSelect
-                    id={fieldId}
-                    labelledBy={labelId}
-                    field={field}
-                    value={value}
-                    autoFocus={index === 0}
-                    onChange={(nextValue) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: nextValue,
-                      }))
-                    }
-                  />
-                ) : field.type === "multiselect" ? (
-                  <WorkspaceMultiSelect
-                    id={fieldId}
-                    labelledBy={labelId}
-                    field={field}
-                    value={value}
-                    onChange={(nextValue) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: nextValue,
-                      }))
-                    }
-                  />
-                ) : (
-                  <input
-                    id={fieldId}
-                    autoFocus={index === 0}
-                    required={field.required}
-                    type={
-                      field.type === "list" ? "text" : (field.type ?? "text")
-                    }
-                    step={field.type === "number" ? "any" : undefined}
-                    value={String(value)}
-                    placeholder={field.placeholder}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field.key]: event.target.value,
-                      }))
-                    }
-                    className={
-                      field.prominent
-                        ? "min-h-15 rounded-xl border border-line bg-panel px-5 text-base font-semibold outline-none focus:border-sky"
-                        : "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-sky"
-                    }
-                  />
-                )}
-                {field.help ? (
-                  <span className="font-normal leading-5 text-muted">
-                    {field.help}
+        {fields.map((field, index) => {
+          if (field.hidden) return null;
+          const value =
+            values[field.key] ?? (field.type === "checkbox" ? false : "");
+          const wide =
+            ["textarea", "richtext", "json"].includes(field.type ?? "") ||
+            field.help ||
+            field.prominent ||
+            field.type === "media";
+          const fieldId = `workspace-${mode}-${field.key}`;
+          const labelId = `${fieldId}-label`;
+          return (
+            <div
+              key={field.key}
+              className={`grid content-start gap-2 text-xs font-bold ${wide ? "sm:col-span-2" : ""}`}
+            >
+              <label id={labelId} htmlFor={fieldId}>
+                {field.label}
+                {field.required ? (
+                  <span className="ml-1 text-coral" aria-hidden="true">
+                    *
                   </span>
                 ) : null}
-              </div>
-            );
-          })}
-          <div className="mt-3 flex justify-end gap-2 sm:col-span-2">
-            <Button type="button" variant="outline" onClick={close}>
-              {cancelLabel}
-            </Button>
-            <Button
-              disabled={save.isPending || busyFields.length > 0}
-              className={
-                mutation.danger
-                  ? "bg-red-700 text-white hover:bg-red-800"
-                  : undefined
-              }
-            >
-              {save.isPending || busyFields.length > 0 ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : mode === "create" ? (
-                <CirclePlus className="size-4" />
+              </label>
+              {field.type === "checkbox" ? (
+                <label
+                  htmlFor={fieldId}
+                  className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-panel px-4"
+                >
+                  <input
+                    id={fieldId}
+                    type="checkbox"
+                    checked={Boolean(value)}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: event.target.checked,
+                      }))
+                    }
+                    className="size-4 accent-sky"
+                  />
+                  <span className="font-normal text-muted">
+                    {field.checkboxLabel ?? "Enabled"}
+                  </span>
+                </label>
+              ) : field.type === "json" ? (
+                <WorkspaceStructuredEditor
+                  id={fieldId}
+                  labelledBy={labelId}
+                  field={field}
+                  value={value}
+                  onChange={(nextValue) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: nextValue,
+                    }))
+                  }
+                />
+              ) : field.type === "textarea" ? (
+                <textarea
+                  id={fieldId}
+                  autoFocus={index === 0}
+                  required={field.required}
+                  value={String(value)}
+                  placeholder={field.placeholder}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  className="min-h-32 rounded-xl border border-line bg-panel p-4 text-sm font-normal outline-none focus:border-ink/25"
+                />
+              ) : field.type === "richtext" ? (
+                <RichTextEditor
+                  id={fieldId}
+                  labelledBy={labelId}
+                  required={field.required}
+                  value={String(value)}
+                  placeholder={
+                    field.placeholder ?? `Write ${field.label.toLowerCase()}…`
+                  }
+                  onChange={(nextValue) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: nextValue,
+                    }))
+                  }
+                />
+              ) : field.type === "media" ? (
+                <WorkspaceMediaField
+                  field={field}
+                  value={Array.isArray(value) ? value : String(value)}
+                  downloadBlockedIds={
+                    field.media?.downloadControl
+                      ? Array.isArray(values.blocked_download_media_ids)
+                        ? values.blocked_download_media_ids.map(String)
+                        : []
+                      : undefined
+                  }
+                  onBusyChange={(busy) =>
+                    setBusyFields((current) =>
+                      busy
+                        ? [...new Set([...current, field.key])]
+                        : current.filter((key) => key !== field.key),
+                    )
+                  }
+                  onChange={(nextValue) =>
+                    setValues((current) => {
+                      const next = {
+                        ...current,
+                        [field.key]: nextValue,
+                      };
+                      if (field.media?.downloadControl) {
+                        const selected = Array.isArray(nextValue)
+                          ? nextValue.map(String)
+                          : nextValue
+                            ? [String(nextValue)]
+                            : [];
+                        const blocked = new Set(
+                          (Array.isArray(current.blocked_download_media_ids)
+                            ? current.blocked_download_media_ids
+                            : []
+                          ).map(String),
+                        );
+                        next.blocked_download_media_ids = selected.filter(
+                          (id) => blocked.has(id),
+                        );
+                      }
+                      return next;
+                    })
+                  }
+                  onDownloadBlockedChange={
+                    field.media?.downloadControl
+                      ? (ids) =>
+                          setValues((current) => ({
+                            ...current,
+                            blocked_download_media_ids: ids,
+                          }))
+                      : undefined
+                  }
+                  picker={
+                    field.media?.multiple ? (
+                      <WorkspaceMultiSelect
+                        id={fieldId}
+                        labelledBy={labelId}
+                        field={field}
+                        value={value}
+                        onChange={(nextValue) =>
+                          setValues((current) => {
+                            const next = {
+                              ...current,
+                              [field.key]: nextValue,
+                            };
+                            if (field.media?.downloadControl) {
+                              const selected = Array.isArray(nextValue)
+                                ? nextValue.map(String)
+                                : [];
+                              const blocked = new Set(
+                                (Array.isArray(
+                                  current.blocked_download_media_ids,
+                                )
+                                  ? current.blocked_download_media_ids
+                                  : []
+                                ).map(String),
+                              );
+                              next.blocked_download_media_ids = selected.filter(
+                                (id) => blocked.has(id),
+                              );
+                            }
+                            return next;
+                          })
+                        }
+                      />
+                    ) : (
+                      <WorkspaceSelect
+                        id={fieldId}
+                        labelledBy={labelId}
+                        field={field}
+                        value={value}
+                        autoFocus={index === 0}
+                        onChange={(nextValue) =>
+                          setValues((current) => ({
+                            ...current,
+                            [field.key]: nextValue,
+                          }))
+                        }
+                      />
+                    )
+                  }
+                />
+              ) : field.type === "select" ? (
+                <WorkspaceSelect
+                  id={fieldId}
+                  labelledBy={labelId}
+                  field={field}
+                  value={value}
+                  autoFocus={index === 0}
+                  onChange={(nextValue) => updateFieldValue(field, nextValue)}
+                />
+              ) : field.type === "multiselect" ? (
+                <WorkspaceMultiSelect
+                  id={fieldId}
+                  labelledBy={labelId}
+                  field={field}
+                  value={value}
+                  onChange={(nextValue) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: nextValue,
+                    }))
+                  }
+                />
               ) : (
-                <Pencil className="size-4" />
+                <input
+                  id={fieldId}
+                  autoFocus={index === 0}
+                  required={field.required}
+                  type={field.type === "list" ? "text" : (field.type ?? "text")}
+                  step={field.type === "number" ? "any" : undefined}
+                  value={String(value)}
+                  placeholder={field.placeholder}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  className={
+                    field.prominent
+                      ? "min-h-15 rounded-xl border border-line bg-panel px-5 text-base font-semibold outline-none focus:border-ink/25"
+                      : "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25"
+                  }
+                />
               )}
-              {busyFields.length
-                ? "Checking upload…"
-                : (mutation.submitLabel ??
-                  (mode === "create" ? mutation.label : "Save changes"))}
-            </Button>
-          </div>
-        </form>
+              {field.help ? (
+                <span className="font-normal leading-5 text-muted">
+                  {field.help}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+        <div className="mt-3 flex justify-end gap-2 sm:col-span-2">
+          <Button type="button" variant="outline" onClick={close}>
+            {cancelLabel}
+          </Button>
+          <Button
+            disabled={save.isPending || busyFields.length > 0}
+            className={
+              mutation.danger
+                ? "bg-red-700 text-white hover:bg-red-800"
+                : undefined
+            }
+          >
+            {save.isPending || busyFields.length > 0 ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : mode === "create" ? (
+              <CirclePlus className="size-4" />
+            ) : (
+              <Pencil className="size-4" />
+            )}
+            {busyFields.length
+              ? "Checking upload…"
+              : (mutation.submitLabel ??
+                (mode === "create" ? mutation.label : "Save changes"))}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1540,9 +1620,12 @@ type WorkspacePanel =
 export function WorkspaceClient({
   config,
   headerAction,
+  embedded = false,
 }: {
   config: WorkspaceConfig;
   headerAction?: React.ReactNode;
+  /** Hide the full page title when nested inside a tabbed hub. */
+  embedded?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -1554,9 +1637,15 @@ export function WorkspaceClient({
     direction: "asc" | "desc";
   }>();
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebouncedValue(search);
+  const queryEndpoint = workspaceEndpoint(
+    config,
+    page,
+    debouncedSearch,
+    filters,
+  );
 
-  const selected =
-    panel && panel.view !== "create" ? panel.row : null;
+  const selected = panel && panel.view !== "create" ? panel.row : null;
 
   const user = useQuery({
     queryKey: ["auth", "me"],
@@ -1564,8 +1653,8 @@ export function WorkspaceClient({
     staleTime: 60_000,
   });
   const query = useQuery({
-    queryKey: [config.queryKey, "workspace", config.endpoint],
-    queryFn: () => api<unknown>(config.endpoint),
+    queryKey: [config.queryKey, "workspace", queryEndpoint],
+    queryFn: () => api<unknown>(queryEndpoint),
   });
   const action = useMutation({
     mutationFn: async ({
@@ -1592,6 +1681,7 @@ export function WorkspaceClient({
     const result = rowsFrom(query.data).filter((row) => {
       if (
         needle &&
+        !config.serverPagination?.searchParam &&
         !Object.values(row).some((value) =>
           display(value).toLowerCase().includes(needle),
         )
@@ -1600,6 +1690,7 @@ export function WorkspaceClient({
       }
       return Object.entries(filters).every(([key, expected]) => {
         if (!expected) return true;
+        if (config.serverPagination?.filterParams?.[key]) return true;
         return workspaceFilterMatches(row[key], expected);
       });
     });
@@ -1616,14 +1707,17 @@ export function WorkspaceClient({
             });
       return sort.direction === "asc" ? comparison : -comparison;
     });
-  }, [filters, query.data, search, sort]);
+  }, [config.serverPagination, filters, query.data, search, sort]);
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const serverPage = config.serverPagination ? pageResponse(query.data) : null;
+  const pageCount = serverPage
+    ? Math.max(1, serverPage.pages)
+    : Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const visibleRows = rows.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const visibleRows = config.serverPagination
+    ? rows
+    : rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const recordTotal = serverPage?.total ?? rows.length;
   useEffect(() => {
     if (!panel) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1709,37 +1803,50 @@ export function WorkspaceClient({
       config.archive.when(selected, user.data?.permissions ?? [])),
   );
 
+  const actions = (
+    <div className="flex shrink-0 flex-wrap gap-2">
+      {headerAction}
+      {config.exportUrl &&
+      can(config.exportPermission ?? "members.export") ? (
+        <Button variant="outline" onClick={exportRecords}>
+          <ArrowDownToLine className="size-4" /> Export
+        </Button>
+      ) : null}
+      {config.create && can(config.create.permission) ? (
+        <Button
+          onClick={() =>
+            setPanel({ mutation: config.create!, view: "create" })
+          }
+        >
+          <CirclePlus className="size-4" /> {config.create.label}
+        </Button>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="grid gap-5">
-      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow text-coral">Live workspace</p>
-          <h2 className="display-type mt-3 text-4xl sm:text-5xl">
-            {config.title}
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+      {embedded ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-3xl text-sm leading-6 text-muted">
             {config.description}
           </p>
+          {actions}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {headerAction}
-          {config.exportUrl &&
-          can(config.exportPermission ?? "members.export") ? (
-            <Button variant="outline" onClick={exportRecords}>
-              <ArrowDownToLine className="size-4" /> Export
-            </Button>
-          ) : null}
-          {config.create && can(config.create.permission) ? (
-            <Button
-              onClick={() =>
-                setPanel({ mutation: config.create!, view: "create" })
-              }
-            >
-              <CirclePlus className="size-4" /> {config.create.label}
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      ) : (
+        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div>
+            <p className="eyebrow text-coral">Live workspace</p>
+            <h2 className="display-type mt-3 text-4xl sm:text-5xl">
+              {config.title}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+              {config.description}
+            </p>
+          </div>
+          {actions}
+        </header>
+      )}
 
       <Card className="overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-line p-3 sm:flex-row sm:items-center">
@@ -1748,7 +1855,10 @@ export function WorkspaceClient({
             <span className="sr-only">Search {config.title}</span>
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder={`Search ${config.title.toLowerCase()}`}
               className="w-full bg-transparent text-sm outline-none"
             />
@@ -1787,12 +1897,13 @@ export function WorkspaceClient({
                 {filter.label}
                 <select
                   value={filters[filter.key] ?? ""}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setPage(1);
                     setFilters((current) => ({
                       ...current,
                       [filter.key]: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className="min-h-10 rounded-lg border border-line bg-panel px-3 text-xs font-normal normal-case outline-none"
                 >
                   <option value="">All</option>
@@ -1804,7 +1915,14 @@ export function WorkspaceClient({
                 </select>
               </label>
             ))}
-            <Button size="sm" variant="ghost" onClick={() => setFilters({})}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPage(1);
+                setFilters({});
+              }}
+            >
               Clear
             </Button>
           </div>
@@ -1942,7 +2060,7 @@ export function WorkspaceClient({
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3 text-[.65rem] text-muted">
           <span>
-            {rows.length} record{rows.length === 1 ? "" : "s"} · Updated live
+            {recordTotal} record{recordTotal === 1 ? "" : "s"} · Updated live
           </span>
           {pageCount > 1 ? (
             <div className="flex items-center gap-2">
@@ -1950,7 +2068,7 @@ export function WorkspaceClient({
                 size="icon"
                 variant="ghost"
                 disabled={currentPage === 1}
-                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
                 aria-label="Previous page"
               >
                 <ChevronLeft className="size-4" />
@@ -1962,9 +2080,7 @@ export function WorkspaceClient({
                 size="icon"
                 variant="ghost"
                 disabled={currentPage === pageCount}
-                onClick={() =>
-                  setPage((value) => Math.min(pageCount, value + 1))
-                }
+                onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
                 aria-label="Next page"
               >
                 <ChevronRight className="size-4" />
@@ -1993,9 +2109,7 @@ export function WorkspaceClient({
             }`}
             onMouseDown={(event) => event.stopPropagation()}
             aria-label={
-              panel.view === "details"
-                ? "Record details"
-                : panel.mutation.label
+              panel.view === "details" ? "Record details" : panel.mutation.label
             }
             aria-modal="true"
             role="dialog"
@@ -2077,8 +2191,7 @@ export function WorkspaceClient({
                 <dl className="mt-5 divide-y divide-line">
                   {Object.entries(panel.row)
                     .filter(
-                      ([key]) =>
-                        !key.startsWith("_") && !isTechnicalField(key),
+                      ([key]) => !key.startsWith("_") && !isTechnicalField(key),
                     )
                     .map(([key, value]) => {
                       const field = detailFields.get(key);

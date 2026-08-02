@@ -8,7 +8,7 @@ This runbook is the executable handoff for the new UG UTAG platform. It turns th
 
 This repository now contains and locally runs the complete replacement path: the
 Next.js public site and dashboard, FastAPI API, PostgreSQL, Redis, RabbitMQ,
-Celery worker, MinIO-compatible object storage, ClamAV scanning, authenticated
+Celery worker, S3-compatible object storage, malware scanning, authenticated
 WebSockets, audit/outbox events, and migration tooling. The old Django project
 is not used by the running replacement services.
 
@@ -42,7 +42,7 @@ Release checks at this baseline:
 - Next.js: ESLint and TypeScript passed; 11 component tests passed; production
   build passed;
 - Compose configuration validated and the API, web, PostgreSQL, Redis,
-  RabbitMQ, ClamAV, MinIO, and worker services started successfully;
+  RabbitMQ, local-development ClamAV/MinIO, and worker services started successfully;
 - a live member-import dry run validated one row and persisted zero rows;
 - the verification database retained one administrator and zero test media;
 - the administrator remains active with the forced password-change flag set.
@@ -54,7 +54,12 @@ business acceptance, and the go/no-go sequence below.
 
 ## Replacement boundary
 
-The target production runtime contains only the root `docker-compose.yml` services: Next.js, FastAPI, PostgreSQL, Redis, RabbitMQ, Celery, MinIO/S3, ClamAV, and optionally Caddy and Prometheus. The Django project is a read-only migration source. New writes must never be dual-written to ad-hoc Django and FastAPI code paths.
+The target production runtime contains the root `docker-compose.yml` Next.js,
+FastAPI, PostgreSQL, Redis, RabbitMQ, Celery, and Caddy services plus maintained
+external S3-compatible object storage, malware scanning, and observability.
+Bundled MinIO, ClamAV, and Prometheus images are local-development profiles only.
+The Django project is a read-only migration source. New writes must never be
+dual-written to ad-hoc Django and FastAPI code paths.
 
 ## Environments
 
@@ -74,7 +79,7 @@ Use distinct development, staging, migration-rehearsal, and production environme
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres redis rabbitmq minio minio-init clamav
+docker compose --profile local up -d postgres redis rabbitmq minio minio-init clamav
 docker compose run --rm --no-deps api alembic upgrade head
 docker compose run --rm --no-deps api python -m utag_api.cli seed
 

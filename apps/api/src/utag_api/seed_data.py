@@ -1,11 +1,20 @@
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utag_api.database import new_id
-from utag_api.models import AdSlot, FeatureFlag, OrganizationUnit, SiteSetting
+from utag_api.models import (
+    AdCampaign,
+    AdOrder,
+    AdPlan,
+    AdSlot,
+    FeatureFlag,
+    OrganizationUnit,
+    SiteSetting,
+)
 from utag_api.services.query import slugify
 
 # University reference data is deliberately kept in one version-controlled location.
@@ -163,10 +172,10 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
         "tagline": "Scholarship, solidarity and service",
     },
     "site.contact": {
-        "email": "",
-        "phone": "",
+        "email": "utagoffice@ug.edu.gh",
+        "phone": "+233 (0) 24 427 7275",
         "address": "University of Ghana, Legon, Accra",
-        "office_hours": "",
+        "office_hours": "Monday-Friday, 9:00 AM-6:00 PM",
     },
     "site.social": {},
     "site.home": {
@@ -202,14 +211,58 @@ FEATURE_FLAGS = {
 }
 
 AD_SLOTS = (
-    ("top", "Top banner", 1200, 600),
-    ("hero", "Hero placement", 1200, 600),
-    ("sidebar", "Sidebar placement", 600, 450),
-    ("bottom", "Bottom banner", 900, 300),
-    ("footer", "Footer banner", 1200, 200),
-    ("home-hero", "Home hero sponsor", 1200, 320),
-    ("news-sidebar", "News sidebar", 360, 300),
-    ("dashboard-partner", "Dashboard partner", 760, 160),
+    # key, name, width, height, location, is_active
+    ("home-after-hero", "Home after hero", 970, 250, "Home · after hero", True),
+    ("news-sidebar", "News listing rail", 300, 250, "News listing · sidebar", True),
+    ("events-sidebar", "Events listing rail", 300, 250, "Events listing · sidebar", True),
+    (
+        "content-inline",
+        "Article / detail strip",
+        728,
+        90,
+        "News, events, gallery detail · after hero",
+        True,
+    ),
+    ("footer", "Site footer strip", 970, 90, "All public pages · above footer", True),
+)
+
+# name, slot_key, price, duration_days, description
+AD_PLANS = (
+    (
+        "Home after-hero · 30 days",
+        "home-after-hero",
+        "1500.00",
+        30,
+        "970×250 placement on the home page after the hero.",
+    ),
+    (
+        "News sidebar · 30 days",
+        "news-sidebar",
+        "900.00",
+        30,
+        "300×250 medium rectangle on the news listing page.",
+    ),
+    (
+        "Events sidebar · 30 days",
+        "events-sidebar",
+        "900.00",
+        30,
+        "300×250 medium rectangle on the events listing page.",
+    ),
+    (
+        "Content inline · 30 days",
+        "content-inline",
+        "750.00",
+        30,
+        "728×90 leaderboard on news, events and gallery detail pages.",
+    ),
+    (
+        "Site footer · 30 days",
+        "footer",
+        "1200.00",
+        30,
+        "970×90 strip above the site footer on all public pages.",
+    ),
 )
 
 
@@ -283,23 +336,88 @@ async def seed_portal_defaults(db: AsyncSession) -> None:
             )
 
     slots = {row.key: row for row in (await db.scalars(select(AdSlot))).all()}
-    for key, name, width, height in AD_SLOTS:
+    canonical_keys = {key for key, *_ in AD_SLOTS}
+    for key, name, width, height, location, is_active in AD_SLOTS:
         slot = slots.get(key)
         if slot is None:
-            db.add(
-                AdSlot(
-                    id=new_id(),
-                    key=key,
-                    name=name,
-                    width=width,
-                    height=height,
-                    is_active=True,
-                )
+            slot = AdSlot(
+                id=new_id(),
+                key=key,
+                name=name,
+                width=width,
+                height=height,
+                location=location,
+                is_active=is_active,
             )
+            db.add(slot)
+            slots[key] = slot
         else:
             slot.name = name
             slot.width = width
             slot.height = height
+            slot.location = location
+            slot.is_active = is_active
+
+    obsolete_slots = [slot for key, slot in slots.items() if key not in canonical_keys]
+    if obsolete_slots:
+        obsolete_ids = [slot.id for slot in obsolete_slots]
+        obsolete_campaigns = list(
+            (
+                await db.scalars(select(AdCampaign).where(AdCampaign.slot_id.in_(obsolete_ids)))
+            ).all()
+        )
+        obsolete_campaign_ids = [campaign.id for campaign in obsolete_campaigns]
+        if obsolete_campaign_ids:
+            obsolete_orders = list(
+                (
+                    await db.scalars(
+                        select(AdOrder).where(AdOrder.campaign_id.in_(obsolete_campaign_ids))
+                    )
+                ).all()
+            )
+            for order in obsolete_orders:
+                await db.delete(order)
+            for campaign in obsolete_campaigns:
+                await db.delete(campaign)
+        obsolete_plans = list(
+            (await db.scalars(select(AdPlan).where(AdPlan.slot_id.in_(obsolete_ids)))).all()
+        )
+        for plan in obsolete_plans:
+            linked_orders = list(
+                (await db.scalars(select(AdOrder).where(AdOrder.plan_id == plan.id))).all()
+            )
+            for order in linked_orders:
+                await db.delete(order)
+            await db.delete(plan)
+        for slot in obsolete_slots:
+            await db.delete(slot)
+            slots.pop(slot.key, None)
+
+    await db.flush()
+    plans = {row.name: row for row in (await db.scalars(select(AdPlan))).all()}
+    for name, slot_key, price, duration_days, description in AD_PLANS:
+        slot = slots.get(slot_key)
+        if slot is None:
+            continue
+        plan = plans.get(name)
+        if plan is None:
+            db.add(
+                AdPlan(
+                    id=new_id(),
+                    slot_id=slot.id,
+                    name=name,
+                    description=description,
+                    price=Decimal(price),
+                    duration_days=duration_days,
+                    is_active=True,
+                )
+            )
+        else:
+            plan.slot_id = slot.id
+            plan.description = description
+            plan.price = Decimal(price)
+            plan.duration_days = duration_days
+            plan.is_active = True
 
     await seed_organization(db)
     await db.commit()
