@@ -22,26 +22,26 @@ export function PublicFooter({
   return (
     <footer className="mt-20 bg-[#102742] text-white">
       <div className="border-b border-white/10 bg-[#c79a2b] text-[#142a45]">
-        <div className="mx-auto grid max-w-[82rem] gap-4 px-5 py-5 text-sm font-bold sm:grid-cols-3 sm:px-6 lg:px-8">
-          <span className="inline-flex items-center gap-3">
-            <MapPin className="size-5" /> {contact.address}
+        <div className="mx-auto grid w-full min-w-0 max-w-[82rem] gap-4 px-4 py-5 text-sm font-bold sm:grid-cols-3 sm:px-6 lg:px-8">
+          <span className="flex min-w-0 items-start gap-3 break-words">
+            <MapPin className="mt-0.5 size-5 shrink-0" /> {contact.address}
           </span>
           {contact.email ? (
             <a
-              className="inline-flex items-center gap-3 hover:underline"
+              className="flex min-w-0 items-start gap-3 break-all hover:underline"
               href={`mailto:${contact.email}`}
             >
-              <Mail className="size-5" /> {contact.email}
+              <Mail className="mt-0.5 size-5 shrink-0" /> {contact.email}
             </a>
           ) : (
             <span />
           )}
           {contact.phone ? (
             <a
-              className="inline-flex items-center gap-3 hover:underline"
+              className="flex min-w-0 items-start gap-3 break-words hover:underline"
               href={`tel:${telephoneHref}`}
             >
-              <Phone className="size-5" /> {contact.phone}
+              <Phone className="mt-0.5 size-5 shrink-0" /> {contact.phone}
             </a>
           ) : (
             <span />
@@ -49,7 +49,7 @@ export function PublicFooter({
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-[82rem] gap-10 px-5 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.35fr_.65fr_.65fr_.85fr] lg:px-8">
+      <div className="mx-auto grid w-full min-w-0 max-w-[82rem] gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.35fr_.65fr_.65fr_.85fr] lg:px-8">
         <div>
           <Logo inverse />
           <p className="mt-6 max-w-md text-sm leading-7 text-white/66">
@@ -106,8 +106,8 @@ export function PublicFooter({
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[82rem] flex-col gap-2 px-5 py-5 text-[.7rem] text-white/45 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <span>
+        <div className="mx-auto flex w-full min-w-0 max-w-[82rem] flex-col gap-2 px-4 py-5 text-[.7rem] text-white/45 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <span className="break-words">
             © {new Date().getFullYear()} {settings.copyright_name}. All rights
             reserved.
           </span>

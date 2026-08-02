@@ -58,7 +58,7 @@ function contextDefaults(context: AdSlotContext) {
       return {
         maxWidth: 970,
         shell:
-          "public-ad public-ad--home mx-auto w-full max-w-[82rem] px-5 py-7 sm:px-6 lg:px-8",
+          "public-ad public-ad--home mx-auto w-full min-w-0 max-w-[82rem] px-4 py-6 sm:px-6 sm:py-7 lg:px-8",
         frame: "public-ad__frame public-ad__frame--strip",
         label: "Sponsored",
       };
@@ -66,7 +66,7 @@ function contextDefaults(context: AdSlotContext) {
       return {
         maxWidth: 300,
         shell:
-          "public-ad public-ad--rail mx-auto w-full max-w-[300px] lg:mx-0 lg:w-[300px] lg:sticky lg:top-24",
+          "public-ad public-ad--rail mx-auto w-full min-w-0 max-w-[300px] lg:mx-0 lg:w-[300px] lg:sticky lg:top-24",
         frame: "public-ad__frame public-ad__frame--rail",
         label: "Sponsored",
       };
@@ -74,7 +74,7 @@ function contextDefaults(context: AdSlotContext) {
       return {
         maxWidth: 728,
         shell:
-          "public-ad public-ad--article mx-auto w-full max-w-4xl px-5 py-6 sm:px-6",
+          "public-ad public-ad--article mx-auto w-full min-w-0 max-w-4xl px-4 py-6 sm:px-6",
         frame: "public-ad__frame public-ad__frame--inline",
         label: "Sponsored",
       };
@@ -82,7 +82,7 @@ function contextDefaults(context: AdSlotContext) {
       return {
         maxWidth: 970,
         shell:
-          "public-ad public-ad--footer mx-auto w-full max-w-[82rem] px-5 py-5 sm:px-6 lg:px-8",
+          "public-ad public-ad--footer mx-auto w-full min-w-0 max-w-[82rem] px-4 py-5 sm:px-6 lg:px-8",
         frame: "public-ad__frame public-ad__frame--footer",
         label: "Sponsored",
       };

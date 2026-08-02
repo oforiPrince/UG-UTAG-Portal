@@ -80,7 +80,7 @@ export function PublicHeader({
         </div>
       </div>
 
-      <div className="mx-auto flex h-[4.75rem] max-w-[82rem] items-center justify-between px-4 sm:h-[5.25rem] sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[4.75rem] w-full min-w-0 max-w-[82rem] items-center justify-between gap-3 px-4 sm:h-[5.25rem] sm:px-6 lg:px-8">
         <Logo />
         <nav
           className="hidden items-center gap-0.5 xl:flex"

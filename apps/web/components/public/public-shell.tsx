@@ -11,13 +11,15 @@ export async function PublicShell({ children }: { children: React.ReactNode }) {
       {site.unavailable ? (
         <div
           role="status"
-          className="bg-amber-50 px-5 py-2 text-center text-xs font-semibold text-amber-900"
+          className="bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-900 sm:px-5"
         >
           Some live portal content is temporarily unavailable. Please try again
           shortly.
         </div>
       ) : null}
-      <main id="main-content">{children}</main>
+      <main id="main-content" className="min-w-0">
+        {children}
+      </main>
       <AdSlotBanner
         slotKey="footer"
         context="footer"
