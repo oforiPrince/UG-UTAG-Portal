@@ -43,6 +43,7 @@ describe("public resources", () => {
     expect(
       screen.getByRole("heading", { name: "Public policy brief" }),
     ).toBeTruthy();
+    expect(screen.queryByText("UTAG-PUBLIC")).toBeNull();
     expect(
       screen
         .getByRole("link", { name: "Preview full document" })

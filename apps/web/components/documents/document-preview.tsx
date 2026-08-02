@@ -322,7 +322,9 @@ export function DocumentPreview({
     [document.files, selectedId],
   );
   const metadata = [
-    { label: "Reference", value: document.reference },
+    ...(privateView
+      ? [{ label: "Reference", value: document.reference }]
+      : []),
     ...(document.documentDate
       ? [
           {
@@ -367,10 +369,16 @@ export function DocumentPreview({
       <header className="border-b border-line px-4 py-6 sm:px-9 sm:py-10">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 max-w-4xl">
-            <p className="text-[.65rem] font-black tracking-[.12em] break-all text-coral uppercase">
-              {document.reference}
-            </p>
-            <h1 className="display-type mt-3 text-[1.85rem] leading-tight break-words text-[#172f4d] sm:text-5xl">
+            {privateView ? (
+              <p className="text-[.65rem] font-black tracking-[.12em] break-all text-coral uppercase">
+                {document.reference}
+              </p>
+            ) : null}
+            <h1
+              className={`display-type text-[1.85rem] leading-tight break-words text-[#172f4d] sm:text-5xl ${
+                privateView ? "mt-3" : ""
+              }`}
+            >
               {document.title}
             </h1>
           </div>

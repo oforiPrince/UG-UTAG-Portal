@@ -39,14 +39,9 @@ export default async function ResourcesPage() {
                 key={document.id}
                 className="flex min-w-0 flex-col overflow-hidden rounded-md border border-line bg-white p-4 shadow-[0_8px_26px_rgb(23_43_69_/_7%)] sm:p-6 lg:p-7"
               >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#edf3f8] text-coral sm:size-12">
-                    <FileText className="size-5" />
-                  </span>
-                  <span className="min-w-0 max-w-[60%] truncate rounded-full bg-[#f5f8fb] px-2.5 py-1.5 text-[.62rem] font-extrabold text-muted uppercase sm:px-3">
-                    {document.public_id}
-                  </span>
-                </div>
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#edf3f8] text-coral sm:size-12">
+                  <FileText className="size-5" />
+                </span>
                 <h2 className="mt-5 text-lg font-extrabold leading-snug break-words text-[#172f4d] sm:mt-6 sm:text-xl">
                   {document.title}
                 </h2>

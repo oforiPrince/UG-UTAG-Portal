@@ -571,7 +571,6 @@ async def public_document_views(
             document.id,
             {
                 "id": document.id,
-                "public_id": document.public_id,
                 "title": document.title,
                 "sender": document.sender,
                 "receiver": document.receiver,
