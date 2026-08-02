@@ -8,6 +8,7 @@ import mimetypes
 from collections.abc import Iterable, Mapping
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+import os
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -117,10 +118,20 @@ def source_tables(source: Engine) -> list[str]:
     return sorted(inspect(source).get_table_names())
 
 
+def secure_chmod(path: Path, mode: int) -> None:
+    try:
+        path.chmod(mode)
+    except PermissionError:
+        # Bind-mounted evidence dirs on older hosts may reject chmod from the
+        # non-root app user; continue as long as the path is writable.
+        if not os.access(path, os.W_OK):
+            raise
+
+
 def write_private_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    path.chmod(0o600)
+    secure_chmod(path, 0o600)
 
 
 def inventory(source: Engine, output: Path) -> dict[str, Any]:
@@ -154,7 +165,7 @@ def inventory(source: Engine, output: Path) -> dict[str, Any]:
 def capture(source: Engine, target: Engine, batch_id: str, archive_dir: Path) -> None:
     inspector = inspect(source)
     archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-    archive_dir.chmod(0o700)
+    secure_chmod(archive_dir, 0o700)
     with source.connect() as source_connection, OrmSession(target) as target_session:
         for table_name in source_tables(source):
             table = Table(table_name, MetaData(), autoload_with=source)
@@ -233,7 +244,7 @@ def capture(source: Engine, target: Engine, batch_id: str, archive_dir: Path) ->
                             created_at=datetime.now(UTC),
                         )
                     )
-            archive_path.chmod(0o600)
+            archive_secure_chmod(path, 0o600)
             target_session.commit()
 
 
