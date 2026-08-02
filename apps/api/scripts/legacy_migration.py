@@ -416,18 +416,28 @@ LEGACY_GROUP_ROLE_KEYS = {
 }
 
 
-def legacy_group_role_key(row: dict[str, Any]) -> str:
-    identifier = legacy_id(row)
-    name = str(restore_value(row.get("name")) or f"Legacy group {identifier}").strip()
+def is_legacy_org_group(row: dict[str, Any]) -> bool:
+    """Django used auth_group rows for department/school membership labels."""
+    name = str(restore_value(row.get("name")) or "").strip().casefold()
+    return name.startswith(("department:", "school:", "college:"))
+
+
+def legacy_group_role_key(row: dict[str, Any]) -> str | None:
+    name = str(restore_value(row.get("name")) or "").strip()
     mapped = LEGACY_GROUP_ROLE_KEYS.get(name.casefold())
     if mapped:
         return mapped
-    safe_name = slugify(name)[:48] or "group"
-    return f"legacy-{identifier}-{safe_name}"
+    # Org units already live on users via school_id/department_id/college_id.
+    # Unknown capability groups are archived only — never shown as Roles in prod.
+    return None
 
 
-def promote_group(session: OrmSession, row: dict[str, Any]) -> Role:
+def promote_group(session: OrmSession, row: dict[str, Any]) -> Role | None:
+    if is_legacy_org_group(row):
+        return None
     role_key = legacy_group_role_key(row)
+    if role_key is None:
+        return None
     existing = session.scalar(select(Role).where(Role.key == role_key))
     if existing:
         return existing
@@ -436,10 +446,7 @@ def promote_group(session: OrmSession, row: dict[str, Any]) -> Role:
         id=new_id(),
         key=role_key,
         name=name,
-        description=(
-            f"Imported from legacy Django group {legacy_id(row)}. "
-            "No permissions are granted until an administrator reviews this role."
-        ),
+        description=f"Imported from legacy Django group {legacy_id(row)}.",
         is_system=False,
     )
     session.add(item)
@@ -484,7 +491,10 @@ def promote_user_group(session: OrmSession, row: dict[str, Any]) -> UserRole | N
     )
     if group_record is None:
         return None
-    return assign_role(session, user, legacy_group_role_key(group_record.payload))
+    role_key = legacy_group_role_key(group_record.payload)
+    if role_key is None:
+        return None
+    return assign_role(session, user, role_key)
 
 
 def promote_news(session: OrmSession, row: dict[str, Any]) -> Article:
