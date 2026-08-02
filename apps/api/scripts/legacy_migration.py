@@ -606,18 +606,19 @@ def promote_document(session: OrmSession, row: dict[str, Any]) -> Document:
         return existing
     status = str(restore_value(row.get("status")) or "Draft").casefold()
     visibility = restore_value(row.get("visibility"))
+    everyone = visibility in {None, "", "everyone", "public"}
     item = Document(
         id=new_id(),
         legacy_id=identifier,
         public_id=f"LEGACY-DOC-{identifier}",
         title=str(restore_value(row["title"])),
-        category=str(restore_value(row.get("category")) or "internal"),
+        category="external" if everyone else str(restore_value(row.get("category")) or "internal"),
         sender=restore_value(row.get("sender")),
         receiver=restore_value(row.get("receiver")),
         document_date=restore_value(row.get("date")),
         status="published" if status == "published" else "draft",
-        audiences=[]
-        if visibility == "everyone"
+        audiences=[{"type": "general_public"}]
+        if everyone
         else [{"type": "legacy_groups", "value": "captured"}],
         created_at=restore_value(row.get("created_at")) or datetime.now(UTC),
         updated_at=restore_value(row.get("updated_at")) or datetime.now(UTC),
