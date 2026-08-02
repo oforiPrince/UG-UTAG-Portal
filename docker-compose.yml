@@ -54,7 +54,10 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    profiles: ["local"]
+    # Available under local and production so a single-host cutover can keep
+    # object storage on the maintained portal_objects volume while addressing it
+    # via the production-safe alias s3.utag.internal (not http://minio:9000).
+    profiles: ["local", "production"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minio}
@@ -64,11 +67,15 @@ services:
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
+    networks:
+      default:
+        aliases:
+          - s3.utag.internal
     restart: unless-stopped
 
   minio-init:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
-    profiles: ["local"]
+    profiles: ["local", "production"]
     depends_on:
       - minio
     environment:
@@ -79,17 +86,23 @@ services:
       - /bin/sh
       - -c
       - >-
-        until mc alias set local http://minio:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}";
+        until mc alias set local http://s3.utag.internal:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}";
         do sleep 2; done;
         mc mb --ignore-existing "local/$${MEDIA_BUCKET}";
         mc anonymous set none "local/$${MEDIA_BUCKET}"
 
   clamav:
     # Official Debian image is multi-architecture (amd64, arm64, ppc64le).
+    # Production profile keeps the scanner on-host under malware-scanner.utag.internal
+    # so cutover gates reject the local-only hostname "clamav".
     image: clamav/clamav-debian:1.5.3
-    profiles: ["local"]
+    profiles: ["local", "production"]
     volumes:
       - portal_clamav:/var/lib/clamav
+    networks:
+      default:
+        aliases:
+          - malware-scanner.utag.internal
     healthcheck:
       test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
       interval: 30s
