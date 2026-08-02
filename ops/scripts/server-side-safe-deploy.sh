@@ -161,15 +161,14 @@ fi
 
 DUMP_FILE="${EVIDENCE_DIR}/legacy-backups/prod-${BATCH_ID}.dump"
 log "Dumping database '${POSTGRES_DB_NAME}' from container ${POSTGRES_CONTAINER} (source DB untouched)"
-# Prefer local auth inside the container so we do not depend on shell-sourcing passwords.
-if ! docker exec "${POSTGRES_CONTAINER}" \
-  pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc -f "/tmp/prod-${BATCH_ID}.dump"; then
-  [[ -n "${LEGACY_PASSWORD_RAW}" ]] || die "pg_dump failed and no DB password was available from env files"
-  docker exec -e PGPASSWORD="${LEGACY_PASSWORD_RAW}" "${POSTGRES_CONTAINER}" \
-    pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc -f "/tmp/prod-${BATCH_ID}.dump"
-fi
+[[ -n "${LEGACY_PASSWORD_RAW}" ]] || die "DB password missing from env files — refuse to dump"
+docker exec -i -e PGPASSWORD="${LEGACY_PASSWORD_RAW}" "${POSTGRES_CONTAINER}" \
+  pg_dump -U "${POSTGRES_DB_USER}" -d "${POSTGRES_DB_NAME}" -Fc --no-password -f "/tmp/prod-${BATCH_ID}.dump"
 docker cp "${POSTGRES_CONTAINER}:/tmp/prod-${BATCH_ID}.dump" "${DUMP_FILE}"
 docker exec "${POSTGRES_CONTAINER}" rm -f "/tmp/prod-${BATCH_ID}.dump"
+docker run --rm -v "${DUMP_FILE}:/dump:ro" postgres:16-alpine \
+  pg_restore --list /dump >/dev/null \
+  || die "Legacy dump verification failed — aborting before any modern stack changes"
 if command -v shasum >/dev/null 2>&1; then
   (cd "$(dirname "${DUMP_FILE}")" && shasum -a 256 "$(basename "${DUMP_FILE}")" > "$(basename "${DUMP_FILE}").sha256")
 else
@@ -321,7 +320,11 @@ WEB_HOST_PORT="${WEB_HOST_PORT:-13000}"
 
 log "=== 5) Start modern stack ALONGSIDE legacy (no Caddy / no :80/:443) ==="
 cd "${MODERN_ROOT}"
-docker compose --profile local up -d --build
+# Build local images first so worker/scheduler do not try to pull ug-utag-portal-api from Docker Hub.
+log "Building api/web/postgres images locally"
+docker compose --profile local build api web postgres
+log "Starting modern services"
+docker compose --profile local up -d
 
 log "Waiting for modern API/web health on loopback :${API_HOST_PORT} / :${WEB_HOST_PORT}"
 for i in $(seq 1 90); do
