@@ -62,8 +62,8 @@ function PdfPage({
         if (disposed || !canvasRef.current || !containerRef.current) return;
         const unscaled = page.getViewport({ scale: 1 });
         const availableWidth = Math.max(
-          280,
-          Math.min(1100, containerRef.current.clientWidth - 32),
+          240,
+          Math.min(1100, containerRef.current.clientWidth - 24),
         );
         const viewport = page.getViewport({
           scale: availableWidth / unscaled.width,
@@ -100,17 +100,19 @@ function PdfPage({
     <section
       ref={containerRef}
       aria-label={`Page ${pageNumber} of ${document.numPages}`}
-      className="relative grid min-h-80 place-items-center"
+      className="relative grid min-h-56 place-items-center overflow-hidden sm:min-h-80"
     >
       {error ? (
-        <p className="p-8 text-sm font-bold text-red-700">{error}</p>
+        <p className="max-w-prose p-6 text-center text-sm font-bold break-words text-red-700 sm:p-8">
+          {error}
+        </p>
       ) : (
         <canvas
           ref={canvasRef}
           className="h-auto max-w-full bg-white shadow-[0_8px_30px_rgb(23_43_69_/_18%)]"
         />
       )}
-      <span className="absolute right-4 bottom-4 rounded-full bg-[#172f4d] px-3 py-1 text-[.62rem] font-bold text-white shadow-sm">
+      <span className="absolute right-3 bottom-3 rounded-full bg-[#172f4d] px-3 py-1 text-[.62rem] font-bold text-white shadow-sm sm:right-4 sm:bottom-4">
         {pageNumber} / {document.numPages}
       </span>
     </section>
@@ -124,7 +126,7 @@ function PdfViewer({ data, filename }: { data: Uint8Array; filename: string }) {
   useEffect(() => {
     let loadingTask: PDFDocumentLoadingTask | undefined;
     let disposed = false;
-    void import("pdfjs-dist/webpack.mjs")
+    void import("@/lib/pdfjs")
       .then((pdfjs) => {
         if (disposed) return;
         loadingTask = pdfjs.getDocument({ data });
@@ -170,7 +172,7 @@ function PdfViewer({ data, filename }: { data: Uint8Array; filename: string }) {
   }
 
   return (
-    <div className="grid gap-5 bg-[#dfe5eb] p-4 sm:p-6">
+    <div className="grid gap-4 bg-[#dfe5eb] p-3 sm:gap-5 sm:p-6">
       {Array.from({ length: document.numPages }, (_, index) => (
         <PdfPage
           key={`${document.fingerprints[0]}-${index + 1}`}
@@ -337,9 +339,9 @@ export function DocumentPreview({
   ];
 
   return (
-    <article className="overflow-hidden rounded-md border border-line bg-white shadow-[0_18px_55px_rgb(23_43_69_/_10%)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#172f4d] px-5 py-4 text-white sm:px-7">
-        <div>
+    <article className="min-w-0 overflow-hidden rounded-md border border-line bg-white shadow-[0_18px_55px_rgb(23_43_69_/_10%)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#172f4d] px-4 py-4 text-white sm:px-7">
+        <div className="min-w-0">
           <p className="text-[.63rem] font-black tracking-[.14em] text-gold uppercase">
             {privateView
               ? "Protected member preview"
@@ -354,7 +356,7 @@ export function DocumentPreview({
           asChild
           size="sm"
           variant="outline"
-          className="border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          className="shrink-0 border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
         >
           <Link href={backHref}>
             <ArrowLeft className="size-4" /> {backLabel}
@@ -362,38 +364,42 @@ export function DocumentPreview({
         </Button>
       </div>
 
-      <header className="border-b border-line px-6 py-8 sm:px-9 sm:py-10">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-4xl">
-            <p className="text-[.65rem] font-black tracking-[.12em] text-coral uppercase">
+      <header className="border-b border-line px-4 py-6 sm:px-9 sm:py-10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 max-w-4xl">
+            <p className="text-[.65rem] font-black tracking-[.12em] break-all text-coral uppercase">
               {document.reference}
             </p>
-            <h1 className="display-type mt-3 text-3xl leading-tight text-[#172f4d] sm:text-5xl">
+            <h1 className="display-type mt-3 text-[1.85rem] leading-tight break-words text-[#172f4d] sm:text-5xl">
               {document.title}
             </h1>
           </div>
           {selectedFile ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full min-w-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
               <Button
                 asChild
                 size="sm"
                 variant="outline"
-                className="rounded-md"
+                className="min-w-0 flex-1 rounded-md sm:flex-none"
               >
                 <a
                   href={selectedFile.contentUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ArrowUpRight className="size-4" /> Open
+                  <ArrowUpRight className="size-4 shrink-0" /> Open
                 </a>
               </Button>
-              <Button asChild size="sm" className="rounded-md">
+              <Button
+                asChild
+                size="sm"
+                className="min-w-0 flex-1 rounded-md sm:flex-none"
+              >
                 <a
                   href={selectedFile.contentUrl}
                   download={selectedFile.filename}
                 >
-                  <Download className="size-4" /> Download
+                  <Download className="size-4 shrink-0" /> Download
                 </a>
               </Button>
             </div>
@@ -401,14 +407,14 @@ export function DocumentPreview({
         </div>
         {document.descriptionHtml ? (
           <div
-            className="prose mt-6 max-w-4xl text-sm leading-7 text-muted prose-headings:text-[#172f4d] prose-a:text-coral"
+            className="prose mt-5 max-w-4xl text-sm leading-7 break-words text-muted sm:mt-6 prose-headings:text-[#172f4d] prose-a:text-coral"
             dangerouslySetInnerHTML={{ __html: document.descriptionHtml }}
           />
         ) : null}
       </header>
 
-      <div className="grid xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="border-b border-line bg-[#f8fafc] p-5 sm:p-7 xl:border-r xl:border-b-0">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+        <aside className="min-w-0 border-b border-line bg-[#f8fafc] p-4 sm:p-7 lg:border-r lg:border-b-0">
           <section aria-labelledby={`document-${document.id}-files`}>
             <h2
               id={`document-${document.id}-files`}
@@ -416,7 +422,7 @@ export function DocumentPreview({
             >
               Document files
             </h2>
-            <div className="mt-4 grid gap-2">
+            <div className="mt-4 grid min-w-0 gap-2">
               {document.files.map((file, index) => {
                 const selected = file.id === selectedFile?.id;
                 return (
@@ -425,21 +431,21 @@ export function DocumentPreview({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setSelectedId(file.id)}
-                    className={`flex min-h-16 w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral ${
+                    className={`flex min-h-16 w-full min-w-0 items-start gap-3 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral ${
                       selected
                         ? "border-coral bg-white text-[#172f4d] shadow-sm"
                         : "border-line bg-transparent text-muted hover:border-coral/40 hover:bg-white"
                     }`}
                   >
                     <span
-                      className={`grid size-9 shrink-0 place-items-center rounded-full ${
+                      className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ${
                         selected ? "bg-coral/10 text-coral" : "bg-[#e9eef4]"
                       }`}
                     >
                       <FileIcon contentType={file.contentType} />
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-black">
+                    <span className="min-w-0 flex-1 overflow-hidden">
+                      <span className="block text-xs font-black leading-snug break-all [overflow-wrap:anywhere]">
                         {index + 1}. {file.filename}
                       </span>
                       <span className="mt-1 block text-[.62rem] font-semibold">
@@ -460,13 +466,13 @@ export function DocumentPreview({
             <h2 className="text-[.65rem] font-black tracking-[.12em] text-muted uppercase">
               Document details
             </h2>
-            <dl className="mt-4 grid gap-4">
+            <dl className="mt-4 grid min-w-0 gap-4">
               {metadata.map((item) => (
-                <div key={item.label}>
+                <div key={item.label} className="min-w-0">
                   <dt className="text-[.6rem] font-bold tracking-wide text-muted uppercase">
                     {item.label}
                   </dt>
-                  <dd className="mt-1 break-words text-xs font-bold leading-5 text-[#172f4d]">
+                  <dd className="mt-1 break-words text-xs font-bold leading-5 text-[#172f4d] [overflow-wrap:anywhere]">
                     {item.value}
                   </dd>
                 </div>
@@ -478,24 +484,28 @@ export function DocumentPreview({
         <section aria-label="Selected file preview" className="min-w-0">
           {selectedFile ? (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3 sm:px-6">
+              <div className="border-b border-line px-4 py-3 sm:px-6">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-xs font-black text-[#172f4d]">
-                    <Eye className="size-4 text-coral" />
-                    <span className="truncate">{selectedFile.filename}</span>
+                  <p className="flex min-w-0 items-start gap-2 text-xs font-black text-[#172f4d]">
+                    <Eye className="mt-0.5 size-4 shrink-0 text-coral" />
+                    <span className="min-w-0 break-all [overflow-wrap:anywhere]">
+                      {selectedFile.filename}
+                    </span>
                   </p>
                   <p className="mt-1 text-[.62rem] font-semibold text-muted">
                     Scroll inside the preview to read the complete file.
                   </p>
                 </div>
               </div>
-              <FileViewer
-                key={`${selectedFile.id}-${selectedFile.contentUrl}`}
-                file={selectedFile}
-              />
+              <div className="min-w-0 overflow-x-auto">
+                <FileViewer
+                  key={`${selectedFile.id}-${selectedFile.contentUrl}`}
+                  file={selectedFile}
+                />
+              </div>
             </>
           ) : (
-            <div className="grid min-h-[34rem] place-items-center bg-[#f4f7fa] px-6 text-center">
+            <div className="grid min-h-[24rem] place-items-center bg-[#f4f7fa] px-6 text-center sm:min-h-[34rem]">
               <div>
                 <FileText className="mx-auto size-10 text-muted" />
                 <p className="mt-4 text-sm font-bold">

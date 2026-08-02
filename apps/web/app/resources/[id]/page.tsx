@@ -23,13 +23,13 @@ export default async function PublicDocumentPreviewPage({
 
   return (
     <PublicShell>
-      <main className="mx-auto max-w-[92rem] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-[92rem] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <DocumentPreview
           document={publicDocumentPreview(document)}
           backHref="/resources"
           backLabel="All resources"
         />
-      </main>
+      </div>
     </PublicShell>
   );
 }
