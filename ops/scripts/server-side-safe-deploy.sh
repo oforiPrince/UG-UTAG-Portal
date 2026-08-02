@@ -67,7 +67,7 @@ for candidate in docker-compose.db.yml compose.db.yml docker-compose.yml; do
 done
 [[ -n "${DB_COMPOSE}" ]] || die "Could not find a DB compose file under ${LEGACY_DIR}"
 
-``# Parse env files safely (never `source` — passwords often contain shell metacharacters).
+# Parse env files safely (never `source` — passwords often contain shell metacharacters).
 load_env_value() {
   local file="$1"
   local key="$2"
