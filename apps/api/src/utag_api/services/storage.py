@@ -46,6 +46,11 @@ def s3_encryption_args() -> dict[str, str]:
     settings = get_settings()
     if not settings.s3_server_side_encryption:
         return {}
+    # Custom S3-compatible endpoints (for example MinIO) often advertise AES256
+    # in config for production gates but do not implement AWS SSE-KMS/SSE-S3.
+    endpoint = (settings.s3_endpoint_url or "").casefold()
+    if endpoint and "amazonaws.com" not in endpoint:
+        return {}
     values: dict[str, str] = {"ServerSideEncryption": settings.s3_server_side_encryption}
     if settings.s3_server_side_encryption == "aws:kms" and settings.s3_kms_key_id:
         values["SSEKMSKeyId"] = settings.s3_kms_key_id
