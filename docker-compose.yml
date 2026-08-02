@@ -102,6 +102,8 @@ services:
     image: ug-utag-portal-api:latest
     build:
       context: ./apps/api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: .env
         required: false
