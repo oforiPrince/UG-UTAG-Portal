@@ -194,6 +194,8 @@ async def test_active_executive_can_update_own_public_profile(
         "/api/v1/auth/executive-profile",
         headers=headers,
         json={
+            "portfolio": "Member welfare and conditions of service",
+            "summary": "Working for fair conditions across campus.",
             "biography_html": (
                 "<p>Serving <strong>UG UTAG members</strong>.</p><script>alert('unsafe')</script>"
             ),
@@ -201,6 +203,8 @@ async def test_active_executive_can_update_own_public_profile(
                 "linkedin": "https://www.linkedin.com/in/ug-utag-test",
                 "facebook": "",
             },
+            "show_email": True,
+            "show_phone": False,
         },
     )
     assert updated.status_code == 200
@@ -208,6 +212,10 @@ async def test_active_executive_can_update_own_public_profile(
     assert updated.json()["social_links"] == {
         "linkedin": "https://www.linkedin.com/in/ug-utag-test"
     }
+    assert updated.json()["portfolio"] == "Member welfare and conditions of service"
+    assert updated.json()["summary"] == "Working for fair conditions across campus."
+    assert updated.json()["show_email"] is True
+    assert updated.json()["show_phone"] is False
 
     me = await client.get("/api/v1/auth/me")
     assert me.status_code == 200

@@ -3,7 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   Building2,
+  Globe2,
   IdCard,
   LoaderCircle,
   LockKeyhole,
@@ -66,13 +68,39 @@ type ProfileForm = {
 type ExecutiveProfile = {
   id: string;
   position: string;
+  portfolio: string | null;
+  summary: string | null;
   biography_html: string;
   social_links: Record<string, string>;
+  term_number: number;
+  is_acting: boolean;
+  is_public: boolean;
+  show_email: boolean;
+  show_phone: boolean;
+  appointed_on: string | null;
 };
-type ExecutiveProfileForm = Pick<
-  ExecutiveProfile,
-  "biography_html" | "social_links"
->;
+type ExecutiveProfileForm = {
+  portfolio: string;
+  summary: string;
+  biography_html: string;
+  social_links: Record<string, string>;
+  show_email: boolean;
+  show_phone: boolean;
+};
+
+function executiveFormFromProfile(
+  profile?: ExecutiveProfile | null,
+): ExecutiveProfileForm | undefined {
+  if (!profile) return undefined;
+  return {
+    portfolio: profile.portfolio ?? "",
+    summary: profile.summary ?? "",
+    biography_html: profile.biography_html ?? "",
+    social_links: profile.social_links ?? {},
+    show_email: Boolean(profile.show_email),
+    show_phone: Boolean(profile.show_phone),
+  };
+}
 
 const blankProfile: ProfileForm = {
   title: "",
@@ -227,7 +255,9 @@ export function ProfileClient() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const profile = profileDraft ?? profileFromUser(user.data);
-  const publicExecutiveProfile = executiveDraft ?? executiveProfile.data;
+  const publicExecutiveProfile =
+    executiveDraft ?? executiveFormFromProfile(executiveProfile.data);
+  const appointmentMeta = executiveProfile.data;
   const mustCompleteExecutiveProfile = Boolean(
     user.data?.must_complete_executive_profile,
   );
@@ -340,8 +370,12 @@ export function ProfileClient() {
       await api("/api/v1/auth/executive-profile", {
         method: "PATCH",
         body: {
+          portfolio: publicExecutiveProfile.portfolio || null,
+          summary: publicExecutiveProfile.summary || null,
           biography_html: publicExecutiveProfile.biography_html,
           social_links: publicExecutiveProfile.social_links,
+          show_email: publicExecutiveProfile.show_email,
+          show_phone: publicExecutiveProfile.show_phone,
         },
       });
       setExecutiveDraft(undefined);
@@ -373,8 +407,7 @@ export function ProfileClient() {
   function updateExecutiveProfile(changes: Partial<ExecutiveProfileForm>) {
     if (!publicExecutiveProfile) return;
     setExecutiveDraft({
-      biography_html: publicExecutiveProfile.biography_html,
-      social_links: publicExecutiveProfile.social_links,
+      ...publicExecutiveProfile,
       ...changes,
     });
   }
@@ -708,70 +741,248 @@ export function ProfileClient() {
         </div>
       </section>
 
-      {publicExecutiveProfile ? (
+      {publicExecutiveProfile && appointmentMeta ? (
         <SectionCard
           eyebrow="Public leadership profile"
-          title={`Update your ${executiveProfile.data?.position ?? "executive"} profile`}
-          description="This portrait, biography, and these links appear in your public leadership details. Formatting is preserved after security checks."
+          title={`Update your ${appointmentMeta.position} profile`}
+          description="Everything below appears on the public leadership pages and executive detail cards. Keep it accurate and current."
         >
-          <form className="grid gap-5" onSubmit={saveExecutiveProfile}>
-            <div className="grid gap-2 text-xs font-bold">
-              <span id="profile-executive-photo-label">
-                {profilePhotoField.label}
-              </span>
-              <WorkspaceMediaField
-                field={profilePhotoField}
-                value={user.data?.profile_media_id ?? ""}
-                onChange={(value) => {
-                  void saveProfilePhoto(value);
-                }}
-              />
+          <form className="grid gap-8" onSubmit={saveExecutiveProfile}>
+            <div className="grid gap-3 rounded-2xl border border-line bg-ink/[.02] p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                  Position
+                </p>
+                <p className="mt-1 text-sm font-bold text-ink">
+                  {appointmentMeta.position}
+                  {appointmentMeta.is_acting ? " · Acting" : ""}
+                </p>
+              </div>
+              <div>
+                <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                  Term
+                </p>
+                <p className="mt-1 text-sm font-bold text-ink">
+                  Term {appointmentMeta.term_number}
+                </p>
+              </div>
+              <div>
+                <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                  Appointed
+                </p>
+                <p className="mt-1 text-sm font-bold text-ink">
+                  {appointmentMeta.appointed_on
+                    ? new Date(
+                        `${appointmentMeta.appointed_on}T12:00:00`,
+                      ).toLocaleDateString("en-GH", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Not recorded"}
+                </p>
+              </div>
             </div>
-            <div className="grid gap-2 text-xs font-bold">
-              <label
-                id="profile-executive-biography-label"
-                htmlFor="profile-executive-biography"
-              >
-                Biography
-              </label>
-              <RichTextEditor
-                id="profile-executive-biography"
-                labelledBy="profile-executive-biography-label"
-                value={publicExecutiveProfile.biography_html}
-                placeholder="Write your public executive biography…"
-                onChange={(biography_html) =>
-                  updateExecutiveProfile({ biography_html })
-                }
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                ["linkedin", "LinkedIn profile"],
-                ["facebook", "Facebook profile"],
-                ["twitter", "X / Twitter profile"],
-                ["website", "Website"],
-              ].map(([key, label]) => (
-                <label key={key} className="grid gap-2 text-xs font-bold">
-                  {label}
+
+            <div className="grid gap-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <BriefcaseBusiness className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Public introduction
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    Portfolio and short summary
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2 sm:col-span-2">
+                  <FieldLabel htmlFor="profile-executive-portfolio">
+                    Portfolio
+                  </FieldLabel>
                   <input
-                    type="url"
-                    value={publicExecutiveProfile.social_links[key] ?? ""}
-                    placeholder="https://"
+                    id="profile-executive-portfolio"
+                    className={inputClass}
+                    value={publicExecutiveProfile.portfolio}
+                    placeholder="e.g. Member welfare and conditions of service"
+                    onChange={(event) =>
+                      updateExecutiveProfile({ portfolio: event.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2 sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="profile-executive-summary"
+                    hint="One or two sentences shown under your name on leadership cards."
+                  >
+                    Public summary
+                  </FieldLabel>
+                  <textarea
+                    id="profile-executive-summary"
+                    rows={3}
+                    maxLength={500}
+                    className={cn(inputClass, "min-h-24 resize-y py-3")}
+                    value={publicExecutiveProfile.summary}
+                    placeholder="A concise public introduction for members and visitors…"
+                    onChange={(event) =>
+                      updateExecutiveProfile({ summary: event.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-5 border-t border-line pt-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <UserRound className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Biography
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    Full public leadership biography
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-2 text-xs font-bold">
+                <span id="profile-executive-photo-label">
+                  {profilePhotoField.label}
+                </span>
+                <WorkspaceMediaField
+                  field={profilePhotoField}
+                  value={user.data?.profile_media_id ?? ""}
+                  onChange={(value) => {
+                    void saveProfilePhoto(value);
+                  }}
+                />
+              </div>
+              <div className="grid gap-2 text-xs font-bold">
+                <label
+                  id="profile-executive-biography-label"
+                  htmlFor="profile-executive-biography"
+                >
+                  Biography
+                </label>
+                <RichTextEditor
+                  id="profile-executive-biography"
+                  labelledBy="profile-executive-biography-label"
+                  value={publicExecutiveProfile.biography_html}
+                  placeholder="Write your public executive biography…"
+                  onChange={(biography_html) =>
+                    updateExecutiveProfile({ biography_html })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-5 border-t border-line pt-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <Mail className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Public contact
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    Choose what visitors can see
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-panel p-4 transition hover:border-coral/30">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 accent-[var(--coral)]"
+                    checked={publicExecutiveProfile.show_email}
                     onChange={(event) =>
                       updateExecutiveProfile({
-                        social_links: {
-                          ...publicExecutiveProfile.social_links,
-                          [key]: event.target.value,
-                        },
+                        show_email: event.target.checked,
                       })
                     }
-                    className={inputClass}
                   />
+                  <span>
+                    <b className="block text-sm text-ink">Show email publicly</b>
+                    <span className="mt-1 block text-xs leading-5 text-muted">
+                      Displays {user.data?.email ?? "your email"} on your
+                      public leadership profile.
+                    </span>
+                  </span>
                 </label>
-              ))}
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-panel p-4 transition hover:border-coral/30">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 accent-[var(--coral)]"
+                    checked={publicExecutiveProfile.show_phone}
+                    onChange={(event) =>
+                      updateExecutiveProfile({
+                        show_phone: event.target.checked,
+                      })
+                    }
+                  />
+                  <span>
+                    <b className="block text-sm text-ink">Show phone publicly</b>
+                    <span className="mt-1 block text-xs leading-5 text-muted">
+                      Displays your saved phone number on your public leadership
+                      profile.
+                    </span>
+                  </span>
+                </label>
+              </div>
             </div>
-            <div className="flex justify-end">
-              <Button disabled={savingExecutive} className="min-w-44">
+
+            <div className="grid gap-5 border-t border-line pt-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <Globe2 className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Social links
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    Public profiles and website
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  ["linkedin", "LinkedIn profile", "https://www.linkedin.com/in/…"],
+                  ["facebook", "Facebook profile", "https://www.facebook.com/…"],
+                  ["twitter", "X / Twitter profile", "https://x.com/…"],
+                  ["website", "Website", "https://"],
+                ].map(([key, label, placeholder]) => (
+                  <div key={key} className="grid gap-2">
+                    <FieldLabel htmlFor={`profile-social-${key}`}>
+                      {label}
+                    </FieldLabel>
+                    <input
+                      id={`profile-social-${key}`}
+                      type="url"
+                      value={publicExecutiveProfile.social_links[key] ?? ""}
+                      placeholder={placeholder}
+                      onChange={(event) =>
+                        updateExecutiveProfile({
+                          social_links: {
+                            ...publicExecutiveProfile.social_links,
+                            [key]: event.target.value,
+                          },
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-line pt-5">
+              <Button disabled={savingExecutive} className="min-w-48">
                 {savingExecutive ? (
                   <LoaderCircle className="size-4 animate-spin" />
                 ) : (

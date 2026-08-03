@@ -40,8 +40,16 @@ describe("executive profile authoring", () => {
         return {
           id: "appointment-1",
           position: "President",
+          portfolio: "Member welfare",
+          summary: "Serving members across the University of Ghana.",
           biography_html: "<p>Serving members across the University of Ghana.</p>",
           social_links: {},
+          term_number: 1,
+          is_acting: false,
+          is_public: true,
+          show_email: false,
+          show_phone: false,
+          appointed_on: "2024-01-15",
         };
       }
       if (path === "/api/v1/organization/units") {
@@ -67,6 +75,14 @@ describe("executive profile authoring", () => {
     );
 
     expect(await screen.findByText("Public leadership profile")).toBeTruthy();
+    expect(await screen.findByLabelText("Portfolio")).toBeTruthy();
+    expect(await screen.findByLabelText("Public summary")).toBeTruthy();
+    expect(
+      await screen.findByRole("checkbox", { name: /Show email publicly/i }),
+    ).toBeTruthy();
+    expect(
+      await screen.findByRole("checkbox", { name: /Show phone publicly/i }),
+    ).toBeTruthy();
     expect(
       await screen.findByRole("toolbar", { name: "Text formatting" }),
     ).toBeTruthy();
