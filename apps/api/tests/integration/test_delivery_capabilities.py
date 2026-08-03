@@ -17,25 +17,66 @@ import pytest
 
 
 def test_capabilities_reflect_smtp_configuration() -> None:
-    assert public_capabilities(SimpleNamespace(smtp_host="smtp.example.org")) == {
+    assert public_capabilities(
+        SimpleNamespace(
+            smtp_host="smtp.example.org",
+            smtp_username="utag@example.org",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: "secret"),
+        )
+    ) == {
         "email_delivery": True,
         "sms_delivery": False,
     }
-    assert public_capabilities(SimpleNamespace(smtp_host=None)) == {
+    assert public_capabilities(
+        SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None)
+    ) == {
         "email_delivery": False,
         "sms_delivery": False,
     }
-    assert email_delivery_enabled(SimpleNamespace(smtp_host="smtp.example.org"))
-    assert not email_delivery_enabled(SimpleNamespace(smtp_host=None))
+    assert public_capabilities(
+        SimpleNamespace(
+            smtp_host="smtp.gmail.com",
+            smtp_username="",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: ""),
+        )
+    ) == {
+        "email_delivery": False,
+        "sms_delivery": False,
+    }
+    assert email_delivery_enabled(
+        SimpleNamespace(
+            smtp_host="smtp.example.org",
+            smtp_username="utag@example.org",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: "secret"),
+        )
+    )
+    assert not email_delivery_enabled(
+        SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None)
+    )
+    assert not email_delivery_enabled(
+        SimpleNamespace(
+            smtp_host="smtp.gmail.com",
+            smtp_username="",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: ""),
+        )
+    )
     assert not sms_delivery_enabled(SimpleNamespace(smtp_host="smtp.example.org"))
-    assert delivery_available(SimpleNamespace(smtp_host="smtp.example.org"))
-    assert not delivery_available(SimpleNamespace(smtp_host=None))
+    assert delivery_available(
+        SimpleNamespace(
+            smtp_host="smtp.example.org",
+            smtp_username="utag@example.org",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: "secret"),
+        )
+    )
+    assert not delivery_available(
+        SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None)
+    )
 
 
 def test_require_email_delivery_raises_when_disabled(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(
         "utag_api.services.delivery.get_settings",
-        lambda: SimpleNamespace(smtp_host=None),
+        lambda: SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None),
     )
     with pytest.raises(ApiError) as raised:
         require_email_delivery()
@@ -46,13 +87,21 @@ def test_require_email_delivery_raises_when_disabled(monkeypatch) -> None:  # ty
 async def test_public_capabilities_endpoint(
     client: AsyncClient, monkeypatch
 ) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(
+        "utag_api.services.delivery.get_settings",
+        lambda: SimpleNamespace(
+            smtp_host="smtp.example.org",
+            smtp_username="utag@example.org",
+            smtp_password=SimpleNamespace(get_secret_value=lambda: "secret"),
+        ),
+    )
     response = await client.get("/api/v1/public/capabilities")
     assert response.status_code == 200
     assert response.json() == {"email_delivery": True, "sms_delivery": False}
 
     monkeypatch.setattr(
         "utag_api.services.delivery.get_settings",
-        lambda: SimpleNamespace(smtp_host=None),
+        lambda: SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None),
     )
     disabled = await client.get("/api/v1/public/capabilities")
     assert disabled.status_code == 200
@@ -64,7 +113,7 @@ async def test_forgot_password_and_credential_actions_require_email(
 ) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(
         "utag_api.services.delivery.get_settings",
-        lambda: SimpleNamespace(smtp_host=None),
+        lambda: SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None),
     )
     forgot = await client.post(
         "/api/v1/auth/forgot-password",
@@ -161,7 +210,7 @@ async def test_create_member_without_staff_id_fails_when_email_off(
 ) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(
         "utag_api.services.delivery.get_settings",
-        lambda: SimpleNamespace(smtp_host=None),
+        lambda: SimpleNamespace(smtp_host=None, smtp_username=None, smtp_password=None),
     )
     login = await client.post(
         "/api/v1/auth/login",
