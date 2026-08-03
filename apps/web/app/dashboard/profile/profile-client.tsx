@@ -254,12 +254,15 @@ function PasswordField({
         minLength={minLength}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={cn(inputClass, "pr-12")}
+        className={cn(
+          inputClass,
+          "pr-12 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-strong-password-auto-fill-button]:hidden",
+        )}
       />
       <button
         type="button"
         onClick={() => setVisible((current) => !current)}
-        className="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-muted transition hover:text-ink"
+        className="absolute top-1/2 right-2 z-10 -translate-y-1/2 rounded-lg p-2 text-muted transition hover:bg-ink/5 hover:text-ink"
         aria-label={visible ? "Hide password" : "Show password"}
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -1209,7 +1212,7 @@ export function ProfileClient() {
               description="Choose a password only you know. Temporary staff-ID passwords should be replaced after first sign-in."
             />
             <form
-              className="mt-6 grid max-w-2xl gap-5 sm:grid-cols-2"
+              className="mt-6 grid max-w-2xl grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 sm:items-start"
               onSubmit={savePassword}
             >
               <div className="grid gap-2 sm:col-span-2">
@@ -1225,10 +1228,7 @@ export function ProfileClient() {
                 />
               </div>
               <div className="grid gap-2">
-                <FieldLabel
-                  htmlFor="profile-new-password"
-                  hint="At least 8 characters with upper and lowercase letters and a number."
-                >
+                <FieldLabel htmlFor="profile-new-password">
                   New password
                 </FieldLabel>
                 <PasswordField
@@ -1253,6 +1253,10 @@ export function ProfileClient() {
                   onChange={setConfirm}
                 />
               </div>
+              <p className="text-xs leading-5 text-muted sm:col-span-2">
+                Use at least 8 characters with upper and lowercase letters and a
+                number.
+              </p>
               <div className="sm:col-span-2">
                 <Button disabled={savingPassword} className="min-w-44">
                   {savingPassword ? (
