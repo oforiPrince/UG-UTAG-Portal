@@ -108,5 +108,9 @@ describe("executive profile authoring", () => {
           .getAttribute("aria-expanded"),
       ).toBe("false");
     }
+    await screen.findByRole("tab", { name: "Security" }).then((tab) => tab.click());
+    expect(
+      (await screen.findAllByRole("button", { name: "Show password" })).length,
+    ).toBe(3);
   });
 });

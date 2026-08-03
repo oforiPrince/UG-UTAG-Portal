@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   BriefcaseBusiness,
   Building2,
+  Eye,
+  EyeOff,
   Globe2,
   IdCard,
   Link2,
@@ -224,6 +226,47 @@ const memberPhotoField: WorkspaceField = {
   required: false,
   help: "Optional for members. Executives need a portrait for public leadership pages.",
 };
+
+function PasswordField({
+  id,
+  value,
+  onChange,
+  autoComplete,
+  required,
+  minLength,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  required?: boolean;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <span className="relative block">
+      <input
+        id={id}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        required={required}
+        minLength={minLength}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={cn(inputClass, "pr-12")}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+        className="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-muted transition hover:text-ink"
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </span>
+  );
+}
 
 function FieldLabel({
   htmlFor,
@@ -1173,14 +1216,12 @@ export function ProfileClient() {
                 <FieldLabel htmlFor="profile-current-password">
                   Current password
                 </FieldLabel>
-                <input
+                <PasswordField
                   id="profile-current-password"
-                  type="password"
                   autoComplete="current-password"
                   required
                   value={current}
-                  onChange={(event) => setCurrent(event.target.value)}
-                  className={inputClass}
+                  onChange={setCurrent}
                 />
               </div>
               <div className="grid gap-2">
@@ -1190,30 +1231,26 @@ export function ProfileClient() {
                 >
                   New password
                 </FieldLabel>
-                <input
+                <PasswordField
                   id="profile-new-password"
-                  type="password"
                   autoComplete="new-password"
                   minLength={8}
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className={inputClass}
+                  onChange={setPassword}
                 />
               </div>
               <div className="grid gap-2">
                 <FieldLabel htmlFor="profile-confirm-password">
                   Confirm new password
                 </FieldLabel>
-                <input
+                <PasswordField
                   id="profile-confirm-password"
-                  type="password"
                   autoComplete="new-password"
                   minLength={8}
                   required
                   value={confirm}
-                  onChange={(event) => setConfirm(event.target.value)}
-                  className={inputClass}
+                  onChange={setConfirm}
                 />
               </div>
               <div className="sm:col-span-2">
