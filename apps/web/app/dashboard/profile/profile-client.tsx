@@ -3,11 +3,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  Building2,
+  IdCard,
   LoaderCircle,
   LockKeyhole,
+  Mail,
+  Phone,
   Save,
   ShieldCheck,
-  UserRoundCog,
+  UserRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -18,9 +22,14 @@ import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
 import { WorkspaceSelect } from "@/components/dashboard/workspace-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { initials } from "@/lib/utils";
+import {
+  cn,
+  formatPersonName,
+  formatRankForName,
+  humanize,
+  initials,
+} from "@/lib/utils";
 import type { WorkspaceField } from "@/lib/workspaces";
 
 type User = {
@@ -93,7 +102,7 @@ function profileFromUser(user?: User): ProfileForm {
 }
 
 const inputClass =
-  "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none transition focus:border-ink/25";
+  "min-h-12 w-full rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none transition placeholder:text-muted/70 focus:border-coral/40 focus:ring-4 focus:ring-coral/10";
 
 const profileUnitFields: Record<
   "school" | "college" | "department",
@@ -119,7 +128,7 @@ const profileUnitFields: Record<
 
 const profilePhotoField: WorkspaceField = {
   key: "profile_media_id",
-  label: "Public profile photo",
+  label: "Profile photo",
   type: "media",
   required: true,
   media: {
@@ -127,8 +136,72 @@ const profilePhotoField: WorkspaceField = {
     isPrivate: false,
     aspect: "portrait",
   },
-  help: "Required for public leadership cards. Upload a clear portrait photo.",
+  help: "A clear portrait helps colleagues recognize you across the portal and public leadership pages.",
 };
+
+const memberPhotoField: WorkspaceField = {
+  ...profilePhotoField,
+  required: false,
+  help: "Optional for members. Executives need a clear portrait for public leadership cards.",
+};
+
+function SectionCard({
+  eyebrow,
+  title,
+  description,
+  children,
+  className,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "overflow-hidden rounded-3xl border border-line bg-panel shadow-[0_12px_40px_rgba(23,43,69,.04)]",
+        className,
+      )}
+    >
+      <div className="border-b border-line/80 bg-[linear-gradient(180deg,rgb(23_43_69_/_0.02),transparent)] px-6 py-5 sm:px-8">
+        <p className="eyebrow text-coral">{eyebrow}</p>
+        <h3 className="mt-2 text-xl font-black tracking-tight text-ink sm:text-2xl">
+          {title}
+        </h3>
+        {description ? (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      <div className="px-6 py-6 sm:px-8 sm:py-7">{children}</div>
+    </section>
+  );
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  hint,
+}: {
+  htmlFor?: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <label
+        htmlFor={htmlFor}
+        className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase"
+      >
+        {children}
+      </label>
+      {hint ? <p className="text-[.7rem] leading-5 text-muted">{hint}</p> : null}
+    </div>
+  );
+}
 
 export function ProfileClient() {
   const queryClient = useQueryClient();
@@ -160,6 +233,11 @@ export function ProfileClient() {
   );
   const executiveRequired =
     search.get("executive") === "required" || mustCompleteExecutiveProfile;
+  const displayName = formatPersonName(user.data?.full_name ?? "");
+  const displayRank = formatRankForName(
+    user.data?.full_name,
+    user.data?.academic_rank,
+  );
 
   function updateProfile(changes: Partial<ProfileForm>) {
     setProfileDraft({ ...profile, ...changes });
@@ -302,13 +380,13 @@ export function ProfileClient() {
   }
 
   return (
-    <div className="grid gap-5">
-      <header>
-        <p className="eyebrow text-coral">Account & security</p>
-        <h2 className="display-type mt-3 text-4xl sm:text-5xl">Your profile</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-          Keep your association identity, contact details and sign-in security
-          current.
+    <div className="grid gap-6">
+      <header className="max-w-3xl">
+        <p className="eyebrow text-coral">Account</p>
+        <h2 className="display-type mt-3 text-4xl sm:text-5xl">Profile</h2>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Your association identity, campus affiliation, and sign-in security in
+          one place.
         </p>
       </header>
 
@@ -324,7 +402,7 @@ export function ProfileClient() {
             </b>
             <p className="mt-1 text-xs leading-5 text-muted">
               This account was issued with a temporary credential. Use the
-              password form below to choose a private password that only you
+              password section below to choose a private password that only you
               know.
             </p>
           </div>
@@ -350,161 +428,258 @@ export function ProfileClient() {
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[.72fr_1.28fr]">
-        <Card>
-          <CardContent className="p-7">
-            <span className="relative grid size-20 place-items-center overflow-hidden rounded-2xl bg-ink text-xl font-black text-paper">
+      <section className="overflow-hidden rounded-3xl border border-line bg-panel shadow-[0_16px_48px_rgba(23,43,69,.06)]">
+        <div className="relative overflow-hidden bg-[linear-gradient(135deg,#102a46_0%,#1f5f99_55%,#2f7ab8_100%)] px-6 py-8 text-white sm:px-8 sm:py-10">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-30"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 18% 20%, rgba(255,255,255,.28), transparent 34%), radial-gradient(circle at 88% 12%, rgba(240,196,116,.35), transparent 28%)",
+            }}
+          />
+          <div className="relative grid gap-6 lg:grid-cols-[auto_1fr] lg:items-end">
+            <div className="relative size-28 shrink-0 overflow-hidden rounded-[1.75rem] border-4 border-white/25 bg-white/10 shadow-2xl sm:size-36">
               {user.data?.profile_media_id ? (
                 <Image
                   fill
                   unoptimized
-                  alt={`Profile photo for ${user.data.full_name}`}
+                  alt={`Profile photo for ${displayName || "member"}`}
                   className="object-cover"
-                  sizes="80px"
+                  sizes="144px"
                   src={`/api/v1/media/${user.data.profile_media_id}/content`}
                 />
               ) : (
-                initials(user.data?.full_name ?? "UG")
+                <span className="grid h-full place-items-center text-3xl font-black text-gold sm:text-4xl">
+                  {initials(user.data?.full_name ?? "UG")}
+                </span>
               )}
-            </span>
-            <h3 className="mt-6 text-xl font-black">
-              {user.data?.full_name ?? "Loading profile…"}
-            </h3>
-            <p className="mt-1 text-sm text-muted">{user.data?.email}</p>
-            {user.data?.staff_id ? (
-              <p className="mt-1 text-xs text-muted">
-                Staff ID: {user.data.staff_id}
-              </p>
-            ) : null}
-            <div className="mt-6 flex flex-wrap gap-2">
-              {user.data?.roles.map((role) => (
-                <span
-                  key={role}
-                  className="rounded-full bg-gold/15 px-3 py-1 text-[.62rem] font-bold"
-                >
-                  {role}
-                </span>
-              ))}
             </div>
-            <div className="mt-8 flex items-center gap-3 border-t border-line pt-6">
-              <ShieldCheck className="size-5 text-emerald-600" />
-              <p className="text-xs">
-                <b className="block">Protected account</b>
-                <span className="text-muted">
-                  Secure sessions and role-based access
-                </span>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-7">
-            <div className="flex items-center gap-3">
-              <UserRoundCog className="size-5 text-coral" />
-              <div>
-                <p className="eyebrow text-coral">Member details</p>
-                <h3 className="mt-2 text-xl font-black">Update your profile</h3>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {(user.data?.roles ?? []).map((role) => (
+                  <span
+                    key={role}
+                    className="rounded-full bg-white/12 px-3 py-1 text-[.62rem] font-bold tracking-wide text-white/95 backdrop-blur"
+                  >
+                    {humanize(role)}
+                  </span>
+                ))}
+              </div>
+              <h3 className="mt-3 text-2xl font-black tracking-tight sm:text-4xl">
+                {displayName || "Loading profile…"}
+              </h3>
+              {displayRank ? (
+                <p className="mt-1 text-sm font-semibold text-white/80 sm:text-base">
+                  {displayRank}
+                </p>
+              ) : null}
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">
+                {user.data?.email ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Mail className="size-4 shrink-0 opacity-80" />
+                    {user.data.email}
+                  </span>
+                ) : null}
+                {user.data?.staff_id ? (
+                  <span className="inline-flex items-center gap-2">
+                    <IdCard className="size-4 shrink-0 opacity-80" />
+                    Staff ID {user.data.staff_id}
+                  </span>
+                ) : null}
+                {user.data?.phone_number ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Phone className="size-4 shrink-0 opacity-80" />
+                    {user.data.phone_number}
+                  </span>
+                ) : null}
               </div>
             </div>
-            <form
-              className="mt-7 grid gap-5 sm:grid-cols-2"
-              onSubmit={saveProfile}
-            >
-              <label className="grid gap-2 text-xs font-bold">
-                Title
-                <select
-                  className={inputClass}
-                  value={profile.title}
-                  onChange={(event) =>
-                    updateProfile({ title: event.target.value })
-                  }
-                >
-                  <option value="">Select</option>
-                  {[
-                    "Prof.",
-                    "Dr.",
-                    "Mr.",
-                    "Mrs.",
-                    "Miss",
-                    "Ms.",
-                    "Rev.",
-                    "Hon.",
-                    "Eng.",
-                  ].map((title) => (
-                    <option key={title} value={title}>
-                      {title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-xs font-bold">
-                Gender
-                <select
-                  className={inputClass}
-                  value={profile.gender}
-                  onChange={(event) =>
-                    updateProfile({ gender: event.target.value })
-                  }
-                >
-                  <option value="">Select</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </label>
-              <label className="grid gap-2 text-xs font-bold">
-                Other names
-                <input
-                  className={inputClass}
-                  required
-                  value={profile.other_name}
-                  onChange={(event) =>
-                    updateProfile({ other_name: event.target.value })
-                  }
-                />
-              </label>
-              <label className="grid gap-2 text-xs font-bold">
-                Surname
-                <input
-                  className={inputClass}
-                  required
-                  value={profile.surname}
-                  onChange={(event) =>
-                    updateProfile({ surname: event.target.value })
-                  }
-                />
-              </label>
-              <label className="grid gap-2 text-xs font-bold">
-                Academic rank
-                <input
-                  className={inputClass}
-                  value={profile.academic_rank}
-                  onChange={(event) =>
-                    updateProfile({ academic_rank: event.target.value })
-                  }
-                />
-              </label>
-              <label className="grid gap-2 text-xs font-bold">
-                Phone number
-                <input
-                  className={inputClass}
-                  type="tel"
-                  value={profile.phone_number}
-                  onChange={(event) =>
-                    updateProfile({ phone_number: event.target.value })
-                  }
-                />
-              </label>
-              <>
-                {(["school", "college", "department"] as const).map((type) => {
+          </div>
+        </div>
+
+        <div className="grid gap-0 lg:grid-cols-[minmax(16rem,0.9fr)_1.1fr]">
+          <div className="border-b border-line p-6 sm:p-8 lg:border-r lg:border-b-0">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                <UserRound className="size-5" />
+              </span>
+              <div>
+                <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                  Portrait
+                </p>
+                <p className="text-sm font-bold text-ink">Update your photo</p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <WorkspaceMediaField
+                field={
+                  publicExecutiveProfile ? profilePhotoField : memberPhotoField
+                }
+                value={user.data?.profile_media_id ?? ""}
+                onChange={(value) => {
+                  void saveProfilePhoto(value);
+                }}
+              />
+            </div>
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-line bg-ink/[.02] p-4">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+              <p className="text-xs leading-5">
+                <b className="block text-ink">Protected account</b>
+                <span className="text-muted">
+                  Secure sessions and role-based access keep your workspace
+                  private.
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <form className="grid gap-6 p-6 sm:p-8" onSubmit={saveProfile}>
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <IdCard className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Identity
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    Name and contact details
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-title">Title</FieldLabel>
+                  <select
+                    id="profile-title"
+                    className={inputClass}
+                    value={profile.title}
+                    onChange={(event) =>
+                      updateProfile({ title: event.target.value })
+                    }
+                  >
+                    <option value="">Select</option>
+                    {[
+                      "Prof.",
+                      "Dr.",
+                      "Mr.",
+                      "Mrs.",
+                      "Miss",
+                      "Ms.",
+                      "Rev.",
+                      "Hon.",
+                      "Eng.",
+                    ].map((title) => (
+                      <option key={title} value={title}>
+                        {title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-gender">Gender</FieldLabel>
+                  <select
+                    id="profile-gender"
+                    className={inputClass}
+                    value={profile.gender}
+                    onChange={(event) =>
+                      updateProfile({ gender: event.target.value })
+                    }
+                  >
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-other-name">
+                    Other names
+                  </FieldLabel>
+                  <input
+                    id="profile-other-name"
+                    className={inputClass}
+                    required
+                    value={profile.other_name}
+                    onChange={(event) =>
+                      updateProfile({ other_name: event.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-surname">Surname</FieldLabel>
+                  <input
+                    id="profile-surname"
+                    className={inputClass}
+                    required
+                    value={profile.surname}
+                    onChange={(event) =>
+                      updateProfile({ surname: event.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-rank">Academic rank</FieldLabel>
+                  <input
+                    id="profile-rank"
+                    className={inputClass}
+                    value={profile.academic_rank}
+                    onChange={(event) =>
+                      updateProfile({ academic_rank: event.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <FieldLabel htmlFor="profile-phone">Phone number</FieldLabel>
+                  <input
+                    id="profile-phone"
+                    className={inputClass}
+                    type="tel"
+                    value={profile.phone_number}
+                    onChange={(event) =>
+                      updateProfile({ phone_number: event.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-coral/10 text-coral">
+                  <Building2 className="size-5" />
+                </span>
+                <div>
+                  <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
+                    Affiliation
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    College, school and department
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {(["college", "school", "department"] as const).map((type) => {
                   const key = `${type}_id` as
-                    "school_id" | "college_id" | "department_id";
+                    | "school_id"
+                    | "college_id"
+                    | "department_id";
                   const labelId = `profile-${type}-label`;
                   return (
-                    <div key={type} className="grid gap-2 text-xs font-bold">
-                      <label id={labelId} htmlFor={`profile-${type}`}>
+                    <div
+                      key={type}
+                      className={cn(
+                        "grid gap-2",
+                        type === "department" && "sm:col-span-2",
+                      )}
+                    >
+                      <span
+                        id={labelId}
+                        className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase"
+                      >
                         {profileUnitFields[type].label}
-                      </label>
+                      </span>
                       <WorkspaceSelect
                         id={`profile-${type}`}
                         labelledBy={labelId}
@@ -516,165 +691,167 @@ export function ProfileClient() {
                     </div>
                   );
                 })}
-              </>
-              <div className="flex justify-end sm:col-span-2">
-                <Button disabled={savingProfile}>
-                  {savingProfile ? (
-                    <LoaderCircle className="size-4 animate-spin" />
-                  ) : (
-                    <Save className="size-4" />
-                  )}
-                  Save profile
-                </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
 
-      {publicExecutiveProfile ? (
-        <Card>
-          <CardContent className="p-7">
-            <p className="eyebrow text-coral">Public leadership profile</p>
-            <h3 className="mt-3 text-xl font-black">
-              Update your {executiveProfile.data?.position ?? "executive"}{" "}
-              profile
-            </h3>
-            <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-              This portrait, biography, and these links appear in your public
-              leadership details. Formatting is preserved after security checks.
-            </p>
-            <form className="mt-7 grid gap-5" onSubmit={saveExecutiveProfile}>
-              <div className="grid gap-2 text-xs font-bold">
-                <span id="profile-executive-photo-label">
-                  {profilePhotoField.label}
-                </span>
-                <WorkspaceMediaField
-                  field={profilePhotoField}
-                  value={user.data?.profile_media_id ?? ""}
-                  onChange={(value) => {
-                    void saveProfilePhoto(value);
-                  }}
-                />
-              </div>
-              <div className="grid gap-2 text-xs font-bold">
-                <label
-                  id="profile-executive-biography-label"
-                  htmlFor="profile-executive-biography"
-                >
-                  Biography
-                </label>
-                <RichTextEditor
-                  id="profile-executive-biography"
-                  labelledBy="profile-executive-biography-label"
-                  value={publicExecutiveProfile.biography_html}
-                  placeholder="Write your public executive biography…"
-                  onChange={(biography_html) =>
-                    updateExecutiveProfile({ biography_html })
-                  }
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  ["linkedin", "LinkedIn profile"],
-                  ["facebook", "Facebook profile"],
-                  ["twitter", "X / Twitter profile"],
-                  ["website", "Website"],
-                ].map(([key, label]) => (
-                  <label key={key} className="grid gap-2 text-xs font-bold">
-                    {label}
-                    <input
-                      type="url"
-                      value={publicExecutiveProfile.social_links[key] ?? ""}
-                      placeholder="https://"
-                      onChange={(event) =>
-                        updateExecutiveProfile({
-                          social_links: {
-                            ...publicExecutiveProfile.social_links,
-                            [key]: event.target.value,
-                          },
-                        })
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <Button disabled={savingExecutive}>
-                  {savingExecutive ? (
-                    <LoaderCircle className="size-4 animate-spin" />
-                  ) : (
-                    <Save className="size-4" />
-                  )}
-                  Save public profile
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card>
-        <CardContent className="p-7">
-          <p className="eyebrow text-coral">Password</p>
-          <h3 className="mt-3 text-xl font-black">Update your password</h3>
-          <form
-            className="mt-7 grid max-w-2xl gap-5 sm:grid-cols-2"
-            onSubmit={savePassword}
-          >
-            <label className="grid gap-2 text-xs font-bold sm:col-span-2">
-              Current password
-              <input
-                type="password"
-                autoComplete="current-password"
-                required
-                value={current}
-                onChange={(event) => setCurrent(event.target.value)}
-                className={inputClass}
-              />
-            </label>
-            <label className="grid gap-2 text-xs font-bold">
-              New password
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={inputClass}
-              />
-              <span className="font-normal leading-5 text-muted">
-                At least 8 characters with upper and lowercase letters and a
-                number.
-              </span>
-            </label>
-            <label className="grid gap-2 text-xs font-bold">
-              Confirm new password
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-                value={confirm}
-                onChange={(event) => setConfirm(event.target.value)}
-                className={inputClass}
-              />
-            </label>
-            <div className="sm:col-span-2">
-              <Button disabled={savingPassword}>
-                {savingPassword ? (
+            <div className="flex justify-end border-t border-line pt-5">
+              <Button disabled={savingProfile} className="min-w-40">
+                {savingProfile ? (
                   <LoaderCircle className="size-4 animate-spin" />
                 ) : (
-                  <LockKeyhole className="size-4" />
+                  <Save className="size-4" />
                 )}
-                Update password
+                Save profile
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+
+      {publicExecutiveProfile ? (
+        <SectionCard
+          eyebrow="Public leadership profile"
+          title={`Update your ${executiveProfile.data?.position ?? "executive"} profile`}
+          description="This portrait, biography, and these links appear in your public leadership details. Formatting is preserved after security checks."
+        >
+          <form className="grid gap-5" onSubmit={saveExecutiveProfile}>
+            <div className="grid gap-2 text-xs font-bold">
+              <span id="profile-executive-photo-label">
+                {profilePhotoField.label}
+              </span>
+              <WorkspaceMediaField
+                field={profilePhotoField}
+                value={user.data?.profile_media_id ?? ""}
+                onChange={(value) => {
+                  void saveProfilePhoto(value);
+                }}
+              />
+            </div>
+            <div className="grid gap-2 text-xs font-bold">
+              <label
+                id="profile-executive-biography-label"
+                htmlFor="profile-executive-biography"
+              >
+                Biography
+              </label>
+              <RichTextEditor
+                id="profile-executive-biography"
+                labelledBy="profile-executive-biography-label"
+                value={publicExecutiveProfile.biography_html}
+                placeholder="Write your public executive biography…"
+                onChange={(biography_html) =>
+                  updateExecutiveProfile({ biography_html })
+                }
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ["linkedin", "LinkedIn profile"],
+                ["facebook", "Facebook profile"],
+                ["twitter", "X / Twitter profile"],
+                ["website", "Website"],
+              ].map(([key, label]) => (
+                <label key={key} className="grid gap-2 text-xs font-bold">
+                  {label}
+                  <input
+                    type="url"
+                    value={publicExecutiveProfile.social_links[key] ?? ""}
+                    placeholder="https://"
+                    onChange={(event) =>
+                      updateExecutiveProfile({
+                        social_links: {
+                          ...publicExecutiveProfile.social_links,
+                          [key]: event.target.value,
+                        },
+                      })
+                    }
+                    className={inputClass}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Button disabled={savingExecutive} className="min-w-44">
+                {savingExecutive ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                Save public profile
+              </Button>
+            </div>
+          </form>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard
+        eyebrow="Password"
+        title="Update your password"
+        description="Choose a password only you know. Temporary staff-ID passwords should be replaced after first sign-in."
+      >
+        <form
+          className="grid max-w-2xl gap-5 sm:grid-cols-2"
+          onSubmit={savePassword}
+        >
+          <div className="grid gap-2 sm:col-span-2">
+            <FieldLabel htmlFor="profile-current-password">
+              Current password
+            </FieldLabel>
+            <input
+              id="profile-current-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={current}
+              onChange={(event) => setCurrent(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid gap-2">
+            <FieldLabel
+              htmlFor="profile-new-password"
+              hint="At least 8 characters with upper and lowercase letters and a number."
+            >
+              New password
+            </FieldLabel>
+            <input
+              id="profile-new-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid gap-2">
+            <FieldLabel htmlFor="profile-confirm-password">
+              Confirm new password
+            </FieldLabel>
+            <input
+              id="profile-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={confirm}
+              onChange={(event) => setConfirm(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Button disabled={savingPassword} className="min-w-44">
+              {savingPassword ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <LockKeyhole className="size-4" />
+              )}
+              Update password
+            </Button>
+          </div>
+        </form>
+      </SectionCard>
     </div>
   );
 }
