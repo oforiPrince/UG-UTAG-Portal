@@ -49,6 +49,22 @@ describe("member credential actions require delivery", () => {
     );
   });
 
+  it("shows reset password for active members even when email is unverified", () => {
+    const actions = rowActionsFor(
+      { ...row, email_verified: false },
+      workspaces.members,
+      permissions,
+      "admin-1",
+      true,
+    );
+    expect(actions.actions.map((item) => item.label)).toContain(
+      "Reset password",
+    );
+    expect(actions.primary.map((item) => item.label)).toContain(
+      "Reset password",
+    );
+  });
+
   it("shows send access link and reset password when delivery is on", () => {
     const actions = rowActionsFor(
       row,

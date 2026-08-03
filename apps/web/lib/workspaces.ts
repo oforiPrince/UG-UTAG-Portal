@@ -1146,11 +1146,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         successMessage: "Password reset and active sessions revoked",
         confirm:
           "Reset this member's password and sign them out of all devices? Without email delivery, the temporary password becomes their staff ID and they must change it on next sign-in.",
-        danger: true,
         excludeSelf: true,
         when: (row, permissions) =>
           row.status === "active" &&
-          row.email_verified === true &&
           (!Array.isArray(row.roles) ||
             !row.roles.includes("administrator") ||
             permissions.includes("members.roles")),

@@ -1007,11 +1007,11 @@ async def force_password_reset(
             "Use your profile to change your own password",
         )
     user = await db.get(User, user_id)
-    if user is None or user.status != "active" or not user.email_verified:
+    if user is None or user.status != "active":
         raise ApiError(
             409,
             "member_not_active",
-            "Use an access invitation until the member has activated their account",
+            "Only active members can have their password reset",
         )
     await ensure_privileged_target_permission(db, principal, user.id)
     now = datetime.now(UTC)

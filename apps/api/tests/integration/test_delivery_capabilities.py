@@ -132,6 +132,29 @@ async def test_forgot_password_and_credential_actions_require_email(
     )
     assert old_password.status_code == 401
 
+    # Unverified active members can still be force-reset by an administrator.
+    async with session_factory() as session:
+        member = await session.get(User, UUID(member_id))
+        assert member is not None
+        member.password_hash = hash_password("AnotherPass123!")
+        member.must_change_password = False
+        member.email_verified = False
+        await session.commit()
+
+    unverified_reset = await client.post(
+        f"/api/v1/members/{member_id}/password-reset",
+        headers=headers,
+    )
+    assert unverified_reset.status_code == 200
+    assert "staff ID" in unverified_reset.json()["message"]
+
+    unverified_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "temp.pass@example.edu.gh", "password": "UGTEMP01"},
+    )
+    assert unverified_login.status_code == 200
+    assert unverified_login.json()["user"]["must_change_password"] is True
+
 
 async def test_create_member_without_staff_id_fails_when_email_off(
     client: AsyncClient, monkeypatch
