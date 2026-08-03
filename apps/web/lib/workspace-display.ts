@@ -114,6 +114,17 @@ export function display(value: unknown, key = ""): string {
       });
     }
   }
+  if (
+    (key.endsWith("_time") || key === "time") &&
+    typeof value === "string" &&
+    /^\d{1,2}:\d{2}(:\d{2})?$/.test(value)
+  ) {
+    const [hoursRaw, minutes] = value.split(":");
+    const hours = Number(hoursRaw);
+    const period = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes} ${period}`;
+  }
   if (key === "byte_size" && typeof value === "number") {
     return formatBytes(value);
   }

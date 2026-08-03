@@ -48,6 +48,7 @@ from utag_api.security import (
     verify_password,
 )
 from utag_api.services.content import sanitize_html
+from utag_api.services.delivery import require_email_delivery
 from utag_api.services.events import EventContext, enqueue_task, record_change
 from utag_api.services.executives import (
     MIN_PUBLIC_BIOGRAPHY_CHARS,
@@ -455,6 +456,7 @@ async def forgot_password(
     request: Request,
     db: DbSession,
 ) -> MessageResponse:
+    require_email_delivery()
     email = normalize_email(str(payload.email))
     request_ip = client_ip(request)
     await enforce_rate_limit("password-reset", request_ip, limit=8, period_seconds=3600)

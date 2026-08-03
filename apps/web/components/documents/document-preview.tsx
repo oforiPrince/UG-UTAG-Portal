@@ -308,11 +308,16 @@ export function DocumentPreview({
   backHref,
   backLabel,
   privateView = false,
+  embedded = false,
+  onBack,
 }: {
   document: DocumentPreviewData;
-  backHref: string;
-  backLabel: string;
+  backHref?: string;
+  backLabel?: string;
   privateView?: boolean;
+  /** Compact chrome for the workspace details drawer. */
+  embedded?: boolean;
+  onBack?: () => void;
 }) {
   const [selectedId, setSelectedId] = useState(document.files[0]?.id ?? "");
   const selectedFile = useMemo(
@@ -340,8 +345,36 @@ export function DocumentPreview({
     ...document.details,
   ];
 
+  const backControl = onBack ? (
+    <Button
+      size="sm"
+      variant="outline"
+      className="shrink-0 border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+      onClick={onBack}
+    >
+      <ArrowLeft className="size-4" /> {backLabel ?? "Back"}
+    </Button>
+  ) : backHref ? (
+    <Button
+      asChild
+      size="sm"
+      variant="outline"
+      className="shrink-0 border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+    >
+      <Link href={backHref}>
+        <ArrowLeft className="size-4" /> {backLabel ?? "Back"}
+      </Link>
+    </Button>
+  ) : null;
+
   return (
-    <article className="min-w-0 overflow-hidden rounded-md border border-line bg-white shadow-[0_18px_55px_rgb(23_43_69_/_10%)]">
+    <article
+      className={`min-w-0 overflow-hidden rounded-md border border-line bg-white ${
+        embedded
+          ? "shadow-none"
+          : "shadow-[0_18px_55px_rgb(23_43_69_/_10%)]"
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#172f4d] px-4 py-4 text-white sm:px-7">
         <div className="min-w-0">
           <p className="text-[.63rem] font-black tracking-[.14em] text-gold uppercase">
@@ -354,19 +387,14 @@ export function DocumentPreview({
             · Full content
           </p>
         </div>
-        <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="shrink-0 border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
-        >
-          <Link href={backHref}>
-            <ArrowLeft className="size-4" /> {backLabel}
-          </Link>
-        </Button>
+        {backControl}
       </div>
 
-      <header className="border-b border-line px-4 py-6 sm:px-9 sm:py-10">
+      <header
+        className={`border-b border-line px-4 sm:px-9 ${
+          embedded ? "py-5 sm:py-6" : "py-6 sm:py-10"
+        }`}
+      >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 max-w-4xl">
             {privateView ? (
@@ -375,9 +403,11 @@ export function DocumentPreview({
               </p>
             ) : null}
             <h1
-              className={`display-type text-[1.85rem] leading-tight break-words text-[#172f4d] sm:text-5xl ${
-                privateView ? "mt-3" : ""
-              }`}
+              className={`display-type leading-tight break-words text-[#172f4d] ${
+                embedded
+                  ? "text-2xl sm:text-3xl"
+                  : "text-[1.85rem] sm:text-5xl"
+              } ${privateView ? "mt-3" : ""}`}
             >
               {document.title}
             </h1>

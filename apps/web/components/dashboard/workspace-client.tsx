@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   ArrowDownToLine,
+  ArrowLeft,
   ArrowUpDown,
   Check,
   ChevronDown,
@@ -24,11 +25,22 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { WorkspacePanelPreview } from "@/components/dashboard/workspace-panel-preview";
+import {
+  RecordDetailsView,
+} from "@/components/dashboard/record-details-view";
+import { WorkspaceRowActions } from "@/components/dashboard/workspace-row-actions";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
 import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { API_URL, api } from "@/lib/api";
+import {
+  defaultDeliveryCapabilities,
+  deliveryAvailable as isDeliveryAvailable,
+} from "@/lib/delivery-capabilities";
 import { display, displayChoice } from "@/lib/workspace-display";
+import { visibleDetailEntries } from "@/lib/workspace-detail";
+import { rowActionsFor } from "@/lib/workspace-row-actions";
 import {
   documentAudiencesForCategory,
   nextMultiSelectValue,
@@ -43,6 +55,7 @@ import type {
   WorkspaceConfig,
   WorkspaceField,
   WorkspaceMutation,
+  WorkspacePreviewKind,
   WorkspaceRow,
 } from "@/lib/workspaces";
 import { humanize } from "@/lib/utils";
@@ -754,6 +767,75 @@ function RecordThumbnail({ row }: { row: WorkspaceRow }) {
   );
 }
 
+function RecordCardMedia({
+  row,
+  aspect = "landscape",
+}: {
+  row: WorkspaceRow;
+  aspect?: "square" | "landscape";
+}) {
+  const image = recordImages(row)[0];
+  const aspectClass =
+    aspect === "square" ? "aspect-square" : "aspect-[16/10]";
+  const contentType =
+    typeof row.content_type === "string" ? row.content_type : "";
+  const status = typeof row.status === "string" ? row.status : "";
+  const filename =
+    typeof row.original_filename === "string"
+      ? row.original_filename
+      : typeof row.title === "string"
+        ? row.title
+        : "Asset";
+
+  if (!image) {
+    const typeLabel = contentType
+      ? contentType.split("/").pop()?.toUpperCase() || contentType
+      : status
+        ? humanize(status)
+        : "File";
+    return (
+      <div
+        className={`flex ${aspectClass} flex-col items-center justify-center gap-1 rounded-t-2xl bg-ink/[.04] px-4 text-center`}
+      >
+        <span className="text-[.62rem] font-black tracking-wide text-muted uppercase">
+          {typeLabel}
+        </span>
+        <span className="line-clamp-2 text-xs font-bold text-ink/70">
+          {filename}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`relative ${aspectClass} overflow-hidden rounded-t-2xl bg-ink/5`}
+    >
+      <Image
+        fill
+        unoptimized
+        alt={image.alt}
+        className="object-cover transition duration-300 group-hover:scale-[1.03]"
+        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+        src={`/api/v1/media/${image.id}/content`}
+      />
+    </div>
+  );
+}
+
+function statusField(key: string) {
+  return [
+    "status",
+    "priority",
+    "outcome",
+    "payment_status",
+    "is_active",
+    "is_public",
+    "is_published",
+    "is_private",
+    "enabled",
+  ].includes(key);
+}
+
 function RecordImagePreview({ row }: { row: WorkspaceRow }) {
   const images = recordImages(row);
   if (!images.length) return null;
@@ -831,13 +913,32 @@ function fieldsFor(
   mutation: WorkspaceMutation,
   mode: "create" | "edit",
   permissions: string[],
+  deliveryAvailable = true,
 ) {
-  return (mutation.fields ?? []).filter(
-    (field) =>
-      !(mode === "create" && field.editOnly) &&
-      !(mode === "edit" && field.createOnly) &&
-      (!field.permission || permissions.includes(field.permission)),
-  );
+  return (mutation.fields ?? [])
+    .filter(
+      (field) =>
+        !(mode === "create" && field.editOnly) &&
+        !(mode === "edit" && field.createOnly) &&
+        (!field.permission || permissions.includes(field.permission)) &&
+        (!field.requiresDelivery || deliveryAvailable),
+    )
+    .map((field) => {
+      if (
+        !deliveryAvailable &&
+        mode === "create" &&
+        field.key === "staff_id"
+      ) {
+        return {
+          ...field,
+          required: true,
+          help:
+            field.help ??
+            "Required. The staff ID is the temporary first password until email delivery is configured.",
+        };
+      }
+      return field;
+    });
 }
 
 function parseStructured(value: FormValue, expectsArray: boolean): unknown {
@@ -1209,6 +1310,7 @@ function MutationForm({
   mode,
   row,
   permissions,
+  deliveryAvailable = true,
   onSaved,
   close,
   cancelLabel = "Cancel",
@@ -1218,12 +1320,18 @@ function MutationForm({
   mode: "create" | "edit";
   row?: WorkspaceRow;
   permissions: string[];
+  deliveryAvailable?: boolean;
   onSaved?: (row: WorkspaceRow) => void;
   close: () => void;
   cancelLabel?: string;
 }) {
   const queryClient = useQueryClient();
-  const configuredFields = fieldsFor(mutation, mode, permissions).map(
+  const configuredFields = fieldsFor(
+    mutation,
+    mode,
+    permissions,
+    deliveryAvailable,
+  ).map(
     (field) =>
       field.optionsFor
         ? { ...field, options: field.optionsFor(permissions) }
@@ -1281,6 +1389,9 @@ function MutationForm({
       if (missingField) {
         throw new Error(`${missingField.label} is required`);
       }
+      if (mutation.clientOnly) {
+        return null;
+      }
       let payload = Object.fromEntries(
         fields.map((field) => [
           field.key,
@@ -1313,7 +1424,11 @@ function MutationForm({
       <div className="flex items-start justify-between gap-5">
         <div>
           <p className="eyebrow text-coral">
-            {mode === "create" ? "Create record" : "Update record"}
+            {mode === "create"
+              ? mutation.clientOnly
+                ? "Upload"
+                : "Create record"
+              : "Update record"}
           </p>
           <h2 className="display-type mt-3 text-3xl sm:text-4xl">
             {mutation.label}
@@ -1614,6 +1729,7 @@ function MutationForm({
 
 type WorkspacePanel =
   | { view: "details"; row: WorkspaceRow }
+  | { view: "preview"; row: WorkspaceRow; previewKind: WorkspacePreviewKind }
   | { view: "edit"; row: WorkspaceRow; mutation: WorkspaceMutation }
   | { view: "create"; mutation: WorkspaceMutation };
 
@@ -1652,6 +1768,16 @@ export function WorkspaceClient({
     queryFn: () => api<User>("/api/v1/auth/me"),
     staleTime: 60_000,
   });
+  const capabilities = useQuery({
+    queryKey: ["public", "capabilities"],
+    queryFn: () =>
+      api<typeof defaultDeliveryCapabilities>("/api/v1/public/capabilities"),
+    staleTime: 60_000,
+    placeholderData: defaultDeliveryCapabilities,
+  });
+  const deliveryOn = isDeliveryAvailable(
+    capabilities.data ?? defaultDeliveryCapabilities,
+  );
   const query = useQuery({
     queryKey: [config.queryKey, "workspace", queryEndpoint],
     queryFn: () => api<unknown>(queryEndpoint),
@@ -1665,8 +1791,15 @@ export function WorkspaceClient({
       row: WorkspaceRow;
     }) =>
       api(endpointFor(mutation, row), { method: mutation.method ?? "POST" }),
-    onSuccess: async (_data, variables) => {
-      toast.success(variables.mutation.successMessage);
+    onSuccess: async (data, variables) => {
+      const apiMessage =
+        data &&
+        typeof data === "object" &&
+        "message" in data &&
+        typeof (data as { message: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : null;
+      toast.success(apiMessage ?? variables.mutation.successMessage);
       await queryClient.invalidateQueries({ queryKey: [config.queryKey] });
       setPanel(null);
     },
@@ -1674,8 +1807,18 @@ export function WorkspaceClient({
       toast.error(error instanceof Error ? error.message : "Action failed"),
   });
 
-  const can = (permission: string) =>
-    user.data?.permissions.includes(permission) ?? false;
+  const permissions = user.data?.permissions ?? [];
+  const can = (permission: string) => permissions.includes(permission);
+  const visibleFilters = useMemo(() => {
+    const filters = config.filters ?? [];
+    if (
+      config.queryKey === "events" &&
+      !(user.data?.permissions ?? []).includes("events.manage")
+    ) {
+      return filters.filter((filter) => filter.key !== "publication_status");
+    }
+    return filters;
+  }, [config.filters, config.queryKey, user.data?.permissions]);
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const result = rowsFrom(query.data).filter((row) => {
@@ -1733,6 +1876,17 @@ export function WorkspaceClient({
   }, [panel]);
 
   const detailFields = useMemo(() => workspaceDetailFields(config), [config]);
+  const curatedDetails = useMemo(() => {
+    if (!selected || !config.detail) return null;
+    return visibleDetailEntries(
+      selected,
+      config.detail,
+      user.data?.permissions ?? [],
+    );
+  }, [selected, config.detail, user.data?.permissions]);
+  const detailTitleKey =
+    config.detail?.titleKey ?? config.columns[0]?.key ?? "id";
+  const detailNoun = config.detail?.noun ?? "Record";
 
   function closePanel() {
     setPanel(null);
@@ -1765,7 +1919,11 @@ export function WorkspaceClient({
 
   function runAction(mutation: WorkspaceMutation, row: WorkspaceRow) {
     if (mutation.confirm && !window.confirm(mutation.confirm)) return;
-    if (mutation.open) {
+    if (mutation.openMode === "panel" && mutation.previewKind) {
+      setPanel({ view: "preview", row, previewKind: mutation.previewKind });
+      return;
+    }
+    if (mutation.open || mutation.openMode === "tab") {
       window.open(
         mutation.href
           ? mutation.href(row)
@@ -1778,30 +1936,17 @@ export function WorkspaceClient({
     action.mutate({ mutation, row });
   }
 
-  const detailActions = selected
-    ? (config.actions ?? []).filter(
-        (item) =>
-          can(item.permission) &&
-          (!item.excludeSelf || selected.id !== user.data?.id) &&
-          (!item.when || item.when(selected, user.data?.permissions ?? [])),
-      )
-    : [];
-  const canUpdateSelected = Boolean(
-    selected &&
-    config.update &&
-    can(config.update.permission) &&
-    (!config.update.excludeSelf || selected.id !== user.data?.id) &&
-    (!config.update.when ||
-      config.update.when(selected, user.data?.permissions ?? [])),
-  );
-  const canArchiveSelected = Boolean(
-    selected &&
-    config.archive &&
-    can(config.archive.permission) &&
-    (!config.archive.excludeSelf || selected.id !== user.data?.id) &&
-    (!config.archive.when ||
-      config.archive.when(selected, user.data?.permissions ?? [])),
-  );
+  function handleRowMutation(row: WorkspaceRow, mutation: WorkspaceMutation) {
+    if (mutation.fields?.length) {
+      openEditor(row, mutation);
+      return;
+    }
+    runAction(mutation, row);
+  }
+
+  const selectedActions = selected
+    ? rowActionsFor(selected, config, permissions, user.data?.id, deliveryOn)
+    : null;
 
   const actions = (
     <div className="flex shrink-0 flex-wrap gap-2">
@@ -1864,7 +2009,7 @@ export function WorkspaceClient({
             />
           </label>
           <div className="flex gap-2">
-            {config.filters?.length ? (
+            {visibleFilters.length ? (
               <Button
                 size="sm"
                 variant={filtersOpen ? "outline" : "ghost"}
@@ -1887,9 +2032,9 @@ export function WorkspaceClient({
           </div>
         </div>
 
-        {filtersOpen && config.filters?.length ? (
+        {filtersOpen && visibleFilters.length ? (
           <div className="flex flex-wrap items-end gap-3 border-b border-line bg-ink/[.015] p-4">
-            {config.filters.map((filter) => (
+            {visibleFilters.map((filter) => (
               <label
                 key={filter.key}
                 className="grid min-w-40 gap-1.5 text-[.65rem] font-black uppercase"
@@ -1954,28 +2099,148 @@ export function WorkspaceClient({
           <div className="p-16 text-center">
             <p className="font-black">No records found</p>
             <p className="mt-2 text-xs text-muted">
-              Change the search or add the first record.
+              {config.create && can(config.create.permission)
+                ? "Change the search or add the first record."
+                : "Nothing here yet. Try a different search or check back later."}
             </p>
+          </div>
+        ) : config.layout === "grid" ? (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+              );
+              const titleKey = config.columns[0]?.key ?? "title";
+              const metaColumns = config.columns.slice(1);
+              return (
+                <article
+                  key={String(row.id ?? row.key ?? index)}
+                  className="group overflow-hidden rounded-2xl border border-line bg-panel text-left shadow-[0_8px_24px_rgba(12,25,48,.04)] transition hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => openDetails(row)}
+                  >
+                    <RecordCardMedia
+                      row={row}
+                      aspect={config.gridAspect ?? "landscape"}
+                    />
+                    <div className="grid gap-3 p-4">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-black leading-5 break-words">
+                          {display(row[titleKey], titleKey)}
+                        </h3>
+                        {metaColumns.length ? (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {metaColumns.map((column) => {
+                              const value = row[column.key];
+                              if (
+                                value == null ||
+                                value === "" ||
+                                column.key === "media_name"
+                              ) {
+                                return null;
+                              }
+                              if (
+                                column.key === "is_private" &&
+                                value !== true &&
+                                value !== "true"
+                              ) {
+                                return null;
+                              }
+                              const chipLabel =
+                                column.key === "is_private"
+                                  ? "Private"
+                                  : column.key === "content_type" &&
+                                      typeof value === "string"
+                                    ? value.split("/").pop() || value
+                                    : `${column.label}: ${display(value, column.key)}`;
+                              return (
+                                <span
+                                  key={column.key}
+                                  className={
+                                    statusField(column.key)
+                                      ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
+                                      : "inline-flex rounded-full bg-ink/5 px-2.5 py-1 text-[.62rem] font-bold text-muted"
+                                  }
+                                >
+                                  {chipLabel}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                  <div className="border-t border-line px-4 py-3">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onArchive={() => runAction(rowActions.archive!, row)}
+                      compact
+                    />
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : config.columns.length === 0 ? (
           <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleRows.map((row, index) => (
-              <button
-                key={String(row.id ?? row.key ?? index)}
-                className="rounded-2xl border border-line bg-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
-                onClick={() => openDetails(row)}
-              >
-                <span className="text-[.62rem] font-black tracking-wide text-coral uppercase">
-                  {humanize(String(row.group ?? "Metric"))}
-                </span>
-                <b className="mt-2 block text-sm">
-                  {humanize(String(row.key ?? "Value"))}
-                </b>
-                <span className="mt-3 block text-2xl font-black">
-                  {display(row.value, String(row.key ?? "value"))}
-                </span>
-              </button>
-            ))}
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+              );
+              return (
+                <div
+                  key={String(row.id ?? row.key ?? index)}
+                  className="rounded-2xl border border-line bg-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => openDetails(row)}
+                  >
+                    <span className="text-[.62rem] font-black tracking-wide text-coral uppercase">
+                      {humanize(String(row.group ?? "Metric"))}
+                    </span>
+                    <b className="mt-2 block text-sm">
+                      {humanize(String(row.key ?? "Value"))}
+                    </b>
+                    <span className="mt-3 block text-2xl font-black">
+                      {display(row.value, String(row.key ?? "value"))}
+                    </span>
+                  </button>
+                  <div className="mt-4 border-t border-line pt-3">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onArchive={() => runAction(rowActions.archive!, row)}
+                      compact
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="scrollbar-subtle overflow-x-auto">
@@ -1993,66 +2258,80 @@ export function WorkspaceClient({
                       </button>
                     </th>
                   ))}
-                  <th className="w-12" />
+                  <th className="px-5 py-3 text-right text-[.62rem] font-black tracking-[.1em] text-muted uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {visibleRows.map((row, index) => (
-                  <tr
-                    key={String(row.id ?? row.key ?? index)}
-                    className="cursor-pointer transition hover:bg-ink/[.025]"
-                    onClick={() => openDetails(row)}
-                  >
-                    {config.columns.map((column) => {
-                      const value = row[column.key];
-                      const statusLike = [
-                        "status",
-                        "priority",
-                        "outcome",
-                        "payment_status",
-                        "is_active",
-                        "is_public",
-                        "enabled",
-                      ].includes(column.key);
-                      return (
-                        <td
-                          key={column.key}
-                          className="max-w-xs px-5 py-4 text-xs"
-                        >
-                          <span
-                            className={
-                              statusLike
-                                ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
-                                : column.key === config.columns[0]?.key
-                                  ? "font-black"
-                                  : "text-muted"
-                            }
+                {visibleRows.map((row, index) => {
+                  const rowActions = rowActionsFor(
+                    row,
+                    config,
+                    permissions,
+                    user.data?.id,
+                    deliveryOn,
+                  );
+                  return (
+                    <tr
+                      key={String(row.id ?? row.key ?? index)}
+                      className="cursor-pointer transition hover:bg-ink/[.025]"
+                      onClick={() => openDetails(row)}
+                    >
+                      {config.columns.map((column) => {
+                        const value = row[column.key];
+                        const statusLike = statusField(column.key);
+                        return (
+                          <td
+                            key={column.key}
+                            className="max-w-xs px-5 py-4 text-xs"
                           >
-                            {column.key === config.columns[0]?.key ? (
-                              <span className="flex items-center gap-3">
-                                <RecordThumbnail row={row} />
+                            <span
+                              className={
+                                statusLike
+                                  ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
+                                  : column.key === config.columns[0]?.key
+                                    ? "font-black"
+                                    : "text-muted"
+                              }
+                            >
+                              {column.key === config.columns[0]?.key ? (
+                                <span className="flex items-center gap-3">
+                                  <RecordThumbnail row={row} />
+                                  <ValueDisplay
+                                    value={value}
+                                    fieldKey={column.key}
+                                    compact
+                                  />
+                                </span>
+                              ) : (
                                 <ValueDisplay
                                   value={value}
                                   fieldKey={column.key}
                                   compact
                                 />
-                              </span>
-                            ) : (
-                              <ValueDisplay
-                                value={value}
-                                fieldKey={column.key}
-                                compact
-                              />
-                            )}
-                          </span>
-                        </td>
-                      );
-                    })}
-                    <td className="pr-4">
-                      <ChevronRight className="size-4 text-muted" />
-                    </td>
-                  </tr>
-                ))}
+                              )}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className="px-4 py-3">
+                        <WorkspaceRowActions
+                          actions={rowActions}
+                          pending={action.isPending}
+                          onView={() => openDetails(row)}
+                          onMutation={(mutation) =>
+                            handleRowMutation(row, mutation)
+                          }
+                          onEdit={() => openEditor(row, rowActions.update!)}
+                          onArchive={() =>
+                            runAction(rowActions.archive!, row)
+                          }
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2092,10 +2371,10 @@ export function WorkspaceClient({
 
       {panel ? (
         <div
-          className="fixed inset-0 z-[85] flex justify-end bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[90] grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target !== event.currentTarget) return;
-            if (panel.view === "edit") {
+            if (panel.view === "edit" || panel.view === "preview") {
               setPanel({ view: "details", row: panel.row });
               return;
             }
@@ -2103,145 +2382,149 @@ export function WorkspaceClient({
           }}
           role="presentation"
         >
-          <aside
-            className={`h-full w-full overflow-y-auto bg-paper p-6 shadow-2xl sm:p-8 ${
-              panel.view === "details" ? "max-w-xl" : "max-w-2xl"
+          <section
+            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-3xl border border-line bg-paper shadow-2xl ${
+              panel.view === "preview" ? "max-w-4xl" : "max-w-2xl"
             }`}
             onMouseDown={(event) => event.stopPropagation()}
             aria-label={
-              panel.view === "details" ? "Record details" : panel.mutation.label
+              panel.view === "details"
+                ? `${detailNoun} details`
+                : panel.view === "preview"
+                  ? `${detailNoun} preview`
+                  : panel.mutation.label
             }
             aria-modal="true"
             role="dialog"
           >
-            {panel.view === "details" ? (
-              <>
-                <div className="flex items-start justify-between gap-5">
-                  <div>
-                    <p className="eyebrow text-coral">Record details</p>
-                    <h2 className="display-type mt-3 text-3xl">
-                      {display(
-                        panel.row[config.columns[0]?.key ?? "id"],
-                        config.columns[0]?.key ?? "id",
-                      )}
-                    </h2>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={closePanel}
-                    aria-label="Close details"
-                  >
-                    <X className="size-5" />
-                  </Button>
-                </div>
-
-                {(canUpdateSelected ||
-                  canArchiveSelected ||
-                  detailActions.length > 0) && (
-                  <div className="mt-6 flex flex-wrap gap-2 border-y border-line py-4">
-                    {config.update && canUpdateSelected ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditor(panel.row, config.update!)}
-                      >
-                        <Pencil className="size-4" /> {config.update.label}
-                      </Button>
-                    ) : null}
-                    {detailActions.map((item) => (
-                      <Button
-                        key={item.label}
-                        size="sm"
-                        variant="outline"
-                        className={
-                          item.danger
-                            ? "border-red-500/30 text-red-700 hover:bg-red-500/10"
-                            : undefined
-                        }
-                        disabled={action.isPending}
-                        onClick={() =>
-                          item.fields?.length
-                            ? openEditor(panel.row, item)
-                            : runAction(item, panel.row)
-                        }
-                      >
-                        {action.isPending ? (
-                          <LoaderCircle className="size-4 animate-spin" />
-                        ) : null}
-                        {item.label}
-                      </Button>
-                    ))}
-                    {config.archive && canArchiveSelected ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500/30 text-red-700 hover:bg-red-500/10"
-                        disabled={action.isPending}
-                        onClick={() => runAction(config.archive!, panel.row)}
-                      >
-                        <Archive className="size-4" /> {config.archive.label}
-                      </Button>
-                    ) : null}
-                  </div>
-                )}
-
-                <RecordImagePreview row={panel.row} />
-
-                <dl className="mt-5 divide-y divide-line">
-                  {Object.entries(panel.row)
-                    .filter(
-                      ([key]) => !key.startsWith("_") && !isTechnicalField(key),
-                    )
-                    .map(([key, value]) => {
-                      const field = detailFields.get(key);
-                      return (
-                        <div
-                          key={key}
-                          className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-3"
-                        >
-                          <dt className="text-[.65rem] font-black tracking-wide text-muted uppercase">
-                            {field?.label ?? humanize(key)}
-                          </dt>
-                          <dd className="min-w-0 break-words text-xs leading-5">
-                            {field?.type === "richtext" &&
-                            typeof value === "string" ? (
-                              <WorkspaceRichTextValue html={value} />
-                            ) : (
-                              <ValueDisplay value={value} fieldKey={key} />
-                            )}
-                          </dd>
-                        </div>
-                      );
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-8">
+              {panel.view === "details" ? (
+                selectedActions ? (
+                  <RecordDetailsView
+                    noun={detailNoun}
+                    title={display(panel.row[detailTitleKey], detailTitleKey)}
+                    subtitle={
+                      config.detail?.subtitleKeys?.length
+                        ? config.detail.subtitleKeys
+                            .map((key) => display(panel.row[key], key))
+                            .filter((value) => value !== "Not provided")
+                            .join(" · ") || undefined
+                        : undefined
+                    }
+                    images={recordImages(panel.row)}
+                    entries={(curatedDetails
+                      ? curatedDetails.map(({ field, value }) => ({
+                          key: field.key,
+                          label: field.label,
+                          value,
+                          richtext: field.format === "richtext",
+                          format: field.format,
+                        }))
+                      : Object.entries(panel.row)
+                          .filter(
+                            ([key]) =>
+                              !key.startsWith("_") &&
+                              !isTechnicalField(key) &&
+                              key !== detailTitleKey,
+                          )
+                          .map(([key, value]) => {
+                            const field = detailFields.get(key);
+                            return {
+                              key,
+                              label: field?.label ?? humanize(key),
+                              value,
+                              richtext: field?.type === "richtext",
+                            };
+                          })
+                    ).filter((entry) => {
+                      if (config.detail?.hideEmpty === false) return true;
+                      if (entry.value == null || entry.value === "")
+                        return false;
+                      if (
+                        typeof entry.value === "string" &&
+                        !entry.value.trim()
+                      ) {
+                        return false;
+                      }
+                      return true;
                     })}
-                </dl>
-              </>
-            ) : (
-              <MutationForm
-                key={`${panel.view}-${panel.mutation.label}-${
-                  panel.view === "edit" ? String(panel.row.id) : "new"
-                }`}
-                config={config}
-                mutation={panel.mutation}
-                mode={panel.view === "create" ? "create" : "edit"}
-                row={panel.view === "edit" ? panel.row : undefined}
-                permissions={user.data?.permissions ?? []}
-                cancelLabel={
-                  panel.view === "edit" ? "Back to details" : "Cancel"
-                }
-                onSaved={
-                  panel.view === "edit"
-                    ? (saved) => setPanel({ view: "details", row: saved })
-                    : undefined
-                }
-                close={
-                  panel.view === "edit"
-                    ? () => setPanel({ view: "details", row: panel.row })
-                    : closePanel
-                }
-              />
-            )}
-          </aside>
+                    primaryActions={selectedActions.primary}
+                    secondaryActions={selectedActions.secondary}
+                    canUpdate={selectedActions.canUpdate}
+                    canArchive={selectedActions.canArchive}
+                    updateLabel={selectedActions.update?.label}
+                    archiveLabel={selectedActions.archive?.label}
+                    actionPending={action.isPending}
+                    onClose={closePanel}
+                    onPrimaryAction={(item) =>
+                      handleRowMutation(panel.row, item)
+                    }
+                    onEdit={() =>
+                      openEditor(panel.row, selectedActions.update!)
+                    }
+                    onArchive={() =>
+                      runAction(selectedActions.archive!, panel.row)
+                    }
+                    ValueDisplay={ValueDisplay}
+                  />
+                ) : null
+              ) : panel.view === "preview" ? (
+                <div className="grid gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setPanel({ view: "details", row: panel.row })
+                      }
+                    >
+                      <ArrowLeft className="size-4" /> Back to details
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={closePanel}
+                      aria-label="Close preview"
+                    >
+                      <X className="size-5" />
+                    </Button>
+                  </div>
+                  <WorkspacePanelPreview
+                    kind={panel.previewKind}
+                    row={panel.row}
+                    onBack={() =>
+                      setPanel({ view: "details", row: panel.row })
+                    }
+                  />
+                </div>
+              ) : (
+                <MutationForm
+                  key={`${panel.view}-${panel.mutation.label}-${
+                    panel.view === "edit" ? String(panel.row.id) : "new"
+                  }`}
+                  config={config}
+                  mutation={panel.mutation}
+                  mode={panel.view === "create" ? "create" : "edit"}
+                  row={panel.view === "edit" ? panel.row : undefined}
+                  permissions={permissions}
+                  deliveryAvailable={deliveryOn}
+                  cancelLabel={
+                    panel.view === "edit" ? "Back to details" : "Cancel"
+                  }
+                  onSaved={
+                    panel.view === "edit"
+                      ? (saved) => setPanel({ view: "details", row: saved })
+                      : undefined
+                  }
+                  close={
+                    panel.view === "edit"
+                      ? () => setPanel({ view: "details", row: panel.row })
+                      : closePanel
+                  }
+                />
+              )}
+            </div>
+          </section>
         </div>
       ) : null}
     </div>

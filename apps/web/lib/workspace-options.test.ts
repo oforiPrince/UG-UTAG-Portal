@@ -95,6 +95,13 @@ describe("member creation", () => {
       roles: ["member"],
       send_invitation: false,
     });
+    expect(create.prepare?.({ roles: ["member"] })).toMatchObject({
+      send_invitation: false,
+    });
+    expect(
+      create.fields?.find((field) => field.key === "send_invitation")
+        ?.requiresDelivery,
+    ).toBe(true);
   });
 
   it("separates profile, lifecycle, credential, and role permissions", () => {

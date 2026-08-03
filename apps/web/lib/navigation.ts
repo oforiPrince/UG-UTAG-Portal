@@ -87,7 +87,7 @@ export const navigation = [
     group: "Knowledge",
   },
   {
-    label: "Media",
+    label: "Media library",
     href: "/dashboard/media",
     icon: ImageIcon,
     permission: "media.manage",

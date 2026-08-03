@@ -260,7 +260,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </button>
             <div>
               <p className="text-[.62rem] font-bold tracking-[.12em] text-muted uppercase">
-                Member workspace
+                {user.data?.permissions.includes("settings.manage")
+                  ? "Admin workspace"
+                  : user.data?.permissions.includes("members.view")
+                    ? "Executive workspace"
+                    : "Member workspace"}
               </p>
               <h1 className="mt-0.5 text-base font-black">
                 {current?.label ?? "Dashboard"}

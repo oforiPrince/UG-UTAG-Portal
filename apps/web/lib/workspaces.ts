@@ -1,6 +1,12 @@
 import { documentAudiencesForCategory } from "./workspace-options";
+import {
+  attachWorkspaceDetails,
+  type WorkspaceDetailConfig,
+  type WorkspacePreviewKind,
+} from "./workspace-detail";
 
 export type WorkspaceRow = Record<string, unknown>;
+export type { WorkspaceDetailConfig, WorkspacePreviewKind };
 export type WorkspaceFieldType =
   | "text"
   | "email"
@@ -65,6 +71,8 @@ export type WorkspaceField = {
   addItemLabel?: string;
   /** Include in the save payload without rendering a visible control. */
   hidden?: boolean;
+  /** Hide unless email or SMS delivery is configured on the API. */
+  requiresDelivery?: boolean;
 };
 
 export type WorkspaceMutation = {
@@ -78,11 +86,22 @@ export type WorkspaceMutation = {
   confirm?: string;
   danger?: boolean;
   excludeSelf?: boolean;
+  /** Open an external/binary URL in a new tab. Prefer openMode for dashboard routes. */
   open?: boolean;
+  /** panel = in-drawer preview; tab = binary/external URL in a new tab. */
+  openMode?: "panel" | "tab";
+  previewKind?: WorkspacePreviewKind;
   href?: (row: WorkspaceRow) => string;
   when?: (row: WorkspaceRow, permissions: string[]) => boolean;
   prepare?: (payload: WorkspaceRow, row?: WorkspaceRow) => WorkspaceRow;
   headers?: (row: WorkspaceRow) => HeadersInit;
+  /** Hide unless email or SMS delivery is configured on the API. */
+  requiresDelivery?: boolean;
+  /**
+   * Upload/create panel that does not POST a record — assets are created by
+   * the media field itself; Save/Done only closes the panel.
+   */
+  clientOnly?: boolean;
 };
 
 export type WorkspaceConfig = {
@@ -91,6 +110,10 @@ export type WorkspaceConfig = {
   endpoint: string;
   queryKey: string;
   columns: { key: string; label: string }[];
+  /** table = data rows (default); grid = media-forward cards */
+  layout?: "table" | "grid";
+  /** Card preview aspect when layout is grid */
+  gridAspect?: "square" | "landscape";
   exportUrl?: string;
   exportPermission?: string;
   filters?: { key: string; label: string; options: string[] }[];
@@ -98,6 +121,7 @@ export type WorkspaceConfig = {
     searchParam?: string;
     filterParams?: Record<string, string>;
   };
+  detail?: WorkspaceDetailConfig;
   create?: WorkspaceMutation;
   update?: WorkspaceMutation;
   archive?: WorkspaceMutation;
@@ -135,7 +159,11 @@ const memberFields: WorkspaceField[] = [
     required: true,
     createOnly: true,
   },
-  { key: "staff_id", label: "Staff ID" },
+  {
+    key: "staff_id",
+    label: "Staff ID",
+    help: "Required when email invitations are unavailable. The staff ID is the temporary first password.",
+  },
   {
     key: "title",
     label: "Title",
@@ -270,6 +298,7 @@ const memberFields: WorkspaceField[] = [
     checkboxLabel: "Email an access invitation",
     defaultValue: true,
     createOnly: true,
+    requiresDelivery: true,
     help: "The member account is created immediately. When enabled, an activation link is emailed to the member.",
   },
 ];
@@ -1033,7 +1062,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           Array.isArray(payload.roles) && payload.roles.length
             ? payload.roles
             : ["member"],
-        send_invitation: payload.send_invitation ?? true,
+        send_invitation: Boolean(payload.send_invitation),
       }),
     },
     update: {
@@ -1102,6 +1131,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         successMessage: "Secure access email queued",
         confirm: "Send a new account access link to this member?",
         excludeSelf: true,
+        requiresDelivery: true,
         when: (row, permissions) =>
           row.status !== "suspended" &&
           row.status !== "archived" &&
@@ -1113,9 +1143,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         label: "Reset password",
         permission: "members.credentials",
         endpoint: (row) => `/api/v1/members/${row.id}/password-reset`,
-        successMessage: "Password reset link sent and active sessions revoked",
+        successMessage: "Password reset and active sessions revoked",
         confirm:
-          "Require this member to choose a new password? Their current password and active sessions will stop working immediately.",
+          "Reset this member's password and sign them out of all devices? Without email delivery, the temporary password becomes their staff ID and they must change it on next sign-in.",
         danger: true,
         excludeSelf: true,
         when: (row, permissions) =>
@@ -1375,7 +1405,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/content/articles/${row.id}`,
         href: (row) => `/dashboard/preview/news/${row.id}`,
         successMessage: "Preview opened",
-        open: true,
+        openMode: "panel",
+        previewKind: "news",
       },
     ],
   },
@@ -1583,7 +1614,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/documents/${row.id}`,
         href: (row) => `/dashboard/documents/${row.id}/preview`,
         successMessage: "Preview opened",
-        open: true,
+        openMode: "panel",
+        previewKind: "document",
       },
       {
         label: "Add file version",
@@ -1625,6 +1657,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/media/${row.latest_media_asset_id}/content`,
         successMessage: "Document opened",
         open: true,
+        openMode: "tab",
         when: (row) => Boolean(row.latest_media_asset_id),
       },
     ],
@@ -1632,9 +1665,11 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   media: {
     title: "Media library",
     description:
-      "Secure uploads, malware scanning, private delivery and reusable visual assets.",
+      "Shared library of scanned assets reused by galleries, carousel, profiles and publishing.",
     endpoint: "/api/v1/media?page_size=100",
     queryKey: "media",
+    layout: "grid",
+    gridAspect: "square",
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
@@ -1648,11 +1683,32 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     ],
     columns: [
       { key: "original_filename", label: "Asset" },
-      { key: "content_type", label: "Type" },
-      { key: "byte_size", label: "Size" },
       { key: "status", label: "Status" },
-      { key: "created_at", label: "Uploaded" },
+      { key: "content_type", label: "Type" },
+      { key: "is_private", label: "Private" },
     ],
+    create: {
+      label: "Upload assets",
+      submitLabel: "Done",
+      permission: "media.manage",
+      endpoint: "/api/v1/media",
+      clientOnly: true,
+      fields: [
+        {
+          key: "upload",
+          label: "Files",
+          type: "media",
+          media: {
+            accept: "any",
+            multiple: true,
+            isPrivate: true,
+            aspect: "square",
+          },
+          help: "Files are malware-scanned and added to the library as soon as upload finishes. Mark public later if they should appear on the site.",
+        },
+      ],
+      successMessage: "Assets added to the library",
+    },
     update: {
       label: "Edit media details",
       permission: "media.manage",
@@ -1684,6 +1740,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/media/${row.id}/content`,
         successMessage: "File opened",
         open: true,
+        openMode: "tab",
         when: (row) => row.status === "ready",
       },
     ],
@@ -1694,6 +1751,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Curated visual stories for the public site and association record.",
     endpoint: "/api/v1/galleries",
     queryKey: "galleries",
+    layout: "grid",
+    gridAspect: "landscape",
     filters: [
       {
         key: "status",
@@ -1704,8 +1763,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     columns: [
       { key: "title", label: "Gallery" },
       { key: "status", label: "Status" },
-      { key: "published_at", label: "Published" },
       { key: "items", label: "Images" },
+      { key: "published_at", label: "Published" },
     ],
     create: {
       label: "New gallery",
@@ -1889,6 +1948,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Ordered, accessible homepage hero slides using scanned public media assets.",
     endpoint: "/api/v1/admin/carousel",
     queryKey: "settings",
+    layout: "grid",
     filters: [
       { key: "is_published", label: "Published", options: ["true", "false"] },
     ],
@@ -2591,4 +2651,5 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   },
 };
 
+attachWorkspaceDetails(workspaces);
 workspaces.content = workspaces.news;

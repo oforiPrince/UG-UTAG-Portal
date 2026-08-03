@@ -45,6 +45,7 @@ from utag_api.schemas.domain import (
     PermissionOption,
 )
 from utag_api.security import encrypt_text, hash_password, new_token, normalize_email, token_digest
+from utag_api.services.delivery import email_delivery_enabled, require_email_delivery
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.identity import (
     UserAccess,
@@ -401,14 +402,27 @@ async def create_member(
             "role_assignment_denied",
             "You do not have permission to assign privileged roles",
         )
+    email_on = email_delivery_enabled()
+    send_invitation = bool(payload.send_invitation) and email_on
+    staff_id = (payload.staff_id or "").strip() or None
+    if not email_on:
+        if not staff_id:
+            raise ApiError(
+                422,
+                "staff_id_required",
+                "Staff ID is required and becomes the temporary password until email delivery is configured",
+            )
+        initial_password = staff_id
+    else:
+        initial_password = new_token()
     user = User(
         id=new_id(),
         email=email,
-        staff_id=payload.staff_id,
-        password_hash=hash_password(new_token()),
+        staff_id=staff_id,
+        password_hash=hash_password(initial_password),
         must_change_password=True,
         email_verified=False,
-        status="invited" if payload.send_invitation else "active",
+        status="invited" if send_invitation else "active",
         title=payload.title,
         other_name=payload.other_name,
         surname=payload.surname,
@@ -433,7 +447,7 @@ async def create_member(
             )
         )
     invitation_token: str | None = None
-    if payload.send_invitation:
+    if send_invitation:
         invitation_token = new_token()
         db.add(
             AccountToken(
@@ -928,6 +942,7 @@ async def send_access_link(
     db: DbSession,
     principal: Annotated[Principal, Depends(require_mutation_permissions("members.credentials"))],
 ) -> MessageResponse:
+    require_email_delivery()
     user = await db.get(User, user_id)
     if user is None or user.status == "archived":
         raise ApiError(404, "member_not_found", "Member not found")
@@ -1002,18 +1017,53 @@ async def force_password_reset(
     now = datetime.now(UTC)
     await revoke_member_sessions(db, user.id, now)
     await invalidate_member_access_tokens(db, user.id, now)
-    user.password_hash = hash_password(new_token())
-    user.must_change_password = True
-    raw_token = new_token()
-    db.add(
-        AccountToken(
-            user_id=user.id,
-            kind="password_reset",
-            token_hash=token_digest(raw_token),
-            created_at=now,
-            expires_at=now + timedelta(minutes=30),
+    email_on = email_delivery_enabled()
+    if email_on:
+        user.password_hash = hash_password(new_token())
+        user.must_change_password = True
+        raw_token = new_token()
+        db.add(
+            AccountToken(
+                user_id=user.id,
+                kind="password_reset",
+                token_hash=token_digest(raw_token),
+                created_at=now,
+                expires_at=now + timedelta(minutes=30),
+            )
         )
-    )
+        record_change(
+            db,
+            context=event_context(request, principal),
+            action="member.password_reset.required",
+            resource_type="user",
+            resource_id=user.id,
+            topic=f"user:{user.id}",
+            payload={"user_id": str(user.id), "delivery": "email"},
+            reason="Administrator required a password reset",
+        )
+        encrypted_token = encrypt_text(raw_token)
+        if encrypted_token is None:
+            raise RuntimeError("Password reset token encryption failed")
+        enqueue_task(
+            db,
+            task_name="utag.email.password_reset",
+            aggregate_type="user",
+            aggregate_id=user.id,
+            args=[str(user.id), encrypted_token.decode()],
+            queue="communications",
+        )
+        await db.commit()
+        return MessageResponse(message="Password reset link sent and existing sessions revoked")
+
+    staff_id = (user.staff_id or "").strip()
+    if not staff_id:
+        raise ApiError(
+            422,
+            "staff_id_required",
+            "This member needs a staff ID before password can be reset without email delivery",
+        )
+    user.password_hash = hash_password(staff_id)
+    user.must_change_password = True
     record_change(
         db,
         context=event_context(request, principal),
@@ -1021,22 +1071,13 @@ async def force_password_reset(
         resource_type="user",
         resource_id=user.id,
         topic=f"user:{user.id}",
-        payload={"user_id": str(user.id)},
-        reason="Administrator required a password reset",
-    )
-    encrypted_token = encrypt_text(raw_token)
-    if encrypted_token is None:
-        raise RuntimeError("Password reset token encryption failed")
-    enqueue_task(
-        db,
-        task_name="utag.email.password_reset",
-        aggregate_type="user",
-        aggregate_id=user.id,
-        args=[str(user.id), encrypted_token.decode()],
-        queue="communications",
+        payload={"user_id": str(user.id), "delivery": "staff_id"},
+        reason="Administrator reset password to staff ID while email delivery is unavailable",
     )
     await db.commit()
-    return MessageResponse(message="Password reset link sent and existing sessions revoked")
+    return MessageResponse(
+        message="Password reset to the member's staff ID. They must change it on next sign-in"
+    )
 
 
 @router.post("/{user_id:uuid}/deactivate", response_model=MessageResponse)

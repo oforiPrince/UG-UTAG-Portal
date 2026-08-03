@@ -36,7 +36,7 @@ from utag_api.models import (
 from utag_api.rate_limit import enforce_rate_limit
 from utag_api.routers.content import article_views
 from utag_api.routers.events import event_attachment_map, serialize_event
-from utag_api.schemas.common import MessageResponse, Page
+from utag_api.schemas.common import DeliveryCapabilities, MessageResponse, Page
 from utag_api.schemas.domain import (
     AdCampaignView,
     ArticleView,
@@ -47,6 +47,7 @@ from utag_api.schemas.domain import (
 )
 from utag_api.services.audiences import includes_general_public
 from utag_api.services.content import sanitize_html
+from utag_api.services.delivery import public_capabilities, require_email_delivery
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.executives import (
     executive_row_order_key,
@@ -621,6 +622,11 @@ async def public_features(db: DbSession) -> dict[str, bool]:
     return {key: bool(values.get(key, True)) for key in keys}
 
 
+@router.get("/capabilities", response_model=DeliveryCapabilities)
+async def capabilities() -> DeliveryCapabilities:
+    return DeliveryCapabilities(**public_capabilities())
+
+
 @router.get("/media/{asset_id}")
 async def public_media(
     asset_id: UUID,
@@ -794,6 +800,7 @@ async def contact(
     # Honeypot submissions receive the same response but are not persisted.
     if payload.website:
         return MessageResponse(message="Thank you. Your message has been received")
+    require_email_delivery()
     request_ip = client_ip(request)
     await enforce_rate_limit("contact", request_ip, limit=5, period_seconds=3600)
     job = BackgroundJob(

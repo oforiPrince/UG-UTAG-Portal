@@ -198,7 +198,7 @@ export function ModerationClient() {
                   </div>
                   <div className="flex flex-wrap gap-2 lg:justify-end">
                     <Button asChild size="sm" variant="outline">
-                      <Link href={preview} target="_blank" rel="noreferrer">
+                      <Link href={preview}>
                         <Eye className="size-4" /> Preview
                       </Link>
                     </Button>

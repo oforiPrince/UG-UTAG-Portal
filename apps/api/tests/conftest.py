@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -61,6 +62,11 @@ async def client(session_factory, monkeypatch) -> AsyncIterator[AsyncClient]:  #
 
     app.dependency_overrides[get_db] = override_db
     monkeypatch.setattr("utag_api.routers.auth.enforce_rate_limit", no_rate_limit)
+    # Integration tests exercise email-dependent flows by default.
+    monkeypatch.setattr(
+        "utag_api.services.delivery.get_settings",
+        lambda: SimpleNamespace(smtp_host="smtp.test.example"),
+    )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as test_client:

@@ -96,7 +96,9 @@ test("configured member credentials can complete sign in", async ({ page }) => {
   await page.locator('input[name="password"]').fill(password!);
   await page.getByRole("button", { name: "Sign in securely" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByText("Member workspace")).toBeVisible();
+  await expect(
+    page.getByText(/^(Member|Executive|Admin) workspace$/),
+  ).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();

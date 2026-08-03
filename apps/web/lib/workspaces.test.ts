@@ -29,11 +29,31 @@ describe("workspace content editors", () => {
     );
     expect(preview).toMatchObject({
       permission: "documents.view",
-      open: true,
+      openMode: "panel",
+      previewKind: "document",
     });
     expect(preview?.href?.({ id: "document-1" })).toBe(
       "/dashboard/documents/document-1/preview",
     );
+  });
+
+  it("attaches curated detail schemas for every workspace", () => {
+    for (const [key, config] of Object.entries(workspaces)) {
+      expect(config.detail, `${key} missing detail`).toBeTruthy();
+      expect(config.detail?.noun).toBeTruthy();
+      expect(config.detail?.titleKey).toBeTruthy();
+      expect(config.detail?.fields.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("opens news preview inside the details panel", () => {
+    const preview = workspaces.news.actions?.find(
+      (action) => action.label === "Preview",
+    );
+    expect(preview).toMatchObject({
+      openMode: "panel",
+      previewKind: "news",
+    });
   });
 
   it("offers General Public only for external documents", () => {
@@ -170,6 +190,12 @@ describe("workspace content editors", () => {
   });
 
   it("keeps carousel create and update forms aligned", () => {
+    expect(workspaces.carousel.layout).toBe("grid");
+    expect(workspaces.media.layout).toBe("grid");
+    expect(workspaces.media.gridAspect).toBe("square");
+    expect(workspaces.media.create?.clientOnly).toBe(true);
+    expect(workspaces.media.create?.label).toBe("Upload assets");
+    expect(workspaces.galleries.layout).toBe("grid");
     for (const workspace of ["carousel", "galleries"]) {
       for (const mutation of [
         workspaces[workspace].create,

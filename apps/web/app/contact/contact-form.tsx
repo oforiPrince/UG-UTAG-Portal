@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Send } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -8,6 +9,11 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import {
+  defaultDeliveryCapabilities,
+  deliveryAvailable,
+  type DeliveryCapabilities,
+} from "@/lib/delivery-capabilities";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Enter your name"),
@@ -28,6 +34,16 @@ const input =
   "min-h-12 w-full rounded-md border border-line bg-white px-4 text-sm outline-none transition focus:border-ink/25 focus:ring-0";
 
 export function ContactForm() {
+  const capabilities = useQuery({
+    queryKey: ["public", "capabilities"],
+    queryFn: () =>
+      api<DeliveryCapabilities>("/api/v1/public/capabilities"),
+    staleTime: 60_000,
+    placeholderData: defaultDeliveryCapabilities,
+  });
+  const canSend = deliveryAvailable(
+    capabilities.data ?? defaultDeliveryCapabilities,
+  );
   const {
     register,
     handleSubmit,
@@ -48,6 +64,32 @@ export function ContactForm() {
       );
     }
   });
+
+  if (capabilities.isPending) {
+    return (
+      <div className="rounded-md border border-line bg-panel p-6 sm:p-8">
+        <p className="text-sm text-[#2d4056]">Checking contact availability…</p>
+      </div>
+    );
+  }
+
+  if (capabilities.isSuccess && !canSend) {
+    return (
+      <div className="rounded-md border border-line bg-panel p-6 shadow-[0_10px_32px_rgb(23_43_69_/_8%)] sm:p-8">
+        <p className="text-[.7rem] font-extrabold tracking-[.14em] text-coral uppercase">
+          Send a message
+        </p>
+        <h2 className="mt-2 text-2xl font-extrabold text-[#172f4d]">
+          Contact form unavailable
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-[#2d4056]">
+          Online messages are temporarily unavailable. Please use the
+          secretariat phone or email listed on this page.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={submit}
