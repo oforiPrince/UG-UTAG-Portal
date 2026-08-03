@@ -74,9 +74,15 @@ describe("executive profile authoring", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("Public leadership profile")).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "Public leadership" })).toBeTruthy();
     expect(await screen.findByLabelText("Portfolio")).toBeTruthy();
     expect(await screen.findByLabelText("Public summary")).toBeTruthy();
+    expect(await screen.findByLabelText("LinkedIn")).toBeTruthy();
+    expect(await screen.findByLabelText("Facebook")).toBeTruthy();
+    expect(await screen.findByLabelText("X / Twitter")).toBeTruthy();
+    expect(
+      await screen.findByLabelText("Personal or office website"),
+    ).toBeTruthy();
     expect(
       await screen.findByRole("checkbox", { name: /Show email publicly/i }),
     ).toBeTruthy();
@@ -86,6 +92,12 @@ describe("executive profile authoring", () => {
     expect(
       await screen.findByRole("toolbar", { name: "Text formatting" }),
     ).toBeTruthy();
+    for (const label of ["School", "College", "Department"]) {
+      expect(
+        screen.queryByRole("combobox", { name: label }),
+      ).toBeNull();
+    }
+    await screen.findByRole("tab", { name: "Account" }).then((tab) => tab.click());
     for (const label of ["School", "College", "Department"]) {
       expect(
         screen
