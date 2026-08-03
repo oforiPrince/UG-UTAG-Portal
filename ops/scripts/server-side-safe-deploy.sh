@@ -268,7 +268,7 @@ replacements = {
     "APP_SECRET_KEY": secrets.token_urlsafe(48),
     "FIELD_ENCRYPTION_KEYS": '{"v1":"%s"}' % secrets.token_urlsafe(32)[:32],
     "S3_SECRET_KEY": secrets.token_urlsafe(24),
-    "BOOTSTRAP_ADMIN_EMAIL": "bootstrap-admin@utag.local",
+    "BOOTSTRAP_ADMIN_EMAIL": "bootstrap-admin@utag.edu.gh",
     "BOOTSTRAP_ADMIN_PASSWORD": secrets.token_urlsafe(18) + "Aa1",
 }
 content = text

@@ -64,6 +64,8 @@ class PermissionOption(ApiModel):
 
 
 class MemberView(MemberBase):
+    # Stored accounts can include bootstrap/legacy addresses that EmailStr rejects.
+    email: str = Field(min_length=3, max_length=255)
     id: UUID
     full_name: str
     status: str
