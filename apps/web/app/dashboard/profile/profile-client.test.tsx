@@ -98,6 +98,9 @@ describe("executive profile authoring", () => {
       ).toBeNull();
     }
     await screen.findByRole("tab", { name: "Account" }).then((tab) => tab.click());
+    const academicRank = await screen.findByLabelText("Academic rank");
+    expect(academicRank.tagName).toBe("SELECT");
+    expect((academicRank as HTMLSelectElement).value).toBe("Senior Lecturer");
     for (const label of ["School", "College", "Department"]) {
       expect(
         screen

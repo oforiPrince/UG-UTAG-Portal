@@ -93,6 +93,26 @@ type ExecutiveProfileForm = {
 
 type ProfileTab = "account" | "leadership" | "security";
 
+const ACADEMIC_RANK_OPTIONS = [
+  "Professor",
+  "Associate Professor",
+  "Senior Lecturer",
+  "Lecturer",
+  "Assistant Lecturer",
+  "Research Fellow",
+  "Senior Research Fellow",
+  "Principal Research Fellow",
+  "Assistant Research Fellow",
+  "Research Associate",
+  "Senior Librarian",
+  "Librarian",
+  "Tutor",
+  "Dean",
+  "Director",
+  "Pro-Vice-Chancellor",
+  "Visiting Scholar",
+] as const;
+
 const SOCIAL_FIELDS = [
   {
     key: "linkedin",
@@ -730,14 +750,29 @@ export function ProfileClient() {
                 </div>
                 <div className="grid gap-2">
                   <FieldLabel htmlFor="profile-rank">Academic rank</FieldLabel>
-                  <input
+                  <select
                     id="profile-rank"
                     className={inputClass}
                     value={profile.academic_rank}
                     onChange={(event) =>
                       updateProfile({ academic_rank: event.target.value })
                     }
-                  />
+                  >
+                    <option value="">Select</option>
+                    {profile.academic_rank &&
+                    !ACADEMIC_RANK_OPTIONS.includes(
+                      profile.academic_rank as (typeof ACADEMIC_RANK_OPTIONS)[number],
+                    ) ? (
+                      <option value={profile.academic_rank}>
+                        {profile.academic_rank}
+                      </option>
+                    ) : null}
+                    {ACADEMIC_RANK_OPTIONS.map((rank) => (
+                      <option key={rank} value={rank}>
+                        {rank}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid gap-2">
                   <FieldLabel htmlFor="profile-phone">Phone number</FieldLabel>
