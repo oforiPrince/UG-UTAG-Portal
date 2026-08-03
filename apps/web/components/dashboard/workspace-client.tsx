@@ -58,7 +58,7 @@ import type {
   WorkspacePreviewKind,
   WorkspaceRow,
 } from "@/lib/workspaces";
-import { humanize } from "@/lib/utils";
+import { formatPersonName, formatRankForName, humanize, matchCaseStyle } from "@/lib/utils";
 
 type FormValue = string | boolean | string[];
 type FormValues = Record<string, FormValue>;
@@ -561,17 +561,49 @@ function objectItemMeta(item: WorkspaceRow) {
     });
 }
 
+function displayWithPersonCase(
+  value: unknown,
+  fieldKey: string,
+  row?: WorkspaceRow,
+) {
+  if (fieldKey === "full_name" && typeof value === "string") {
+    return formatPersonName(value);
+  }
+  if (fieldKey === "academic_rank" && typeof value === "string") {
+    const name =
+      typeof row?.full_name === "string" ? row.full_name : undefined;
+    return formatRankForName(name, value) || display(value, fieldKey);
+  }
+  if (fieldKey === "title" && typeof value === "string") {
+    const name =
+      typeof row?.full_name === "string"
+        ? row.full_name
+        : [row?.other_name, row?.surname].filter(Boolean).join(" ");
+    return name ? matchCaseStyle(String(name), value) : display(value, fieldKey);
+  }
+  return display(value, fieldKey);
+}
+
 function ValueDisplay({
   value,
   fieldKey,
   compact = false,
+  row,
 }: {
   value: unknown;
   fieldKey: string;
   compact?: boolean;
+  row?: WorkspaceRow;
 }) {
   if (isEmptyValue(value)) {
     return <span className="text-muted">Not provided</span>;
+  }
+  if (
+    fieldKey === "academic_rank" ||
+    fieldKey === "full_name" ||
+    fieldKey === "title"
+  ) {
+    return <>{displayWithPersonCase(value, fieldKey, row)}</>;
   }
   if (Array.isArray(value)) {
     if (compact && value.some((item) => typeof item === "object")) {
@@ -2133,7 +2165,7 @@ export function WorkspaceClient({
                     <div className="grid gap-3 p-4">
                       <div className="min-w-0">
                         <h3 className="text-sm font-black leading-5 break-words">
-                          {display(row[titleKey], titleKey)}
+                          {displayWithPersonCase(row[titleKey], titleKey, row)}
                         </h3>
                         {metaColumns.length ? (
                           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2159,7 +2191,7 @@ export function WorkspaceClient({
                                   : column.key === "content_type" &&
                                       typeof value === "string"
                                     ? value.split("/").pop() || value
-                                    : `${column.label}: ${display(value, column.key)}`;
+                                    : `${column.label}: ${displayWithPersonCase(value, column.key, row)}`;
                               return (
                                 <span
                                   key={column.key}
@@ -2301,6 +2333,7 @@ export function WorkspaceClient({
                                   <ValueDisplay
                                     value={value}
                                     fieldKey={column.key}
+                                    row={row}
                                     compact
                                   />
                                 </span>
@@ -2308,6 +2341,7 @@ export function WorkspaceClient({
                                 <ValueDisplay
                                   value={value}
                                   fieldKey={column.key}
+                                  row={row}
                                   compact
                                 />
                               )}
@@ -2402,7 +2436,12 @@ export function WorkspaceClient({
                 selectedActions ? (
                   <RecordDetailsView
                     noun={detailNoun}
-                    title={display(panel.row[detailTitleKey], detailTitleKey)}
+                    title={
+                      detailTitleKey === "full_name" &&
+                      typeof panel.row.full_name === "string"
+                        ? formatPersonName(panel.row.full_name)
+                        : display(panel.row[detailTitleKey], detailTitleKey)
+                    }
                     subtitle={
                       config.detail?.subtitleKeys?.length
                         ? config.detail.subtitleKeys
@@ -2416,7 +2455,29 @@ export function WorkspaceClient({
                       ? curatedDetails.map(({ field, value }) => ({
                           key: field.key,
                           label: field.label,
-                          value,
+                          value:
+                            field.key === "academic_rank" &&
+                            typeof value === "string"
+                              ? formatRankForName(
+                                  typeof panel.row.full_name === "string"
+                                    ? panel.row.full_name
+                                    : undefined,
+                                  value,
+                                )
+                              : field.key === "title" &&
+                                  typeof value === "string"
+                                ? matchCaseStyle(
+                                    typeof panel.row.full_name === "string"
+                                      ? panel.row.full_name
+                                      : [
+                                          panel.row.other_name,
+                                          panel.row.surname,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" "),
+                                    value,
+                                  )
+                                : value,
                           richtext: field.format === "richtext",
                           format: field.format,
                         }))

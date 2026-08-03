@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { initials } from "@/lib/utils";
+import { initials, formatPersonName, formatRankForName } from "@/lib/utils";
 
 type Conversation = {
   id: string;
@@ -223,10 +223,15 @@ function NewConversationDialog({ close }: { close: () => void }) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-xs">
-                        {member.full_name}
+                        {formatPersonName(member.full_name)}
                       </b>
                       <small className="block truncate text-[.58rem] text-muted">
-                        {member.academic_rank || member.email}
+                        {member.academic_rank
+                          ? formatRankForName(
+                              member.full_name,
+                              member.academic_rank,
+                            )
+                          : member.email}
                       </small>
                     </span>
                     <span

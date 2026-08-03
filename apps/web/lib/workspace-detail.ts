@@ -193,7 +193,7 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
     fields: [
       { key: "email", label: "Email" },
       { key: "phone_number", label: "Phone" },
-      { key: "academic_rank", label: "Academic rank", format: "status" },
+      { key: "academic_rank", label: "Academic rank" },
       { key: "title", label: "Title" },
       { key: "gender", label: "Gender" },
       { key: "status", label: "Status", format: "status" },

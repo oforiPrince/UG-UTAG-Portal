@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { formatPersonName, formatRankForName } from "@/lib/utils";
 
 type ImportIssue = { row: number; field: string | null; message: string };
 type ImportPreview = {
@@ -258,14 +259,19 @@ function ImportDialog({ close }: { close: () => void }) {
                         <tr key={`${member.row}-${member.email}`}>
                           <td className="px-4 py-3 text-muted">{member.row}</td>
                           <td className="px-4 py-3 font-bold">
-                            {member.full_name}
+                            {formatPersonName(member.full_name)}
                           </td>
                           <td className="px-4 py-3 font-mono">
                             {member.staff_id}
                           </td>
                           <td className="px-4 py-3">{member.email}</td>
                           <td className="px-4 py-3 text-muted">
-                            {member.academic_rank ?? "—"}
+                            {member.academic_rank
+                              ? formatRankForName(
+                                  member.full_name,
+                                  member.academic_rank,
+                                )
+                              : "—"}
                           </td>
                           <td className="px-4 py-3">
                             {member.roles.join(", ")}

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ExecutiveProfileButton } from "@/components/public/executive-profile-button";
 import type { PublicExecutiveProfile } from "@/lib/leadership";
 import { publicMediaUrl } from "@/lib/public-media";
-import { cn, initials } from "@/lib/utils";
+import { cn, formatPersonName, formatRankForName, initials } from "@/lib/utils";
 
 export function ExecutiveCard({
   profile,
@@ -71,11 +71,11 @@ export function ExecutiveCard({
               compact ? "text-base" : "text-lg",
             )}
           >
-            {profile.full_name}
+            {formatPersonName(profile.full_name)}
           </h3>
           {profile.academic_rank ? (
             <p className="mt-1 text-xs font-semibold text-muted">
-              {profile.academic_rank}
+              {formatRankForName(profile.full_name, profile.academic_rank)}
             </p>
           ) : null}
           <div className={cn("mt-auto", compact ? "pt-5" : "pt-6")}>

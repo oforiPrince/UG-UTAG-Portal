@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { sortLeadership } from "@/lib/leadership";
+import { formatPersonName, formatRankForName } from "@/lib/utils";
 
 type Executive = {
   id: string;
@@ -107,11 +108,13 @@ function RosterSection({
               <tr key={item.id} className="break-inside-avoid">
                 <td className="py-4 pr-4">
                   <b>
-                    {[item.title, item.full_name].filter(Boolean).join(" ")}
+                    {formatPersonName(
+                      [item.title, item.full_name].filter(Boolean).join(" "),
+                    )}
                   </b>
                   {item.academic_rank ? (
                     <span className="mt-1 block text-xs text-muted">
-                      {item.academic_rank}
+                      {formatRankForName(item.full_name, item.academic_rank)}
                     </span>
                   ) : null}
                 </td>

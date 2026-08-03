@@ -16,7 +16,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import type { PublicExecutiveProfile } from "@/lib/leadership";
 import { publicMediaUrl } from "@/lib/public-media";
-import { cn, humanize, initials } from "@/lib/utils";
+import { cn, formatPersonName, formatRankForName, humanize, initials } from "@/lib/utils";
 
 type ExecutiveProfileButtonProps = {
   profile: PublicExecutiveProfile;
@@ -178,7 +178,7 @@ function ExecutiveProfileModal({
               className="display-type mt-2 text-3xl text-[#172f4d] sm:text-4xl"
               id={titleId}
             >
-              {profile.full_name}
+              {formatPersonName(profile.full_name)}
             </h2>
             <p className="mt-2 font-bold text-coral">{profile.position}</p>
             {profile.summary ? (
@@ -235,7 +235,9 @@ function ExecutiveProfileModal({
                   Academic rank
                 </dt>
                 <dd className="mt-1 text-sm font-bold text-[#172f4d]">
-                  {profile.academic_rank ?? "Not provided"}
+                  {profile.academic_rank
+                    ? formatRankForName(profile.full_name, profile.academic_rank)
+                    : "Not provided"}
                 </dd>
               </div>
               <div>
