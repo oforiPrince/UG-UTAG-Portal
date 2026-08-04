@@ -34,7 +34,7 @@ export default async function GalleryPage() {
       <PageHero
         eyebrow="Gallery"
         title="UG UTAG in pictures"
-        intro="A moderated visual record of meetings, leadership engagement, scholarly exchange and association life."
+        intro="A moderated visual record of meetings, leadership engagement, scholarly exchange, and association life."
       />
       <section className="mx-auto grid max-w-[82rem] gap-6 px-5 py-16 sm:px-6 md:grid-cols-2 lg:px-8 lg:py-22">
         {galleries.length === 0 && (

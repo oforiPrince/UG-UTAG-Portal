@@ -175,7 +175,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
         "email": "utagoffice@ug.edu.gh",
         "phone": "+233 (0) 24 427 7275",
         "address": "University of Ghana, Legon, Accra",
-        "office_hours": "Monday-Friday, 9:00 AM-6:00 PM",
+        "office_hours": "Monday-Friday, 9:00 AM-5:00 PM",
     },
     "site.social": {},
     "site.home": {
@@ -187,7 +187,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
         "heading": "A united voice for University of Ghana academics",
         "introduction": (
             "UG UTAG represents teaching and research staff and advances their "
-            "academic, professional and economic welfare."
+            "academic, professional, and economic welfare."
         ),
     },
     "site.resources": {

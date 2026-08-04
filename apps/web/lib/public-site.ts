@@ -22,7 +22,7 @@ const defaultContact: PublicContact = {
   email: "utagoffice@ug.edu.gh",
   phone: "+233 (0) 24 427 7275",
   address: "University of Ghana, Legon, Accra",
-  office_hours: "Monday–Friday, 9:00 AM–6:00 PM",
+  office_hours: "Monday–Friday, 9:00 AM–5:00 PM",
 };
 
 const defaultFooter: PublicFooterSettings = {

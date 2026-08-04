@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -80,28 +79,6 @@ export function HomeHero({
               {copy}
             </p>
           )}
-          <div className="mt-8 flex flex-wrap gap-3">
-            {slide?.link_url ? (
-              <Button asChild variant="gold">
-                <a href={slide.link_url}>
-                  Read more <ArrowRight className="size-4" />
-                </a>
-              </Button>
-            ) : (
-              <Button asChild variant="gold">
-                <Link href="/about">
-                  Discover UG UTAG <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            )}
-            <Button
-              asChild
-              className="border-white/45 bg-transparent text-white hover:border-white hover:bg-white/10"
-              variant="outline"
-            >
-              <Link href="/login">Member portal</Link>
-            </Button>
-          </div>
         </div>
       </div>
 

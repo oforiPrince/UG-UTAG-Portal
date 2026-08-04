@@ -81,56 +81,56 @@ const fallback: HomeData = {
 const pillars = [
   [
     GraduationCap,
-    "Quality education",
+    "Quality Education",
     "Defending academic freedom and the conditions that allow teaching and scholarship to thrive.",
   ],
   [
     FlaskConical,
-    "Teaching & research",
-    "Advancing standards, resources and opportunities for excellent teaching and impactful research.",
+    "Teaching & Research",
+    "Advancing standards, resources, and opportunities for excellent teaching and impactful research.",
   ],
   [
     Megaphone,
-    "Member advocacy",
-    "Representing member concerns to University Management, national UTAG and public authorities.",
+    "Member Advocacy",
+    "Representing member concerns to University Management, UTAG National, and public authorities.",
   ],
   [
     HeartHandshake,
-    "Member welfare",
-    "Promoting fair conditions of service, professional wellbeing and a supportive academic community.",
+    "Member Welfare",
+    "Promoting fair conditions of service, professional wellbeing, and a supportive academic community.",
   ],
 ] as const;
 
 const aims = [
   [
     HandHeart,
-    "Promote welfare",
-    "Seek continuous improvement in the working conditions, facilities and professional wellbeing of University teachers.",
+    "Promote Welfare",
+    "Seek continuous improvement in the working conditions, facilities, and professional wellbeing of University teachers.",
   ],
   [
     UsersRound,
-    "Foster unity",
-    "Build common purpose, mutual support and meaningful participation across rank, discipline and college.",
+    "Foster Unity",
+    "Build common purpose, mutual support, and meaningful participation across rank, discipline, and college.",
   ],
   [
     MessageCircleMore,
-    "Improve communication",
-    "Strengthen dialogue among members, University leadership and stakeholders beyond the campus.",
+    "Improve Communication",
+    "Strengthen dialogue among members, University leadership, and stakeholders beyond the campus.",
   ],
   [
     TrendingUp,
-    "Advance academics",
-    "Support excellent teaching, research, mentorship and public service across the University.",
+    "Advance Academics",
+    "Support excellent teaching, research, mentorship, and public service across the University.",
   ],
   [
     Landmark,
-    "Serve the institution",
-    "Contribute constructively to a strong, accountable and globally respected University of Ghana.",
+    "Serve the Institution",
+    "Contribute constructively to a strong, accountable, and globally respected University of Ghana.",
   ],
   [
     Scale,
-    "Uphold academic freedom",
-    "Protect open inquiry, professional responsibility and the freedom required for scholarship.",
+    "Uphold Academic Freedom",
+    "Protect open inquiry, professional responsibility, and the freedom required for scholarship.",
   ],
 ] as const;
 
@@ -246,12 +246,12 @@ export default async function Home() {
           <p className="mt-6 text-sm leading-7 text-muted sm:text-base">
             The University of Ghana Branch of the University Teachers
             Association of Ghana represents teaching and research staff and
-            champions their academic, professional and economic welfare.
+            champions their academic, professional, and economic welfare.
           </p>
           <p className="mt-4 text-sm leading-7 text-muted sm:text-base">
-            We engage University Management, national leadership and public
-            institutions to promote fair conditions of service, protect academic
-            freedom and strengthen the resources required for teaching, research
+            We engage University Management, National Leadership of UTAG, and institutions of state
+            to promote fair conditions of service, protect academic
+            freedom, and strengthen the resources required for teaching, research,
             and community service.
           </p>
           <Button asChild className="mt-7 rounded-md">
@@ -343,7 +343,7 @@ export default async function Home() {
             <SectionHeading
               kicker="Our gallery"
               title="UG UTAG in action"
-              copy="A visual record of engagement, leadership and academic community life."
+              copy="A visual record of engagement, leadership, and academic community life."
             />
             <div className="mt-10 grid gap-3 md:grid-cols-[1.25fr_.75fr]">
               <Link
@@ -434,7 +434,7 @@ export default async function Home() {
           <SectionHeading
             kicker="Our aims"
             title="What guides our work"
-            copy="A clear commitment to member welfare, academic progress and a strong University community."
+            copy="A clear commitment to member welfare, academic progress, and a strong University community."
           />
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {aims.map(([Icon, title, copy]) => (
@@ -461,7 +461,7 @@ export default async function Home() {
             <SectionHeading
               kicker="Our news"
               title="Latest from UG UTAG"
-              copy="Official updates, statements and stories from the association."
+              copy="Official updates, statements, and stories from the Association."
             />
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {data.featured_articles.slice(0, 3).map((article, index) => (

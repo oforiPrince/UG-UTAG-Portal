@@ -34,8 +34,8 @@ export default async function NewsPage() {
     <PublicShell>
       <PageHero
         eyebrow="News"
-        title="News, statements and member updates"
-        intro="Official statements, association briefings and stories from across the University of Ghana academic community."
+        title="News, statements, and member updates"
+        intro="Official statements, association briefings, and stories from across the University of Ghana academic community."
       />
       <section className="mx-auto max-w-[82rem] px-5 py-16 sm:px-6 lg:px-8 lg:py-22">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">

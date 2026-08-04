@@ -16,7 +16,7 @@ export default async function ContactPage() {
       <PageHero
         eyebrow="Contact"
         title="Contact the UG UTAG Secretariat"
-        intro="For association enquiries, media requests and official correspondence, contact the branch secretariat."
+        intro="For enquiries on the Association, media requests and official correspondence, contact the Branch Secretariat."
       />
       <section className="mx-auto grid max-w-[82rem] gap-10 px-5 py-16 sm:px-6 lg:grid-cols-[.72fr_1.28fr] lg:px-8 lg:py-22">
         <div>
@@ -24,7 +24,7 @@ export default async function ContactPage() {
             Secretariat
           </p>
           <h2 className="display-type mt-3 text-3xl text-[#172f4d]">
-            We are ready to help.
+            We are ready to help...
           </h2>
           <p className="mt-4 text-sm leading-7 text-muted">
             Send your enquiry through the secure form or use the official
