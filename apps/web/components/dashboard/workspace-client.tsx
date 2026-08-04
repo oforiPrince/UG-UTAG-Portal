@@ -32,6 +32,7 @@ import {
 import { WorkspaceRowActions } from "@/components/dashboard/workspace-row-actions";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
+import { GoogleDriveGalleryImport } from "@/components/dashboard/google-drive-gallery-import";
 import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { API_URL, api } from "@/lib/api";
 import {
@@ -1377,6 +1378,13 @@ function MutationForm({
       ]),
     ),
   );
+  const [resourceVersion, setResourceVersion] = useState<unknown>(row?.version);
+  const mutationRow = row
+    ? {
+        ...row,
+        ...(resourceVersion === undefined ? {} : { version: resourceVersion }),
+      }
+    : undefined;
   const fields = configuredFields.map((field) =>
     field.optionsForValues
       ? { ...field, options: field.optionsForValues(values) }
@@ -1430,10 +1438,13 @@ function MutationForm({
           parseFieldValue(field, values[field.key] ?? ""),
         ]),
       );
-      if (mutation.prepare) payload = mutation.prepare(payload, row);
-      return api<unknown>(endpointFor(mutation, row), {
+      if (mutation.prepare) payload = mutation.prepare(payload, mutationRow);
+      return api<unknown>(endpointFor(mutation, mutationRow), {
         method: mutation.method ?? "POST",
-        headers: row && mutation.headers ? mutation.headers(row) : undefined,
+        headers:
+          mutationRow && mutation.headers
+            ? mutation.headers(mutationRow)
+            : undefined,
         body: payload,
       });
     },
@@ -1576,107 +1587,147 @@ function MutationForm({
                   }
                 />
               ) : field.type === "media" ? (
-                <WorkspaceMediaField
-                  field={field}
-                  value={Array.isArray(value) ? value : String(value)}
-                  downloadBlockedIds={
-                    field.media?.downloadControl
-                      ? Array.isArray(values.blocked_download_media_ids)
-                        ? values.blocked_download_media_ids.map(String)
-                        : []
-                      : undefined
-                  }
-                  onBusyChange={(busy) =>
-                    setBusyFields((current) =>
-                      busy
-                        ? [...new Set([...current, field.key])]
-                        : current.filter((key) => key !== field.key),
-                    )
-                  }
-                  onChange={(nextValue) =>
-                    setValues((current) => {
-                      const next = {
-                        ...current,
-                        [field.key]: nextValue,
-                      };
-                      if (field.media?.downloadControl) {
-                        const selected = Array.isArray(nextValue)
-                          ? nextValue.map(String)
-                          : nextValue
-                            ? [String(nextValue)]
-                            : [];
-                        const blocked = new Set(
-                          (Array.isArray(current.blocked_download_media_ids)
-                            ? current.blocked_download_media_ids
-                            : []
-                          ).map(String),
-                        );
-                        next.blocked_download_media_ids = selected.filter(
-                          (id) => blocked.has(id),
-                        );
-                      }
-                      return next;
-                    })
-                  }
-                  onDownloadBlockedChange={
-                    field.media?.downloadControl
-                      ? (ids) =>
-                          setValues((current) => ({
-                            ...current,
-                            blocked_download_media_ids: ids,
-                          }))
-                      : undefined
-                  }
-                  picker={
-                    field.media?.multiple ? (
-                      <WorkspaceMultiSelect
-                        id={fieldId}
-                        labelledBy={labelId}
-                        field={field}
-                        value={value}
-                        onChange={(nextValue) =>
-                          setValues((current) => {
-                            const next = {
+                <>
+                  <WorkspaceMediaField
+                    field={field}
+                    value={Array.isArray(value) ? value : String(value)}
+                    downloadBlockedIds={
+                      field.media?.downloadControl
+                        ? Array.isArray(values.blocked_download_media_ids)
+                          ? values.blocked_download_media_ids.map(String)
+                          : []
+                        : undefined
+                    }
+                    onBusyChange={(busy) =>
+                      setBusyFields((current) =>
+                        busy
+                          ? [...new Set([...current, field.key])]
+                          : current.filter((key) => key !== field.key),
+                      )
+                    }
+                    onChange={(nextValue) =>
+                      setValues((current) => {
+                        const next = {
+                          ...current,
+                          [field.key]: nextValue,
+                        };
+                        if (field.media?.downloadControl) {
+                          const selected = Array.isArray(nextValue)
+                            ? nextValue.map(String)
+                            : nextValue
+                              ? [String(nextValue)]
+                              : [];
+                          const blocked = new Set(
+                            (Array.isArray(current.blocked_download_media_ids)
+                              ? current.blocked_download_media_ids
+                              : []
+                            ).map(String),
+                          );
+                          next.blocked_download_media_ids = selected.filter(
+                            (id) => blocked.has(id),
+                          );
+                        }
+                        return next;
+                      })
+                    }
+                    onDownloadBlockedChange={
+                      field.media?.downloadControl
+                        ? (ids) =>
+                            setValues((current) => ({
+                              ...current,
+                              blocked_download_media_ids: ids,
+                            }))
+                        : undefined
+                    }
+                    picker={
+                      field.media?.multiple ? (
+                        <WorkspaceMultiSelect
+                          id={fieldId}
+                          labelledBy={labelId}
+                          field={field}
+                          value={value}
+                          onChange={(nextValue) =>
+                            setValues((current) => {
+                              const next = {
+                                ...current,
+                                [field.key]: nextValue,
+                              };
+                              if (field.media?.downloadControl) {
+                                const selected = Array.isArray(nextValue)
+                                  ? nextValue.map(String)
+                                  : [];
+                                const blocked = new Set(
+                                  (Array.isArray(
+                                    current.blocked_download_media_ids,
+                                  )
+                                    ? current.blocked_download_media_ids
+                                    : []
+                                  ).map(String),
+                                );
+                                next.blocked_download_media_ids =
+                                  selected.filter((id) => blocked.has(id));
+                              }
+                              return next;
+                            })
+                          }
+                        />
+                      ) : (
+                        <WorkspaceSelect
+                          id={fieldId}
+                          labelledBy={labelId}
+                          field={field}
+                          value={value}
+                          autoFocus={index === 0}
+                          onChange={(nextValue) =>
+                            setValues((current) => ({
                               ...current,
                               [field.key]: nextValue,
-                            };
-                            if (field.media?.downloadControl) {
-                              const selected = Array.isArray(nextValue)
-                                ? nextValue.map(String)
-                                : [];
-                              const blocked = new Set(
-                                (Array.isArray(
-                                  current.blocked_download_media_ids,
-                                )
-                                  ? current.blocked_download_media_ids
-                                  : []
-                                ).map(String),
-                              );
-                              next.blocked_download_media_ids = selected.filter(
-                                (id) => blocked.has(id),
-                              );
-                            }
-                            return next;
-                          })
+                            }))
+                          }
+                        />
+                      )
+                    }
+                  />
+                  {config.queryKey === "galleries" &&
+                  field.key === "media_asset_ids" ? (
+                    <GoogleDriveGalleryImport
+                      galleryId={
+                        mode === "edit" && row?.id ? String(row.id) : undefined
+                      }
+                      folderUrlHint={
+                        typeof values.external_album_url === "string"
+                          ? values.external_album_url
+                          : undefined
+                      }
+                      onImported={(
+                        mediaIds,
+                        importedFolderUrl,
+                        galleryVersion,
+                      ) => {
+                        if (galleryVersion !== undefined) {
+                          setResourceVersion(galleryVersion);
                         }
-                      />
-                    ) : (
-                      <WorkspaceSelect
-                        id={fieldId}
-                        labelledBy={labelId}
-                        field={field}
-                        value={value}
-                        autoFocus={index === 0}
-                        onChange={(nextValue) =>
-                          setValues((current) => ({
+                        setValues((current) => {
+                          const existing = Array.isArray(
+                            current.media_asset_ids,
+                          )
+                            ? current.media_asset_ids.map(String)
+                            : [];
+                          const merged = [
+                            ...existing,
+                            ...mediaIds.filter((id) => !existing.includes(id)),
+                          ];
+                          return {
                             ...current,
-                            [field.key]: nextValue,
-                          }))
-                        }
-                      />
-                    )
-                  }
-                />
+                            media_asset_ids: merged,
+                            external_album_url:
+                              current.external_album_url || importedFolderUrl,
+                          };
+                        });
+                      }}
+                    />
+                  ) : null}
+                </>
               ) : field.type === "select" ? (
                 <WorkspaceSelect
                   id={fieldId}

@@ -64,7 +64,7 @@ test("protected dashboard redirects unauthenticated visitors", async ({
   await page.goto("/dashboard/members");
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard%2Fmembers/);
   await expect(
-    page.getByRole("heading", { name: "Welcome back." }),
+    page.getByRole("heading", { name: "Welcome!!!" }),
   ).toBeVisible();
 });
 

@@ -35,6 +35,8 @@ from utag_api.routers.documents import router as documents_router
 from utag_api.routers.events import router as events_router
 from utag_api.routers.executives import router as executives_router
 from utag_api.routers.galleries import router as galleries_router
+from utag_api.routers.integrations_google_drive import router as google_drive_router
+from utag_api.routers.jobs import router as jobs_router
 from utag_api.routers.media import router as media_router
 from utag_api.routers.members import router as members_router
 from utag_api.routers.moderation import router as moderation_router
@@ -193,6 +195,8 @@ for api_router in (
     notifications_router,
     chat_router,
     galleries_router,
+    google_drive_router,
+    jobs_router,
     adverts_router,
     admin_router,
     realtime_router,

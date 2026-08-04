@@ -5,4 +5,4 @@ import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Member sign in" };
-export default function LoginPage() { return <AuthShell title="Welcome back." intro="Sign in to your live member dashboard, documents, events and association communications."><Suspense><LoginForm /></Suspense></AuthShell>; }
+export default function LoginPage() { return <AuthShell title="Welcome!!!" intro="Sign in to your live member dashboard, documents, events and association communications."><Suspense><LoginForm /></Suspense></AuthShell>; }

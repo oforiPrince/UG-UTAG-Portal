@@ -893,6 +893,33 @@ class GalleryCreate(ApiModel):
         return self
 
 
+class GoogleDriveImportRequest(ApiModel):
+    folder_url: str = Field(min_length=10, max_length=2000)
+
+
+class GoogleDriveImportResponse(ApiModel):
+    job_id: UUID
+
+
+class GoogleDriveStatus(ApiModel):
+    configured: bool
+    connected: bool
+    email: str | None = None
+
+
+class BackgroundJobView(ApiModel):
+    id: UUID
+    kind: str
+    status: str
+    progress: int
+    input_json: dict[str, object]
+    result_json: dict[str, object]
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class ContactRequest(ApiModel):
     name: str = Field(min_length=2, max_length=180)
     email: EmailStr

@@ -54,7 +54,7 @@ export function LoginForm() {
         method: "POST",
         body: values,
       });
-      toast.success("Welcome back");
+      toast.success("Welcome!!!");
       const next = search.get("next");
       const destination = session.user.must_change_password
         ? "/dashboard/profile?password=required"
