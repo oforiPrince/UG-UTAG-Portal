@@ -69,7 +69,7 @@ export default function AboutPage() {
             <p className="mt-6 text-sm leading-7 text-muted sm:text-base">
               The University of Ghana Branch of the University Teachers
               Association of Ghana represents the teaching and research staff of
-              the University. We promote the academic, professional and economic
+              the University. We promote the academic, professional, and economic
               welfare of members and the wider academic community.
             </p>
             <p className="mt-4 text-sm leading-7 text-muted sm:text-base">

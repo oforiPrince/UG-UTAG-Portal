@@ -23,7 +23,7 @@ export default async function ResourcesPage() {
       <PageHero
         eyebrow="Resources"
         title="Public documents and association resources"
-        intro="Constitutional, policy and public-interest material approved for public access by the University of Ghana Branch of UTAG."
+        intro="Constitutional, policy, and public-interest material approved for public access by the University of Ghana Branch of UTAG."
       />
       <section className="mx-auto w-full min-w-0 max-w-[82rem] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-22">
         {documents.length === 0 ? (

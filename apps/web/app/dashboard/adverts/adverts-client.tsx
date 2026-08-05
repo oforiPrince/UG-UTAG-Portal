@@ -81,7 +81,7 @@ export function AdvertsClient() {
         <h2 className="display-type mt-3 text-4xl sm:text-5xl">Advertising</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
           Sell placements to external companies and clients, manage rate-card
-          plans, live campaigns and orders from one workspace. Advertisers do
+          plans, live campaigns, and orders from one workspace. Advertisers do
           not need to be portal members.
         </p>
       </header>

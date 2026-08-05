@@ -171,6 +171,7 @@ export function WorkspaceSelect({
   value,
   autoFocus,
   onChange,
+  fallbackOption,
 }: {
   id: string;
   labelledBy: string;
@@ -178,6 +179,7 @@ export function WorkspaceSelect({
   value: FormValue;
   autoFocus: boolean;
   onChange: (value: string) => void;
+  fallbackOption?: { value: string; label: string };
 }) {
   const source = field.optionSource;
   const [open, setOpen] = useState(false);
@@ -198,12 +200,17 @@ export function WorkspaceSelect({
         .filter((row) => source.filter?.(row) ?? true)
         .map((row) => ({ value: source.value(row), label: source.label(row) }))
     : [];
-  const options = source
+  const loadedOptions = source
     ? dynamicOptions
     : (field.options ?? []).map((option) => ({
         value: option,
         label: humanize(option),
       }));
+  const options =
+    fallbackOption &&
+    !loadedOptions.some((option) => option.value === fallbackOption.value)
+      ? [fallbackOption, ...loadedOptions]
+      : loadedOptions;
   const optionState = workspaceOptionQueryState(Boolean(source), optionsQuery);
   const emptyLabel = optionState.isLoading
     ? "Loading available options…"
@@ -218,12 +225,16 @@ export function WorkspaceSelect({
   const selectedOption = options.find(
     (option) => option.value === String(value),
   );
-  const filteredOptions =
-    source?.searchParam && remoteSearch.trim() === search.trim()
-      ? options
-      : options.filter((option) =>
-          option.label.toLowerCase().includes(search.trim().toLowerCase()),
-        );
+  const searchTerm = search.trim().toLowerCase();
+  const remoteSearchSettled =
+    Boolean(source?.searchParam) && remoteSearch.trim() === search.trim();
+  const filteredOptions = options.filter((option) => {
+    if (!searchTerm) return true;
+    if (remoteSearchSettled && option.value !== fallbackOption?.value) {
+      return true;
+    }
+    return option.label.toLowerCase().includes(searchTerm);
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -1392,6 +1403,14 @@ function MutationForm({
   );
   const [busyFields, setBusyFields] = useState<string[]>([]);
 
+  const savedOptionFor = (field: WorkspaceField) => {
+    if (!row || !field.selectedLabelFromRow) return undefined;
+    const savedValue = row[field.key];
+    if (savedValue == null || savedValue === "") return undefined;
+    const label = field.selectedLabelFromRow(row);
+    return label ? { value: String(savedValue), label } : undefined;
+  };
+
   const updateFieldValue = (field: WorkspaceField, nextValue: FormValue) => {
     setValues((current) => {
       const next = { ...current, [field.key]: nextValue };
@@ -1678,6 +1697,7 @@ function MutationForm({
                           field={field}
                           value={value}
                           autoFocus={index === 0}
+                          fallbackOption={savedOptionFor(field)}
                           onChange={(nextValue) =>
                             setValues((current) => ({
                               ...current,
@@ -1735,6 +1755,7 @@ function MutationForm({
                   field={field}
                   value={value}
                   autoFocus={index === 0}
+                  fallbackOption={savedOptionFor(field)}
                   onChange={(nextValue) => updateFieldValue(field, nextValue)}
                 />
               ) : field.type === "multiselect" ? (
@@ -1959,6 +1980,10 @@ export function WorkspaceClient({
   }, [panel]);
 
   const detailFields = useMemo(() => workspaceDetailFields(config), [config]);
+  const detailImages = useMemo(
+    () => (selected ? recordImages(selected) : []),
+    [selected],
+  );
   const curatedDetails = useMemo(() => {
     if (!selected || !config.detail) return null;
     return visibleDetailEntries(
@@ -2501,7 +2526,14 @@ export function WorkspaceClient({
                             .join(" · ") || undefined
                         : undefined
                     }
-                    images={recordImages(panel.row)}
+                    images={detailImages}
+                    heroShape={
+                      detailImages[0] &&
+                      panel.row.profile_media_id &&
+                      detailImages[0].id === String(panel.row.profile_media_id)
+                        ? "portrait"
+                        : "landscape"
+                    }
                     entries={(curatedDetails
                       ? curatedDetails.map(({ field, value }) => ({
                           key: field.key,

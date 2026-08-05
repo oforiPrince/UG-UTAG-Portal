@@ -10,7 +10,7 @@ import {
 describe("leadership groups", () => {
   it("recognizes the core executive offices", () => {
     expect(isExecutiveOfficerPosition("President")).toBe(true);
-    expect(isExecutiveOfficerPosition("Vice President")).toBe(true);
+    expect(isExecutiveOfficerPosition("Vice-President")).toBe(true);
     expect(isExecutiveOfficerPosition("Women's Executive Officer")).toBe(true);
   });
 
@@ -31,10 +31,10 @@ describe("leadership groups", () => {
       { position: "CBAS Rep" },
       { position: "Treasurer" },
       { position: "President" },
-      { position: "Vice President" },
+      { position: "Vice-President" },
     ];
     expect(executiveOfficers(leaders).map((leader) => leader.position)).toEqual(
-      ["President", "Vice President", "Treasurer"],
+      ["President", "Vice-President", "Treasurer"],
     );
   });
 
@@ -44,7 +44,7 @@ describe("leadership groups", () => {
       { position: "Treasurer" },
       { position: "President" },
       { position: "National President" },
-      { position: "Vice President" },
+      { position: "Vice-President" },
       { position: "Women's Executive Officer" },
       { position: "Secretary" },
       { position: "CBAS Rep" },
@@ -53,7 +53,7 @@ describe("leadership groups", () => {
     ];
     expect(sortLeadership(leaders).map((leader) => leader.position)).toEqual([
       "President",
-      "Vice President",
+      "Vice-President",
       "Secretary",
       "Treasurer",
       "Women's Executive Officer",
@@ -67,6 +67,7 @@ describe("leadership groups", () => {
 
   it("normalizes aliases before ordering", () => {
     expect(normalizeExecutivePosition("Vice-President")).toBe("vice president");
+    expect(normalizeExecutivePosition("Vice President")).toBe("vice president");
     expect(normalizeExecutivePosition("College of Health Rep")).toBe("chs rep");
   });
 });

@@ -1,3 +1,4 @@
+import { formatPersonName } from "./utils";
 import { documentAudiencesForCategory } from "./workspace-options";
 import {
   attachWorkspaceDetails,
@@ -50,6 +51,12 @@ export type WorkspaceField = {
     filter?: (row: WorkspaceRow) => boolean;
     emptyLabel?: string;
   };
+  /**
+   * Label for the value already stored on the record. Option lists are paged, so
+   * the saved option is often missing from the first page and the control would
+   * otherwise look unset while editing.
+   */
+  selectedLabelFromRow?: (row: WorkspaceRow) => string | undefined;
   placeholder?: string;
   help?: string;
   prominent?: boolean;
@@ -317,6 +324,11 @@ const executiveFields: WorkspaceField[] = [
       label: (row) => `${String(row.full_name)} · ${String(row.email)}`,
       emptyLabel: "No active members available",
     },
+    selectedLabelFromRow: (row) =>
+      typeof row.full_name === "string" && row.full_name.trim()
+        ? formatPersonName(row.full_name)
+        : undefined,
+    help: "Search by name or email. Only active member accounts can hold an office.",
   },
   {
     key: "profile_media_id",
@@ -348,7 +360,7 @@ const executiveFields: WorkspaceField[] = [
     required: true,
     options: [
       "President",
-      "Vice President",
+      "Vice-President",
       "Secretary",
       "Assistant Secretary",
       "Treasurer",
@@ -1207,7 +1219,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   executives: {
     title: "Executive appointments",
     description:
-      "Current and past leadership terms, public biographies, portfolios and social profiles.",
+      "Current and past leadership terms, public biographies, portfolios, and social profiles.",
     endpoint: "/api/v1/executives",
     queryKey: "executives",
     exportUrl: "/api/v1/executives/exports/csv",
@@ -1251,7 +1263,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   organization: {
     title: "Organization",
     description:
-      "Schools, colleges, departments and committees represented in the association.",
+      "Schools, colleges, departments, and committees represented in the association.",
     endpoint: "/api/v1/organization/units?include_inactive=true",
     queryKey: "organization",
     filters: [
@@ -1339,7 +1351,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   news: {
     title: "News & statements",
     description:
-      "Draft, review, schedule and publish the news that appears on the public website.",
+      "Draft, review, schedule, and publish the news that appears on the public website.",
     endpoint: "/api/v1/content/articles?page_size=100",
     queryKey: "content",
     serverPagination: {
@@ -1470,7 +1482,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   events: {
     title: "Events",
     description:
-      "Planning, schedules, registration, CPD details and protected online access.",
+      "Planning, schedules, registration, CPD details, and protected online access.",
     endpoint: "/api/v1/events?page_size=100",
     queryKey: "events",
     serverPagination: {
@@ -1554,7 +1566,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   documents: {
     title: "Documents",
     description:
-      "Audience-controlled records, immutable file versions, retention and legal-hold metadata.",
+      "Audience-controlled records, immutable file versions, retention, and legal-hold metadata.",
     endpoint: "/api/v1/documents?page_size=100",
     queryKey: "documents",
     serverPagination: {
@@ -1663,7 +1675,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   media: {
     title: "Media library",
     description:
-      "Shared library of scanned assets reused by galleries, carousel, profiles and publishing.",
+      "Shared library of scanned assets reused by galleries, carousel, profiles, and publishing.",
     endpoint: "/api/v1/media?page_size=100",
     queryKey: "media",
     layout: "grid",
@@ -2538,7 +2550,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   analytics: {
     title: "Analytics",
     description:
-      "A current, privacy-aware view of membership, publishing and event participation.",
+      "A current, privacy-aware view of membership, publishing, and event participation.",
     endpoint: "/api/v1/dashboard/analytics",
     queryKey: "analytics",
     columns: [],
@@ -2546,7 +2558,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   audit: {
     title: "Audit ledger",
     description:
-      "Immutable evidence of sensitive reads, writes, decisions and security events.",
+      "Immutable evidence of sensitive reads, writes, decisions, and security events.",
     endpoint: "/api/v1/admin/audit?page_size=100",
     queryKey: "audit",
     serverPagination: { searchParam: "q" },
@@ -2561,7 +2573,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   settings: {
     title: "Portal settings",
     description:
-      "Runtime-managed public identity, contact details and homepage controls.",
+      "Runtime-managed public identity, contact details, and homepage controls.",
     endpoint: "/api/v1/admin/settings",
     queryKey: "settings",
     columns: [
@@ -2625,7 +2637,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   jobs: {
     title: "Background jobs",
     description:
-      "Imports, exports, contact requests and long-running processing with progress.",
+      "Imports, exports, contact requests, and long-running processing with progress.",
     endpoint: "/api/v1/admin/jobs?page_size=100",
     queryKey: "jobs",
     serverPagination: {

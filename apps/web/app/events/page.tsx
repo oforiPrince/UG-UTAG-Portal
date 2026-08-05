@@ -38,7 +38,7 @@ export default async function EventsPage() {
       <PageHero
         eyebrow="Events"
         title="Meetings and activities that bring us together"
-        intro="General meetings, forums, workshops and community activities for members and invited guests."
+        intro="General meetings, forums, workshops, and community activities for members and invited guests."
       />
       <section className="mx-auto max-w-[82rem] px-5 py-16 sm:px-6 lg:px-8 lg:py-22">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -46,7 +46,7 @@ export default async function EventsPage() {
             {data.items.length === 0 && (
               <PublicEmptyState
                 title="No upcoming public events"
-                description="Confirmed general meetings, forums and workshops will be listed here."
+                description="Confirmed general meetings, forums, and workshops will be listed here."
               />
             )}
             {data.items.map((event, index) => (

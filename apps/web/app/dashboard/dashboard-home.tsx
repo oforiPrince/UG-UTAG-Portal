@@ -290,7 +290,7 @@ export function DashboardHome() {
             <p className="mt-3 text-sm text-white/55">
               {showPulse
                 ? "Here is what is moving across UG UTAG right now."
-                : "Here are the events, documents and updates that concern you."}
+                : "Here are the events, documents, and updates that concern you."}
             </p>
           </div>
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[.67rem] text-white/55">

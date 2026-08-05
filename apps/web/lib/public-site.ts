@@ -28,7 +28,7 @@ const defaultContact: PublicContact = {
 const defaultFooter: PublicFooterSettings = {
   copyright_name: "University of Ghana Branch of UTAG",
   membership_note:
-    "Representing teaching and research staff while advancing academic excellence, professional welfare and service to the University community.",
+    "Representing teaching and research staff while advancing academic excellence, professional welfare, and service to the University community.",
 };
 
 const defaultFeatures: PublicFeatures = {

@@ -82,7 +82,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     EXECUTIVE_POSITION_CHOICES = (
         ('President', 'President'),
-        ('Vice President', 'Vice President'),
+        ('Vice-President', 'Vice-President'),
+        ('Vice President', 'Vice-President'),  # legacy stored value
         ('Secretary', 'Secretary'),
         ('Treasurer', 'Treasurer'),
         ("Women's Executive Officer", "Women's Executive Officer"),
@@ -207,7 +208,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.filter(name='Member').exists()
     
     def is_acting(self):
-        return self.groups.filter(name__in=['President', 'Vice President', 'Secretary', 'Treasurer']).exists() and self.is_active_executive and self.date_ended is None
+        return self.groups.filter(name__in=['President', 'Vice-President', 'Vice President', 'Secretary', 'Treasurer']).exists() and self.is_active_executive and self.date_ended is None
 
     def __str__(self):
         return self.get_full_name()

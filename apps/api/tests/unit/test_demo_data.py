@@ -61,7 +61,7 @@ async def test_demo_seed_is_complete_login_ready_and_idempotent(session_factory,
     assert public_leadership.status_code == 200
     assert [row["position"] for row in public_leadership.json()[:10]] == [
         "President",
-        "Vice President",
+        "Vice-President",
         "Secretary",
         "Treasurer",
         "Women's Executive Officer",
@@ -84,7 +84,7 @@ async def test_demo_seed_is_complete_login_ready_and_idempotent(session_factory,
     assert public_home.status_code == 200
     assert [row["position"] for row in public_home.json()["leadership"]] == [
         "President",
-        "Vice President",
+        "Vice-President",
         "Secretary",
         "Treasurer",
         "Women's Executive Officer",

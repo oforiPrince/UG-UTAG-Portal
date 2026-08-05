@@ -115,7 +115,7 @@ export function ModerationClient() {
           <p className="eyebrow text-coral">Public content control</p>
           <h2 className="display-type mt-3 text-4xl sm:text-5xl">Moderation queue</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            Review public-site news, events, documents and galleries before release. Every
+            Review public-site news, events, documents, and galleries before release. Every
             decision is version-checked and recorded in the audit ledger.
           </p>
         </div>

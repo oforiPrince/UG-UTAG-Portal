@@ -27,6 +27,9 @@ export function shouldHumanize(key: string) {
 
 export function displayChoice(value: unknown, key = "") {
   const text = String(value);
+  if (key === "position" && text === "Vice President") {
+    return "Vice-President";
+  }
   if (
     (key === "permissions" || key.endsWith("_permissions")) &&
     text.includes(".")

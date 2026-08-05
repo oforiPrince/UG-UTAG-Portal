@@ -838,7 +838,7 @@ export function ProfileClient() {
                 <SectionHeading
                   icon={Building2}
                   eyebrow="Affiliation"
-                  title="College, school and department"
+                  title="College, school, and department"
                 />
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {(["college", "school", "department"] as const).map((type) => {

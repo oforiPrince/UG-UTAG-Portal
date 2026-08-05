@@ -2,7 +2,9 @@
 
 import {
   Archive,
+  Check,
   LoaderCircle,
+  Minus,
   Pencil,
   X,
 } from "lucide-react";
@@ -129,6 +131,35 @@ function formatPlain(value: unknown, key: string) {
   return display(value, key);
 }
 
+function isBooleanEntry(entry: DetailEntry) {
+  if (typeof entry.value === "boolean") return true;
+  return (
+    entry.format === "boolean" &&
+    (entry.value === "true" || entry.value === "false")
+  );
+}
+
+function BooleanBadge({ value }: { value: unknown }) {
+  const yes = value === true || value === "true";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[.68rem] font-bold tracking-wide",
+        yes
+          ? "bg-emerald-500/12 text-emerald-800 dark:text-emerald-300"
+          : "bg-ink/6 text-ink/60",
+      )}
+    >
+      {yes ? (
+        <Check className="size-3.5" aria-hidden="true" />
+      ) : (
+        <Minus className="size-3.5" aria-hidden="true" />
+      )}
+      {yes ? "Yes" : "No"}
+    </span>
+  );
+}
+
 function ValueNode({
   entry,
   ValueDisplay,
@@ -138,6 +169,9 @@ function ValueNode({
   ValueDisplay: ValueDisplayComponent;
   prose?: boolean;
 }) {
+  if (isBooleanEntry(entry)) {
+    return <BooleanBadge value={entry.value} />;
+  }
   if (entry.richtext && typeof entry.value === "string") {
     return (
       <div className={prose ? "[&_.rich-text-content]:text-sm [&_.rich-text-content]:leading-7" : undefined}>
@@ -160,6 +194,7 @@ export function RecordDetailsView({
   title,
   subtitle,
   images,
+  heroShape = "landscape",
   entries,
   primaryActions,
   secondaryActions,
@@ -178,6 +213,7 @@ export function RecordDetailsView({
   title: string;
   subtitle?: string;
   images: RecordImage[];
+  heroShape?: "landscape" | "portrait";
   entries: DetailEntry[];
   primaryActions: WorkspaceMutation[];
   secondaryActions: WorkspaceMutation[];
@@ -217,14 +253,32 @@ export function RecordDetailsView({
   const meta = remaining.filter(
     (entry) => !proseKeys.has(entry.key) && !spotlightKeys.has(entry.key),
   );
+  const flags = meta.filter(isBooleanEntry);
+  const facts = meta.filter((entry) => !isBooleanEntry(entry));
   const hero = images[0];
+  const portraitHero = heroShape === "portrait" ? hero : undefined;
+  const galleryHero = portraitHero ? undefined : hero;
   const extraImages = images.slice(1, 5);
 
   return (
     <div className="flex flex-col">
       <header className="border-b border-line/80 pb-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          {portraitHero ? (
+            <div className="relative w-24 shrink-0 overflow-hidden rounded-2xl border border-line bg-panel sm:w-28">
+              <div className="relative aspect-[4/5]">
+                <Image
+                  fill
+                  unoptimized
+                  alt={portraitHero.alt}
+                  className="object-cover"
+                  sizes="112px"
+                  src={`/api/v1/media/${portraitHero.id}/content`}
+                />
+              </div>
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
             <p className="eyebrow text-coral">{noun}</p>
             <h2 className="display-type mt-2 text-[1.85rem] leading-[1.1] break-words sm:text-3xl">
               {title}
@@ -327,18 +381,20 @@ export function RecordDetailsView({
       </header>
 
       <div className="mt-5 grid flex-1 gap-6 pb-2">
-        {hero ? (
+        {galleryHero || extraImages.length ? (
           <section aria-label="Featured media" className="grid gap-2">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-panel">
-              <Image
-                fill
-                unoptimized
-                alt={hero.alt}
-                className="object-cover"
-                sizes="(max-width: 640px) 100vw, 36rem"
-                src={`/api/v1/media/${hero.id}/content`}
-              />
-            </div>
+            {galleryHero ? (
+              <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-panel">
+                <Image
+                  fill
+                  unoptimized
+                  alt={galleryHero.alt}
+                  className="object-cover"
+                  sizes="(max-width: 640px) 100vw, 36rem"
+                  src={`/api/v1/media/${galleryHero.id}/content`}
+                />
+              </div>
+            ) : null}
             {extraImages.length ? (
               <div className="grid grid-cols-4 gap-2">
                 {extraImages.map((image) => (
@@ -402,21 +458,40 @@ export function RecordDetailsView({
             <h3 className="text-[.68rem] font-bold tracking-[.1em] text-muted uppercase">
               More details
             </h3>
-            <dl className="grid gap-3">
-              {meta.map((entry) => (
-                <div
-                  key={entry.key}
-                  className="grid gap-1 border-b border-line/80 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[7rem_1fr] sm:gap-4"
-                >
-                  <dt className="text-[.65rem] font-bold tracking-[.08em] text-muted uppercase">
-                    {entry.label}
-                  </dt>
-                  <dd className="min-w-0 text-sm leading-6 text-ink">
-                    <ValueNode entry={entry} ValueDisplay={ValueDisplay} />
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            {facts.length ? (
+              <dl className="grid gap-2 sm:grid-cols-2">
+                {facts.map((entry) => (
+                  <div
+                    key={entry.key}
+                    className="min-w-0 rounded-xl border border-line bg-panel/55 px-3.5 py-3"
+                  >
+                    <dt className="text-[.62rem] font-bold tracking-[.08em] text-muted uppercase">
+                      {entry.label}
+                    </dt>
+                    <dd className="mt-1.5 min-w-0 text-sm leading-6 text-ink">
+                      <ValueNode entry={entry} ValueDisplay={ValueDisplay} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            {flags.length ? (
+              <dl className="grid gap-2 sm:grid-cols-2">
+                {flags.map((entry) => (
+                  <div
+                    key={entry.key}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel/55 px-3.5 py-2.5"
+                  >
+                    <dt className="text-[.62rem] font-bold tracking-[.08em] text-muted uppercase">
+                      {entry.label}
+                    </dt>
+                    <dd className="shrink-0">
+                      <BooleanBadge value={entry.value} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
           </section>
         ) : null}
 

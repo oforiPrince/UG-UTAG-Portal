@@ -77,6 +77,12 @@ function previewClass(field: WorkspaceField) {
   return "aspect-[16/8]";
 }
 
+function previewWidthClass(field: WorkspaceField) {
+  if (field.media?.aspect === "portrait") return "max-w-[13rem]";
+  if (field.media?.aspect === "square") return "max-w-[15rem]";
+  return "max-w-md";
+}
+
 async function waitForScan(assetId: string) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const asset = await api<MediaAsset>(`/api/v1/media/${assetId}`);
@@ -363,7 +369,9 @@ export function WorkspaceMediaField({
       {ids.length ? (
         <div
           className={
-            allowMultiple ? "grid gap-3 sm:grid-cols-2" : "grid max-w-md gap-3"
+            allowMultiple
+              ? "grid gap-3 sm:grid-cols-2"
+              : `grid gap-3 ${previewWidthClass(field)}`
           }
         >
           {ids.map((assetId) => (

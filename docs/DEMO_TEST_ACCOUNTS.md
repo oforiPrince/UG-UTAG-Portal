@@ -30,7 +30,7 @@ All accounts use the password supplied in `DEMO_DATA_PASSWORD`.
 ## Additional executive accounts
 
 The seed also creates active, public appointments and login-ready Executive
-accounts for Vice President, Assistant Secretary, Treasurer, Assistant
+accounts for Vice-President, Assistant Secretary, Treasurer, Assistant
 Treasurer, Organiser, Women's Executive Officer, Past President, National
 President, and the CBAS, CHS, COE and COH representatives.
 

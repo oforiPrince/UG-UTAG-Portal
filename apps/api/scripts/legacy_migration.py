@@ -409,6 +409,7 @@ LEGACY_GROUP_ROLE_KEYS = {
     "executive": "executive",
     "president": "executive",
     "vice president": "executive",
+    "vice-president": "executive",
     "treasurer": "executive",
     "member": "member",
     "editor": "editor",

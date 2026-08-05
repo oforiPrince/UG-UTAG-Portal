@@ -278,7 +278,7 @@ export default async function Home() {
           <div className="mx-auto max-w-[82rem]">
             <SectionHeading
               kicker="Our events"
-              title="Meet, learn and shape our common work"
+              title="Meet, learn, and shape our common work"
               copy="Upcoming meetings and activities for members and the wider academic community."
             />
             <div className="mt-10 grid gap-6 lg:grid-cols-3">

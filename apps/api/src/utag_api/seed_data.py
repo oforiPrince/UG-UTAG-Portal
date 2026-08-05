@@ -169,7 +169,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
     "site.identity": {
         "name": "University of Ghana UTAG",
         "short_name": "UG UTAG",
-        "tagline": "Scholarship, solidarity and service",
+        "tagline": "Scholarship, solidarity, and service",
     },
     "site.contact": {
         "email": "utagoffice@ug.edu.gh",
@@ -181,7 +181,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
     "site.home": {
         "eyebrow": "University of Ghana Branch",
         "headline": "The academic voice of the University of Ghana",
-        "introduction": "A trusted home for members, knowledge and collective action.",
+        "introduction": "A trusted home for members, knowledge, and collective action.",
     },
     "site.about": {
         "heading": "A united voice for University of Ghana academics",
@@ -193,7 +193,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
     "site.resources": {
         "heading": "Public documents and association resources",
         "introduction": (
-            "Constitutional, policy and public-interest material approved for public access."
+            "Constitutional, policy, and public-interest material approved for public access."
         ),
     },
     "site.footer": {
@@ -254,7 +254,7 @@ AD_PLANS = (
         "content-inline",
         "750.00",
         30,
-        "728×90 leaderboard on news, events and gallery detail pages.",
+        "728×90 leaderboard on news, events, and gallery detail pages.",
     ),
     (
         "Site footer · 30 days",
