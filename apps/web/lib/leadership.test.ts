@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   executiveOfficers,
+  formatExecutivePosition,
   isExecutiveOfficerPosition,
   normalizeExecutivePosition,
   sortLeadership,
@@ -69,5 +70,14 @@ describe("leadership groups", () => {
     expect(normalizeExecutivePosition("Vice-President")).toBe("vice president");
     expect(normalizeExecutivePosition("Vice President")).toBe("vice president");
     expect(normalizeExecutivePosition("College of Health Rep")).toBe("chs rep");
+  });
+
+  it("shows abbreviated college rep labels on the public site", () => {
+    expect(formatExecutivePosition("College of Health Rep")).toBe("CHS Rep");
+    expect(formatExecutivePosition("College of Humanities Rep")).toBe("COH Rep");
+    expect(formatExecutivePosition("College of Education Rep")).toBe("COE Rep");
+    expect(formatExecutivePosition("CHS Rep")).toBe("CHS Rep");
+    expect(formatExecutivePosition("CBAS Rep")).toBe("CBAS Rep");
+    expect(formatExecutivePosition("Vice-President")).toBe("Vice-President");
   });
 });

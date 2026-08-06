@@ -12,6 +12,14 @@ const POSITION_ALIASES: Record<string, string> = {
   "college of education rep": "coe rep",
 };
 
+/** Canonical public labels for college reps (legacy full names still exist in data). */
+const POSITION_DISPLAY_LABELS: Record<string, string> = {
+  "coh rep": "COH Rep",
+  "chs rep": "CHS Rep",
+  "coe rep": "COE Rep",
+  "cbas rep": "CBAS Rep",
+};
+
 const PUBLIC_POSITION_ORDER = [
   ...EXECUTIVE_POSITION_ORDER,
   "national president",
@@ -57,6 +65,15 @@ export function normalizeExecutivePosition(position: string) {
     .trim()
     .toLowerCase();
   return POSITION_ALIASES[normalized] ?? normalized;
+}
+
+/** Short public label for leadership cards (e.g. College of Health Rep → CHS Rep). */
+export function formatExecutivePosition(position: string) {
+  const normalized = normalizeExecutivePosition(position);
+  if (POSITION_DISPLAY_LABELS[normalized]) {
+    return POSITION_DISPLAY_LABELS[normalized];
+  }
+  return position.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export function isExecutiveOfficerPosition(position: string) {

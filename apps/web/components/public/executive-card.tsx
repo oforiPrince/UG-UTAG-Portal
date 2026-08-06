@@ -1,7 +1,10 @@
 import Image from "next/image";
 
 import { ExecutiveProfileButton } from "@/components/public/executive-profile-button";
-import type { PublicExecutiveProfile } from "@/lib/leadership";
+import {
+  formatExecutivePosition,
+  type PublicExecutiveProfile,
+} from "@/lib/leadership";
 import { publicMediaUrl } from "@/lib/public-media";
 import { cn, formatPersonName, formatRankForName, initials } from "@/lib/utils";
 
@@ -63,7 +66,7 @@ export function ExecutiveCard({
           )}
         >
           <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
-            {profile.position}
+            {formatExecutivePosition(profile.position)}
           </p>
           <h3
             className={cn(

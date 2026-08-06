@@ -14,7 +14,10 @@ import {
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
-import type { PublicExecutiveProfile } from "@/lib/leadership";
+import {
+  formatExecutivePosition,
+  type PublicExecutiveProfile,
+} from "@/lib/leadership";
 import { publicMediaUrl } from "@/lib/public-media";
 import { cn, formatPersonName, formatRankForName, humanize, initials } from "@/lib/utils";
 
@@ -127,7 +130,7 @@ function ExecutiveProfileModal({
             )}
             <p className="mt-7 text-[.68rem] font-extrabold tracking-[.14em] text-gold uppercase">
               {profile.is_acting ? "Acting " : ""}
-              {profile.position}
+              {formatExecutivePosition(profile.position)}
             </p>
             {profile.portfolio ? (
               <p className="mt-3 text-sm leading-6 text-white/72">
@@ -180,7 +183,9 @@ function ExecutiveProfileModal({
             >
               {formatPersonName(profile.full_name)}
             </h2>
-            <p className="mt-2 font-bold text-coral">{profile.position}</p>
+            <p className="mt-2 font-bold text-coral">
+              {formatExecutivePosition(profile.position)}
+            </p>
             {profile.summary ? (
               <p
                 className="mt-5 max-w-2xl text-sm leading-7 text-muted"
