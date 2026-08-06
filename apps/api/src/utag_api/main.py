@@ -94,7 +94,12 @@ async def request_context(request: Request, call_next):  # type: ignore[no-untyp
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["X-Frame-Options"] = "DENY"
+    # Public media must be SAMEORIGIN so same-site article/event iframes can
+    # render PDFs inline. Everything else stays DENY.
+    media_prefix = f"{settings.api_prefix}/public/media/"
+    response.headers["X-Frame-Options"] = (
+        "SAMEORIGIN" if request.url.path.startswith(media_prefix) else "DENY"
+    )
     if request.url.path.startswith(f"{settings.api_prefix}/") and not request.url.path.startswith(
         f"{settings.api_prefix}/public/"
     ):

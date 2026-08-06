@@ -380,11 +380,11 @@ export function DocumentPreview({
           <p className="text-[.63rem] font-black tracking-[.14em] text-gold uppercase">
             {privateView
               ? "Protected member preview"
-              : "Public document preview"}
+              : "Read online"}
           </p>
           <p className="mt-1 text-xs text-white/65">
             {document.files.length} file{document.files.length === 1 ? "" : "s"}{" "}
-            · Full content
+            · {privateView ? "Full content" : "No download required"}
           </p>
         </div>
         {backControl}

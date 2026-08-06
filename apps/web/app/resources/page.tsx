@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { ArrowDownToLine, Eye, FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -71,27 +71,35 @@ export default async function ResourcesPage() {
                   >
                     <Link href={`/resources/${document.id}`}>
                       <Eye className="size-4 shrink-0" />
-                      <span className="truncate">Preview full document</span>
+                      <span className="truncate">Read online</span>
                     </Link>
                   </Button>
-                  {document.files.map((file) => (
-                    <Button
-                      key={file.media_asset_id}
-                      asChild
-                      className="flex w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden rounded-md px-3 sm:gap-3 sm:px-5"
-                      variant="outline"
-                    >
-                      <a href={file.download_url} download={file.filename}>
-                        <span className="min-w-0 flex-1 truncate text-left">
-                          {file.filename}
-                        </span>
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:gap-2">
-                          {fileSize(file.byte_size)}
-                          <ArrowDownToLine className="size-4" />
-                        </span>
-                      </a>
-                    </Button>
-                  ))}
+                  {document.files.map((file) => {
+                    const fileUrl = file.content_url ?? file.download_url;
+                    return (
+                      <Button
+                        key={file.media_asset_id}
+                        asChild
+                        className="flex w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden rounded-md px-3 sm:gap-3 sm:px-5"
+                        variant="outline"
+                      >
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Read ${file.filename} in your browser`}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-left">
+                            {file.filename}
+                          </span>
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:gap-2">
+                            {fileSize(file.byte_size)}
+                            <Eye className="size-4" />
+                          </span>
+                        </a>
+                      </Button>
+                    );
+                  })}
                 </div>
               </article>
             ))}
