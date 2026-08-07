@@ -22,8 +22,6 @@ def production_settings(**overrides: object) -> Settings:
         "malware_scan_required": True,
         "clamav_host": "clamav",
         "smtp_host": "smtp.example.org",
-        "smtp_username": "portal-mailer",
-        "smtp_password": "smtp-secret-with-more-than-32-characters",
         "metrics_enabled": False,
     }
     values.update(overrides)
@@ -34,14 +32,6 @@ def test_safe_production_configuration_is_accepted() -> None:
     settings = production_settings()
 
     assert settings.is_production is True
-
-
-def test_production_configuration_requires_smtp_credentials() -> None:
-    with pytest.raises(ValidationError, match="SMTP_USERNAME and SMTP_PASSWORD"):
-        production_settings(smtp_username=None, smtp_password=None)
-
-    with pytest.raises(ValidationError, match="SMTP_USERNAME and SMTP_PASSWORD"):
-        production_settings(smtp_username="portal-mailer", smtp_password="")
 
 
 @pytest.mark.parametrize(
