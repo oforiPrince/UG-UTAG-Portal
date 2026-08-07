@@ -173,6 +173,15 @@ class Settings(BaseSettings):
             raise ValueError("Production uploads require a configured malware scanner")
         if not self.smtp_host:
             raise ValueError("Production account and contact workflows require SMTP")
+        smtp_username = (self.smtp_username or "").strip()
+        smtp_password = (
+            self.smtp_password.get_secret_value().strip() if self.smtp_password else ""
+        )
+        if not smtp_username or not smtp_password:
+            raise ValueError(
+                "Production SMTP requires SMTP_USERNAME and SMTP_PASSWORD so contact "
+                "and account email can be delivered"
+            )
         if not self.s3_server_side_encryption:
             raise ValueError("Production object storage must enable server-side encryption")
         if self.s3_server_side_encryption == "aws:kms" and not self.s3_kms_key_id:

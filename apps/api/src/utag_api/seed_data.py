@@ -165,6 +165,20 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
     },
 }
 
+# Canonical office hours for public contact surfaces.
+CANONICAL_OFFICE_HOURS = "Monday-Friday, 9:00 AM-5:00 PM"
+
+# Known stale values previously seeded or hard-coded; reconciled on each seed run.
+STALE_OFFICE_HOURS = frozenset(
+    {
+        "Monday-Friday, 9:00 AM-6:00 PM",
+        "Monday–Friday, 9:00 AM–6:00 PM",
+        "Monday to Friday: 9:00 AM - 6:00 PM",
+        "Mon – Fri : 9:00 – 18:00",
+        "Mon - Fri : 9:00 - 18:00",
+    }
+)
+
 SITE_SETTINGS: Mapping[str, dict[str, object]] = {
     "site.identity": {
         "name": "University of Ghana UTAG",
@@ -175,7 +189,7 @@ SITE_SETTINGS: Mapping[str, dict[str, object]] = {
         "email": "utagoffice@ug.edu.gh",
         "phone": "+233 (0) 24 427 7275",
         "address": "University of Ghana, Legon, Accra",
-        "office_hours": "Monday-Friday, 9:00 AM-5:00 PM",
+        "office_hours": CANONICAL_OFFICE_HOURS,
     },
     "site.social": {},
     "site.home": {
@@ -317,11 +331,28 @@ async def seed_organization(db: AsyncSession) -> None:
                 )
 
 
+def reconcile_office_hours(value: dict[str, object]) -> dict[str, object]:
+    """Rewrite known stale office-hours strings without touching other contact fields."""
+    current = value.get("office_hours")
+    if not isinstance(current, str):
+        return value
+    normalized = current.strip()
+    if normalized not in STALE_OFFICE_HOURS:
+        return value
+    return {**value, "office_hours": CANONICAL_OFFICE_HOURS}
+
+
 async def seed_portal_defaults(db: AsyncSession) -> None:
     settings = {row.key: row for row in (await db.scalars(select(SiteSetting))).all()}
     for key, value in SITE_SETTINGS.items():
         if key not in settings:
             db.add(SiteSetting(id=new_id(), key=key, value=value, is_public=True))
+
+    contact = settings.get("site.contact")
+    if contact is not None and isinstance(contact.value, dict):
+        updated = reconcile_office_hours(contact.value)
+        if updated is not contact.value:
+            contact.value = updated
 
     flags = {row.key: row for row in (await db.scalars(select(FeatureFlag))).all()}
     for key, description in FEATURE_FLAGS.items():
