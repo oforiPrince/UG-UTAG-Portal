@@ -75,9 +75,6 @@ async def test_google_drive_import_requires_configuration(client) -> None:  # ty
         json={
             "title": "Drive import gallery",
             "status": "draft",
-            "external_album_url": (
-                "https://drive.google.com/drive/folders/12OsdYhfgIBs5XXbheCEP5S44A3Fp9a-S"
-            ),
         },
     )
     assert create.status_code == 201

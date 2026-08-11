@@ -86,6 +86,12 @@ export function PublicFooter({
                 Gallery
               </Link>
             ) : null}
+            <a
+              href="https://ugresearch.ug.edu.gh/"
+              className="hover:text-white"
+            >
+              UG Research
+            </a>
             <Link href="/contact" className="hover:text-white">
               Contact us
             </Link>

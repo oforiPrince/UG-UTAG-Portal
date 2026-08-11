@@ -45,11 +45,19 @@ def test_event_rejects_invalid_registration_link() -> None:
         )
 
 
-def test_gallery_requires_images_or_external_album() -> None:
+def test_gallery_allows_empty_draft_for_deferred_import() -> None:
+    from utag_api.schemas.domain import GalleryCreate
+
+    gallery = GalleryCreate(title="Empty gallery")
+    assert gallery.status == "draft"
+    assert gallery.media_asset_ids == []
+
+
+def test_gallery_requires_images_or_external_album_before_review() -> None:
     from utag_api.schemas.domain import GalleryCreate
 
     with pytest.raises(ValidationError):
-        GalleryCreate(title="Empty gallery")
+        GalleryCreate(title="Empty gallery", status="review")
 
 
 def test_gallery_accepts_external_album_without_images() -> None:

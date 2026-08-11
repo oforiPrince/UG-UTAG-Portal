@@ -881,7 +881,11 @@ class GalleryCreate(ApiModel):
 
     @model_validator(mode="after")
     def require_images_or_external_album(self) -> "GalleryCreate":
-        if not self.media_asset_ids and self.external_album_url is None:
+        if (
+            self.status != "draft"
+            and not self.media_asset_ids
+            and self.external_album_url is None
+        ):
             raise ValueError(
                 "Add at least one gallery image or an external album link "
                 "(Google Drive, OneDrive, or similar)"
