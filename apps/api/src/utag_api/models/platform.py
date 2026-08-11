@@ -92,9 +92,13 @@ class GoogleDriveConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """Per-user Google OAuth tokens for Drive folder imports."""
 
     __tablename__ = "google_drive_connections"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_google_drive_connections_user_id"),
+        Index("ix_google_drive_connections_user_id", "user_id"),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+        ForeignKey("users.id", ondelete="CASCADE")
     )
     google_sub: Mapped[str] = mapped_column(String(128), index=True)
     google_email: Mapped[str] = mapped_column(String(255), default="")
