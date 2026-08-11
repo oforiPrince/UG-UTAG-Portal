@@ -141,6 +141,10 @@ Production cutover still requires the full go/no-go gates in the runbook, named 
 
 ## Required production operations
 
+Routine releases must use the guarded [production deployment runbook](docs/ROUTINE_PRODUCTION_DEPLOYMENT.md),
+which verifies backups, security posture, health, and disk-safe Docker cleanup
+before and after a release.
+
 - Daily PostgreSQL backups plus point-in-time recovery where the hosting profile supports it.
 - Object-store versioning and retention rules for media and migration evidence.
 - Quarterly restore drills with recorded recovery time and recovery point evidence.
