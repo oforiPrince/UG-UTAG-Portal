@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import {
   defaultDeliveryCapabilities,
-  deliveryAvailable,
+  emailDeliveryAvailable,
   type DeliveryCapabilities,
 } from "@/lib/delivery-capabilities";
 
@@ -41,7 +41,8 @@ export function LoginForm() {
   });
   const showForgotPassword =
     capabilities.isSuccess &&
-    deliveryAvailable(capabilities.data ?? defaultDeliveryCapabilities);
+    emailDeliveryAvailable(capabilities.data ?? defaultDeliveryCapabilities);
+  const passwordWasReset = search.get("reset") === "success";
   const {
     register,
     handleSubmit,
@@ -70,6 +71,14 @@ export function LoginForm() {
   });
   return (
     <form className="grid gap-5" onSubmit={submit}>
+      {passwordWasReset ? (
+        <div
+          className="rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm leading-6 text-emerald-800 dark:text-emerald-200"
+          role="status"
+        >
+          Your password has been reset. Sign in with your new password.
+        </div>
+      ) : null}
       <label className="grid gap-2 text-xs font-bold">
         University or member email
         <input
@@ -88,7 +97,10 @@ export function LoginForm() {
         <span className="flex justify-between">
           Password
           {showForgotPassword ? (
-            <Link className="font-semibold text-coral" href="/forgot-password">
+            <Link
+              className="rounded-sm font-semibold text-coral underline-offset-4 hover:underline"
+              href="/forgot-password"
+            >
               Forgot password?
             </Link>
           ) : null}

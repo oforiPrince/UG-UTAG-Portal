@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utag_api.config import get_settings
 from utag_api.database import SessionFactory, new_id
 from utag_api.models import (
+    AccountToken,
     Announcement,
     Article,
     BackgroundJob,
@@ -27,15 +28,20 @@ from utag_api.models import (
     GoogleDriveConnection,
     MediaAsset,
     MediaVariant,
+    Notification,
     OutboxEvent,
     Session,
     User,
 )
 from utag_api.observability import configure_logging, get_logger
-from utag_api.security import decrypt_text
+from utag_api.security import decrypt_text, token_digest
+from utag_api.services import email as mail
 from utag_api.services import google_drive as drive
 from utag_api.services.events import EventContext, record_change
-from utag_api.services.notifications import deliver_announcement_notifications
+from utag_api.services.notifications import (
+    MAX_NOTIFICATION_EMAIL_JOB_RECIPIENTS,
+    deliver_announcement_notifications,
+)
 from utag_api.services.storage import (
     delete_storage_objects,
     quarantine_key,
@@ -233,14 +239,11 @@ def publish_scheduled_content() -> int:
 
 
 def _send_message(message: EmailMessage) -> None:
-    if not settings.smtp_host:
-        raise RuntimeError("SMTP is not configured")
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as client:
-        if settings.smtp_use_tls:
-            client.starttls()
-        if settings.smtp_username and settings.smtp_password:
-            client.login(settings.smtp_username, settings.smtp_password.get_secret_value())
-        client.send_message(message)
+    mail.send_message(message, settings)
+
+
+def _send_messages(messages: list[EmailMessage]) -> mail.BulkEmailResult:
+    return mail.send_messages(messages, settings)
 
 
 @celery_app.task(  # type: ignore[misc]
@@ -250,26 +253,35 @@ def _send_message(message: EmailMessage) -> None:
     max_retries=5,
 )
 def send_password_reset(user_id: str, encrypted_token: str) -> None:
+    raw_token = decrypt_text(encrypted_token.encode())
+    if not raw_token:
+        raise RuntimeError("Password reset token could not be decrypted")
+
     async def load_user() -> User | None:
         async with SessionFactory() as db:
-            return await db.get(User, UUID(user_id))
+            users = await db.scalars(
+                select(User)
+                .join(AccountToken, AccountToken.user_id == User.id)
+                .where(
+                    User.id == UUID(user_id),
+                    User.status == "active",
+                    AccountToken.kind == "password_reset",
+                    AccountToken.token_hash == token_digest(raw_token),
+                    AccountToken.used_at.is_(None),
+                    AccountToken.expires_at > datetime.now(UTC),
+                )
+            )
+            return users.first()
 
     user = asyncio.run(load_user())
     if user is None:
         return
-    raw_token = decrypt_text(encrypted_token.encode())
-    if not raw_token:
-        raise RuntimeError("Password reset token could not be decrypted")
-    reset_url = f"{settings.public_web_url}/reset-password?token={raw_token}"
-    message = EmailMessage()
-    message["Subject"] = "Reset your UG UTAG Portal password"
-    message["From"] = settings.smtp_from_email
-    message["To"] = user.email
-    message.set_content(
-        f"Hello {user.full_name},\n\n"
-        "A password reset was requested for your UG UTAG Portal account. "
-        f"Use this link within 30 minutes:\n\n{reset_url}\n\n"
-        "If you did not request this, you can ignore this message."
+    reset_url = f"{settings.public_web_url}/reset-password#token={raw_token}"
+    message = mail.password_reset_message(
+        user_name=user.full_name,
+        recipient_email=user.email,
+        reset_url=reset_url,
+        settings=settings,
     )
     _send_message(message)
 
@@ -292,14 +304,11 @@ def send_invitation(user_id: str, encrypted_token: str) -> None:
     if not raw_token:
         raise RuntimeError("Invitation token could not be decrypted")
     invitation_url = f"{settings.public_web_url}/accept-invitation?token={raw_token}"
-    message = EmailMessage()
-    message["Subject"] = "Welcome to the UG UTAG Portal"
-    message["From"] = settings.smtp_from_email
-    message["To"] = user.email
-    message.set_content(
-        f"Hello {user.full_name},\n\n"
-        "Your UG UTAG Portal membership account is ready. Set your password "
-        f"within seven days:\n\n{invitation_url}\n"
+    message = mail.invitation_message(
+        user_name=user.full_name,
+        recipient_email=user.email,
+        invitation_url=invitation_url,
+        settings=settings,
     )
     _send_message(message)
 
@@ -331,18 +340,13 @@ def deliver_contact_message(job_id: str) -> None:
     data = job.input_json
     sender_name = str(data.get("name") or "Website visitor")
     sender_email = str(data.get("email") or "")
-    message = EmailMessage()
-    message["Subject"] = f"Contact form: {data.get('subject') or 'New message'}"
-    message["From"] = settings.smtp_from_email
-    message["To"] = settings.contact_recipient_email
-    if sender_email:
-        message["Reply-To"] = sender_email
-    message.set_content(
-        "A message was submitted through the UG UTAG Portal contact form.\n\n"
-        f"Name: {sender_name}\n"
-        f"Email: {sender_email or 'not provided'}\n"
-        f"Subject: {data.get('subject') or ''}\n\n"
-        f"{data.get('message') or ''}\n"
+    message = mail.contact_message(
+        recipient_email=settings.contact_recipient_email,
+        sender_name=sender_name,
+        sender_email=sender_email,
+        subject=str(data.get("subject") or "New message"),
+        message_text=str(data.get("message") or ""),
+        settings=settings,
     )
     try:
         _send_message(message)
@@ -369,6 +373,133 @@ def deliver_contact_message(job_id: str) -> None:
             },
         )
     )
+
+
+async def _load_notification_email_job(
+    job_id: UUID,
+) -> tuple[BackgroundJob, list[tuple[Notification, User]]] | None:
+    async with SessionFactory() as db:
+        job = await db.scalar(
+            select(BackgroundJob).where(BackgroundJob.id == job_id).with_for_update()
+        )
+        if job is None or job.kind not in {"email.announcement", "email.notification"}:
+            return None
+        if job.status in {"completed", "failed"}:
+            return None
+        if job.status == "running":
+            job.status = "failed"
+            job.progress = 100
+            job.error_code = "email_delivery_interrupted"
+            job.error_message = (
+                "Delivery was interrupted after it started; review provider traces before "
+                "sending any replacement messages"
+            )
+            await db.commit()
+            return None
+        raw_ids = job.input_json.get("notification_ids", [])
+        if not isinstance(raw_ids, list) or len(raw_ids) > MAX_NOTIFICATION_EMAIL_JOB_RECIPIENTS:
+            job.status = "failed"
+            job.error_code = "email_job_invalid"
+            job.error_message = "The queued notification list is invalid"
+            await db.commit()
+            return None
+        try:
+            notification_ids = [UUID(str(value)) for value in raw_ids]
+        except ValueError:
+            job.status = "failed"
+            job.error_code = "email_job_invalid"
+            job.error_message = "The queued notification list is invalid"
+            await db.commit()
+            return None
+        result = await db.execute(
+            select(Notification, User)
+            .join(User, User.id == Notification.user_id)
+            .where(
+                Notification.id.in_(notification_ids),
+                User.status == "active",
+            )
+            .order_by(Notification.created_at, Notification.id)
+        )
+        rows = [(notification, user) for notification, user in result]
+        job.status = "running"
+        job.progress = 5
+        job.error_code = None
+        job.error_message = None
+        await db.commit()
+        return job, rows
+
+
+@celery_app.task(name="utag.email.notification_batch")  # type: ignore[misc]
+def deliver_notification_email_batch(job_id: str) -> dict[str, int]:
+    """Deliver one private, personalized email per notification recipient.
+
+    SMTP failures are collected instead of automatically retrying the entire batch,
+    which avoids duplicating messages already accepted by the server.
+    """
+    loaded = asyncio.run(_load_notification_email_job(UUID(job_id)))
+    if loaded is None:
+        return {"sent": 0, "failed": 0}
+    job, rows = loaded
+    try:
+        messages = [
+            mail.notification_message(
+                user_name=user.full_name,
+                recipient_email=user.email,
+                category=notification.category,
+                priority=notification.priority,
+                title=notification.title,
+                body_html=notification.body,
+                deep_link=notification.deep_link,
+                settings=settings,
+            )
+            for notification, user in rows
+        ]
+        result = _send_messages(messages)
+    except Exception as exc:
+        asyncio.run(
+            _update_contact_job(
+                job.id,
+                status="failed",
+                progress=100,
+                error_code="email_delivery_failed",
+                error_message=f"Email delivery stopped: {type(exc).__name__}",
+            )
+        )
+        raise
+    status = "completed" if result.failed == 0 else "failed"
+    result_json: dict[str, object] = {
+        "attempted": len(messages),
+        "sent": result.sent,
+        "failed": result.failed,
+    }
+    if result.failed_indexes:
+        result_json["failed_notification_ids"] = [
+            str(rows[index][0].id) for index in result.failed_indexes if 0 <= index < len(rows)
+        ]
+    asyncio.run(
+        _update_contact_job(
+            job.id,
+            status=status,
+            progress=100,
+            error_code=None if result.failed == 0 else "email_delivery_partial",
+            error_message=(
+                None
+                if result.failed == 0
+                else f"{result.failed} message(s) were not accepted by the SMTP service"
+            ),
+            result_json=result_json,
+        )
+    )
+    if result.failed:
+        logger.warning(
+            "notification_email_batch_partial",
+            job_id=str(job.id),
+            attempted=len(messages),
+            sent=result.sent,
+            failed=result.failed,
+            error_types=sorted({error.partition(":")[0] for error in result.errors}),
+        )
+    return {"sent": result.sent, "failed": result.failed}
 
 
 def _clamav_scan(source: BinaryIO) -> None:
@@ -538,9 +669,7 @@ async def _process_media_for_import(asset_id: UUID) -> None:
     await asyncio.to_thread(process_media, str(asset_id))
 
 
-async def _refresh_processed_media(
-    db: AsyncSession, asset: MediaAsset
-) -> MediaAsset | None:
+async def _refresh_processed_media(db: AsyncSession, asset: MediaAsset) -> MediaAsset | None:
     """Refresh only the processed asset, preserving other importer identity state."""
     await db.refresh(asset, attribute_names=["status", "storage_key"])
     return asset if asset.status == "ready" else None

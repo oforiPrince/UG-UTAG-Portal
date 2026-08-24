@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 
+from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import select
 
 from utag_api.config import get_settings
@@ -9,6 +10,8 @@ from utag_api.demo_data import seed_demo_data
 from utag_api.models import Role, User, UserRole
 from utag_api.security import hash_password, normalize_email
 from utag_api.seed_data import reconcile_organization, seed_portal_defaults
+from utag_api.services.delivery import email_delivery_enabled
+from utag_api.services.email import notification_message, send_message
 from utag_api.services.identity import seed_authorization, strong_password_errors
 from utag_api.services.system_chat_groups import (
     SystemChatSyncResult,
@@ -140,6 +143,37 @@ async def reconcile_organization_data(
         await reconcile_chat_groups()
 
 
+def send_email_test(recipient: str) -> None:
+    settings = get_settings()
+    if not email_delivery_enabled(settings):
+        raise RuntimeError(
+            "Email delivery is disabled. Configure SMTP_HOST and either credentials or "
+            "SMTP_AUTH_REQUIRED=false for an approved relay."
+        )
+    try:
+        normalized_recipient = validate_email(
+            recipient,
+            check_deliverability=False,
+        ).normalized
+    except EmailNotValidError as exc:
+        raise RuntimeError("--to must be a valid email address") from exc
+    message = notification_message(
+        user_name="UTAG UG colleague",
+        recipient_email=normalized_recipient,
+        category="administrative",
+        priority="normal",
+        title="UTAG UG Portal email service test",
+        body_html=(
+            "<p>The portal successfully connected to the approved email service and "
+            "submitted this branded test message.</p>"
+        ),
+        deep_link="/dashboard",
+        settings=settings,
+    )
+    send_message(message, settings)
+    print(f"Test email accepted by SMTP for {normalized_recipient}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="UG UTAG API management commands")
     parser.add_argument(
@@ -150,7 +184,12 @@ def main() -> None:
             "sync-chat-groups",
             "reconcile-organization",
             "backfill-media-variants",
+            "email-test",
         ],
+    )
+    parser.add_argument(
+        "--to",
+        help="Recipient for the email-test command.",
     )
     parser.add_argument(
         "--apply",
@@ -201,6 +240,10 @@ def main() -> None:
         for asset_id in ids:
             ensure_media_variants(asset_id)
         print(f"Ensured display variants for {len(ids)} ready image assets")
+    if args.command == "email-test":
+        if not args.to:
+            parser.error("email-test requires --to")
+        send_email_test(args.to)
 
 
 if __name__ == "__main__":

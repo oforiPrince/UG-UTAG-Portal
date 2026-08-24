@@ -1,9 +1,48 @@
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utag_api.database import new_id
-from utag_api.models import Announcement, Notification, Role, User, UserRole
-from utag_api.services.events import EventContext, record_change
+from utag_api.models import Announcement, BackgroundJob, Notification, Role, User, UserRole
+from utag_api.services.delivery import email_delivery_enabled
+from utag_api.services.events import EventContext, enqueue_task, record_change
+
+MAX_NOTIFICATION_EMAIL_JOB_RECIPIENTS = 5_000
+
+
+def enqueue_notification_email_jobs(
+    db: AsyncSession,
+    notification_ids: list[UUID],
+    *,
+    owner_id: UUID | None,
+    kind: str,
+) -> list[UUID]:
+    if not notification_ids or not email_delivery_enabled():
+        return []
+    if kind not in {"email.announcement", "email.notification"}:
+        raise ValueError("Unsupported notification email job kind")
+    job_ids: list[UUID] = []
+    for offset in range(0, len(notification_ids), MAX_NOTIFICATION_EMAIL_JOB_RECIPIENTS):
+        chunk = notification_ids[offset : offset + MAX_NOTIFICATION_EMAIL_JOB_RECIPIENTS]
+        job = BackgroundJob(
+            id=new_id(),
+            owner_id=owner_id,
+            kind=kind,
+            status="queued",
+            input_json={"notification_ids": [str(item) for item in chunk]},
+        )
+        db.add(job)
+        job_ids.append(job.id)
+        enqueue_task(
+            db,
+            task_name="utag.email.notification_batch",
+            aggregate_type="background_job",
+            aggregate_id=job.id,
+            args=[str(job.id)],
+            queue="communications",
+        )
+    return job_ids
 
 
 def _announcement_role_audiences(announcement: Announcement) -> set[str] | None:
@@ -56,6 +95,7 @@ async def deliver_announcement_notifications(
         ).all()
     )
 
+    notification_ids: list[UUID] = []
     for user_id in recipient_ids - delivered_ids:
         notification = Notification(
             id=new_id(),
@@ -66,8 +106,10 @@ async def deliver_announcement_notifications(
             body=announcement.content_html,
             resource_type="announcement",
             resource_id=announcement.id,
+            deep_link="/dashboard/announcements",
         )
         db.add(notification)
+        notification_ids.append(notification.id)
         record_change(
             db,
             context=context,
@@ -82,4 +124,10 @@ async def deliver_announcement_notifications(
                 "announcement_id": str(announcement.id),
             },
         )
-    return len(recipient_ids - delivered_ids)
+    enqueue_notification_email_jobs(
+        db,
+        notification_ids,
+        owner_id=context.actor_id,
+        kind="email.announcement",
+    )
+    return len(notification_ids)

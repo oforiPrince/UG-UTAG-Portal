@@ -4,10 +4,11 @@ from utag_api.errors import ApiError
 
 def email_delivery_enabled(settings: Settings | None = None) -> bool:
     cfg = settings or get_settings()
-    # Host alone is not enough — require credentials so a placeholder SMTP_HOST
-    # in production config does not pretend mail can be sent.
-    if not cfg.smtp_host:
+    if not cfg.smtp_host or not str(cfg.smtp_host).strip():
         return False
+    # UG may provide either authenticated SMTP or an IP-allowlisted relay.
+    if not getattr(cfg, "smtp_auth_required", True):
+        return True
     username = (cfg.smtp_username or "").strip()
     password = cfg.smtp_password.get_secret_value().strip() if cfg.smtp_password else ""
     return bool(username and password)

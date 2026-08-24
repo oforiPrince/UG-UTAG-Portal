@@ -10,6 +10,7 @@ The complete product, architecture, security, delivery, migration, and acceptanc
 
 - Responsive public site: home, mandate, leadership, news, events, resources, gallery, search, contact, SEO metadata, PWA shell, and constrained-connectivity fallback.
 - Secure account journeys: invitations, login, logout, session management, CSRF protection, password changes and reset links.
+- Branded multipart email for invitations, password resets, portal enquiries, announcements, event notices, administrative notices, and Secretariat updates, with private batched member delivery and tracked failures.
 - Bulk member onboarding: downloadable Excel template, row-by-row preview, staff-ID temporary passwords, mandatory first-login password change, and automatic UTAG, school, and department chats.
 - Role-aware dashboard: Association Pulse, member and executive management, organization structure, editorial workflows, announcements, events and registration, documents, media, galleries, notifications, encrypted direct/group chat, advertising, analytics, audit, settings, and background jobs.
 - Live data across dashboard pages through authenticated WebSockets, Redis Pub/Sub, transactional outbox events, query invalidation, reconnect backoff, and full resync after reconnect.
@@ -95,6 +96,8 @@ The command is blocked outside development and test environments. See
 and expected role experiences.
 
 The application never creates database tables at runtime. Every schema change must be an Alembic migration and must be tested both forward and backward in a non-production environment.
+
+Email service handoff, DNS requirements, bulk limits, bounce handling, and the SMTP acceptance test are documented in [docs/EMAIL_SERVICE_CONFIGURATION.md](docs/EMAIL_SERVICE_CONFIGURATION.md).
 
 ## Zero-loss migration sequence
 

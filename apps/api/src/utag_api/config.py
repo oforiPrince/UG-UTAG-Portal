@@ -1,8 +1,10 @@
+from email.utils import formataddr, parseaddr
 from functools import lru_cache
 from ipaddress import ip_network
 from typing import Literal
 from urllib.parse import urlsplit
 
+from email_validator import EmailNotValidError, validate_email
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -64,8 +66,19 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587, ge=1, le=65_535)
     smtp_username: str | None = None
     smtp_password: SecretStr | None = None
-    smtp_from_email: str = "UG UTAG Portal <no-reply@utag-ug.org>"
-    smtp_use_tls: bool = True
+    smtp_from_email: str = "no-reply@utag.ug.edu.gh"
+    smtp_from_name: str = "UTAG UG Portal"
+    smtp_reply_to_email: str | None = None
+    smtp_security: Literal["starttls", "tls", "none"] = "starttls"
+    # Backward-compatible bridge for existing deployments. Prefer SMTP_SECURITY.
+    smtp_use_tls: bool | None = None
+    smtp_auth_required: bool = True
+    smtp_timeout_seconds: int = Field(default=30, ge=5, le=120)
+    email_bulk_batch_size: int = Field(default=75, ge=1, le=500)
+    email_bulk_pause_seconds: float = Field(default=0, ge=0, le=60)
+    email_footer_address: str = (
+        "University Teachers Association of Ghana, University of Ghana Branch"
+    )
     contact_recipient_email: str = "utagoffice@ug.edu.gh"
     clamav_host: str | None = None
     clamav_port: int = Field(default=3310, ge=1, le=65_535)
@@ -96,6 +109,20 @@ class Settings(BaseSettings):
             ip_network(value)
         return values
 
+    @field_validator("smtp_from_email", "smtp_reply_to_email", "contact_recipient_email")
+    @classmethod
+    def validate_email_address(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if "\r" in value or "\n" in value:
+            raise ValueError("Email addresses must not contain line breaks")
+        _, address = parseaddr(value)
+        try:
+            validate_email(address, check_deliverability=False)
+        except EmailNotValidError as exc:
+            raise ValueError("Enter a valid email address") from exc
+        return value.strip()
+
     @model_validator(mode="after")
     def validate_production_safety(self) -> "Settings":
         if any(
@@ -121,6 +148,18 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "Google Drive OAuth token storage requires the active field encryption key"
                 )
+        has_smtp_username = bool(self.smtp_username and self.smtp_username.strip())
+        has_smtp_password = bool(
+            self.smtp_password and self.smtp_password.get_secret_value().strip()
+        )
+        if has_smtp_username != has_smtp_password:
+            raise ValueError("SMTP_USERNAME and SMTP_PASSWORD must be configured together")
+        if (
+            has_smtp_username
+            and self.smtp_auth_required
+            and self.effective_smtp_security == "none"
+        ):
+            raise ValueError("Authenticated SMTP requires STARTTLS or implicit TLS")
         if self.environment != "production":
             return self
         if self.database_url.startswith("sqlite"):
@@ -200,6 +239,18 @@ class Settings(BaseSettings):
             and self.google_oauth_client_secret.get_secret_value().strip()
             and self.field_encryption_key_version in self.field_encryption_keys
         )
+
+    @property
+    def effective_smtp_security(self) -> Literal["starttls", "tls", "none"]:
+        if self.smtp_use_tls is not None:
+            return "starttls" if self.smtp_use_tls else "none"
+        return self.smtp_security
+
+    @property
+    def smtp_sender(self) -> str:
+        legacy_name, address = parseaddr(self.smtp_from_email)
+        display_name = self.smtp_from_name.strip() or legacy_name
+        return formataddr((display_name, address))
 
 
 @lru_cache

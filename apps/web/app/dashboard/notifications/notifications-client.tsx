@@ -36,6 +36,18 @@ type Notice = {
 type Member = { id: string; full_name: string; email: string; status: string };
 type User = { permissions: string[] };
 type Page<T> = { items: T[] };
+type CommunicationCategory =
+  "direct" | "event" | "administrative" | "secretariat";
+
+const communicationCategories: Array<{
+  value: CommunicationCategory;
+  label: string;
+}> = [
+  { value: "direct", label: "Member communication" },
+  { value: "event", label: "Event notification" },
+  { value: "administrative", label: "Administrative notice" },
+  { value: "secretariat", label: "Secretariat update" },
+];
 
 function SendDirectAlertDialog({ close }: { close: () => void }) {
   const queryClient = useQueryClient();
@@ -43,6 +55,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [category, setCategory] = useState<CommunicationCategory>("direct");
   const [priority, setPriority] = useState("normal");
   const [deepLink, setDeepLink] = useState("");
   const members = useQuery({
@@ -65,7 +78,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
         method: "POST",
         body: {
           user_ids: selected,
-          category: "direct",
+          category,
           priority,
           title,
           body,
@@ -118,7 +131,8 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
               >
                 Announcements
               </Link>
-              .
+              . When email delivery is configured, each recipient also receives
+              the matching branded email template.
             </p>
           </div>
           <Button
@@ -169,6 +183,22 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-xs font-bold">
+              Communication type
+              <select
+                value={category}
+                onChange={(event) =>
+                  setCategory(event.target.value as CommunicationCategory)
+                }
+                className="min-h-11 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none"
+              >
+                {communicationCategories.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-xs font-bold">
               Priority
               <select
                 value={priority}
@@ -182,7 +212,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-xs font-bold">
+            <label className="grid gap-2 text-xs font-bold sm:col-span-2">
               Dashboard link
               <input
                 value={deepLink}

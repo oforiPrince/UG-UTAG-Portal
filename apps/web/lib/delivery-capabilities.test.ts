@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   defaultDeliveryCapabilities,
   deliveryAvailable,
+  emailDeliveryAvailable,
 } from "./delivery-capabilities";
 import { rowActionsFor } from "./workspace-row-actions";
 import { workspaces } from "./workspaces";
@@ -15,6 +16,15 @@ describe("delivery capabilities", () => {
     ).toBe(true);
     expect(
       deliveryAvailable({ email_delivery: false, sms_delivery: true }),
+    ).toBe(true);
+  });
+
+  it("only enables password recovery for configured email delivery", () => {
+    expect(
+      emailDeliveryAvailable({ email_delivery: false, sms_delivery: true }),
+    ).toBe(false);
+    expect(
+      emailDeliveryAvailable({ email_delivery: true, sms_delivery: false }),
     ).toBe(true);
   });
 });
@@ -105,14 +115,14 @@ describe("member credential actions require delivery", () => {
 });
 
 describe("login forgot-password visibility", () => {
-  it("only shows the link when delivery is available", async () => {
+  it("only shows the link when email delivery is available", async () => {
     vi.resetModules();
-    // Keep this assertion aligned with LoginForm's deliveryAvailable gate.
-    expect(deliveryAvailable({ email_delivery: false, sms_delivery: false })).toBe(
-      false,
-    );
-    expect(deliveryAvailable({ email_delivery: true, sms_delivery: false })).toBe(
-      true,
-    );
+    // Keep this assertion aligned with LoginForm's email-only capability gate.
+    expect(
+      emailDeliveryAvailable({ email_delivery: false, sms_delivery: true }),
+    ).toBe(false);
+    expect(
+      emailDeliveryAvailable({ email_delivery: true, sms_delivery: false }),
+    ).toBe(true);
   });
 });

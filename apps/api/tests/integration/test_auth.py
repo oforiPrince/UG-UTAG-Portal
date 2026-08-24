@@ -15,6 +15,7 @@ from utag_api.models import (
     ExecutiveAppointment,
     MediaAsset,
     OrganizationUnit,
+    OutboxEvent,
     Role,
     Session,
     User,
@@ -22,7 +23,7 @@ from utag_api.models import (
     UserRole,
 )
 from utag_api.routers import auth as auth_router
-from utag_api.security import hash_password
+from utag_api.security import hash_password, token_digest
 
 
 async def test_login_me_and_csrf_logout(client: AsyncClient) -> None:
@@ -78,6 +79,113 @@ async def test_unknown_account_still_runs_password_verification(
 
     assert response.status_code == 401
     assert verified_hashes == [auth_router.DUMMY_PASSWORD_HASH]
+
+
+async def test_member_can_request_and_complete_password_reset(
+    client: AsyncClient,
+    monkeypatch,
+    session_factory,
+) -> None:  # type: ignore[no-untyped-def]
+    existing_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    assert existing_login.status_code == 200
+
+    original_new_token = auth_router.new_token
+    first_token = "first-password-reset-token-" + "a" * 40
+    latest_token = "latest-password-reset-token-" + "b" * 40
+    generated_tokens = iter([first_token, latest_token])
+    monkeypatch.setattr(auth_router, "new_token", lambda: next(generated_tokens))
+
+    first_request = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": " ADMIN@EXAMPLE.EDU.GH "},
+    )
+    unknown_request = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "missing@example.edu.gh"},
+    )
+    latest_request = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "admin@example.edu.gh"},
+    )
+
+    assert first_request.status_code == 200
+    assert latest_request.status_code == 200
+    assert unknown_request.status_code == 200
+    assert first_request.json() == unknown_request.json() == latest_request.json()
+
+    async with session_factory() as session:
+        reset_tokens = (
+            await session.scalars(select(AccountToken).where(AccountToken.kind == "password_reset"))
+        ).all()
+        assert len(reset_tokens) == 2
+        by_digest = {item.token_hash: item for item in reset_tokens}
+        assert by_digest[token_digest(first_token)].used_at is not None
+        assert by_digest[token_digest(latest_token)].used_at is None
+
+        email_jobs = (
+            await session.scalars(
+                select(OutboxEvent).where(OutboxEvent.event_type == "task.dispatch")
+            )
+        ).all()
+        reset_jobs = [
+            item
+            for item in email_jobs
+            if item.payload.get("task_name") == "utag.email.password_reset"
+        ]
+        assert len(reset_jobs) == 2
+        assert first_token not in str(reset_jobs)
+        assert latest_token not in str(reset_jobs)
+
+    invalidated_link = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": first_token, "password": "NewPassword456"},
+    )
+    assert invalidated_link.status_code == 400
+    assert invalidated_link.json()["error"]["code"] == "reset_token_invalid"
+
+    weak_password = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": latest_token, "password": "lowercase123"},
+    )
+    assert weak_password.status_code == 422
+    assert weak_password.json()["error"]["code"] == "weak_password"
+
+    completed = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": latest_token, "password": "NewPassword456"},
+    )
+    assert completed.status_code == 200
+
+    revoked_session = await client.get("/api/v1/auth/me")
+    assert revoked_session.status_code == 401
+
+    replay = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": latest_token, "password": "AnotherPassword789"},
+    )
+    assert replay.status_code == 400
+    assert replay.json()["error"]["code"] == "reset_token_invalid"
+
+    monkeypatch.setattr(auth_router, "new_token", original_new_token)
+    old_password = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    new_password = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "NewPassword456"},
+    )
+    assert old_password.status_code == 401
+    assert new_password.status_code == 200
+
+    async with session_factory() as session:
+        reset_tokens = (
+            await session.scalars(select(AccountToken).where(AccountToken.kind == "password_reset"))
+        ).all()
+        assert all(item.used_at is not None for item in reset_tokens)
 
 
 async def test_profile_and_password_workflow(client: AsyncClient) -> None:

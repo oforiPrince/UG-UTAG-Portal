@@ -60,6 +60,7 @@ from utag_api.services.organization import validate_organization_assignment
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 DUMMY_PASSWORD_HASH = hash_password(new_token())
+PASSWORD_RESET_TTL_MINUTES = 30
 
 
 def summarize_user(
@@ -475,18 +476,30 @@ async def forgot_password(
     require_email_delivery()
     email = normalize_email(str(payload.email))
     request_ip = client_ip(request)
-    await enforce_rate_limit("password-reset", request_ip, limit=8, period_seconds=3600)
-    user = await db.scalar(select(User).where(User.email == email, User.status == "active"))
+    await enforce_rate_limit("password-reset-ip", request_ip, limit=8, period_seconds=3600)
+    await enforce_rate_limit("password-reset-account", email, limit=3, period_seconds=3600)
+    user = await db.scalar(
+        select(User).where(User.email == email, User.status == "active").with_for_update()
+    )
     if user is not None:
         now = datetime.now(UTC)
         raw_token = new_token()
+        await db.execute(
+            update(AccountToken)
+            .where(
+                AccountToken.user_id == user.id,
+                AccountToken.kind == "password_reset",
+                AccountToken.used_at.is_(None),
+            )
+            .values(used_at=now)
+        )
         db.add(
             AccountToken(
                 user_id=user.id,
                 kind="password_reset",
                 token_hash=token_digest(raw_token),
                 created_at=now,
-                expires_at=now + timedelta(minutes=30),
+                expires_at=now + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES),
             )
         )
         encrypted_token = encrypt_text(raw_token)
@@ -529,7 +542,15 @@ async def reset_password(payload: ResetPasswordRequest, db: DbSession) -> Messag
         raise ApiError(400, "reset_token_invalid", "The reset link is invalid or has expired")
     user.password_hash = hash_password(payload.password)
     user.must_change_password = False
-    account_token.used_at = now
+    await db.execute(
+        update(AccountToken)
+        .where(
+            AccountToken.user_id == user.id,
+            AccountToken.kind == "password_reset",
+            AccountToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
     await db.execute(
         update(Session)
         .where(Session.user_id == user.id, Session.revoked_at.is_(None))

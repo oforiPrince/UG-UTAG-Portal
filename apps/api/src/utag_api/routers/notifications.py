@@ -20,6 +20,7 @@ from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import NotificationCreate, NotificationView
 from utag_api.services.content import sanitize_html
 from utag_api.services.events import record_change
+from utag_api.services.notifications import enqueue_notification_email_jobs
 from utag_api.services.query import paginate
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -193,6 +194,7 @@ async def send_notifications(
     )
     if len(valid_users) != len(set(payload.user_ids)):
         raise ApiError(422, "invalid_recipients", "One or more recipients are invalid")
+    notification_ids: list[UUID] = []
     for user_id in valid_users:
         item = Notification(
             id=new_id(),
@@ -206,6 +208,7 @@ async def send_notifications(
             deep_link=payload.deep_link,
         )
         db.add(item)
+        notification_ids.append(item.id)
         record_change(
             db,
             context=event_context(request, principal),
@@ -219,5 +222,11 @@ async def send_notifications(
                 "priority": item.priority,
             },
         )
+    enqueue_notification_email_jobs(
+        db,
+        notification_ids,
+        owner_id=principal.user.id,
+        kind="email.notification",
+    )
     await db.commit()
     return MessageResponse(message=f"Notification sent to {len(valid_users)} members")

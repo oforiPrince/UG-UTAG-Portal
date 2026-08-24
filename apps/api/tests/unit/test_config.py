@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from utag_api.config import Settings
 
@@ -56,3 +56,33 @@ def test_production_configuration_rejects_placeholder_credentials(
 def test_production_configuration_requires_public_origin_alignment() -> None:
     with pytest.raises(ValidationError, match="PUBLIC_WEB_URL origin"):
         production_settings(allowed_origins=["https://www.utag-ug.org"])
+
+
+def test_smtp_sender_and_security_configuration_are_normalized() -> None:
+    settings = Settings(
+        _env_file=None,
+        smtp_from_email="no-reply@utag.ug.edu.gh",
+        smtp_from_name="UTAG UG Portal",
+        smtp_security="tls",
+    )
+
+    assert settings.smtp_sender == "UTAG UG Portal <no-reply@utag.ug.edu.gh>"
+    assert settings.effective_smtp_security == "tls"
+
+    legacy = Settings(_env_file=None, smtp_security="tls", smtp_use_tls=True)
+    assert legacy.effective_smtp_security == "starttls"
+
+
+def test_smtp_credentials_must_be_configured_together() -> None:
+    with pytest.raises(ValidationError, match="configured together"):
+        Settings(_env_file=None, smtp_username="portal@ug.edu.gh")
+
+
+def test_authenticated_smtp_cannot_send_credentials_without_tls() -> None:
+    with pytest.raises(ValidationError, match="requires STARTTLS or implicit TLS"):
+        Settings(
+            _env_file=None,
+            smtp_username="portal@ug.edu.gh",
+            smtp_password=SecretStr("application-password"),
+            smtp_security="none",
+        )

@@ -1,16 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/components/auth-shell";
 import {
-  deliveryAvailable,
+  emailDeliveryAvailable,
   getDeliveryCapabilities,
 } from "@/lib/delivery-capabilities";
 
 import { ForgotForm } from "./forgot-form";
 
+export const metadata: Metadata = { title: "Forgot password" };
+
 export default async function ForgotPage() {
   const capabilities = await getDeliveryCapabilities();
-  if (!deliveryAvailable(capabilities)) {
+  if (!emailDeliveryAvailable(capabilities)) {
     redirect("/login");
   }
   return (

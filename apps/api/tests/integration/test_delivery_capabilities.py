@@ -60,6 +60,14 @@ def test_capabilities_reflect_smtp_configuration() -> None:
             smtp_password=SimpleNamespace(get_secret_value=lambda: ""),
         )
     )
+    assert email_delivery_enabled(
+        SimpleNamespace(
+            smtp_host="relay.ug.edu.gh",
+            smtp_auth_required=False,
+            smtp_username=None,
+            smtp_password=None,
+        )
+    )
     assert not sms_delivery_enabled(SimpleNamespace(smtp_host="smtp.example.org"))
     assert delivery_available(
         SimpleNamespace(

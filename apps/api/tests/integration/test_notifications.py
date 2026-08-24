@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from utag_api.database import new_id
-from utag_api.models import Notification, Role, User, UserRole
+from utag_api.models import BackgroundJob, Notification, Role, User, UserRole
 from utag_api.security import hash_password
 
 
@@ -44,6 +44,14 @@ async def test_notification_messages_preserve_safe_formatting(
     notice = inbox.json()["items"][0]
     assert notice["title"] == "Formatted member update"
     assert notice["body"] == ("<p>Please read the <strong>member update</strong>.</p>")
+
+    async with session_factory() as session:
+        email_job = await session.scalar(
+            select(BackgroundJob).where(BackgroundJob.kind == "email.notification")
+        )
+        assert email_job is not None
+        assert email_job.status == "queued"
+        assert email_job.input_json["notification_ids"] == [notice["id"]]
 
 
 async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
@@ -127,6 +135,11 @@ async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
         assert [delivery.user_id for delivery in deliveries] == [member_id]
         assert deliveries[0].category == "announcement"
         assert deliveries[0].body == "<p>Official member information.</p>"
+        email_job = await session.scalar(
+            select(BackgroundJob).where(BackgroundJob.kind == "email.announcement")
+        )
+        assert email_job is not None
+        assert email_job.status == "queued"
 
     updated = await client.patch(
         f"/api/v1/content/announcements/{announcement['id']}",
