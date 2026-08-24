@@ -260,7 +260,9 @@ export function WorkspaceMediaField({
         setUploaded((count) => count + 1);
       }
       if (!assets.length) {
-        throw new Error(failures.join(" · ") || "The file could not be uploaded");
+        throw new Error(
+          failures.join(" · ") || "The file could not be uploaded",
+        );
       }
       return { assets, failures };
     },
@@ -324,7 +326,8 @@ export function WorkspaceMediaField({
     for (const candidate of accepted) {
       const duplicate = next.some(
         (item) =>
-          item.file.name === candidate.name && item.file.size === candidate.size,
+          item.file.name === candidate.name &&
+          item.file.size === candidate.size,
       );
       if (!duplicate) next.push(queueFile(candidate));
     }
@@ -352,9 +355,7 @@ export function WorkspaceMediaField({
     const blocked = new Set(downloadBlockedIds ?? []);
     if (allowed) blocked.delete(assetId);
     else blocked.add(assetId);
-    onDownloadBlockedChange(
-      ids.filter((current) => blocked.has(current)),
-    );
+    onDownloadBlockedChange(ids.filter((current) => blocked.has(current)));
   }
 
   const singleImageQueued =
@@ -381,7 +382,9 @@ export function WorkspaceMediaField({
               asset={assetMap.get(assetId)}
               field={field}
               remove={() => remove(assetId)}
-              allowDownload={downloadControl ? !blockedSet.has(assetId) : undefined}
+              allowDownload={
+                downloadControl ? !blockedSet.has(assetId) : undefined
+              }
               onAllowDownloadChange={
                 downloadControl
                   ? (allowed) => setAllowDownload(assetId, allowed)
@@ -480,7 +483,7 @@ export function WorkspaceMediaField({
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
             <span className="inline-flex items-center gap-2 text-[.62rem] font-normal text-muted">
-              <ShieldCheck className="size-4 text-emerald-600" />
+              <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-300" />
               Security scanning happens automatically
             </span>
             <div className="flex gap-2">

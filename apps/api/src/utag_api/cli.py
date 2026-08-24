@@ -8,7 +8,7 @@ from utag_api.database import SessionFactory, new_id
 from utag_api.demo_data import seed_demo_data
 from utag_api.models import Role, User, UserRole
 from utag_api.security import hash_password, normalize_email
-from utag_api.seed_data import seed_portal_defaults
+from utag_api.seed_data import reconcile_organization, seed_portal_defaults
 from utag_api.services.identity import seed_authorization, strong_password_errors
 from utag_api.services.system_chat_groups import (
     SystemChatSyncResult,
@@ -101,11 +101,66 @@ async def seed_demo() -> None:
     )
 
 
+async def reconcile_organization_data(
+    *,
+    apply: bool,
+    prune_unlinked: bool,
+) -> None:
+    async with SessionFactory() as db:
+        result = await reconcile_organization(db, prune_unlinked=prune_unlinked)
+        if apply:
+            await db.commit()
+        else:
+            await db.rollback()
+
+    mode = "Applied" if apply else "Dry run"
+    qualifier = "" if apply else "would be "
+    if apply and prune_unlinked:
+        pruned_count = result.legacy_units_pruned
+        prune_label = "pruned"
+    else:
+        pruned_count = result.legacy_units_prunable
+        prune_label = "eligible for pruning"
+    print(
+        f"{mode}: {result.canonical_created} canonical units {qualifier}created, "
+        f"{result.canonical_updated} canonical units {qualifier}corrected, "
+        f"{result.users_relinked} member affiliations {qualifier}relinked, "
+        f"{result.announcement_audiences_relinked} announcement audiences "
+        f"{qualifier}relinked, "
+        f"{result.document_audiences_relinked} document audiences {qualifier}relinked, "
+        f"{pruned_count} legacy units {prune_label}, "
+        f"{result.legacy_units_retained} linked legacy units retained, "
+        f"and {result.unresolved_users} member affiliations require manual review."
+    )
+    if result.unresolved_user_ids:
+        sample = ", ".join(str(user_id) for user_id in result.unresolved_user_ids[:20])
+        suffix = " …" if len(result.unresolved_user_ids) > 20 else ""
+        print(f"Member IDs requiring review: {sample}{suffix}")
+    if apply:
+        await reconcile_chat_groups()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="UG UTAG API management commands")
     parser.add_argument(
         "command",
-        choices=["seed", "seed-demo", "sync-chat-groups", "backfill-media-variants"],
+        choices=[
+            "seed",
+            "seed-demo",
+            "sync-chat-groups",
+            "reconcile-organization",
+            "backfill-media-variants",
+        ],
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Commit organization reconciliation; otherwise it is rolled back as a dry run.",
+    )
+    parser.add_argument(
+        "--prune-unlinked",
+        action="store_true",
+        help="Delete imported legacy organization rows only after all known linkages are removed.",
     )
     args = parser.parse_args()
     if args.command == "seed":
@@ -118,6 +173,13 @@ def main() -> None:
             f"System chat groups synchronized: {result.groups_created} created, "
             f"{result.memberships_added} memberships added, "
             f"{result.memberships_removed} memberships removed"
+        )
+    if args.command == "reconcile-organization":
+        asyncio.run(
+            reconcile_organization_data(
+                apply=args.apply,
+                prune_unlinked=args.prune_unlinked,
+            )
         )
     if args.command == "backfill-media-variants":
         from utag_api.models import MediaAsset

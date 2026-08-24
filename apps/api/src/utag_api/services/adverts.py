@@ -39,7 +39,10 @@ def sync_campaign_flight_from_order(campaign: AdCampaign, order: AdOrder) -> Non
 async def linked_order_for_campaign(
     db: AsyncSession, campaign_id: UUID
 ) -> AdOrder | None:
-    return await db.scalar(select(AdOrder).where(AdOrder.campaign_id == campaign_id))
+    order: AdOrder | None = await db.scalar(
+        select(AdOrder).where(AdOrder.campaign_id == campaign_id)
+    )
+    return order
 
 
 def order_authorizes_live_campaign(order: AdOrder) -> bool:
@@ -74,13 +77,14 @@ async def ensure_campaign_can_go_live(
             422,
             "campaign_order_required",
             "Paid campaigns need a linked order before they can go live. "
-            "Mark the campaign as a house ad only for UG UTAG’s own promotions.",
+            "Mark the campaign as a house ad only for UG UTAG's own promotions.",
         )
     if not order_authorizes_live_campaign(order):
         raise ApiError(
             422,
             "campaign_order_not_ready",
-            "Linked order must be approved or active and marked paid before the campaign can go live",
+            "Linked order must be approved or active and marked paid before the "
+            "campaign can go live",
         )
     return order
 

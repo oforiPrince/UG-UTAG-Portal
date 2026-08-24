@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from starlette.concurrency import run_in_threadpool
 
 from utag_api.config import get_settings
@@ -19,7 +19,19 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import MediaAsset
+from utag_api.models import (
+    AdCampaign,
+    Article,
+    ArticleAttachment,
+    DocumentFile,
+    Event,
+    EventAttachment,
+    GalleryItem,
+    MediaAsset,
+    MediaVariant,
+    SiteSetting,
+    User,
+)
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import (
     CompleteUploadRequest,
@@ -27,6 +39,12 @@ from utag_api.schemas.domain import (
     MediaView,
     PresignUploadRequest,
     PresignUploadResponse,
+)
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
 )
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.query import paginate
@@ -140,13 +158,12 @@ async def upload_media(
             raise ApiError(413, "file_too_large", "The selected file is too large")
     await file.seek(0)
     content_type = file.content_type or "application/octet-stream"
-    if not can_manage_media:
-        if is_private or not content_type.startswith("image/"):
-            raise ApiError(
-                403,
-                "permission_denied",
-                "You can only upload a public profile portrait from this account",
-            )
+    if not can_manage_media and (is_private or not content_type.startswith("image/")):
+        raise ApiError(
+            403,
+            "permission_denied",
+            "You can only upload a public profile portrait from this account",
+        )
     validate_upload(content_type, byte_size)
     asset_id = new_id()
     storage_key = quarantine_key(asset_id, file.filename or "upload")
@@ -270,10 +287,7 @@ async def get_media(
     asset = await db.get(MediaAsset, asset_id)
     if asset is None:
         raise ApiError(404, "media_not_found", "Media asset not found")
-    if (
-        asset.owner_id != principal.user.id
-        and "media.manage" not in principal.permissions
-    ):
+    if asset.owner_id != principal.user.id and "media.manage" not in principal.permissions:
         raise ApiError(404, "media_not_found", "Media asset not found")
     return MediaView.model_validate(asset)
 
@@ -328,6 +342,131 @@ async def archive_media(
     )
     await db.commit()
     return MessageResponse(message="Media asset archived")
+
+
+@router.delete("/{asset_id}/permanent", response_model=MessageResponse)
+async def delete_media_permanently(
+    asset_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "media.manage")),
+    ],
+) -> MessageResponse:
+    asset = await db.get(MediaAsset, asset_id, with_for_update=True)
+    if asset is None:
+        raise ApiError(404, "media_not_found", "Media asset not found")
+    if asset.status in {"quarantined", "scanning"}:
+        raise ApiError(
+            409,
+            "media_asset_delete_blocked",
+            (
+                "Cannot delete this media asset while upload security processing is active. "
+                "Wait for processing to finish and try again"
+            ),
+            details={
+                "dependencies": [{"label": "active media processing", "count": 1}],
+                "guidance": "Wait for media processing to finish before permanent deletion",
+            },
+        )
+    carousel_setting = await db.scalar(
+        select(SiteSetting).where(SiteSetting.key == "site.carousel")
+    )
+    carousel_slides = 0
+    if carousel_setting is not None:
+        slides = carousel_setting.value.get("slides", [])
+        if isinstance(slides, list):
+            carousel_slides = sum(
+                1
+                for slide in slides
+                if isinstance(slide, dict) and str(slide.get("media_asset_id")) == str(asset.id)
+            )
+    block_delete_if_referenced(
+        "media asset",
+        [
+            DeleteBlocker(
+                "member profile",
+                await count_rows(db, User, User.profile_media_id == asset.id),
+            ),
+            DeleteBlocker(
+                "featured article",
+                await count_rows(db, Article, Article.featured_media_id == asset.id),
+            ),
+            DeleteBlocker(
+                "article attachment",
+                await count_rows(
+                    db,
+                    ArticleAttachment,
+                    ArticleAttachment.media_asset_id == asset.id,
+                ),
+            ),
+            DeleteBlocker(
+                "featured event",
+                await count_rows(db, Event, Event.featured_media_id == asset.id),
+            ),
+            DeleteBlocker(
+                "event attachment",
+                await count_rows(
+                    db,
+                    EventAttachment,
+                    EventAttachment.media_asset_id == asset.id,
+                ),
+            ),
+            DeleteBlocker(
+                "document file version",
+                await count_rows(
+                    db,
+                    DocumentFile,
+                    DocumentFile.media_asset_id == asset.id,
+                ),
+            ),
+            DeleteBlocker(
+                "gallery item",
+                await count_rows(db, GalleryItem, GalleryItem.media_asset_id == asset.id),
+            ),
+            DeleteBlocker(
+                "advertising campaign",
+                await count_rows(db, AdCampaign, AdCampaign.media_asset_id == asset.id),
+            ),
+            DeleteBlocker("homepage carousel slide", carousel_slides),
+        ],
+        guidance=(
+            "Remove or replace this asset on every linked record first. Archiving keeps "
+            "the stored file available to those records"
+        ),
+    )
+    variants = list(
+        (await db.scalars(select(MediaVariant).where(MediaVariant.asset_id == asset.id))).all()
+    )
+    storage_keys = [asset.storage_key, *(variant.storage_key for variant in variants)]
+    enqueue_task(
+        db,
+        task_name="utag.media.delete_storage",
+        aggregate_type="media_asset",
+        aggregate_id=asset.id,
+        args=[storage_keys],
+        queue="media",
+    )
+    await db.execute(delete(MediaVariant).where(MediaVariant.asset_id == asset.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="media.deleted",
+        resource_type="media_asset",
+        resource_id=asset.id,
+        topic="media",
+        payload={
+            "asset_id": str(asset.id),
+            "filename": asset.original_filename,
+            "variant_count": len(variants),
+        },
+    )
+    await db.delete(asset)
+    await commit_permanent_delete(db, "media asset")
+    return MessageResponse(
+        message="Media asset deleted permanently; stored file cleanup has been queued"
+    )
 
 
 @router.get("/{asset_id}/download")

@@ -129,8 +129,8 @@ function ImportDialog({ close }: { close: () => void }) {
             <p className="eyebrow text-coral">Bulk account workflow</p>
             <h2 className="display-type mt-3 text-4xl">Import members</h2>
             <p className="mt-2 max-w-xl text-xs leading-6 text-muted">
-              Preview CSV or XLSX rows before creating active accounts and
-              their UTAG, school, and department chats.
+              Preview CSV or XLSX rows before creating active accounts and their
+              UTAG, school, and department chats.
             </p>
           </div>
           <Button
@@ -224,7 +224,7 @@ function ImportDialog({ close }: { close: () => void }) {
 
             {result.issues.length ? (
               <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5">
-                <div className="flex items-center gap-2 text-sm font-black text-red-700">
+                <div className="flex items-center gap-2 text-sm font-black text-red-700 dark:text-red-300">
                   <AlertTriangle className="size-4" /> Fix these rows before
                   importing
                 </div>

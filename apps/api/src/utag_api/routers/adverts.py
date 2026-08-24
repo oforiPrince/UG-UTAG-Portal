@@ -52,6 +52,12 @@ from utag_api.services.adverts import (
     ensure_order_can_be_active,
     order_authorizes_live_campaign,
 )
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 
 router = APIRouter(prefix="/adverts", tags=["advertising"])
@@ -68,7 +74,7 @@ def slot_view(item: AdSlot) -> AdSlotView:
     return AdSlotView.model_validate(
         {
             **model_values(item),
-            "size": f"{item.width}×{item.height}",
+            "size": f"{item.width}x{item.height}",
         }
     )
 
@@ -98,9 +104,7 @@ async def campaign_views(db: DbSession, campaigns: list[AdCampaign]) -> list[AdC
         for item in (await db.scalars(select(MediaAsset).where(MediaAsset.id.in_(media_ids)))).all()
     }
     orders = list(
-        (
-            await db.scalars(select(AdOrder).where(AdOrder.campaign_id.in_(campaign_ids)))
-        ).all()
+        (await db.scalars(select(AdOrder).where(AdOrder.campaign_id.in_(campaign_ids)))).all()
     )
     order_by_campaign = {item.campaign_id: item for item in orders if item.campaign_id}
     advertiser_ids = {item.advertiser_id for item in orders}
@@ -200,9 +204,7 @@ async def order_views(db: DbSession, orders: list[AdOrder]) -> list[AdOrderView]
 async def advertiser_views(
     db: DbSession, advertisers: list[AdAdvertiser]
 ) -> list[AdAdvertiserView]:
-    member_ids = {
-        item.member_user_id for item in advertisers if item.member_user_id is not None
-    }
+    member_ids = {item.member_user_id for item in advertisers if item.member_user_id is not None}
     members = {
         item.id: item.full_name
         for item in (await db.scalars(select(User).where(User.id.in_(member_ids)))).all()
@@ -212,9 +214,7 @@ async def advertiser_views(
             {
                 **model_values(item),
                 "website": str(item.website) if item.website else None,
-                "member_name": (
-                    members.get(item.member_user_id) if item.member_user_id else None
-                ),
+                "member_name": (members.get(item.member_user_id) if item.member_user_id else None),
             }
         )
         for item in advertisers
@@ -275,18 +275,10 @@ async def validate_campaign_media(
             "Choose a ready public image for the campaign",
         )
     variants = list(
-        (
-            await db.scalars(
-                select(MediaVariant).where(MediaVariant.asset_id == asset.id)
-            )
-        ).all()
+        (await db.scalars(select(MediaVariant).where(MediaVariant.asset_id == asset.id))).all()
     )
     sized = next(
-        (
-            item
-            for item in variants
-            if item.variant == "original" and item.width and item.height
-        ),
+        (item for item in variants if item.variant == "original" and item.width and item.height),
         None,
     )
     if sized is None:
@@ -294,19 +286,23 @@ async def validate_campaign_media(
         # rejected against a downscaled thumbnail (e.g. w480).
         sized = max(
             (item for item in variants if item.width and item.height),
-            key=lambda item: int(item.width) * int(item.height),
+            key=lambda item: (item.width or 0) * (item.height or 0),
             default=None,
         )
-    if sized is not None and sized.width and sized.height:
-        if not dimensions_match(slot.width, slot.height, sized.width, sized.height):
-            raise ApiError(
-                422,
-                "campaign_media_dimensions",
-                (
-                    f"Creative dimensions {sized.width}×{sized.height} do not match "
-                    f"placement {slot.width}×{slot.height}"
-                ),
-            )
+    if (
+        sized is not None
+        and sized.width
+        and sized.height
+        and not dimensions_match(slot.width, slot.height, sized.width, sized.height)
+    ):
+        raise ApiError(
+            422,
+            "campaign_media_dimensions",
+            (
+                f"Creative dimensions {sized.width}x{sized.height} do not match "
+                f"placement {slot.width}x{slot.height}"
+            ),
+        )
     return asset
 
 
@@ -316,8 +312,7 @@ async def slots(
     principal: Annotated[Principal, Depends(require_permissions("adverts.manage"))],
 ) -> list[AdSlotView]:
     return [
-        slot_view(item)
-        for item in (await db.scalars(select(AdSlot).order_by(AdSlot.key))).all()
+        slot_view(item) for item in (await db.scalars(select(AdSlot).order_by(AdSlot.key))).all()
     ]
 
 
@@ -376,6 +371,47 @@ async def update_slot(
     return slot_view(item)
 
 
+@router.delete("/slots/{slot_id}/permanent", response_model=MessageResponse)
+async def delete_slot_permanently(
+    slot_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "adverts.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(AdSlot, slot_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "ad_slot_not_found", "Advertising placement not found")
+    block_delete_if_referenced(
+        "advertising placement",
+        [
+            DeleteBlocker(
+                "advertising plan",
+                await count_rows(db, AdPlan, AdPlan.slot_id == item.id),
+            ),
+            DeleteBlocker(
+                "advertising campaign",
+                await count_rows(db, AdCampaign, AdCampaign.slot_id == item.id),
+            ),
+        ],
+        guidance="Delete or move the linked plans and campaigns first",
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="advert.slot.deleted",
+        resource_type="ad_slot",
+        resource_id=item.id,
+        topic="adverts",
+        payload={"slot_id": str(item.id), "key": item.key},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "advertising placement")
+    return MessageResponse(message="Advertising placement deleted permanently")
+
+
 @router.get("/campaigns", response_model=list[AdCampaignView])
 async def campaigns(
     db: DbSession,
@@ -393,7 +429,7 @@ async def create_campaign(
     principal: Annotated[Principal, Depends(require_mutation_permissions("adverts.manage"))],
 ) -> AdCampaignView:
     slot = await require_active_slot(db, payload.slot_id)
-    asset = await validate_campaign_media(db, slot=slot, media_asset_id=payload.media_asset_id)
+    await validate_campaign_media(db, slot=slot, media_asset_id=payload.media_asset_id)
     if payload.ends_at and payload.starts_at and payload.ends_at <= payload.starts_at:
         raise ApiError(422, "campaign_dates_invalid", "End time must be after start time")
     data = payload.model_dump()
@@ -433,9 +469,10 @@ async def update_campaign(
     if "slot_id" in changes:
         slot = await require_active_slot(db, changes["slot_id"])
     else:
-        slot = await db.get(AdSlot, item.slot_id)
-        if slot is None:
+        existing_slot = await db.get(AdSlot, item.slot_id)
+        if existing_slot is None:
             raise ApiError(422, "ad_slot_invalid", "Advertising placement not found")
+        slot = existing_slot
     media_asset_id = changes.get("media_asset_id", item.media_asset_id)
     if "media_asset_id" in changes or "slot_id" in changes:
         await validate_campaign_media(db, slot=slot, media_asset_id=media_asset_id)
@@ -495,6 +532,48 @@ async def complete_campaign(
     )
     await db.commit()
     return MessageResponse(message="Campaign completed")
+
+
+@router.delete("/campaigns/{campaign_id}/permanent", response_model=MessageResponse)
+async def delete_campaign_permanently(
+    campaign_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "adverts.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(AdCampaign, campaign_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "campaign_not_found", "Campaign not found")
+    block_delete_if_referenced(
+        "advertising campaign",
+        [
+            DeleteBlocker(
+                "advertising order",
+                await count_rows(db, AdOrder, AdOrder.campaign_id == item.id),
+            ),
+            DeleteBlocker("recorded impression", item.impressions),
+            DeleteBlocker("recorded click", item.clicks),
+        ],
+        guidance=(
+            "Unlink its order first. Campaigns with performance history must be completed "
+            "and retained"
+        ),
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="advert.campaign.deleted",
+        resource_type="ad_campaign",
+        resource_id=item.id,
+        topic="adverts",
+        payload={"campaign_id": str(item.id), "title": item.title},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "advertising campaign")
+    return MessageResponse(message="Advertising campaign deleted permanently")
 
 
 @router.get("/plans", response_model=list[AdPlanView])
@@ -588,6 +667,39 @@ async def deactivate_plan(
     )
     await db.commit()
     return MessageResponse(message="Advertising plan deactivated")
+
+
+@router.delete("/plans/{plan_id}/permanent", response_model=MessageResponse)
+async def delete_plan_permanently(
+    plan_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "adverts.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(AdPlan, plan_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "ad_plan_not_found", "Advertising plan not found")
+    order_count = await count_rows(db, AdOrder, AdOrder.plan_id == item.id)
+    block_delete_if_referenced(
+        "advertising plan",
+        [DeleteBlocker("advertising order", order_count)],
+        guidance="Plans used by orders must be deactivated and retained",
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="advert.plan.deleted",
+        resource_type="ad_plan",
+        resource_id=item.id,
+        topic="adverts",
+        payload={"plan_id": str(item.id), "name": item.name},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "advertising plan")
+    return MessageResponse(message="Advertising plan deleted permanently")
 
 
 @router.get("/orders", response_model=list[AdOrderView])
@@ -701,6 +813,39 @@ async def deactivate_advertiser(
     )
     await db.commit()
     return MessageResponse(message="Advertiser deactivated")
+
+
+@router.delete("/advertisers/{advertiser_id}/permanent", response_model=MessageResponse)
+async def delete_advertiser_permanently(
+    advertiser_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "adverts.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(AdAdvertiser, advertiser_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "advertiser_not_found", "Advertiser not found")
+    order_count = await count_rows(db, AdOrder, AdOrder.advertiser_id == item.id)
+    block_delete_if_referenced(
+        "advertiser client",
+        [DeleteBlocker("advertising order", order_count)],
+        guidance="Clients with order history must be deactivated and retained",
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="advert.advertiser.deleted",
+        resource_type="ad_advertiser",
+        resource_id=item.id,
+        topic="adverts",
+        payload={"advertiser_id": str(item.id), "organization": item.organization_name},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "advertiser client")
+    return MessageResponse(message="Advertiser client deleted permanently")
 
 
 async def ensure_order_campaign_matches_plan(
@@ -852,6 +997,53 @@ async def cancel_order(
     )
     await db.commit()
     return MessageResponse(message="Advertising order cancelled")
+
+
+@router.delete("/orders/{order_id}/permanent", response_model=MessageResponse)
+async def delete_order_permanently(
+    order_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "adverts.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(AdOrder, order_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "ad_order_not_found", "Advertising order not found")
+    block_delete_if_referenced(
+        "advertising order",
+        [
+            DeleteBlocker("linked campaign", 1 if item.campaign_id is not None else 0),
+            DeleteBlocker(
+                "payment history",
+                1 if item.payment_status != "unpaid" else 0,
+                "payment histories",
+            ),
+            DeleteBlocker(
+                "fulfilled order history",
+                1 if item.status in {"approved", "active", "completed"} else 0,
+                "fulfilled order histories",
+            ),
+        ],
+        guidance=(
+            "Unlink any draft campaign first. Paid, approved, active, or completed orders "
+            "must be cancelled or completed and retained for financial history"
+        ),
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="advert.order.deleted",
+        resource_type="ad_order",
+        resource_id=item.id,
+        topic="adverts",
+        payload={"order_id": str(item.id)},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "advertising order")
+    return MessageResponse(message="Advertising order deleted permanently")
 
 
 @router.post("/track/{campaign_id}/impression", response_model=MessageResponse)

@@ -16,6 +16,8 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import {
   formatExecutivePosition,
+  publishedExecutiveEmail,
+  publishedExecutivePhone,
   type PublicExecutiveProfile,
 } from "@/lib/leadership";
 import { publicMediaUrl } from "@/lib/public-media";
@@ -71,6 +73,8 @@ function ExecutiveProfileModal({
     profile.school_name,
     profile.college_name,
   ].filter((value): value is string => Boolean(value));
+  const publicEmail = publishedExecutiveEmail(profile);
+  const publicPhone = publishedExecutivePhone(profile);
   const socialLinks = Object.entries(profile.social_links)
     .map(([name, value]) => ({
       name: SOCIAL_LINK_LABELS[name.toLowerCase()] ?? humanize(name),
@@ -109,7 +113,7 @@ function ExecutiveProfileModal({
       }}
     >
       <div className="grid max-h-[calc(100dvh-1.5rem)] overflow-y-auto md:grid-cols-[19rem_1fr] md:overflow-hidden">
-        <aside className="relative overflow-hidden bg-[#172f4d] px-7 py-9 text-white md:flex md:min-h-[36rem] md:flex-col md:px-8 md:py-10">
+        <aside className="relative min-w-0 overflow-hidden bg-[#172f4d] px-7 py-9 text-white md:flex md:min-h-[36rem] md:flex-col md:px-8 md:py-10">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gold" />
           <div className="absolute -top-20 -right-20 size-60 rounded-full border border-white/8" />
           <div className="absolute -top-8 -right-8 size-36 rounded-full border border-white/8" />
@@ -139,27 +143,38 @@ function ExecutiveProfileModal({
             ) : null}
           </div>
 
-          <div className="relative mt-8 space-y-3 border-t border-white/12 pt-6 md:mt-auto">
-            <a
-              className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-white/82 transition hover:bg-white/8 hover:text-white"
-              href={`mailto:${profile.email}`}
-            >
-              <Mail aria-hidden="true" className="size-4 shrink-0 text-gold" />
-              <span className="min-w-0 break-all">{profile.email}</span>
-            </a>
-            {profile.phone_number ? (
-              <a
-                className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-white/82 transition hover:bg-white/8 hover:text-white"
-                href={`tel:${profile.phone_number.replace(/[^\d+]/g, "")}`}
-              >
-                <Phone
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-gold"
-                />
-                {profile.phone_number}
-              </a>
-            ) : null}
-          </div>
+          {publicEmail || publicPhone ? (
+            <div className="relative mt-8 min-w-0 space-y-3 border-t border-white/12 pt-6 md:mt-auto">
+              {publicEmail ? (
+                <a
+                  className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-2 text-sm text-white transition hover:bg-white/8 hover:text-white visited:text-white"
+                  href={`mailto:${publicEmail}`}
+                >
+                  <Mail
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-gold"
+                  />
+                  <span className="min-w-0 break-all text-white">
+                    {publicEmail}
+                  </span>
+                </a>
+              ) : null}
+              {publicPhone ? (
+                <a
+                  className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-2 text-sm text-white transition hover:bg-white/8 hover:text-white visited:text-white"
+                  href={`tel:${publicPhone.replace(/[^\d+]/g, "")}`}
+                >
+                  <Phone
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-gold"
+                  />
+                  <span className="min-w-0 break-all text-white">
+                    {publicPhone}
+                  </span>
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </aside>
 
         <div className="relative p-6 sm:p-8 md:max-h-[calc(100dvh-1.5rem)] md:overflow-y-auto md:p-10">

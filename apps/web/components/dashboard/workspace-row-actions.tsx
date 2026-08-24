@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, MoreHorizontal, Pencil, Archive } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,10 @@ import { cn } from "@/lib/utils";
 
 type MenuPosition = { top: number; left: number };
 
-function menuPositionFor(trigger: HTMLElement, menuHeight: number): MenuPosition {
+function menuPositionFor(
+  trigger: HTMLElement,
+  menuHeight: number,
+): MenuPosition {
   const rect = trigger.getBoundingClientRect();
   const width = 192;
   const gap = 4;
@@ -46,7 +49,7 @@ export function WorkspaceRowActions({
   onView,
   onMutation,
   onEdit,
-  onArchive,
+  onDelete,
   compact = false,
 }: {
   actions: RowActionSet;
@@ -54,7 +57,7 @@ export function WorkspaceRowActions({
   onView: () => void;
   onMutation: (mutation: WorkspaceMutation) => void;
   onEdit: () => void;
-  onArchive: () => void;
+  onDelete: () => void;
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,18 +71,12 @@ export function WorkspaceRowActions({
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
-    const estimatedHeight = Math.min(
-      320,
-      8 + overflow.length * 40,
-    );
+    const estimatedHeight = Math.min(320, 8 + overflow.length * 40);
     setPosition(menuPositionFor(triggerRef.current, estimatedHeight));
   }, [overflow.length]);
 
   useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
+    if (!open) return;
     updatePosition();
     if (menuRef.current && triggerRef.current) {
       setPosition(
@@ -132,7 +129,7 @@ export function WorkspaceRowActions({
           >
             {overflow.map((item) => {
               const danger =
-                item.kind === "archive" || item.mutation.danger === true;
+                item.kind === "delete" || item.mutation.danger === true;
               return (
                 <button
                   key={`${item.kind}-${item.mutation.label}`}
@@ -140,21 +137,21 @@ export function WorkspaceRowActions({
                   role="menuitem"
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-bold hover:bg-ink/5",
-                    danger ? "text-red-700" : "text-ink",
+                    danger ? "text-red-700 dark:text-red-300" : "text-ink",
                   )}
                   disabled={pending}
                   onClick={() => {
                     setOpen(false);
                     if (item.kind === "update") onEdit();
-                    else if (item.kind === "archive") onArchive();
+                    else if (item.kind === "delete") onDelete();
                     else onMutation(item.mutation);
                   }}
                 >
                   {item.kind === "update" ? (
                     <Pencil className="size-3.5 shrink-0" />
                   ) : null}
-                  {item.kind === "archive" ? (
-                    <Archive className="size-3.5 shrink-0" />
+                  {item.kind === "delete" ? (
+                    <Trash2 className="size-3.5 shrink-0" />
                   ) : null}
                   {item.mutation.label}
                 </button>
@@ -192,7 +189,7 @@ export function WorkspaceRowActions({
           className={cn(
             "h-8 min-h-8 px-3",
             mutation.danger
-              ? "border-red-500/30 text-red-700 hover:bg-red-500/10"
+              ? "border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
               : undefined,
           )}
           disabled={pending}

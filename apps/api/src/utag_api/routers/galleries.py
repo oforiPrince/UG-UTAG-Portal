@@ -23,6 +23,11 @@ from utag_api.schemas.domain import (
 )
 from utag_api.services import google_drive as drive
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+)
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.query import unique_slug
@@ -255,6 +260,53 @@ async def archive_gallery(
     )
     await db.commit()
     return MessageResponse(message="Gallery archived")
+
+
+@router.delete("/{gallery_id}/permanent", response_model=MessageResponse)
+async def delete_gallery_permanently(
+    gallery_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    gallery = await db.get(Gallery, gallery_id, with_for_update=True)
+    if gallery is None:
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
+    imports = list(
+        (
+            await db.scalars(
+                select(BackgroundJob).where(
+                    BackgroundJob.kind == "gallery.google_drive_import",
+                    BackgroundJob.status.in_({"queued", "running"}),
+                )
+            )
+        ).all()
+    )
+    pending_imports = sum(
+        1 for job in imports if str(job.input_json.get("gallery_id")) == str(gallery.id)
+    )
+    block_delete_if_referenced(
+        "gallery",
+        [DeleteBlocker("active Google Drive import", pending_imports)],
+        guidance="Wait for the import to finish before deleting this gallery",
+    )
+    # Gallery items are links owned by the gallery; shared media assets are retained.
+    await db.execute(delete(GalleryItem).where(GalleryItem.gallery_id == gallery.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="gallery.deleted",
+        resource_type="gallery",
+        resource_id=gallery.id,
+        topic="galleries",
+        payload={"gallery_id": str(gallery.id), "slug": gallery.slug},
+    )
+    await db.delete(gallery)
+    await commit_permanent_delete(db, "gallery")
+    return MessageResponse(message="Gallery deleted permanently")
 
 
 @router.post("/{gallery_id}/import/google-drive", response_model=GoogleDriveImportResponse)

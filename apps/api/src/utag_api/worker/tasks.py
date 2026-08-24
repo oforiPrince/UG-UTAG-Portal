@@ -37,6 +37,7 @@ from utag_api.services import google_drive as drive
 from utag_api.services.events import EventContext, record_change
 from utag_api.services.notifications import deliver_announcement_notifications
 from utag_api.services.storage import (
+    delete_storage_objects,
     quarantine_key,
     s3_client,
     s3_encryption_args,
@@ -109,6 +110,19 @@ async def _relay_outbox(limit: int = 200) -> int:
 )
 def relay_outbox() -> int:
     return asyncio.run(_relay_outbox())
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.media.delete_storage",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=10,
+)
+def delete_media_storage(storage_keys: list[str]) -> int:
+    """Idempotently remove media bytes after their database record is committed away."""
+    delete_storage_objects(storage_keys)
+    return len(set(storage_keys))
 
 
 @celery_app.task(name="utag.sessions.expire")  # type: ignore[misc]

@@ -14,13 +14,14 @@ import {
   LockKeyhole,
   Mail,
   Phone,
+  RefreshCw,
   Save,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
@@ -202,7 +203,31 @@ const profileUnitFields: Record<
         value: (row) => String(row.id),
         label: (row) => String(row.name),
         filter: (row) => row.unit_type === type && row.is_active !== false,
-        emptyLabel: `No active ${type}s`,
+        filterForValues: (row, values) => {
+          if (type === "college") return true;
+          if (type === "school") {
+            return (
+              Boolean(values.college_id) &&
+              String(row.parent_id) === String(values.college_id)
+            );
+          }
+          return (
+            Boolean(values.school_id) &&
+            String(row.parent_id) === String(values.school_id)
+          );
+        },
+        disabledForValues: (values) =>
+          (type === "school" && !values.college_id) ||
+          (type === "department" && !values.school_id),
+        emptyLabelForValues: (values) => {
+          if (type === "school" && !values.college_id) {
+            return "Select a college first";
+          }
+          if (type === "department" && !values.school_id) {
+            return "Select a school first";
+          }
+          return `No active ${type}s for this selection`;
+        },
       },
     },
   ]),
@@ -234,6 +259,8 @@ function PasswordField({
   autoComplete,
   required,
   minLength,
+  invalid,
+  describedBy,
 }: {
   id: string;
   value: string;
@@ -241,6 +268,8 @@ function PasswordField({
   autoComplete: string;
   required?: boolean;
   minLength?: number;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -252,6 +281,8 @@ function PasswordField({
         autoComplete={autoComplete}
         required={required}
         minLength={minLength}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={cn(
@@ -288,7 +319,9 @@ function FieldLabel({
       >
         {children}
       </label>
-      {hint ? <p className="text-[.7rem] leading-5 text-muted">{hint}</p> : null}
+      {hint ? (
+        <p className="text-[.7rem] leading-5 text-muted">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -342,6 +375,7 @@ export function ProfileClient() {
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [savingPhoto, setSavingPhoto] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingExecutive, setSavingExecutive] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -363,42 +397,42 @@ export function ProfileClient() {
     user.data?.academic_rank,
   );
 
-  const defaultTab = useMemo<ProfileTab>(() => {
-    if (user.data?.must_change_password || search.get("password") === "required") {
-      return "security";
-    }
-    if (hasLeadership || executiveRequired || isExecutiveRole) {
-      return "leadership";
-    }
-    return "account";
-  }, [
-    executiveRequired,
-    hasLeadership,
-    isExecutiveRole,
-    search,
-    user.data?.must_change_password,
-  ]);
-
-  useEffect(() => {
-    if (!user.data) return;
-    setTab((currentTab) => currentTab ?? defaultTab);
-  }, [defaultTab, user.data]);
+  let defaultTab: ProfileTab = "account";
+  if (
+    user.data?.must_change_password ||
+    search.get("password") === "required"
+  ) {
+    defaultTab = "security";
+  } else if (hasLeadership || executiveRequired || isExecutiveRole) {
+    defaultTab = "leadership";
+  }
 
   const activeTab = tab ?? defaultTab;
+  const passwordsMatch = !confirm || password === confirm;
+  const passwordIsStrong =
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /\d/.test(password);
 
   function updateProfile(changes: Partial<ProfileForm>) {
-    setProfileDraft({ ...profile, ...changes });
+    setProfileDraft((currentDraft) => ({
+      ...(currentDraft ?? profileFromUser(user.data)),
+      ...changes,
+    }));
   }
 
   async function saveProfilePhoto(profileMediaId: string | string[]) {
     const nextId = Array.isArray(profileMediaId)
       ? (profileMediaId[0] ?? null)
       : profileMediaId || null;
+    setSavingPhoto(true);
     try {
       const updated = await api<User>("/api/v1/auth/profile", {
         method: "PATCH",
         body: { profile_media_id: nextId },
       });
+      queryClient.setQueryData(["auth", "me"], updated);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       toast.success("Profile photo updated");
       if (
@@ -410,8 +444,12 @@ export function ProfileClient() {
       }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not update profile photo",
+        error instanceof Error
+          ? error.message
+          : "Could not update profile photo",
       );
+    } finally {
+      setSavingPhoto(false);
     }
   }
 
@@ -419,7 +457,7 @@ export function ProfileClient() {
     event.preventDefault();
     setSavingProfile(true);
     try {
-      await api("/api/v1/auth/profile", {
+      const updated = await api<User>("/api/v1/auth/profile", {
         method: "PATCH",
         body: {
           ...profile,
@@ -431,6 +469,8 @@ export function ProfileClient() {
           department_id: profile.department_id || null,
         },
       });
+      queryClient.setQueryData(["auth", "me"], updated);
+      setProfileDraft(undefined);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       toast.success("Profile updated");
     } catch (error) {
@@ -484,17 +524,21 @@ export function ProfileClient() {
     if (!publicExecutiveProfile) return;
     setSavingExecutive(true);
     try {
-      await api("/api/v1/auth/executive-profile", {
-        method: "PATCH",
-        body: {
-          portfolio: publicExecutiveProfile.portfolio || null,
-          summary: publicExecutiveProfile.summary || null,
-          biography_html: publicExecutiveProfile.biography_html,
-          social_links: publicExecutiveProfile.social_links,
-          show_email: publicExecutiveProfile.show_email,
-          show_phone: publicExecutiveProfile.show_phone,
+      const updated = await api<ExecutiveProfile>(
+        "/api/v1/auth/executive-profile",
+        {
+          method: "PATCH",
+          body: {
+            portfolio: publicExecutiveProfile.portfolio || null,
+            summary: publicExecutiveProfile.summary || null,
+            biography_html: publicExecutiveProfile.biography_html,
+            social_links: publicExecutiveProfile.social_links,
+            show_email: publicExecutiveProfile.show_email,
+            show_phone: publicExecutiveProfile.show_phone,
+          },
         },
-      });
+      );
+      queryClient.setQueryData(["auth", "executive-profile"], updated);
       setExecutiveDraft(undefined);
       await Promise.all([
         queryClient.invalidateQueries({
@@ -523,10 +567,10 @@ export function ProfileClient() {
 
   function updateExecutiveProfile(changes: Partial<ExecutiveProfileForm>) {
     if (!publicExecutiveProfile) return;
-    setExecutiveDraft({
-      ...publicExecutiveProfile,
+    setExecutiveDraft((currentDraft) => ({
+      ...(currentDraft ?? publicExecutiveProfile),
       ...changes,
-    });
+    }));
   }
 
   const tabs: Array<{ id: ProfileTab; label: string; show: boolean }> = [
@@ -538,6 +582,51 @@ export function ProfileClient() {
     },
     { id: "security", label: "Security", show: true },
   ];
+  const visibleTabs = tabs.filter((item) => item.show);
+
+  function activateTabAt(index: number) {
+    const next = visibleTabs[index];
+    if (!next) return;
+    setTab(next.id);
+    window.requestAnimationFrame(() =>
+      document.getElementById(`profile-tab-${next.id}`)?.focus(),
+    );
+  }
+
+  if (user.isPending || (Boolean(user.data) && executiveProfile.isPending)) {
+    return (
+      <div className="grid gap-6" aria-busy="true" aria-live="polite">
+        <span className="sr-only">Loading your profile</span>
+        <div className="h-28 animate-pulse rounded-3xl bg-ink/5" />
+        <div className="h-[34rem] animate-pulse rounded-3xl border border-line bg-panel" />
+      </div>
+    );
+  }
+
+  if (user.isError || !user.data) {
+    return (
+      <div className="grid min-h-80 place-items-center rounded-3xl border border-line bg-panel p-8 text-center">
+        <div className="max-w-md">
+          <AlertTriangle className="mx-auto size-8 text-coral" />
+          <h2 className="mt-4 text-xl font-black text-ink">
+            Profile unavailable
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            We could not load your account details. Check your connection and
+            try again.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-5"
+            onClick={() => void user.refetch()}
+          >
+            <RefreshCw className="size-4" /> Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6">
@@ -556,7 +645,7 @@ export function ProfileClient() {
           className="flex items-start gap-4 rounded-2xl border border-gold/40 bg-gold/10 p-5"
           role="alert"
         >
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" />
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" />
           <div>
             <b className="text-sm">
               Replace your temporary password before continuing
@@ -584,6 +673,31 @@ export function ProfileClient() {
               public leadership card is ready.
             </p>
           </div>
+        </div>
+      ) : null}
+
+      {executiveProfile.isError ? (
+        <div
+          className="flex items-start justify-between gap-4 rounded-2xl border border-line bg-panel p-5"
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-coral" />
+            <div>
+              <b className="text-sm text-ink">Leadership details unavailable</b>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                Your account and security settings are still available.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void executiveProfile.refetch()}
+          >
+            <RefreshCw className="size-3.5" /> Retry
+          </Button>
         </div>
       ) : null}
 
@@ -641,7 +755,7 @@ export function ProfileClient() {
               ) : null}
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">
                 {user.data?.email ? (
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex min-w-0 items-center gap-2 break-all">
                     <Mail className="size-4 shrink-0 opacity-80" />
                     {user.data.email}
                   </span>
@@ -668,29 +782,52 @@ export function ProfileClient() {
           role="tablist"
           aria-label="Profile sections"
         >
-          {tabs
-            .filter((item) => item.show)
-            .map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === item.id}
-                className={cn(
-                  "rounded-full px-4 py-2 text-xs font-bold transition",
-                  activeTab === item.id
-                    ? "bg-ink text-paper shadow-sm"
-                    : "text-muted hover:bg-ink/5 hover:text-ink",
-                )}
-                onClick={() => setTab(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
+          {visibleTabs.map((item, index) => (
+            <button
+              id={`profile-tab-${item.id}`}
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === item.id}
+              aria-controls={`profile-panel-${item.id}`}
+              tabIndex={activeTab === item.id ? 0 : -1}
+              className={cn(
+                "rounded-full px-4 py-2 text-xs font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-coral/45 focus-visible:ring-offset-2",
+                activeTab === item.id
+                  ? "bg-ink text-paper shadow-sm"
+                  : "text-muted hover:bg-ink/5 hover:text-ink",
+              )}
+              onClick={() => setTab(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  activateTabAt((index + 1) % visibleTabs.length);
+                } else if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  activateTabAt(
+                    (index - 1 + visibleTabs.length) % visibleTabs.length,
+                  );
+                } else if (event.key === "Home") {
+                  event.preventDefault();
+                  activateTabAt(0);
+                } else if (event.key === "End") {
+                  event.preventDefault();
+                  activateTabAt(visibleTabs.length - 1);
+                }
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
         {activeTab === "account" ? (
-          <div className="grid gap-0 lg:grid-cols-[minmax(16rem,0.9fr)_1.1fr]">
+          <div
+            id="profile-panel-account"
+            role="tabpanel"
+            aria-labelledby="profile-tab-account"
+            className="grid gap-0 lg:grid-cols-[minmax(16rem,0.9fr)_1.1fr]"
+          >
             <div className="border-b border-line p-6 sm:p-8 lg:border-r lg:border-b-0">
               <SectionHeading
                 icon={UserRound}
@@ -705,9 +842,15 @@ export function ProfileClient() {
                     void saveProfilePhoto(value);
                   }}
                 />
+                <p
+                  className="mt-2 min-h-5 text-xs text-muted"
+                  aria-live="polite"
+                >
+                  {savingPhoto ? "Saving your new profile photo…" : ""}
+                </p>
               </div>
               <div className="mt-6 flex items-start gap-3 rounded-2xl border border-line bg-ink/[.02] p-4">
-                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-300" />
                 <p className="text-xs leading-5">
                   <b className="block text-ink">Protected account</b>
                   <span className="text-muted">
@@ -729,6 +872,8 @@ export function ProfileClient() {
                   <FieldLabel htmlFor="profile-title">Title</FieldLabel>
                   <select
                     id="profile-title"
+                    name="honorific-prefix"
+                    autoComplete="honorific-prefix"
                     className={inputClass}
                     value={profile.title}
                     onChange={(event) =>
@@ -774,6 +919,8 @@ export function ProfileClient() {
                   </FieldLabel>
                   <input
                     id="profile-other-name"
+                    name="given-name"
+                    autoComplete="given-name"
                     className={inputClass}
                     required
                     value={profile.other_name}
@@ -786,6 +933,8 @@ export function ProfileClient() {
                   <FieldLabel htmlFor="profile-surname">Surname</FieldLabel>
                   <input
                     id="profile-surname"
+                    name="family-name"
+                    autoComplete="family-name"
                     className={inputClass}
                     required
                     value={profile.surname}
@@ -824,6 +973,8 @@ export function ProfileClient() {
                   <FieldLabel htmlFor="profile-phone">Phone number</FieldLabel>
                   <input
                     id="profile-phone"
+                    name="tel"
+                    autoComplete="tel"
                     className={inputClass}
                     type="tel"
                     value={profile.phone_number}
@@ -839,44 +990,67 @@ export function ProfileClient() {
                   icon={Building2}
                   eyebrow="Affiliation"
                   title="College, school, and department"
+                  description="Choose the college first, then its school and department. Changing a parent clears the dependent selections."
                 />
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {(["college", "school", "department"] as const).map((type) => {
-                    const key = `${type}_id` as
-                      | "school_id"
-                      | "college_id"
-                      | "department_id";
-                    const labelId = `profile-${type}-label`;
-                    return (
-                      <div
-                        key={type}
-                        className={cn(
-                          "grid gap-2",
-                          type === "department" && "sm:col-span-2",
-                        )}
-                      >
-                        <span
-                          id={labelId}
-                          className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase"
+                  {(["college", "school", "department"] as const).map(
+                    (type) => {
+                      const key = `${type}_id` as
+                        "school_id" | "college_id" | "department_id";
+                      const labelId = `profile-${type}-label`;
+                      return (
+                        <div
+                          key={type}
+                          className={cn(
+                            "grid gap-2",
+                            type === "department" && "sm:col-span-2",
+                          )}
                         >
-                          {profileUnitFields[type].label}
-                        </span>
-                        <WorkspaceSelect
-                          id={`profile-${type}`}
-                          labelledBy={labelId}
-                          field={profileUnitFields[type]}
-                          value={profile[key]}
-                          autoFocus={false}
-                          onChange={(value) => updateProfile({ [key]: value })}
-                        />
-                      </div>
-                    );
-                  })}
+                          <span
+                            id={labelId}
+                            className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase"
+                          >
+                            {profileUnitFields[type].label}
+                          </span>
+                          <WorkspaceSelect
+                            id={`profile-${type}`}
+                            labelledBy={labelId}
+                            field={profileUnitFields[type]}
+                            value={profile[key]}
+                            autoFocus={false}
+                            formValues={profile}
+                            onChange={(value) => {
+                              if (type === "college") {
+                                updateProfile({
+                                  college_id: value,
+                                  school_id: "",
+                                  department_id: "",
+                                });
+                                return;
+                              }
+                              if (type === "school") {
+                                updateProfile({
+                                  school_id: value,
+                                  department_id: "",
+                                });
+                                return;
+                              }
+                              updateProfile({ department_id: value });
+                            }}
+                          />
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
               </div>
 
               <div className="flex justify-end border-t border-line pt-5">
-                <Button disabled={savingProfile} className="min-w-40">
+                <Button
+                  type="submit"
+                  disabled={savingProfile || savingPhoto}
+                  className="w-full sm:w-auto sm:min-w-40"
+                >
                   {savingProfile ? (
                     <LoaderCircle className="size-4 animate-spin" />
                   ) : (
@@ -892,6 +1066,9 @@ export function ProfileClient() {
         {activeTab === "leadership" ? (
           hasLeadership && publicExecutiveProfile && appointmentMeta ? (
             <form
+              id="profile-panel-leadership"
+              role="tabpanel"
+              aria-labelledby="profile-tab-leadership"
               className="grid gap-0 lg:grid-cols-[1.15fr_.85fr]"
               onSubmit={saveExecutiveProfile}
             >
@@ -1003,6 +1180,7 @@ export function ProfileClient() {
                       </FieldLabel>
                       <textarea
                         id="profile-executive-summary"
+                        aria-describedby="profile-executive-summary-help"
                         rows={3}
                         maxLength={500}
                         className={cn(inputClass, "min-h-24 resize-y py-3")}
@@ -1014,6 +1192,12 @@ export function ProfileClient() {
                           })
                         }
                       />
+                      <p
+                        id="profile-executive-summary-help"
+                        className="text-right text-[.68rem] text-muted"
+                      >
+                        {publicExecutiveProfile.summary.length}/500
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1035,6 +1219,12 @@ export function ProfileClient() {
                         void saveProfilePhoto(value);
                       }}
                     />
+                    <span
+                      className="min-h-5 text-xs font-normal text-muted"
+                      aria-live="polite"
+                    >
+                      {savingPhoto ? "Saving your new profile photo…" : ""}
+                    </span>
                   </div>
                   <div className="grid gap-2 text-xs font-bold">
                     <label
@@ -1083,10 +1273,18 @@ export function ProfileClient() {
                         </span>
                       </span>
                     </label>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-panel p-4 transition hover:border-coral/30">
+                    <label
+                      className={cn(
+                        "flex items-start gap-3 rounded-2xl border border-line bg-panel p-4 transition",
+                        user.data?.phone_number
+                          ? "cursor-pointer hover:border-coral/30"
+                          : "cursor-not-allowed opacity-60",
+                      )}
+                    >
                       <input
                         type="checkbox"
                         className="mt-1 size-4 accent-[var(--coral)]"
+                        disabled={!user.data?.phone_number}
                         checked={publicExecutiveProfile.show_phone}
                         onChange={(event) =>
                           updateExecutiveProfile({
@@ -1099,8 +1297,9 @@ export function ProfileClient() {
                           Show phone publicly
                         </b>
                         <span className="mt-1 block text-xs leading-5 text-muted">
-                          Displays your saved phone number on your public
-                          leadership profile.
+                          {user.data?.phone_number
+                            ? "Displays your saved phone number on your public leadership profile."
+                            : "Add a phone number on the Account tab before making it public."}
                         </span>
                       </span>
                     </label>
@@ -1108,7 +1307,11 @@ export function ProfileClient() {
                 </div>
 
                 <div className="flex justify-end border-t border-line pt-5">
-                  <Button disabled={savingExecutive} className="min-w-52">
+                  <Button
+                    type="submit"
+                    disabled={savingExecutive || savingPhoto}
+                    className="w-full sm:w-auto sm:min-w-52"
+                  >
                     {savingExecutive ? (
                       <LoaderCircle className="size-4 animate-spin" />
                     ) : (
@@ -1123,8 +1326,8 @@ export function ProfileClient() {
                 <p className="text-[.68rem] font-extrabold tracking-[.08em] text-muted uppercase">
                   Public preview
                 </p>
-                <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-                  <div className="relative aspect-[4/3.4] bg-[linear-gradient(145deg,#e8eef5,#f8fafc)]">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-paper shadow-sm">
+                  <div className="relative aspect-[4/3.4] bg-ink/6">
                     {user.data?.profile_media_id ? (
                       <Image
                         fill
@@ -1192,7 +1395,12 @@ export function ProfileClient() {
               </aside>
             </form>
           ) : (
-            <div className="grid gap-3 p-8">
+            <div
+              id="profile-panel-leadership"
+              role="tabpanel"
+              aria-labelledby="profile-tab-leadership"
+              className="grid gap-3 p-8"
+            >
               <SectionHeading
                 icon={BriefcaseBusiness}
                 eyebrow="Public leadership"
@@ -1204,7 +1412,12 @@ export function ProfileClient() {
         ) : null}
 
         {activeTab === "security" ? (
-          <div className="p-6 sm:p-8">
+          <div
+            id="profile-panel-security"
+            role="tabpanel"
+            aria-labelledby="profile-tab-security"
+            className="p-6 sm:p-8"
+          >
             <SectionHeading
               icon={LockKeyhole}
               eyebrow="Password"
@@ -1236,6 +1449,8 @@ export function ProfileClient() {
                   autoComplete="new-password"
                   minLength={8}
                   required
+                  invalid={Boolean(password) && !passwordIsStrong}
+                  describedBy="profile-password-guidance"
                   value={password}
                   onChange={setPassword}
                 />
@@ -1249,16 +1464,53 @@ export function ProfileClient() {
                   autoComplete="new-password"
                   minLength={8}
                   required
+                  invalid={!passwordsMatch}
+                  describedBy="profile-password-match"
                   value={confirm}
                   onChange={setConfirm}
                 />
+                <p
+                  id="profile-password-match"
+                  className={cn(
+                    "min-h-5 text-xs",
+                    passwordsMatch
+                      ? "text-muted"
+                      : "text-red-700 dark:text-red-300",
+                  )}
+                  role={passwordsMatch ? undefined : "alert"}
+                >
+                  {confirm && passwordsMatch
+                    ? "Passwords match"
+                    : !passwordsMatch
+                      ? "The new passwords do not match"
+                      : ""}
+                </p>
               </div>
-              <p className="text-xs leading-5 text-muted sm:col-span-2">
+              <p
+                id="profile-password-guidance"
+                className={cn(
+                  "text-xs leading-5 sm:col-span-2",
+                  password && !passwordIsStrong
+                    ? "text-red-700 dark:text-red-300"
+                    : "text-muted",
+                )}
+              >
                 Use at least 8 characters with upper and lowercase letters and a
                 number.
               </p>
               <div className="sm:col-span-2">
-                <Button disabled={savingPassword} className="min-w-44">
+                <Button
+                  type="submit"
+                  disabled={
+                    savingPassword ||
+                    !current ||
+                    !password ||
+                    !confirm ||
+                    !passwordIsStrong ||
+                    !passwordsMatch
+                  }
+                  className="w-full sm:w-auto sm:min-w-44"
+                >
                   {savingPassword ? (
                     <LoaderCircle className="size-4 animate-spin" />
                   ) : (

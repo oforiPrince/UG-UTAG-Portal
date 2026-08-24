@@ -26,9 +26,9 @@ export function partitionDetailActions(actions: WorkspaceMutation[]) {
 export type RowActionSet = {
   canView: true;
   canUpdate: boolean;
-  canArchive: boolean;
+  canDelete: boolean;
   update?: WorkspaceMutation;
-  archive?: WorkspaceMutation;
+  delete?: WorkspaceMutation;
   primary: WorkspaceMutation[];
   secondary: WorkspaceMutation[];
   /** All gated custom actions (before primary/secondary split). */
@@ -69,16 +69,16 @@ export function rowActionsFor(
     )
       ? config.update
       : undefined;
-  const archive =
-    config.archive &&
+  const deleteMutation =
+    config.delete &&
     mutationAllowed(
-      config.archive,
+      config.delete,
       row,
       permissions,
       currentUserId,
       deliveryAvailable,
     )
-      ? config.archive
+      ? config.delete
       : undefined;
   const actions = (config.actions ?? []).filter((item) =>
     mutationAllowed(item, row, permissions, currentUserId, deliveryAvailable),
@@ -88,9 +88,9 @@ export function rowActionsFor(
   return {
     canView: true,
     canUpdate: Boolean(update),
-    canArchive: Boolean(archive),
+    canDelete: Boolean(deleteMutation),
     update,
-    archive,
+    delete: deleteMutation,
     primary,
     secondary,
     actions,
@@ -102,16 +102,18 @@ export function inlineRowMutations(actions: RowActionSet): WorkspaceMutation[] {
   return actions.primary.slice(0, 2);
 }
 
-export function overflowRowItems(actions: RowActionSet): Array<
+export function overflowRowItems(
+  actions: RowActionSet,
+): Array<
   | { kind: "mutation"; mutation: WorkspaceMutation }
   | { kind: "update"; mutation: WorkspaceMutation }
-  | { kind: "archive"; mutation: WorkspaceMutation }
+  | { kind: "delete"; mutation: WorkspaceMutation }
 > {
   const inline = new Set(inlineRowMutations(actions));
   const items: Array<
     | { kind: "mutation"; mutation: WorkspaceMutation }
     | { kind: "update"; mutation: WorkspaceMutation }
-    | { kind: "archive"; mutation: WorkspaceMutation }
+    | { kind: "delete"; mutation: WorkspaceMutation }
   > = [];
 
   for (const mutation of actions.primary) {
@@ -125,8 +127,8 @@ export function overflowRowItems(actions: RowActionSet): Array<
   if (actions.update) {
     items.push({ kind: "update", mutation: actions.update });
   }
-  if (actions.archive) {
-    items.push({ kind: "archive", mutation: actions.archive });
+  if (actions.delete) {
+    items.push({ kind: "delete", mutation: actions.delete });
   }
   return items;
 }

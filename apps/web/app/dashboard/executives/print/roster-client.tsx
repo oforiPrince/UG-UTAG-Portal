@@ -59,7 +59,7 @@ export function ExecutiveRosterClient() {
       {query.isLoading ? (
         <p className="py-16 text-center text-sm text-muted">Loading roster…</p>
       ) : query.error ? (
-        <p className="py-16 text-center text-sm text-red-700">
+        <p className="py-16 text-center text-sm text-red-700 dark:text-red-300">
           The executive roster could not be loaded.
         </p>
       ) : (

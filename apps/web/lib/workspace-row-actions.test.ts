@@ -21,7 +21,7 @@ describe("rowActionsFor", () => {
       "dashboard.view",
     ]);
     expect(actions.canUpdate).toBe(false);
-    expect(actions.canArchive).toBe(false);
+    expect(actions.canDelete).toBe(false);
     expect(actions.primary.map((item) => item.label)).toContain("Register");
     expect(actions.primary.map((item) => item.label)).not.toContain(
       "Cancel registration",
@@ -56,21 +56,22 @@ describe("rowActionsFor", () => {
       ],
       "user-1",
     );
-    expect(actions.canArchive).toBe(false);
+    expect(actions.canDelete).toBe(false);
     expect(
       actions.actions.some((item) => item.label === "Reset password"),
     ).toBe(false);
   });
 
-  it("puts edit and archive into overflow for managers", () => {
+  it("puts edit and administrator-only delete into overflow", () => {
     const actions = rowActionsFor(eventRow, workspaces.events, [
       "dashboard.view",
       "events.manage",
+      "records.delete",
     ]);
     expect(actions.canUpdate).toBe(true);
     const overflow = overflowRowItems(actions);
     expect(overflow.some((item) => item.kind === "update")).toBe(true);
-    expect(overflow.some((item) => item.kind === "archive")).toBe(true);
+    expect(overflow.some((item) => item.kind === "delete")).toBe(true);
     expect(inlineRowMutations(actions).map((item) => item.label)).toContain(
       "Register",
     );
@@ -87,24 +88,35 @@ describe("rowActionsFor", () => {
       "dashboard.view",
       "executives.view",
     ]);
-    expect(viewer.canArchive).toBe(false);
+    expect(viewer.canDelete).toBe(false);
 
     const manager = rowActionsFor(row, workspaces.executives, [
       "dashboard.view",
       "executives.manage",
     ]);
-    expect(manager.canArchive).toBe(true);
-    expect(manager.archive?.label).toBe("End appointment");
-    expect(manager.archive?.permission).toBe("executives.manage");
+    expect(manager.canDelete).toBe(false);
+    expect(manager.actions.map((item) => item.label)).toContain(
+      "End appointment",
+    );
+
+    const administrator = rowActionsFor(row, workspaces.executives, [
+      "dashboard.view",
+      "executives.manage",
+      "records.delete",
+    ]);
+    expect(administrator.canDelete).toBe(true);
+    expect(administrator.delete?.label).toBe("Delete appointment");
+    expect(administrator.delete?.permission).toBe("records.delete");
     expect(
-      overflowRowItems(manager).some(
+      overflowRowItems(administrator).some(
         (item) =>
-          item.kind === "archive" && item.mutation.label === "End appointment",
+          item.kind === "delete" &&
+          item.mutation.label === "Delete appointment",
       ),
     ).toBe(true);
   });
 
-  it("surfaces Archive announcement for content.publish", () => {
+  it("keeps permanent announcement deletion administrator-only", () => {
     const row = {
       id: "ann-1",
       status: "published",
@@ -115,15 +127,22 @@ describe("rowActionsFor", () => {
       "dashboard.view",
       "content.view",
     ]);
-    expect(viewer.canArchive).toBe(false);
+    expect(viewer.canDelete).toBe(false);
 
     const publisher = rowActionsFor(row, workspaces.announcements, [
       "dashboard.view",
       "content.publish",
     ]);
-    expect(publisher.canArchive).toBe(true);
-    expect(publisher.archive?.label).toBe("Archive announcement");
-    expect(publisher.archive?.permission).toBe("content.publish");
+    expect(publisher.canDelete).toBe(false);
+
+    const administrator = rowActionsFor(row, workspaces.announcements, [
+      "dashboard.view",
+      "content.publish",
+      "records.delete",
+    ]);
+    expect(administrator.canDelete).toBe(true);
+    expect(administrator.delete?.label).toBe("Delete announcement");
+    expect(administrator.delete?.permission).toBe("records.delete");
   });
 
   it("keeps analytics view-only", () => {

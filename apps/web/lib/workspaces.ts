@@ -49,7 +49,20 @@ export type WorkspaceField = {
     value: (row: WorkspaceRow) => string;
     label: (row: WorkspaceRow) => string;
     filter?: (row: WorkspaceRow) => boolean;
+    filterForValues?: (
+      row: WorkspaceRow,
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => boolean;
     emptyLabel?: string;
+    emptyLabelForValues?: (
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => string;
+    disabledForValues?: (
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => boolean;
   };
   /**
    * Label for the value already stored on the record. Option lists are paged, so
@@ -73,6 +86,8 @@ export type WorkspaceField = {
   editOnly?: boolean;
   emptyValue?: unknown;
   valueFromRow?: (row: WorkspaceRow) => unknown;
+  /** Clear dependent form fields when this field changes. */
+  clearOnChange?: string[];
   structuredFields?: WorkspaceStructuredField[];
   structuredItemFields?: WorkspaceStructuredField[];
   addItemLabel?: string;
@@ -131,7 +146,7 @@ export type WorkspaceConfig = {
   detail?: WorkspaceDetailConfig;
   create?: WorkspaceMutation;
   update?: WorkspaceMutation;
-  archive?: WorkspaceMutation;
+  delete?: WorkspaceMutation;
   actions?: WorkspaceMutation[];
 };
 
@@ -164,7 +179,7 @@ const memberFields: WorkspaceField[] = [
     label: "Email",
     type: "email",
     required: true,
-    createOnly: true,
+    help: "Used for sign-in and account communications. Changing it marks the address unverified, signs the member out, and cancels old access links. Send a new access link afterward if needed.",
   },
   {
     key: "staff_id",
@@ -237,6 +252,7 @@ const memberFields: WorkspaceField[] = [
       value: (row) => String(row.id),
       label: (row) => String(row.name),
     },
+    clearOnChange: ["school_id", "department_id"],
   },
   {
     key: "school_id",
@@ -246,8 +262,16 @@ const memberFields: WorkspaceField[] = [
       endpoint: "/api/v1/organization/units?unit_type=school",
       queryKey: "organization-schools",
       value: (row) => String(row.id),
-      label: (row) => String(row.name),
+      label: (row) =>
+        row.parent_name
+          ? `${String(row.name)} · ${String(row.parent_name)}`
+          : String(row.name),
+      filterForValues: (row, values) =>
+        Boolean(values.college_id) &&
+        String(row.parent_id) === String(values.college_id),
+      emptyLabel: "Select a college to see its schools",
     },
+    clearOnChange: ["department_id"],
   },
   {
     key: "department_id",
@@ -257,7 +281,14 @@ const memberFields: WorkspaceField[] = [
       endpoint: "/api/v1/organization/units?unit_type=department",
       queryKey: "organization-departments",
       value: (row) => String(row.id),
-      label: (row) => String(row.name),
+      label: (row) =>
+        row.parent_name
+          ? `${String(row.name)} · ${String(row.parent_name)}`
+          : String(row.name),
+      filterForValues: (row, values) =>
+        Boolean(values.school_id) &&
+        String(row.parent_id) === String(values.school_id),
+      emptyLabel: "Select a school to see its departments",
     },
   },
   {
@@ -1089,21 +1120,20 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         !row.roles.includes("administrator") ||
         permissions.includes("members.roles"),
     },
-    archive: {
-      label: "Archive member",
-      permission: "members.lifecycle",
-      endpoint: (row) => `/api/v1/members/${row.id}`,
+    delete: {
+      label: "Delete member",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/members/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Member archived",
+      successMessage: "Member deleted permanently",
       confirm:
-        "Archive this member and revoke their active sessions? The record will be retained.",
+        "Permanently delete this member? This cannot be undone. The portal will block deletion if the account has linked appointments, content, media, messages, or other shared history.",
       danger: true,
       excludeSelf: true,
       when: (row, permissions) =>
-        row.status !== "archived" &&
-        (!Array.isArray(row.roles) ||
-          !row.roles.includes("administrator") ||
-          permissions.includes("members.roles")),
+        !Array.isArray(row.roles) ||
+        !row.roles.includes("administrator") ||
+        permissions.includes("members.roles"),
     },
     actions: [
       {
@@ -1249,28 +1279,39 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       fields: executiveFields,
       successMessage: "Executive appointment updated",
     },
-    archive: {
-      label: "End appointment",
-      permission: "executives.manage",
-      endpoint: (row) => `/api/v1/executives/${row.id}`,
+    delete: {
+      label: "Delete appointment",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/executives/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Executive appointment ended",
-      confirm: "End this appointment while retaining its term history?",
+      successMessage: "Executive appointment deleted permanently",
+      confirm:
+        "Permanently delete this executive appointment and its term history? This cannot be undone.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "End appointment",
+        permission: "executives.manage",
+        endpoint: (row) => `/api/v1/executives/${row.id}`,
+        method: "DELETE",
+        successMessage: "Executive appointment ended",
+        confirm: "End this appointment while retaining its term history?",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   organization: {
     title: "Organization",
     description:
-      "Schools, colleges, departments, and committees represented in the association.",
+      "Manage the college → school → department hierarchy used by member profiles, documents, and association groups.",
     endpoint: "/api/v1/organization/units?include_inactive=true",
     queryKey: "organization",
     filters: [
       {
         key: "unit_type",
         label: "Type",
-        options: ["school", "college", "department", "committee"],
+        options: ["college", "school", "department", "committee"],
       },
     ],
     columns: [
@@ -1290,7 +1331,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           type: "select",
           required: true,
           createOnly: true,
-          options: ["school", "college", "department", "committee"],
+          options: ["college", "school", "department", "committee"],
+          clearOnChange: ["parent_id"],
         },
         { key: "name", label: "Unit name", required: true },
         {
@@ -1302,8 +1344,16 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             queryKey: "organization-units",
             value: (row) => String(row.id),
             label: (row) => `${String(row.name)} · ${String(row.unit_type)}`,
+            filterForValues: (row, values) => {
+              if (values.unit_type === "school")
+                return row.unit_type === "college";
+              if (values.unit_type === "department")
+                return row.unit_type === "school";
+              return false;
+            },
+            emptyLabel: "Choose a unit type to see eligible parents",
           },
-          help: "Schools belong to colleges; departments belong to schools.",
+          help: "Schools require a college; departments require a school. Colleges and committees are top-level.",
         },
         {
           key: "is_active",
@@ -1330,23 +1380,43 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             queryKey: "organization-units",
             value: (row) => String(row.id),
             label: (row) => `${String(row.name)} · ${String(row.unit_type)}`,
+            filterForValues: (row, _values, record) => {
+              if (record?.unit_type === "school")
+                return row.unit_type === "college";
+              if (record?.unit_type === "department")
+                return row.unit_type === "school";
+              return false;
+            },
+            emptyLabel: "This unit type does not use a parent",
           },
+          help: "Moving a school or department also updates linked member affiliations.",
         },
         { key: "is_active", label: "Active", type: "checkbox" },
       ],
       successMessage: "Organization unit updated",
     },
-    archive: {
-      label: "Deactivate unit",
-      permission: "organization.manage",
-      endpoint: (row) => `/api/v1/organization/units/${row.id}`,
+    delete: {
+      label: "Delete unit",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/organization/units/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Organization unit deactivated",
+      successMessage: "Organization unit deleted permanently",
       confirm:
-        "Deactivate this unit? Existing member links and history will be retained.",
+        "Permanently delete this organization unit? This cannot be undone. Deletion is allowed only when no members, child units, audiences, or chat history are linked.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate unit",
+        permission: "organization.manage",
+        endpoint: (row) => `/api/v1/organization/units/${row.id}`,
+        method: "DELETE",
+        successMessage: "Organization unit deactivated",
+        confirm:
+          "Deactivate this unit? Linked members and active child units must be reassigned first.",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   news: {
     title: "News & statements",
@@ -1397,16 +1467,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: articlePrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive article",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/content/articles/${row.id}`,
+    delete: {
+      label: "Delete article",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/content/articles/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Article archived",
+      successMessage: "Article deleted permanently",
       confirm:
-        "Archive this article? Its history will be retained and it will leave the public site.",
+        "Permanently delete this article? This cannot be undone. Shared media files will be retained.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
     actions: [
       {
@@ -1467,16 +1536,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: announcementPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive announcement",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/content/announcements/${row.id}`,
+    delete: {
+      label: "Delete announcement",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/content/announcements/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Announcement archived",
+      successMessage: "Announcement deleted permanently",
       confirm:
-        "Archive this announcement? Existing inbox deliveries stay in members' notification history.",
+        "Permanently delete this announcement? This cannot be undone. Announcements already delivered to members cannot be deleted.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
   },
   events: {
@@ -1529,16 +1597,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: eventPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive event",
-      permission: "events.manage",
-      endpoint: (row) => `/api/v1/events/${row.id}`,
+    delete: {
+      label: "Delete event",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/events/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Event archived",
+      successMessage: "Event deleted permanently",
       confirm:
-        "Archive this event? Registrations and activity history will be retained.",
+        "Permanently delete this event? This cannot be undone. Events with registration or communication history cannot be deleted.",
       danger: true,
-      when: (row) => row.publication_status !== "archived",
     },
     actions: [
       {
@@ -1607,14 +1674,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: documentPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive document",
-      permission: "documents.manage",
-      endpoint: (row) => `/api/v1/documents/${row.id}`,
+    delete: {
+      label: "Delete document",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/documents/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Document archived",
+      successMessage: "Document deleted permanently",
       confirm:
-        "Archive this document? Files and every version will be retained.",
+        "Permanently delete this document and its file-version links? This cannot be undone. Shared media files are retained, and legal holds block deletion.",
       danger: true,
     },
     actions: [
@@ -1732,16 +1799,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Media details updated",
     },
-    archive: {
-      label: "Archive media",
-      permission: "media.manage",
-      endpoint: (row) => `/api/v1/media/${row.id}`,
+    delete: {
+      label: "Delete media",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/media/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Media asset archived",
+      successMessage: "Media asset deleted permanently",
       confirm:
-        "Archive this media asset? Stored bytes and audit history will be retained.",
+        "Permanently delete this media asset, its variants, and stored files? This cannot be undone. Any linked profile, article, event, document, gallery, advert, or carousel slide will block deletion.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
     actions: [
       {
@@ -1941,15 +2007,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         };
       },
     },
-    archive: {
-      label: "Archive gallery",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/galleries/${row.id}`,
+    delete: {
+      label: "Delete gallery",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/galleries/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Gallery archived",
-      confirm: "Archive this gallery while retaining all images and history?",
+      successMessage: "Gallery deleted permanently",
+      confirm:
+        "Permanently delete this gallery? This cannot be undone. Its shared media assets will be retained.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
   },
   carousel: {
@@ -2072,16 +2138,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Homepage slide updated",
     },
-    archive: {
-      label: "Archive slide",
-      permission: "settings.manage",
-      endpoint: (row) => `/api/v1/admin/carousel/${row.id}`,
+    delete: {
+      label: "Delete slide",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/admin/carousel/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Homepage slide archived",
+      successMessage: "Homepage slide deleted permanently",
       confirm:
-        "Archive this slide? Its audit history and media asset will be retained.",
+        "Permanently delete this homepage slide? This cannot be undone. The linked media asset will be retained.",
       danger: true,
-      when: (row) => row.archived !== true,
     },
   },
   adverts: {
@@ -2122,16 +2187,27 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       fields: campaignFields,
       successMessage: "Campaign updated",
     },
-    archive: {
-      label: "Complete campaign",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}`,
+    delete: {
+      label: "Delete campaign",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Campaign completed",
-      confirm: "Complete this campaign? Performance records will be retained.",
+      successMessage: "Advertising campaign deleted permanently",
+      confirm:
+        "Permanently delete this campaign? This cannot be undone. Linked orders or recorded performance will block deletion.",
       danger: true,
-      when: (row) => row.status !== "completed",
     },
+    actions: [
+      {
+        label: "Complete campaign",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}`,
+        method: "DELETE",
+        successMessage: "Campaign completed",
+        confirm: "Complete this campaign while retaining performance records?",
+        when: (row) => row.status !== "completed",
+      },
+    ],
   },
   "advert-slots": {
     title: "Advertising placements",
@@ -2212,6 +2288,16 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         { key: "is_active", label: "Active", type: "checkbox" },
       ],
       successMessage: "Advertising placement updated",
+    },
+    delete: {
+      label: "Delete placement",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/slots/${row.id}/permanent`,
+      method: "DELETE",
+      successMessage: "Advertising placement deleted permanently",
+      confirm:
+        "Permanently delete this advertising placement? Linked plans or campaigns will block deletion.",
+      danger: true,
     },
   },
   "advert-plans": {
@@ -2304,16 +2390,27 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertising plan updated",
     },
-    archive: {
-      label: "Deactivate plan",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/plans/${row.id}`,
+    delete: {
+      label: "Delete plan",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/plans/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertising plan deactivated",
-      confirm: "Deactivate this plan? Existing orders will be retained.",
+      successMessage: "Advertising plan deleted permanently",
+      confirm:
+        "Permanently delete this advertising plan? Existing orders will block deletion.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate plan",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/plans/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertising plan deactivated",
+        confirm: "Deactivate this plan while retaining existing orders?",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   "advert-orders": {
     title: "Advertising orders",
@@ -2466,17 +2563,28 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertising order updated",
     },
-    archive: {
-      label: "Cancel order",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/orders/${row.id}`,
+    delete: {
+      label: "Delete order",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/orders/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertising order cancelled",
+      successMessage: "Advertising order deleted permanently",
       confirm:
-        "Cancel this order? Its linked campaign will be paused if it was live.",
+        "Permanently delete this order? Linked campaigns, payment activity, or fulfilled history will block deletion.",
       danger: true,
-      when: (row) => row.status !== "cancelled",
     },
+    actions: [
+      {
+        label: "Cancel order",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/orders/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertising order cancelled",
+        confirm:
+          "Cancel this order? Its linked campaign will be paused if it was live.",
+        when: (row) => row.status !== "cancelled",
+      },
+    ],
   },
   "advert-advertisers": {
     title: "Advertiser clients",
@@ -2535,17 +2643,28 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertiser client updated",
     },
-    archive: {
-      label: "Deactivate client",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+    delete: {
+      label: "Delete client",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertiser client deactivated",
+      successMessage: "Advertiser client deleted permanently",
       confirm:
-        "Deactivate this client? Existing orders stay on record; new orders will require an active client.",
+        "Permanently delete this advertiser client? Existing orders will block deletion.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate client",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertiser client deactivated",
+        confirm:
+          "Deactivate this client? Existing orders stay on record; new orders will require an active client.",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   analytics: {
     title: "Analytics",

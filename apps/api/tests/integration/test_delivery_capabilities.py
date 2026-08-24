@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from uuid import UUID
 
+import pytest
 from httpx import AsyncClient
 
 from utag_api.errors import ApiError
@@ -13,7 +14,6 @@ from utag_api.services.delivery import (
     require_email_delivery,
     sms_delivery_enabled,
 )
-import pytest
 
 
 def test_capabilities_reflect_smtp_configuration() -> None:
@@ -189,6 +189,15 @@ async def test_forgot_password_and_credential_actions_require_email(
         member.must_change_password = False
         member.email_verified = False
         await session.commit()
+
+    # The temporary-member login above replaced the test client's session cookie.
+    # Restore the administrator identity before exercising an administrator action.
+    admin_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    assert admin_login.status_code == 200
+    headers = {"X-CSRF-Token": admin_login.json()["csrf_token"]}
 
     unverified_reset = await client.post(
         f"/api/v1/members/{member_id}/password-reset",

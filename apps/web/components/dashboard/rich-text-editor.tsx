@@ -21,12 +21,7 @@ import {
   Undo2,
   Unlink,
 } from "lucide-react";
-import {
-  type ComponentType,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { normalizeEditorHtml, normalizeLinkHref } from "@/lib/rich-text";
@@ -367,7 +362,10 @@ export function RichTextEditor({
               className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
             />
             {linkError ? (
-              <span role="alert" className="font-normal text-red-700">
+              <span
+                role="alert"
+                className="font-normal text-red-700 dark:text-red-300"
+              >
                 {linkError}
               </span>
             ) : null}

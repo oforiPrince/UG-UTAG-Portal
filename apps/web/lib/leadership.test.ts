@@ -5,6 +5,7 @@ import {
   formatExecutivePosition,
   isExecutiveOfficerPosition,
   normalizeExecutivePosition,
+  publishedExecutiveEmail,
   sortLeadership,
 } from "./leadership";
 
@@ -79,5 +80,25 @@ describe("leadership groups", () => {
     expect(formatExecutivePosition("CHS Rep")).toBe("CHS Rep");
     expect(formatExecutivePosition("CBAS Rep")).toBe("CBAS Rep");
     expect(formatExecutivePosition("Vice-President")).toBe("Vice-President");
+  });
+});
+
+describe("published executive contact", () => {
+  it("withholds email when the office-holder has opted out", () => {
+    expect(
+      publishedExecutiveEmail({
+        email: "ksadu-manu@ug.edu.gh",
+        show_email: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns a consented email", () => {
+    expect(
+      publishedExecutiveEmail({
+        email: " ksadu-manu@ug.edu.gh ",
+        show_email: true,
+      }),
+    ).toBe("ksadu-manu@ug.edu.gh");
   });
 });

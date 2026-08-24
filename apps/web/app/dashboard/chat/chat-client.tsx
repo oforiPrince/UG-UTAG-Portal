@@ -944,7 +944,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                   <b className="block truncate text-xs">
                     {selected.title ?? "Conversation"}
                   </b>
-                  <small className="text-[.58rem] text-emerald-600">
+                  <small className="text-[.58rem] text-emerald-600 dark:text-emerald-300">
                     Private · live
                   </small>
                 </div>

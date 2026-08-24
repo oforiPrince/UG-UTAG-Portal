@@ -79,6 +79,58 @@ describe("document audience categories", () => {
 });
 
 describe("member creation", () => {
+  it("keeps organization choices inside the selected hierarchy", () => {
+    const fields = workspaces.members.create?.fields ?? [];
+    const college = fields.find((field) => field.key === "college_id");
+    const school = fields.find((field) => field.key === "school_id");
+    const department = fields.find((field) => field.key === "department_id");
+
+    expect(college?.clearOnChange).toEqual(["school_id", "department_id"]);
+    expect(school?.clearOnChange).toEqual(["department_id"]);
+    expect(
+      school?.optionSource?.filterForValues?.(
+        { id: "school-1", parent_id: "college-1" },
+        { college_id: "college-1" },
+      ),
+    ).toBe(true);
+    expect(
+      school?.optionSource?.filterForValues?.(
+        { id: "school-2", parent_id: "college-2" },
+        { college_id: "college-1" },
+      ),
+    ).toBe(false);
+    expect(
+      department?.optionSource?.filterForValues?.(
+        { id: "department-1", parent_id: "school-1" },
+        { school_id: "school-1" },
+      ),
+    ).toBe(true);
+  });
+
+  it("shows only valid parents when an organization unit is managed", () => {
+    const parent = workspaces.organization.create?.fields?.find(
+      (field) => field.key === "parent_id",
+    );
+    expect(
+      parent?.optionSource?.filterForValues?.(
+        { unit_type: "college" },
+        { unit_type: "school" },
+      ),
+    ).toBe(true);
+    expect(
+      parent?.optionSource?.filterForValues?.(
+        { unit_type: "school" },
+        { unit_type: "department" },
+      ),
+    ).toBe(true);
+    expect(
+      parent?.optionSource?.filterForValues?.(
+        { unit_type: "department" },
+        { unit_type: "school" },
+      ),
+    ).toBe(false);
+  });
+
   it("uses create wording and preserves the explicit invitation choice", () => {
     const create = workspaces.members.create!;
     expect(create.label).toBe("Create member");
@@ -107,8 +159,18 @@ describe("member creation", () => {
   it("separates profile, lifecycle, credential, and role permissions", () => {
     expect(workspaces.members.create?.permission).toBe("members.create");
     expect(workspaces.members.update?.permission).toBe("members.update");
-    expect(workspaces.members.archive?.permission).toBe("members.lifecycle");
-    expect(workspaces.members.archive?.excludeSelf).toBe(true);
+    expect(
+      workspaces.members.update?.fields?.find((field) => field.key === "email"),
+    ).toMatchObject({
+      type: "email",
+      required: true,
+    });
+    expect(
+      workspaces.members.update?.fields?.find((field) => field.key === "email")
+        ?.createOnly,
+    ).not.toBe(true);
+    expect(workspaces.members.delete?.permission).toBe("records.delete");
+    expect(workspaces.members.delete?.excludeSelf).toBe(true);
     expect(
       workspaces.members.create?.fields?.find((field) => field.key === "roles")
         ?.permission,

@@ -71,13 +71,7 @@ function DocumentPanelPreview({
   );
 }
 
-function NewsPanelPreview({
-  id,
-  onBack,
-}: {
-  id: string;
-  onBack: () => void;
-}) {
+function NewsPanelPreview({ id, onBack }: { id: string; onBack: () => void }) {
   const preview = useQuery({
     queryKey: ["moderation", "preview", "news", id],
     queryFn: () =>
@@ -112,7 +106,7 @@ function NewsPanelPreview({
   const heroMediaId = item.media_asset_ids[0];
 
   return (
-    <article className="overflow-hidden rounded-md border border-line bg-white">
+    <article className="overflow-hidden rounded-md border border-line bg-paper">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#172f4d] px-4 py-3 text-white">
         <p className="text-xs font-bold">
           Private preview · {humanize(item.kind)} · {humanize(item.status)}
@@ -147,7 +141,7 @@ function NewsPanelPreview({
       <div className="p-5">
         {item.body_html ? (
           <div
-            className="prose max-w-none prose-headings:text-ink prose-a:text-coral"
+            className="themed-prose max-w-none text-sm"
             dangerouslySetInnerHTML={{ __html: item.body_html }}
           />
         ) : (
