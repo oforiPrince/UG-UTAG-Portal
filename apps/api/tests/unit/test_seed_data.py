@@ -54,6 +54,21 @@ def test_organization_name_key_normalizes_known_legacy_abbreviations() -> None:
     assert organization_name_key("DEPT: RESTORATIVE DENTISTRY") == organization_name_key(
         "Department of Restorative Dentistry"
     )
+    assert organization_name_key("COLLEGE OF BASIC & APPLIED SC.") == organization_name_key(
+        "College of Basic and Applied Sciences"
+    )
+    assert organization_name_key("SCH OF BIOLOGICAL SCIENCES") == organization_name_key(
+        "School of Biological Sciences"
+    )
+    assert organization_name_key("SCHOOL OF NURSING & MIDWIFERY") == organization_name_key(
+        "School of Nursing and Midwifery"
+    )
+    assert organization_name_key("SCH. OF INFO. & COMM. STUDIES") == organization_name_key(
+        "School of Information and Communication Studies"
+    )
+    assert organization_name_key("SCHOOL OF ENGINEERING") == organization_name_key(
+        "School of Engineering Sciences"
+    )
 
 
 async def test_seed_rewrites_stale_office_hours_on_existing_contact(
@@ -78,9 +93,7 @@ async def test_seed_rewrites_stale_office_hours_on_existing_contact(
         await seed_portal_defaults(session)
         await session.flush()
 
-        contact = await session.scalar(
-            select(SiteSetting).where(SiteSetting.key == "site.contact")
-        )
+        contact = await session.scalar(select(SiteSetting).where(SiteSetting.key == "site.contact"))
         assert contact is not None
         assert contact.value["office_hours"] == CANONICAL_OFFICE_HOURS
         assert contact.value["email"] == "utagoffice@ug.edu.gh"
@@ -182,9 +195,7 @@ async def test_portal_seed_is_complete_and_idempotent(session_factory) -> None: 
         assert plan is not None
         assert plan.slot_id == footer.id
 
-        contact = await session.scalar(
-            select(SiteSetting).where(SiteSetting.key == "site.contact")
-        )
+        contact = await session.scalar(select(SiteSetting).where(SiteSetting.key == "site.contact"))
         assert contact is not None
         assert contact.value["office_hours"] == CANONICAL_OFFICE_HOURS
 

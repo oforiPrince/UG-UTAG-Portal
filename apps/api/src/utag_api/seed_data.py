@@ -27,8 +27,25 @@ from utag_api.services.query import slugify
 
 # University reference data is deliberately kept in one version-controlled location.
 # The structure follows the University's collegiate model: college -> school -> department.
+# Keep this aligned with the 26 Aug 2026 UTAG members roster. Runtime roster sync
+# also upserts from the workbook; this constant is what `cli seed` recreates on boot.
 ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
+    "Central Administration": {
+        "Balme Library": ("Office of the University Librarian",),
+        "Human Resource and Organisation Development Directorate": (),
+        "Institute of Applied Science and Technology": (),
+        "Institutional Research and Planning Office": (),
+        "Sports Directorate": (),
+        "The Pro-Vice-Chancellor (ASA)": (),
+        "The Pro-Vice-Chancellor (RID)": (),
+        "The Vice-Chancellor": (),
+    },
     "College of Basic and Applied Sciences": {
+        "Biotechnology Centre": (),
+        "Centre for Climate Change and Sustainability Studies": (),
+        "Forest and Horticultural Crop Research Centre": (),
+        "Institute for Environment and Sanitation Studies": (),
+        "Livestock and Poultry Research Centre": (),
         "School of Agriculture": (
             "Department of Agricultural Economics and Agribusiness",
             "Department of Agricultural Extension",
@@ -40,10 +57,9 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
         "School of Biological Sciences": (
             "Department of Animal Biology and Conservation Science",
             "Department of Biochemistry, Cell and Molecular Biology",
-            "Department of Botany",
             "Department of Marine and Fisheries Sciences",
-            "Department of Microbiology",
             "Department of Nutrition and Food Science",
+            "Department of Plant and Environmental Biology",
         ),
         "School of Engineering Sciences": (
             "Department of Agricultural Engineering",
@@ -58,23 +74,26 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Earth Science",
             "Department of Mathematics",
             "Department of Physics",
-            "Department of Statistics and Actuarial Science",
+            "Department of Statistics",
         ),
-        "School of Veterinary Medicine": (
-            "Department of Veterinary Anatomy and Physiology",
-            "Department of Veterinary Clinical Studies",
-            "Department of Veterinary Pathology",
-            "Department of Veterinary Public Health and Food Safety",
-        ),
+        "School of Veterinary Medicine": (),
+        "Soil and Irrigation Research Centre": (),
+        "West Africa Centre for Crop Improvement (WACCI)": (),
+        "West African Centre for Cell Biology of Infectious Pathogens": (),
     },
     "College of Education": {
+        "Legon Centre for Education Research and Policy": (),
         "School of Continuing and Distance Education": (
             "Department of Adult Education and Human Resource Studies",
             "Department of Distance Education",
+            "University of Ghana Learning Centre-Cape Coast",
+            "University of Ghana Learning Centre-Kumasi",
+            "University of Ghana Learning Centre-Sekondi/Takoradi",
+            "University of Ghana Learning Centres",
         ),
         "School of Education and Leadership": (
             "Department of Educational Studies and Leadership",
-            "Department of Physical Education and Sport Studies",
+            "Department of Physical Education and Sports",
             "Department of Teacher Education",
         ),
         "School of Information and Communication Studies": (
@@ -83,28 +102,45 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
         ),
     },
     "College of Health Sciences": {
+        "Noguchi Memorial Institute for Medical Research": (
+            "Department of Animal Experimentation",
+            "Department of Bacteriology",
+            "Department of Clinical Pathology",
+            "Department of Electron Microscopy",
+            "Department of Epidemiology",
+            "Department of Immunology",
+            "Department of Nutrition",
+            "Department of Parasitology",
+            "Department of Virology",
+        ),
         "School of Biomedical and Allied Health Sciences": (
+            "Department of Anatomy",
             "Department of Audiology, Speech and Language Therapy",
-            "Department of Dietetics",
             "Department of Medical Laboratory Sciences",
+            "Department of Nutrition and Dietetics",
             "Department of Occupational Therapy",
+            "Department of Pathology",
             "Department of Physiotherapy",
             "Department of Radiography",
+            "Department of Respiration Therapy",
         ),
         "School of Nursing and Midwifery": (
             "Department of Adult Health",
             "Department of Community Health Nursing",
-            "Department of Maternal and Child Health Nursing",
-            "Department of Mental Health Nursing",
-            "Department of Nursing Administration and Education",
+            "Department of Maternal and Child Health",
+            "Department of Mental Health",
+            "Department of Research, Education and Administration",
+            "School of Nursing",
         ),
         "School of Pharmacy": (
             "Department of Pharmaceutical Chemistry",
             "Department of Pharmaceutics and Microbiology",
             "Department of Pharmacognosy and Herbal Medicine",
             "Department of Pharmacology and Toxicology",
+            "Department of Pharmacy Practice and Clinical Pharmacy",
         ),
         "School of Public Health": (
+            "Department of Biological, Environmental and Occupational Health",
             "Department of Biostatistics",
             "Department of Epidemiology and Disease Control",
             "Department of Health Policy, Planning and Management",
@@ -112,41 +148,56 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Social and Behavioural Sciences",
         ),
         "University of Ghana Dental School": (
-            "Department of Adult Oral Health",
-            "Department of Biomaterials Science",
-            "Department of Child Oral Health and Orthodontics",
+            "Department of Biomaterial Sciences",
+            "Department of Oral and Maxillofacial Surgery",
+            "Department of Oral Pathology and Medicine",
+            "Department of Orthodontics and Paedodontics",
+            "Department of Preventive and Community Dentistry",
             "Department of Restorative Dentistry",
         ),
         "University of Ghana Medical School": (
+            "Centre for Tropical Clinical Pharmacology and Therapeutics",
             "Department of Anaesthesia",
             "Department of Anatomy",
             "Department of Chemical Pathology",
             "Department of Child Health",
-            "Department of Community Health",
+            "Department of Community Health and Occupational Health",
             "Department of Haematology",
             "Department of Medical Biochemistry",
             "Department of Medical Microbiology",
-            "Department of Medicine",
+            "Department of Medicine and Therapeutics",
             "Department of Obstetrics and Gynaecology",
             "Department of Pathology",
-            "Department of Pharmacology",
             "Department of Physiology",
             "Department of Psychiatry",
             "Department of Radiology",
             "Department of Surgery",
+            "GEMP Office",
+            "School of Medicine and Dentistry",
         ),
     },
     "College of Humanities": {
+        "Centre for Ageing Studies": (),
+        "Centre for Migration Studies": (),
+        "Centre for Social Policy Studies": (),
+        "Centre for Urban Management Studies": (),
+        "Institute of African Studies": (),
+        "Institute of Statistical, Social and Economic Research": (),
+        "Legon Centre for International Affairs and Diplomacy": (),
+        "Regional Institute for Population Studies": (),
         "School of Arts": (
+            "Department of Archaeology and Heritage Studies",
             "Department of History",
             "Department of Philosophy and Classics",
-            "Department for the Study of Religions",
+            "Department of Study of Religions",
         ),
         "School of Languages": (
+            "Department of African and Asian Languages",
             "Department of English",
+            "Department of European Languages",
             "Department of French",
             "Department of Linguistics",
-            "Department of Modern Languages",
+            "Language Centre",
         ),
         "School of Law": (),
         "School of Performing Arts": (
@@ -162,11 +213,12 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Social Work",
             "Department of Sociology",
         ),
+        "University of Ghana Accra City Campus": (),
         "University of Ghana Business School": (
             "Department of Accounting",
             "Department of Finance",
             "Department of Health Services Management",
-            "Department of Marketing and Entrepreneurship",
+            "Department of Marketing and Customer Management",
             "Department of Operations and Management Information Systems",
             "Department of Organisation and Human Resource Management",
             "Department of Public Administration",
@@ -310,12 +362,64 @@ class OrganizationReconcileResult:
     unresolved_user_ids: tuple[UUID, ...]
 
 
+_NAME_FILLER_WORDS = frozenset({"a", "and", "for", "of", "the"})
+_NAME_TOKEN_ALIASES = {
+    "biomed": "biomedical",
+    "comm": "communication",
+    "cont": "continuing",
+    "dept": "department",
+    "dist": "distance",
+    "educ": "education",
+    "hr": "human resource",
+    "info": "information",
+    "inst": "institute",
+    "math": "mathematical",
+    "med": "medical",
+    "mem": "memorial",
+    "mgt": "management",
+    "mis": "management information systems",
+    "ofice": "office",
+    "oganisation": "organisation",
+    "pop": "population",
+    "res": "research",
+    "sc": "sciences",
+    "sch": "school",
+    "universtiy": "university",
+    "univ": "university",
+}
+_NAME_KEY_ALIASES = {
+    "college basic applied sc": "college basic applied sciences",
+    "department biomaterials science": "department biomaterial sciences",
+    "department botany": "department plant environmental biology",
+    "department child oral health orthodontics": "department orthodontics paedodontics",
+    "department community health": "department community health occupational health",
+    "department dietetics": "department nutrition dietetics",
+    "department marketing entrepreneurship": "department marketing customer management",
+    "department maternal child health nursing": "department maternal child health",
+    "department medicine": "department medicine therapeutics",
+    "department mental health nursing": "department mental health",
+    "department nursing administration education": "department research education administration",
+    "department physical education sport studies": "department physical education sports",
+    "department statistics actuarial science": "department statistics",
+    "institute stat soc econ research": "institute statistical social economic research",
+    "legon centre international affairs": "legon centre international affairs diplomacy",
+    "school biomedical allied health": "school biomedical allied health sciences",
+    "school engineering": "school engineering sciences",
+    "school physical mathematical sc": "school physical mathematical sciences",
+}
+
+
 def organization_name_key(value: str) -> str:
     """Normalize harmless legacy spelling differences without fuzzy matching."""
     normalized = unicodedata.normalize("NFKC", value).casefold()
     words = re.findall(r"[a-z0-9]+", normalized)
-    aliases = {"dept": "department", "univ": "university"}
-    return " ".join(aliases.get(word, word) for word in words if word != "of")
+    tokens: list[str] = []
+    for word in words:
+        if word in _NAME_FILLER_WORDS:
+            continue
+        tokens.extend(_NAME_TOKEN_ALIASES.get(word, word).split())
+    key = " ".join(tokens)
+    return _NAME_KEY_ALIASES.get(key, key)
 
 
 async def _available_organization_slug(
@@ -350,9 +454,10 @@ async def _upsert_unit(
     name_key = organization_name_key(name)
     matching = [item for item in candidates if organization_name_key(item.name) == name_key]
     unit = next((item for item in matching if item.parent_id == parent_id), None)
-    if unit is None and len(matching) == 1:
-        # Reuse an unambiguous earlier seed/migration row so member references
-        # keep their stable UUID while its parent is corrected.
+    if unit is None and len(matching) == 1 and unit_type != "department":
+        # Reuse an unambiguous earlier college/school row so member references
+        # keep their stable UUID while its parent is corrected. Department
+        # names can legitimately repeat under different schools.
         unit = matching[0]
     created = unit is None
     updated = False
@@ -379,11 +484,15 @@ async def _upsert_unit(
     return unit, created, updated
 
 
-async def seed_organization(db: AsyncSession) -> OrganizationSeedResult:
+async def seed_organization(
+    db: AsyncSession,
+    structure: Mapping[str, Mapping[str, Sequence[str]]] | None = None,
+) -> OrganizationSeedResult:
+    source = ORGANIZATION_STRUCTURE if structure is None else structure
     canonical_ids: set[UUID] = set()
     created = 0
     updated = 0
-    for college_name, schools in ORGANIZATION_STRUCTURE.items():
+    for college_name, schools in source.items():
         college, was_created, was_updated = await _upsert_unit(
             db,
             unit_type="college",

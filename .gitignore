@@ -165,6 +165,10 @@ utag-dev.db
 *.dump
 *.dump.sha256
 
+# Member roster PII — keep local; do not commit
+docs/**/*MEMBERS*.xlsx
+docs/**/*members*.xlsx
+
 # OS and editor artefacts
 .DS_Store
 ~$*
