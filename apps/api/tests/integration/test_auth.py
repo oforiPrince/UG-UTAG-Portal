@@ -1,5 +1,5 @@
 import io
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from httpx import AsyncClient
@@ -16,6 +16,7 @@ from utag_api.models import (
     MediaAsset,
     OrganizationUnit,
     Role,
+    Session,
     User,
     UserPermissionGrant,
     UserRole,
@@ -156,6 +157,14 @@ async def test_active_executive_can_update_own_public_profile(
         )
         await session.commit()
 
+    public_hidden = await client.get("/api/v1/public/leadership")
+    assert public_hidden.status_code == 200
+    hidden_profile = next(
+        item for item in public_hidden.json() if item["id"] == str(appointment_id)
+    )
+    assert hidden_profile["show_email"] is False
+    assert hidden_profile["email"] is None
+
     login = await client.post(
         "/api/v1/auth/login",
         json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
@@ -228,6 +237,29 @@ async def test_active_executive_can_update_own_public_profile(
     assert public.status_code == 200
     profile = next(item for item in public.json() if item["id"] == str(appointment_id))
     assert profile["biography_html"] == updated.json()["biography_html"]
+    assert profile["show_email"] is True
+    assert profile["email"] == "admin@example.edu.gh"
+    assert profile["phone_number"] is None
+
+    withheld = await client.patch(
+        "/api/v1/auth/executive-profile",
+        headers=headers,
+        json={
+            "portfolio": updated.json()["portfolio"],
+            "summary": updated.json()["summary"],
+            "biography_html": updated.json()["biography_html"],
+            "social_links": updated.json()["social_links"],
+            "show_email": False,
+            "show_phone": False,
+        },
+    )
+    assert withheld.status_code == 200
+    public_withheld = await client.get("/api/v1/public/leadership")
+    withheld_profile = next(
+        item for item in public_withheld.json() if item["id"] == str(appointment_id)
+    )
+    assert withheld_profile["show_email"] is False
+    assert withheld_profile["email"] is None
 
     async with session_factory() as session:
         event = await session.scalar(
@@ -239,6 +271,145 @@ async def test_active_executive_can_update_own_public_profile(
             .order_by(AuditEvent.created_at.desc())
         )
         assert event is not None
+
+
+async def test_administrator_can_correct_a_member_email_safely(
+    client: AsyncClient,
+    session_factory,
+) -> None:  # type: ignore[no-untyped-def]
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.edu.gh", "password": "StrongPassword123"},
+    )
+    headers = {"X-CSRF-Token": login.json()["csrf_token"]}
+    member_id = new_id()
+    now = datetime.now(UTC)
+
+    async with session_factory() as session:
+        session.add_all(
+            [
+                User(
+                    id=member_id,
+                    email="incorrect.member@example.edu.gh",
+                    password_hash=hash_password("MemberPassword123"),
+                    status="active",
+                    email_verified=True,
+                    other_name="Kwesi",
+                    surname="Arthur",
+                ),
+                Session(
+                    id=new_id(),
+                    user_id=member_id,
+                    token_hash="a" * 64,
+                    csrf_hash="b" * 64,
+                    user_agent="member-browser",
+                    ip_prefix="127.0.0",
+                    created_at=now,
+                    last_seen_at=now,
+                    expires_at=now + timedelta(days=1),
+                ),
+                AccountToken(
+                    id=new_id(),
+                    user_id=member_id,
+                    kind="password_reset",
+                    token_hash="c" * 64,
+                    created_at=now,
+                    expires_at=now + timedelta(minutes=30),
+                ),
+            ]
+        )
+        await session.commit()
+
+    updated = await client.patch(
+        f"/api/v1/members/{member_id}",
+        headers=headers,
+        json={"email": " Corrected.Member@Example.EDU.GH "},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["email"] == "corrected.member@example.edu.gh"
+    assert updated.json()["email_verified"] is False
+
+    async with session_factory() as session:
+        revoked_session = await session.scalar(
+            select(Session).where(Session.token_hash == "a" * 64)
+        )
+        invalidated_token = await session.scalar(
+            select(AccountToken).where(AccountToken.token_hash == "c" * 64)
+        )
+        audit_event = await session.scalar(
+            select(AuditEvent)
+            .where(
+                AuditEvent.resource_id == member_id,
+                AuditEvent.action == "member.updated",
+            )
+            .order_by(AuditEvent.created_at.desc())
+        )
+        assert revoked_session is not None and revoked_session.revoked_at is not None
+        assert invalidated_token is not None and invalidated_token.used_at is not None
+        assert audit_event is not None
+        assert audit_event.changes["email"]["to"] == "corrected.member@example.edu.gh"
+
+        unchanged_email_session = Session(
+            id=new_id(),
+            user_id=member_id,
+            token_hash="d" * 64,
+            csrf_hash="e" * 64,
+            user_agent="member-browser",
+            ip_prefix="127.0.0",
+            created_at=now,
+            last_seen_at=now,
+            expires_at=now + timedelta(days=1),
+        )
+        session.add(unchanged_email_session)
+        await session.commit()
+
+    unchanged = await client.patch(
+        f"/api/v1/members/{member_id}",
+        headers=headers,
+        json={
+            "email": "corrected.member@example.edu.gh",
+            "phone_number": "+233200000001",
+        },
+    )
+    assert unchanged.status_code == 200
+    async with session_factory() as session:
+        unchanged_email_session = await session.scalar(
+            select(Session).where(Session.token_hash == "d" * 64)
+        )
+        assert unchanged_email_session is not None
+        assert unchanged_email_session.revoked_at is None
+
+    duplicate = await client.patch(
+        f"/api/v1/members/{member_id}",
+        headers=headers,
+        json={"email": "ADMIN@EXAMPLE.EDU.GH"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "email_exists"
+
+    invalid = await client.patch(
+        f"/api/v1/members/{member_id}",
+        headers=headers,
+        json={"email": "not-an-email"},
+    )
+    assert invalid.status_code == 422
+
+    old_email_login = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "incorrect.member@example.edu.gh",
+            "password": "MemberPassword123",
+        },
+    )
+    assert old_email_login.status_code == 401
+    new_email_login = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "corrected.member@example.edu.gh",
+            "password": "MemberPassword123",
+        },
+    )
+    assert new_email_login.status_code == 200
 
 
 async def test_member_management_archives_without_deleting(
@@ -507,6 +678,7 @@ async def test_individual_permission_grants_merge_with_role_access(
     assert {"content.edit", "media.manage"} <= option_keys
     assert "members.roles" not in option_keys
     assert "members.permissions" not in option_keys
+    assert "records.delete" not in option_keys
 
     created = await client.post(
         "/api/v1/members",
@@ -650,6 +822,7 @@ async def test_secretary_cannot_assign_roles_or_manage_administrators(
     assert "members.credentials" in permissions
     assert "members.roles" not in permissions
     assert "members.permissions" not in permissions
+    assert "records.delete" not in permissions
     headers = {"X-CSRF-Token": login.json()["csrf_token"]}
 
     created = await client.post(
@@ -929,7 +1102,7 @@ async def test_member_import_template_is_a_valid_workbook(
         workbook.close()
 
 
-async def test_carousel_requires_public_media_and_archives_without_erasing(
+async def test_carousel_archive_and_permanent_delete_both_retain_media(
     client: AsyncClient, session_factory
 ) -> None:  # type: ignore[no-untyped-def]
     login = await client.post(
@@ -1014,3 +1187,12 @@ async def test_carousel_requires_public_media_and_archives_without_erasing(
     retained = (await client.get("/api/v1/admin/carousel")).json()[0]
     assert retained["archived"] is True
     assert retained["is_published"] is False
+
+    deleted = await client.delete(
+        f"/api/v1/admin/carousel/{slide_id}/permanent",
+        headers=headers,
+    )
+    assert deleted.status_code == 200
+    assert (await client.get("/api/v1/admin/carousel")).json() == []
+    async with session_factory() as session:
+        assert await session.get(MediaAsset, asset_id) is not None

@@ -23,7 +23,26 @@ from utag_api.dependencies import (
 from utag_api.errors import ApiError
 from utag_api.models import (
     AccountToken,
+    AdAdvertiser,
+    AdCampaign,
+    Announcement,
+    Article,
+    AuditEvent,
     BackgroundJob,
+    Conversation,
+    ConversationInvite,
+    ConversationMember,
+    Document,
+    DocumentFile,
+    Event,
+    EventRegistration,
+    ExecutiveAppointment,
+    GoogleDriveConnection,
+    IdempotencyRecord,
+    MediaAsset,
+    Message,
+    MessageReceipt,
+    Notification,
     OrganizationUnit,
     Permission,
     Role,
@@ -45,6 +64,13 @@ from utag_api.schemas.domain import (
     PermissionOption,
 )
 from utag_api.security import encrypt_text, hash_password, new_token, normalize_email, token_digest
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    audience_reference_count,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.delivery import email_delivery_enabled, require_email_delivery
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.identity import (
@@ -410,7 +436,8 @@ async def create_member(
             raise ApiError(
                 422,
                 "staff_id_required",
-                "Staff ID is required and becomes the temporary password until email delivery is configured",
+                "Staff ID is required and becomes the temporary password "
+                "until email delivery is configured",
             )
         initial_password = staff_id
     else:
@@ -871,9 +898,25 @@ async def update_member(
         raise ApiError(
             409,
             "member_lifecycle_action_required",
-            "Use the deactivate, reactivate, or archive action to change account status",
+            "Use the deactivate or reactivate action to change account status",
         )
     changes = payload.model_dump(exclude_unset=True, exclude={"roles", "status"})
+    email_changed = False
+    if "email" in changes:
+        if payload.email is None:
+            raise ApiError(422, "email_required", "Enter a valid member email")
+        email = normalize_email(str(payload.email))
+        if email != user.email:
+            existing_user_id = await db.scalar(
+                select(User.id).where(
+                    func.lower(User.email) == email,
+                    User.id != user.id,
+                )
+            )
+            if existing_user_id is not None:
+                raise ApiError(409, "email_exists", "A member already uses this email")
+            changes["email"] = email
+            email_changed = True
     await validate_organization_assignment(
         db,
         school_id=changes.get("school_id", user.school_id),
@@ -885,6 +928,11 @@ async def update_member(
         await require_public_profile_image(db, profile_media_id)
     for key, value in changes.items():
         setattr(user, key, value)
+    if email_changed:
+        now = datetime.now(UTC)
+        user.email_verified = False
+        await revoke_member_sessions(db, user.id, now)
+        await invalidate_member_access_tokens(db, user.id, now)
     if payload.roles is not None:
         if "members.roles" not in principal.permissions:
             raise ApiError(
@@ -1239,6 +1287,147 @@ async def archive_member(
     )
     await db.commit()
     return MessageResponse(message="Member archived")
+
+
+@router.delete("/{user_id:uuid}/permanent", response_model=MessageResponse)
+async def delete_member_permanently(
+    user_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "members.lifecycle")),
+    ],
+) -> MessageResponse:
+    if user_id == principal.user.id:
+        raise ApiError(409, "self_delete_denied", "You cannot delete your own account")
+    user = await db.get(User, user_id, with_for_update=True)
+    if user is None:
+        raise ApiError(404, "member_not_found", "Member not found")
+    await ensure_privileged_target_permission(db, principal, user.id)
+    await protect_administrator_removal(db, target=user, principal=principal)
+
+    announcement_audiences = list((await db.scalars(select(Announcement.audiences))).all())
+    document_audiences = list((await db.scalars(select(Document.audiences))).all())
+    blockers = [
+        DeleteBlocker(
+            "executive appointment",
+            await count_rows(db, ExecutiveAppointment, ExecutiveAppointment.user_id == user.id),
+        ),
+        DeleteBlocker(
+            "sent chat message",
+            await count_rows(db, Message, Message.sender_id == user.id),
+        ),
+        DeleteBlocker(
+            "authored article",
+            await count_rows(db, Article, Article.author_id == user.id),
+        ),
+        DeleteBlocker(
+            "created announcement",
+            await count_rows(db, Announcement, Announcement.created_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "created event",
+            await count_rows(db, Event, Event.created_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "uploaded document",
+            await count_rows(db, Document, Document.uploaded_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "uploaded document file",
+            await count_rows(db, DocumentFile, DocumentFile.uploaded_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "owned media asset",
+            await count_rows(db, MediaAsset, MediaAsset.owner_id == user.id),
+        ),
+        DeleteBlocker(
+            "created advertising campaign",
+            await count_rows(db, AdCampaign, AdCampaign.created_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "linked advertiser client",
+            await count_rows(db, AdAdvertiser, AdAdvertiser.member_user_id == user.id),
+        ),
+        DeleteBlocker(
+            "created conversation",
+            await count_rows(db, Conversation, Conversation.created_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "created conversation invitation",
+            await count_rows(db, ConversationInvite, ConversationInvite.created_by_id == user.id),
+        ),
+        DeleteBlocker(
+            "assigned role on another account",
+            await count_rows(
+                db,
+                UserRole,
+                UserRole.assigned_by_id == user.id,
+                UserRole.user_id != user.id,
+            ),
+        ),
+        DeleteBlocker(
+            "permission granted to another account",
+            await count_rows(
+                db,
+                UserPermissionGrant,
+                UserPermissionGrant.granted_by_id == user.id,
+                UserPermissionGrant.user_id != user.id,
+            ),
+        ),
+        DeleteBlocker(
+            "background job",
+            await count_rows(db, BackgroundJob, BackgroundJob.owner_id == user.id),
+        ),
+        DeleteBlocker(
+            "announcement audience",
+            audience_reference_count(announcement_audiences, user.id, audience_type="user"),
+        ),
+        DeleteBlocker(
+            "document audience",
+            audience_reference_count(document_audiences, user.id, audience_type="user"),
+        ),
+    ]
+    block_delete_if_referenced(
+        "member",
+        blockers,
+        guidance=(
+            "Reassign or remove these linked records first. Use Deactivate when the "
+            "account and its history must be retained"
+        ),
+    )
+
+    # These rows belong only to the account and can be removed without deleting
+    # content or activity owned by anyone else.
+    for model, column in (
+        (AccountToken, AccountToken.user_id),
+        (Session, Session.user_id),
+        (UserPermissionGrant, UserPermissionGrant.user_id),
+        (UserRole, UserRole.user_id),
+        (Notification, Notification.user_id),
+        (EventRegistration, EventRegistration.user_id),
+        (ConversationMember, ConversationMember.user_id),
+        (MessageReceipt, MessageReceipt.user_id),
+        (IdempotencyRecord, IdempotencyRecord.user_id),
+        (GoogleDriveConnection, GoogleDriveConnection.user_id),
+    ):
+        await db.execute(delete(model).where(column == user.id))
+    # Audit evidence is retained, but the deleted actor is anonymized.
+    await db.execute(update(AuditEvent).where(AuditEvent.actor_id == user.id).values(actor_id=None))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="member.deleted",
+        resource_type="user",
+        resource_id=user.id,
+        topic="members",
+        payload={"user_id": str(user.id)},
+        reason="Administrator permanently deleted an unreferenced member account",
+    )
+    await db.delete(user)
+    await commit_permanent_delete(db, "member")
+    return MessageResponse(message="Member deleted permanently")
 
 
 @router.get("/exports/csv")

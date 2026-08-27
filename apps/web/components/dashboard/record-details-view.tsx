@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Archive,
-  Check,
-  LoaderCircle,
-  Minus,
-  Pencil,
-  X,
-} from "lucide-react";
+import { Trash2, Check, LoaderCircle, Minus, Pencil, X } from "lucide-react";
 import Image from "next/image";
 import type { ComponentType } from "react";
 
@@ -174,12 +167,21 @@ function ValueNode({
   }
   if (entry.richtext && typeof entry.value === "string") {
     return (
-      <div className={prose ? "[&_.rich-text-content]:text-sm [&_.rich-text-content]:leading-7" : undefined}>
+      <div
+        className={
+          prose
+            ? "[&_.rich-text-content]:text-sm [&_.rich-text-content]:leading-7"
+            : undefined
+        }
+      >
         <WorkspaceRichTextValue html={entry.value} />
       </div>
     );
   }
-  if (prose && (typeof entry.value === "string" || typeof entry.value === "number")) {
+  if (
+    prose &&
+    (typeof entry.value === "string" || typeof entry.value === "number")
+  ) {
     return (
       <p className="text-sm leading-7 whitespace-pre-wrap text-ink">
         {formatPlain(entry.value, entry.key)}
@@ -199,14 +201,14 @@ export function RecordDetailsView({
   primaryActions,
   secondaryActions,
   canUpdate,
-  canArchive,
+  canDelete,
   updateLabel,
-  archiveLabel,
+  deleteLabel,
   actionPending,
   onClose,
   onPrimaryAction,
   onEdit,
-  onArchive,
+  onDelete,
   ValueDisplay,
 }: {
   noun: string;
@@ -218,14 +220,14 @@ export function RecordDetailsView({
   primaryActions: WorkspaceMutation[];
   secondaryActions: WorkspaceMutation[];
   canUpdate: boolean;
-  canArchive: boolean;
+  canDelete: boolean;
   updateLabel?: string;
-  archiveLabel?: string;
+  deleteLabel?: string;
   actionPending: boolean;
   onClose: () => void;
   onPrimaryAction: (mutation: WorkspaceMutation) => void;
   onEdit: () => void;
-  onArchive: () => void;
+  onDelete: () => void;
   ValueDisplay: ValueDisplayComponent;
 }) {
   const chips = entries.filter(
@@ -316,7 +318,7 @@ export function RecordDetailsView({
         {(primaryActions.length > 0 ||
           secondaryActions.length > 0 ||
           canUpdate ||
-          canArchive) && (
+          canDelete) && (
           <div className="mt-4 flex flex-col gap-2">
             {primaryActions.length ? (
               <div className="flex flex-wrap gap-2">
@@ -337,7 +339,7 @@ export function RecordDetailsView({
                 ))}
               </div>
             ) : null}
-            {(secondaryActions.length > 0 || canUpdate || canArchive) && (
+            {(secondaryActions.length > 0 || canUpdate || canDelete) && (
               <div className="flex flex-wrap gap-2">
                 {secondaryActions.map((item) => (
                   <Button
@@ -346,7 +348,7 @@ export function RecordDetailsView({
                     variant="outline"
                     className={
                       item.danger
-                        ? "border-red-500/30 text-red-700 hover:bg-red-500/10"
+                        ? "border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
                         : undefined
                     }
                     disabled={actionPending}
@@ -363,15 +365,15 @@ export function RecordDetailsView({
                     <Pencil className="size-4" /> {updateLabel ?? "Edit"}
                   </Button>
                 ) : null}
-                {canArchive ? (
+                {canDelete ? (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-red-500/30 text-red-700 hover:bg-red-500/10"
+                    className="border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
                     disabled={actionPending}
-                    onClick={onArchive}
+                    onClick={onDelete}
                   >
-                    <Archive className="size-4" /> {archiveLabel ?? "Archive"}
+                    <Trash2 className="size-4" /> {deleteLabel ?? "Delete"}
                   </Button>
                 ) : null}
               </div>

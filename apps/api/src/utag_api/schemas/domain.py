@@ -31,6 +31,7 @@ class MemberCreate(MemberBase):
 
 
 class MemberUpdate(ApiModel):
+    email: EmailStr | None = Field(default=None, max_length=320)
     title: str | None = Field(default=None, max_length=30)
     other_name: str | None = Field(default=None, min_length=1, max_length=120)
     surname: str | None = Field(default=None, min_length=1, max_length=120)
@@ -159,6 +160,14 @@ class PublicExecutiveView(ExecutiveView):
     school_name: str | None = None
     college_name: str | None = None
     department_name: str | None = None
+
+    @model_validator(mode="after")
+    def hide_withheld_contact(self) -> "PublicExecutiveView":
+        if not self.show_email:
+            self.email = None
+        if not self.show_phone:
+            self.phone_number = None
+        return self
 
 
 class MediaReference(ApiModel):

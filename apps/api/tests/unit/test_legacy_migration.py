@@ -100,3 +100,5 @@ def test_legacy_roles_map_without_privilege_escalation() -> None:
         legacy_group_role_key({"id": 174, "name": "Department: Dept Of History"}) is None
     )
     assert "settings.manage" not in ROLE_GRANTS["secretary"]
+    assert "records.delete" not in ROLE_GRANTS["secretary"]
+    assert "records.delete" in ROLE_GRANTS["administrator"]

@@ -35,8 +35,7 @@ export function LoginForm() {
   const search = useSearchParams();
   const capabilities = useQuery({
     queryKey: ["public", "capabilities"],
-    queryFn: () =>
-      api<DeliveryCapabilities>("/api/v1/public/capabilities"),
+    queryFn: () => api<DeliveryCapabilities>("/api/v1/public/capabilities"),
     staleTime: 60_000,
     placeholderData: defaultDeliveryCapabilities,
   });
@@ -80,17 +79,16 @@ export function LoginForm() {
           {...register("email")}
         />
         {errors.email && (
-          <span className="text-red-600">Enter a valid email</span>
+          <span className="text-red-600 dark:text-red-300">
+            Enter a valid email
+          </span>
         )}
       </label>
       <label className="grid gap-2 text-xs font-bold">
         <span className="flex justify-between">
           Password
           {showForgotPassword ? (
-            <Link
-              className="font-semibold text-coral"
-              href="/forgot-password"
-            >
+            <Link className="font-semibold text-coral" href="/forgot-password">
               Forgot password?
             </Link>
           ) : null}
@@ -112,7 +110,9 @@ export function LoginForm() {
           </button>
         </span>
         {errors.password && (
-          <span className="text-red-600">Enter your password</span>
+          <span className="text-red-600 dark:text-red-300">
+            Enter your password
+          </span>
         )}
       </label>
       <Button className="mt-2 w-full" type="submit" disabled={isSubmitting}>

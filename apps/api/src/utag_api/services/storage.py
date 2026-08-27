@@ -119,3 +119,35 @@ def presign_get(storage_key: str, filename: str) -> str:
             HttpMethod="GET",
         )
     )
+
+
+def delete_storage_objects(storage_keys: list[str]) -> None:
+    keys = list(dict.fromkeys(key for key in storage_keys if key))
+    if not keys:
+        return
+    try:
+        response = s3_client().delete_objects(
+            Bucket=get_settings().media_bucket,
+            Delete={
+                "Objects": [{"Key": key} for key in keys],
+                "Quiet": True,
+            },
+        )
+    except Exception as exc:
+        raise ApiError(
+            502,
+            "media_storage_delete_failed",
+            "The stored file could not be removed; cleanup will be retried",
+        ) from exc
+    errors = response.get("Errors", []) if isinstance(response, dict) else []
+    if errors:
+        raise ApiError(
+            502,
+            "media_storage_delete_failed",
+            "The stored file could not be removed; cleanup will be retried",
+            details={
+                "failed_keys": [
+                    str(error.get("Key", "unknown")) for error in errors if isinstance(error, dict)
+                ]
+            },
+        )

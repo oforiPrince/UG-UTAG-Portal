@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Archive,
   Bell,
   Check,
   CheckCheck,
@@ -11,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -112,7 +112,10 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
             <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
               Use this for a one-off alert to selected members. Publish official
               or role-wide communications from{" "}
-              <Link className="font-bold text-coral underline" href="/dashboard/announcements">
+              <Link
+                className="font-bold text-coral underline"
+                href="/dashboard/announcements"
+              >
                 Announcements
               </Link>
               .
@@ -284,12 +287,12 @@ export function NotificationsClient() {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
-  const archive = useMutation({
+  const deleteNotification = useMutation({
     mutationFn: (id: string) =>
-      api(`/api/v1/notifications/${id}`, { method: "DELETE" }),
+      api(`/api/v1/notifications/${id}/permanent`, { method: "DELETE" }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      toast.success("Notification archived");
+      toast.success("Notification deleted permanently");
     },
   });
   const readAll = useMutation({
@@ -383,11 +386,19 @@ export function NotificationsClient() {
                   })}
                 </span>
                 <button
-                  className="p-1 text-muted hover:text-red-600"
-                  onClick={() => archive.mutate(item.id)}
-                  aria-label="Archive notification"
+                  className="p-1 text-muted hover:text-red-600 dark:hover:text-red-300"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Permanently delete this notification? This cannot be undone.",
+                      )
+                    ) {
+                      deleteNotification.mutate(item.id);
+                    }
+                  }}
+                  aria-label="Delete notification"
                 >
-                  <Archive className="size-3.5" />
+                  <Trash2 className="size-3.5" />
                 </button>
               </div>
             </article>

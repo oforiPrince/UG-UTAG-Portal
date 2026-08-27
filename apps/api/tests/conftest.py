@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -65,7 +66,11 @@ async def client(session_factory, monkeypatch) -> AsyncIterator[AsyncClient]:  #
     # Integration tests exercise email-dependent flows by default.
     monkeypatch.setattr(
         "utag_api.services.delivery.get_settings",
-        lambda: SimpleNamespace(smtp_host="smtp.test.example"),
+        lambda: SimpleNamespace(
+            smtp_host="smtp.test.example",
+            smtp_username="smtp-test-user",
+            smtp_password=SecretStr("smtp-test-password"),
+        ),
     )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"

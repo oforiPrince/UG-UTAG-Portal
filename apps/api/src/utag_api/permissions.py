@@ -36,6 +36,9 @@ PERMISSIONS = (
     PermissionDefinition("audit.view", "View security and activity audit events"),
     PermissionDefinition("settings.manage", "Manage portal settings and feature flags"),
     PermissionDefinition("jobs.manage", "Manage imports, exports, and background jobs"),
+    PermissionDefinition(
+        "records.delete", "Permanently delete unreferenced portal records"
+    ),
 )
 
 ROLE_GRANTS: dict[str, set[str]] = {
@@ -93,4 +96,6 @@ ROLE_GRANTS: dict[str, set[str]] = {
     "administrator": {permission.key for permission in PERMISSIONS},
 }
 
-NON_DELEGABLE_DIRECT_PERMISSIONS = frozenset({"members.roles", "members.permissions"})
+NON_DELEGABLE_DIRECT_PERMISSIONS = frozenset(
+    {"members.roles", "members.permissions", "records.delete"}
+)

@@ -14,7 +14,7 @@ function configuredFields() {
       [
         config.create,
         config.update,
-        config.archive,
+        config.delete,
         ...(config.actions ?? []),
       ].flatMap((mutation) =>
         (mutation?.fields ?? []).map((field) => ({ workspace, field })),
@@ -23,6 +23,23 @@ function configuredFields() {
 }
 
 describe("workspace content editors", () => {
+  it("reserves every permanent-delete action for administrators", () => {
+    const deletePermissions = Object.entries(workspaces)
+      .filter(([, config]) => Boolean(config.delete))
+      .map(([workspace, config]) => ({
+        workspace,
+        permission: config.delete?.permission,
+      }));
+
+    expect(deletePermissions.length).toBeGreaterThan(0);
+    expect(deletePermissions).toEqual(
+      deletePermissions.map(({ workspace }) => ({
+        workspace,
+        permission: "records.delete",
+      })),
+    );
+  });
+
   it("opens a complete protected preview for every document", () => {
     const preview = workspaces.documents.actions?.find(
       (action) => action.label === "Preview",
@@ -288,7 +305,9 @@ describe("workspace content editors", () => {
       ),
     ).toBe(true);
     expect(
-      workspaces["advert-slots"].columns.some((column) => column.key === "size"),
+      workspaces["advert-slots"].columns.some(
+        (column) => column.key === "size",
+      ),
     ).toBe(true);
 
     const destination = workspaces.adverts.create?.fields?.find(

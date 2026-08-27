@@ -49,12 +49,37 @@ export type PublicExecutiveProfile = {
   is_active: boolean;
   academic_rank: string | null;
   profile_media_id: string | null;
-  email: string;
+  email: string | null;
   phone_number: string | null;
+  show_email?: boolean;
+  show_phone?: boolean;
   school_name: string | null;
   college_name: string | null;
   department_name: string | null;
 };
+
+function publishedContactValue(
+  value: string | null | undefined,
+  consented?: boolean,
+) {
+  if (consented === false) return null;
+  const published = value?.trim();
+  return published ? published : null;
+}
+
+/** Email shown on the public profile only when the office-holder has consented. */
+export function publishedExecutiveEmail(
+  profile: Pick<PublicExecutiveProfile, "email" | "show_email">,
+) {
+  return publishedContactValue(profile.email, profile.show_email);
+}
+
+/** Phone shown on the public profile only when the office-holder has consented. */
+export function publishedExecutivePhone(
+  profile: Pick<PublicExecutiveProfile, "phone_number" | "show_phone">,
+) {
+  return publishedContactValue(profile.phone_number, profile.show_phone);
+}
 
 export function normalizeExecutivePosition(position: string) {
   const normalized = position

@@ -125,6 +125,35 @@ async def archive_notification(
     return MessageResponse(message="Notification archived")
 
 
+@router.delete("/{notification_id}/permanent", response_model=MessageResponse)
+async def delete_notification_permanently(
+    notification_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: MutationPrincipal,
+) -> MessageResponse:
+    item = await db.scalar(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.user_id == principal.user.id,
+        )
+    )
+    if item is None:
+        raise ApiError(404, "notification_not_found", "Notification not found")
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="notification.deleted",
+        resource_type="notification",
+        resource_id=item.id,
+        topic=f"user:{principal.user.id}",
+        payload={"notification_id": str(item.id)},
+    )
+    await db.delete(item)
+    await db.commit()
+    return MessageResponse(message="Notification deleted permanently")
+
+
 @router.post("/read-all", response_model=MessageResponse)
 async def mark_all_read(
     request: Request, db: DbSession, principal: MutationPrincipal

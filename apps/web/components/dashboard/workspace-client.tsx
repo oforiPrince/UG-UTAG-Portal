@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Archive,
   ArrowDownToLine,
   ArrowLeft,
   ArrowUpDown,
@@ -20,15 +19,21 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { WorkspacePanelPreview } from "@/components/dashboard/workspace-panel-preview";
-import {
-  RecordDetailsView,
-} from "@/components/dashboard/record-details-view";
+import { RecordDetailsView } from "@/components/dashboard/record-details-view";
 import { WorkspaceRowActions } from "@/components/dashboard/workspace-row-actions";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
@@ -59,11 +64,32 @@ import type {
   WorkspacePreviewKind,
   WorkspaceRow,
 } from "@/lib/workspaces";
-import { formatPersonName, formatRankForName, humanize, matchCaseStyle } from "@/lib/utils";
+import {
+  cn,
+  formatPersonName,
+  formatRankForName,
+  humanize,
+  matchCaseStyle,
+} from "@/lib/utils";
 
 type FormValue = string | boolean | string[];
 type FormValues = Record<string, FormValue>;
 type User = { id: string; permissions: string[] };
+
+type SelectMenuPosition = {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+  placement: "top" | "bottom";
+};
+
+type SelectViewportBounds = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
 
 const PAGE_SIZE = 15;
 type PageResponse = {
@@ -90,6 +116,97 @@ function optionEndpoint(
   if (!source.searchParam || !search.trim()) return source.endpoint;
   const separator = source.endpoint.includes("?") ? "&" : "?";
   return `${source.endpoint}${separator}${encodeURIComponent(source.searchParam)}=${encodeURIComponent(search.trim())}`;
+}
+
+function selectViewportBounds(): SelectViewportBounds {
+  const visualViewport = window.visualViewport;
+  const top = visualViewport?.offsetTop ?? 0;
+  const left = visualViewport?.offsetLeft ?? 0;
+  const right = left + (visualViewport?.width ?? window.innerWidth);
+  let bottom = top + (visualViewport?.height ?? window.innerHeight);
+  const bottomNavigation = document.querySelector<HTMLElement>(
+    "[data-dashboard-bottom-nav]",
+  );
+  const navigationRect = bottomNavigation?.getBoundingClientRect();
+
+  if (
+    navigationRect &&
+    navigationRect.width > 0 &&
+    navigationRect.height > 0 &&
+    navigationRect.top > top &&
+    navigationRect.top < bottom
+  ) {
+    bottom = navigationRect.top;
+  }
+
+  return { top, right, bottom, left };
+}
+
+function selectMenuPositionFor(
+  trigger: HTMLElement,
+  menuHeight = 320,
+): SelectMenuPosition {
+  const rect = trigger.getBoundingClientRect();
+  const viewport = selectViewportBounds();
+  const viewportPadding = 12;
+  const gap = 8;
+  const viewportWidth = Math.max(
+    viewport.right - viewport.left,
+    viewportPadding * 2 + 1,
+  );
+  const width = Math.min(
+    Math.max(rect.width, 256),
+    viewportWidth - viewportPadding * 2,
+  );
+  const left = Math.min(
+    Math.max(viewport.left + viewportPadding, rect.left),
+    Math.max(
+      viewport.left + viewportPadding,
+      viewport.right - width - viewportPadding,
+    ),
+  );
+  const spaceBelow = Math.max(
+    0,
+    viewport.bottom - rect.bottom - gap - viewportPadding,
+  );
+  const spaceAbove = Math.max(
+    0,
+    rect.top - gap - viewport.top - viewportPadding,
+  );
+  const measuredHeight = menuHeight > 0 ? menuHeight : 320;
+  const usefulHeight = Math.min(measuredHeight, 320);
+  const placement =
+    spaceBelow >= Math.min(usefulHeight, 224) || spaceBelow >= spaceAbove
+      ? "bottom"
+      : "top";
+  const availableHeight = placement === "bottom" ? spaceBelow : spaceAbove;
+  const maxHeight = Math.min(320, availableHeight);
+  const renderedHeight = Math.min(measuredHeight, maxHeight);
+  const top =
+    placement === "bottom"
+      ? Math.min(
+          rect.bottom + gap,
+          viewport.bottom - viewportPadding - renderedHeight,
+        )
+      : Math.max(
+          viewport.top + viewportPadding,
+          rect.top - gap - renderedHeight,
+        );
+
+  return { top, left, width, maxHeight, placement };
+}
+
+function sameSelectMenuPosition(
+  current: SelectMenuPosition | null,
+  next: SelectMenuPosition,
+) {
+  return (
+    current?.top === next.top &&
+    current.left === next.left &&
+    current.width === next.width &&
+    current.maxHeight === next.maxHeight &&
+    current.placement === next.placement
+  );
 }
 
 function workspaceEndpoint(
@@ -172,6 +289,8 @@ export function WorkspaceSelect({
   autoFocus,
   onChange,
   fallbackOption,
+  formValues,
+  record,
 }: {
   id: string;
   labelledBy: string;
@@ -180,10 +299,19 @@ export function WorkspaceSelect({
   autoFocus: boolean;
   onChange: (value: string) => void;
   fallbackOption?: { value: string; label: string };
+  formValues?: WorkspaceRow;
+  record?: WorkspaceRow;
 }) {
   const source = field.optionSource;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(
+    null,
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const remoteSearch = useDebouncedValue(source?.searchParam ? search : "");
   const optionsQuery = useQuery({
     queryKey: [
@@ -197,7 +325,11 @@ export function WorkspaceSelect({
   });
   const dynamicOptions = source
     ? rowsFrom(optionsQuery.data)
-        .filter((row) => source.filter?.(row) ?? true)
+        .filter(
+          (row) =>
+            (source.filter?.(row) ?? true) &&
+            (source.filterForValues?.(row, formValues ?? {}, record) ?? true),
+        )
         .map((row) => ({ value: source.value(row), label: source.label(row) }))
     : [];
   const loadedOptions = source
@@ -208,20 +340,27 @@ export function WorkspaceSelect({
       }));
   const options =
     fallbackOption &&
+    String(value) === fallbackOption.value &&
+    !source?.filterForValues &&
     !loadedOptions.some((option) => option.value === fallbackOption.value)
       ? [fallbackOption, ...loadedOptions]
       : loadedOptions;
   const optionState = workspaceOptionQueryState(Boolean(source), optionsQuery);
+  const dependentDisabled =
+    source?.disabledForValues?.(formValues ?? {}, record) ?? false;
+  const contextualEmptyLabel = source?.emptyLabelForValues?.(
+    formValues ?? {},
+    record,
+  );
   const emptyLabel = optionState.isLoading
     ? "Loading available options…"
     : optionState.isError
       ? "Options unavailable — refresh and try again"
       : source && options.length === 0
-        ? (source.emptyLabel ?? "No options available")
+        ? (contextualEmptyLabel ?? source.emptyLabel ?? "No options available")
         : "Select";
 
   const searchable = Boolean(source) || options.length > 10;
-  const containerRef = useRef<HTMLDivElement>(null);
   const selectedOption = options.find(
     (option) => option.value === String(value),
   );
@@ -235,33 +374,273 @@ export function WorkspaceSelect({
     }
     return option.label.toLowerCase().includes(searchTerm);
   });
+  const selectedFilteredIndex = filteredOptions.findIndex(
+    (option) => option.value === String(value),
+  );
+
+  const closeMenu = useCallback((restoreFocus = false) => {
+    setOpen(false);
+    setSearch("");
+    setActiveIndex(-1);
+    setMenuPosition(null);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
+
+  const updateMenuPosition = useCallback(
+    (menuHeight = 320) => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const viewport = selectViewportBounds();
+      if (rect.bottom < viewport.top || rect.top > viewport.bottom) {
+        closeMenu();
+        return;
+      }
+      const next = selectMenuPositionFor(trigger, menuHeight);
+      setMenuPosition((current) =>
+        sameSelectMenuPosition(current, next) ? current : next,
+      );
+    },
+    [closeMenu],
+  );
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+  }, [open, updateMenuPosition]);
+
+  useLayoutEffect(() => {
+    if (!open || !menuPosition || !menuRef.current) return;
+    updateMenuPosition(menuRef.current.offsetHeight);
+  }, [filteredOptions.length, menuPosition, open, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+    menuRef.current
+      ?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, open]);
 
   useEffect(() => {
     if (!open) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+      const target = event.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      closeMenu();
+    };
+    const closeOnFocusLeave = (event: FocusEvent) => {
+      if (!menuRef.current) return;
+      const target = event.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeMenu();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeMenu(true);
+    };
+    const reposition = (event: Event) => {
+      if (
+        event.target instanceof Node &&
+        menuRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+      updateMenuPosition(menuRef.current?.offsetHeight ?? 320);
     };
     document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () =>
+    document.addEventListener("focusin", closeOnFocusLeave);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    window.visualViewport?.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("scroll", reposition);
+    return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [open]);
+      document.removeEventListener("focusin", closeOnFocusLeave);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+      window.visualViewport?.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("scroll", reposition);
+    };
+  }, [closeMenu, open, updateMenuPosition]);
 
   if (searchable) {
-    const disabled = Boolean(source) && optionState.isLoading;
+    const disabled =
+      dependentDisabled || (Boolean(source) && optionState.isLoading);
+    const chooseOption = (nextValue: string) => {
+      onChange(nextValue);
+      closeMenu(true);
+    };
+    const menu =
+      open && menuPosition && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="fixed z-[100] flex flex-col overflow-hidden rounded-xl border border-line bg-paper shadow-[0_18px_55px_rgba(12,25,48,.18)]"
+              data-placement={menuPosition.placement}
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+                width: menuPosition.width,
+                maxHeight: menuPosition.maxHeight,
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <label className="flex min-h-11 shrink-0 items-center gap-2 border-b border-line px-3">
+                <Search className="size-4 shrink-0 text-muted" />
+                <span className="sr-only">Search {field.label}</span>
+                <input
+                  autoFocus
+                  value={search}
+                  aria-controls={`${id}-options`}
+                  aria-activedescendant={
+                    activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined
+                  }
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setActiveIndex(0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!filteredOptions.length) return;
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setActiveIndex((current) =>
+                        current < filteredOptions.length - 1 ? current + 1 : 0,
+                      );
+                    } else if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setActiveIndex((current) =>
+                        current > 0 && current < filteredOptions.length
+                          ? current - 1
+                          : filteredOptions.length - 1,
+                      );
+                    } else if (event.key === "Home") {
+                      event.preventDefault();
+                      setActiveIndex(0);
+                    } else if (event.key === "End") {
+                      event.preventDefault();
+                      setActiveIndex(filteredOptions.length - 1);
+                    } else if (
+                      event.key === "Enter" &&
+                      activeIndex >= 0 &&
+                      activeIndex < filteredOptions.length
+                    ) {
+                      event.preventDefault();
+                      chooseOption(filteredOptions[activeIndex]!.value);
+                    }
+                  }}
+                  placeholder={`Search ${field.label.toLowerCase()}`}
+                  className="w-full bg-transparent text-sm font-normal outline-none"
+                />
+              </label>
+              {!field.required && value && !optionState.isLoading ? (
+                <button
+                  type="button"
+                  onClick={() => chooseOption("")}
+                  className="flex min-h-10 shrink-0 items-center border-b border-line px-4 text-left text-xs text-muted transition hover:bg-ink/[.04] focus-visible:bg-ink/[.04] focus-visible:outline-none"
+                >
+                  Clear selection
+                </button>
+              ) : null}
+              <div
+                id={`${id}-options`}
+                role="listbox"
+                aria-labelledby={labelledBy}
+                className="scrollbar-subtle min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-1.5"
+              >
+                {optionState.isLoading ? (
+                  <p
+                    className="px-3 py-4 text-center text-xs font-normal text-muted"
+                    role="status"
+                  >
+                    Searching available options…
+                  </p>
+                ) : optionState.isError ? (
+                  <div className="grid justify-items-center gap-2 px-3 py-4 text-center">
+                    <p
+                      className="text-xs font-normal text-red-700 dark:text-red-300"
+                      role="alert"
+                    >
+                      Options could not be loaded.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => optionsQuery.refetch()}
+                    >
+                      <RefreshCw className="size-3.5" /> Try again
+                    </Button>
+                  </div>
+                ) : null}
+                {!optionState.isLoading && !optionState.isError
+                  ? filteredOptions.map((option, index) => {
+                      const isSelected = option.value === String(value);
+                      const isActive = index === activeIndex;
+                      return (
+                        <button
+                          id={`${id}-option-${index}`}
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          tabIndex={-1}
+                          data-option-index={index}
+                          aria-selected={isSelected}
+                          onPointerMove={() => setActiveIndex(index)}
+                          onClick={() => chooseOption(option.value)}
+                          className={cn(
+                            "flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-xs outline-none transition",
+                            isActive ? "bg-ink/[.06]" : "hover:bg-ink/[.04]",
+                          )}
+                        >
+                          <span className="min-w-0 break-words">
+                            {option.label}
+                          </span>
+                          {isSelected ? (
+                            <Check className="size-4 shrink-0 text-sky" />
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  : null}
+                {!optionState.isLoading &&
+                !optionState.isError &&
+                filteredOptions.length === 0 ? (
+                  <p
+                    className="px-3 py-4 text-center text-xs font-normal text-muted"
+                    role="status"
+                  >
+                    {options.length
+                      ? "No matching options"
+                      : (contextualEmptyLabel ??
+                        source?.emptyLabel ??
+                        "No options available")}
+                  </p>
+                ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null;
+
     return (
-      <div
-        ref={containerRef}
-        className="relative"
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && open) {
-            event.stopPropagation();
-            setOpen(false);
-          }
-        }}
-      >
+      <div ref={containerRef} className="relative min-w-0">
         <button
+          ref={triggerRef}
           id={id}
           type="button"
           role="combobox"
@@ -271,10 +650,39 @@ export function WorkspaceSelect({
           aria-haspopup="listbox"
           autoFocus={autoFocus}
           disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
-          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
+          onClick={() => {
+            if (open) closeMenu();
+            else {
+              setActiveIndex(
+                selectedFilteredIndex >= 0
+                  ? selectedFilteredIndex
+                  : filteredOptions.length
+                    ? 0
+                    : -1,
+              );
+              setOpen(true);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            event.preventDefault();
+            setActiveIndex(
+              selectedFilteredIndex >= 0
+                ? selectedFilteredIndex
+                : filteredOptions.length
+                  ? 0
+                  : -1,
+            );
+            setOpen(true);
+          }}
+          className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none transition focus:border-coral/40 focus:ring-4 focus:ring-coral/10 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <span className={selectedOption ? "text-ink" : "text-muted"}>
+          <span
+            className={cn(
+              "min-w-0 truncate",
+              selectedOption ? "text-ink" : "text-muted",
+            )}
+          >
             {selectedOption?.label ?? emptyLabel}
           </span>
           {optionState.isLoading ? (
@@ -285,94 +693,7 @@ export function WorkspaceSelect({
             />
           )}
         </button>
-        {open ? (
-          <div className="absolute z-50 mt-2 w-full min-w-64 overflow-hidden rounded-xl border border-line bg-paper shadow-xl">
-            <label className="flex min-h-11 items-center gap-2 border-b border-line px-3">
-              <Search className="size-4 shrink-0 text-muted" />
-              <span className="sr-only">Search {field.label}</span>
-              <input
-                autoFocus
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={`Search ${field.label.toLowerCase()}`}
-                className="w-full bg-transparent text-sm font-normal outline-none"
-              />
-            </label>
-            <div
-              id={`${id}-options`}
-              role="listbox"
-              aria-labelledby={labelledBy}
-              className="scrollbar-subtle max-h-64 overflow-y-auto p-1.5"
-            >
-              {optionState.isLoading ? (
-                <p className="px-3 py-4 text-center text-xs font-normal text-muted">
-                  Searching available options…
-                </p>
-              ) : optionState.isError ? (
-                <div className="grid justify-items-center gap-2 px-3 py-4 text-center">
-                  <p className="text-xs font-normal text-red-700">
-                    Options could not be loaded.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => optionsQuery.refetch()}
-                  >
-                    <RefreshCw className="size-3.5" /> Try again
-                  </Button>
-                </div>
-              ) : !field.required && value ? (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  onClick={() => {
-                    onChange("");
-                    setSearch("");
-                    setOpen(false);
-                  }}
-                  className="flex min-h-10 w-full items-center rounded-lg px-3 text-left text-xs text-muted hover:bg-ink/[.04]"
-                >
-                  Clear selection
-                </button>
-              ) : null}
-              {!optionState.isLoading && !optionState.isError
-                ? filteredOptions.map((option) => {
-                    const isSelected = option.value === String(value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          onChange(option.value);
-                          setSearch("");
-                          setOpen(false);
-                        }}
-                        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-xs hover:bg-ink/[.04]"
-                      >
-                        <span>{option.label}</span>
-                        {isSelected ? (
-                          <Check className="size-4 shrink-0 text-sky" />
-                        ) : null}
-                      </button>
-                    );
-                  })
-                : null}
-              {!optionState.isLoading &&
-              !optionState.isError &&
-              filteredOptions.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs font-normal text-muted">
-                  {options.length
-                    ? "No matching options"
-                    : (source?.emptyLabel ?? "No options available")}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {menu}
       </div>
     );
   }
@@ -385,8 +706,11 @@ export function WorkspaceSelect({
       required={field.required}
       value={String(value)}
       disabled={
-        Boolean(source) &&
-        (optionState.isLoading || optionState.isError || options.length === 0)
+        dependentDisabled ||
+        (Boolean(source) &&
+          (optionState.isLoading ||
+            optionState.isError ||
+            options.length === 0))
       }
       onChange={(event) => onChange(event.target.value)}
       className="min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
@@ -470,7 +794,7 @@ function WorkspaceMultiSelect({
         </p>
       ) : optionState.isError ? (
         <div className="grid justify-items-start gap-2 px-2 py-3">
-          <p className="text-xs font-normal text-red-700">
+          <p className="text-xs font-normal text-red-700 dark:text-red-300">
             Options could not be loaded.
           </p>
           <Button
@@ -582,8 +906,7 @@ function displayWithPersonCase(
     return formatPersonName(value);
   }
   if (fieldKey === "academic_rank" && typeof value === "string") {
-    const name =
-      typeof row?.full_name === "string" ? row.full_name : undefined;
+    const name = typeof row?.full_name === "string" ? row.full_name : undefined;
     return formatRankForName(name, value) || display(value, fieldKey);
   }
   if (fieldKey === "title" && typeof value === "string") {
@@ -591,7 +914,9 @@ function displayWithPersonCase(
       typeof row?.full_name === "string"
         ? row.full_name
         : [row?.other_name, row?.surname].filter(Boolean).join(" ");
-    return name ? matchCaseStyle(String(name), value) : display(value, fieldKey);
+    return name
+      ? matchCaseStyle(String(name), value)
+      : display(value, fieldKey);
   }
   return display(value, fieldKey);
 }
@@ -819,8 +1144,7 @@ function RecordCardMedia({
   aspect?: "square" | "landscape";
 }) {
   const image = recordImages(row)[0];
-  const aspectClass =
-    aspect === "square" ? "aspect-square" : "aspect-[16/10]";
+  const aspectClass = aspect === "square" ? "aspect-square" : "aspect-[16/10]";
   const contentType =
     typeof row.content_type === "string" ? row.content_type : "";
   const status = typeof row.status === "string" ? row.status : "";
@@ -968,11 +1292,7 @@ function fieldsFor(
         (!field.requiresDelivery || deliveryAvailable),
     )
     .map((field) => {
-      if (
-        !deliveryAvailable &&
-        mode === "create" &&
-        field.key === "staff_id"
-      ) {
+      if (!deliveryAvailable && mode === "create" && field.key === "staff_id") {
         return {
           ...field,
           required: true,
@@ -1067,7 +1387,7 @@ function WorkspaceStructuredEditor({
                     )
                   }
                 >
-                  <Trash2 className="size-4 text-red-700" />
+                  <Trash2 className="size-4 text-red-700 dark:text-red-300" />
                 </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1245,7 +1565,7 @@ function WorkspaceStructuredEditor({
                   updateRecord(next);
                 }}
               >
-                <Trash2 className="size-4 text-red-700" />
+                <Trash2 className="size-4 text-red-700 dark:text-red-300" />
               </Button>
             </>
           )}
@@ -1375,11 +1695,10 @@ function MutationForm({
     mode,
     permissions,
     deliveryAvailable,
-  ).map(
-    (field) =>
-      field.optionsFor
-        ? { ...field, options: field.optionsFor(permissions) }
-        : field,
+  ).map((field) =>
+    field.optionsFor
+      ? { ...field, options: field.optionsFor(permissions) }
+      : field,
   );
   const [values, setValues] = useState<FormValues>(() =>
     Object.fromEntries(
@@ -1413,7 +1732,13 @@ function MutationForm({
 
   const updateFieldValue = (field: WorkspaceField, nextValue: FormValue) => {
     setValues((current) => {
-      const next = { ...current, [field.key]: nextValue };
+      const next = {
+        ...current,
+        [field.key]: nextValue,
+        ...Object.fromEntries(
+          (field.clearOnChange ?? []).map((key) => [key, ""]),
+        ),
+      };
       if (
         config.queryKey !== "documents" ||
         field.key !== "category" ||
@@ -1698,6 +2023,8 @@ function MutationForm({
                           value={value}
                           autoFocus={index === 0}
                           fallbackOption={savedOptionFor(field)}
+                          formValues={values}
+                          record={mutationRow}
                           onChange={(nextValue) =>
                             setValues((current) => ({
                               ...current,
@@ -1756,6 +2083,8 @@ function MutationForm({
                   value={value}
                   autoFocus={index === 0}
                   fallbackOption={savedOptionFor(field)}
+                  formValues={values}
+                  record={mutationRow}
                   onChange={(nextValue) => updateFieldValue(field, nextValue)}
                 />
               ) : field.type === "multiselect" ? (
@@ -2059,17 +2388,14 @@ export function WorkspaceClient({
   const actions = (
     <div className="flex shrink-0 flex-wrap gap-2">
       {headerAction}
-      {config.exportUrl &&
-      can(config.exportPermission ?? "members.export") ? (
+      {config.exportUrl && can(config.exportPermission ?? "members.export") ? (
         <Button variant="outline" onClick={exportRecords}>
           <ArrowDownToLine className="size-4" /> Export
         </Button>
       ) : null}
       {config.create && can(config.create.permission) ? (
         <Button
-          onClick={() =>
-            setPanel({ mutation: config.create!, view: "create" })
-          }
+          onClick={() => setPanel({ mutation: config.create!, view: "create" })}
         >
           <CirclePlus className="size-4" /> {config.create.label}
         </Button>
@@ -2295,7 +2621,7 @@ export function WorkspaceClient({
                         handleRowMutation(row, mutation)
                       }
                       onEdit={() => openEditor(row, rowActions.update!)}
-                      onArchive={() => runAction(rowActions.archive!, row)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
                       compact
                     />
                   </div>
@@ -2342,7 +2668,7 @@ export function WorkspaceClient({
                         handleRowMutation(row, mutation)
                       }
                       onEdit={() => openEditor(row, rowActions.update!)}
-                      onArchive={() => runAction(rowActions.archive!, row)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
                       compact
                     />
                   </div>
@@ -2434,9 +2760,7 @@ export function WorkspaceClient({
                             handleRowMutation(row, mutation)
                           }
                           onEdit={() => openEditor(row, rowActions.update!)}
-                          onArchive={() =>
-                            runAction(rowActions.archive!, row)
-                          }
+                          onDelete={() => runAction(rowActions.delete!, row)}
                         />
                       </td>
                     </tr>
@@ -2595,9 +2919,9 @@ export function WorkspaceClient({
                     primaryActions={selectedActions.primary}
                     secondaryActions={selectedActions.secondary}
                     canUpdate={selectedActions.canUpdate}
-                    canArchive={selectedActions.canArchive}
+                    canDelete={selectedActions.canDelete}
                     updateLabel={selectedActions.update?.label}
-                    archiveLabel={selectedActions.archive?.label}
+                    deleteLabel={selectedActions.delete?.label}
                     actionPending={action.isPending}
                     onClose={closePanel}
                     onPrimaryAction={(item) =>
@@ -2606,8 +2930,8 @@ export function WorkspaceClient({
                     onEdit={() =>
                       openEditor(panel.row, selectedActions.update!)
                     }
-                    onArchive={() =>
-                      runAction(selectedActions.archive!, panel.row)
+                    onDelete={() =>
+                      runAction(selectedActions.delete!, panel.row)
                     }
                     ValueDisplay={ValueDisplay}
                   />
@@ -2636,9 +2960,7 @@ export function WorkspaceClient({
                   <WorkspacePanelPreview
                     kind={panel.previewKind}
                     row={panel.row}
-                    onBack={() =>
-                      setPanel({ view: "details", row: panel.row })
-                    }
+                    onBack={() => setPanel({ view: "details", row: panel.row })}
                   />
                 </div>
               ) : (
