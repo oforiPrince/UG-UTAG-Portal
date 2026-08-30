@@ -14,7 +14,14 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Announcement, Article, ArticleAttachment, MediaAsset, User
+from utag_api.models import (
+    Announcement,
+    Article,
+    ArticleAttachment,
+    MediaAsset,
+    Notification,
+    User,
+)
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import (
     AnnouncementCreate,
@@ -24,6 +31,12 @@ from utag_api.schemas.domain import (
     ArticleView,
 )
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.notifications import deliver_announcement_notifications
@@ -319,6 +332,48 @@ async def archive_article(
     return MessageResponse(message="Article archived")
 
 
+@router.delete("/articles/{article_id}/permanent", response_model=MessageResponse)
+async def delete_article_permanently(
+    article_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    article = await db.get(Article, article_id, with_for_update=True)
+    if article is None:
+        raise ApiError(404, "article_not_found", "Article not found")
+    notification_count = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "article",
+        Notification.resource_id == article.id,
+    )
+    block_delete_if_referenced(
+        "article",
+        [DeleteBlocker("member notification", notification_count)],
+        guidance=(
+            "Remove the related member notifications first, or archive the article to "
+            "preserve communication history"
+        ),
+    )
+    await db.execute(delete(ArticleAttachment).where(ArticleAttachment.article_id == article.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="article.deleted",
+        resource_type="article",
+        resource_id=article.id,
+        topic="content",
+        payload={"article_id": str(article.id), "slug": article.slug},
+    )
+    await db.delete(article)
+    await commit_permanent_delete(db, "article")
+    return MessageResponse(message="Article deleted permanently")
+
+
 @router.get("/announcements", response_model=Page[AnnouncementView])
 async def list_announcements(
     db: DbSession,
@@ -449,3 +504,47 @@ async def archive_announcement(
     )
     await db.commit()
     return MessageResponse(message="Announcement archived")
+
+
+@router.delete(
+    "/announcements/{announcement_id}/permanent",
+    response_model=MessageResponse,
+)
+async def delete_announcement_permanently(
+    announcement_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    item = await db.get(Announcement, announcement_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "announcement_not_found", "Announcement not found")
+    notification_count = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "announcement",
+        Notification.resource_id == item.id,
+    )
+    block_delete_if_referenced(
+        "announcement",
+        [DeleteBlocker("member delivery", notification_count, "member deliveries")],
+        guidance=(
+            "Delivered announcements must be archived so members' communication history "
+            "remains valid"
+        ),
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="announcement.deleted",
+        resource_type="announcement",
+        resource_id=item.id,
+        topic="announcements",
+        payload={"announcement_id": str(item.id)},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "announcement")
+    return MessageResponse(message="Announcement deleted permanently")

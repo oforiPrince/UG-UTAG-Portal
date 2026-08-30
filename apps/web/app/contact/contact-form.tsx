@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Send } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -8,6 +9,11 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import {
+  defaultDeliveryCapabilities,
+  deliveryAvailable,
+  type DeliveryCapabilities,
+} from "@/lib/delivery-capabilities";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Enter your name"),
@@ -27,7 +33,33 @@ type ContactData = z.infer<typeof schema>;
 const input =
   "min-h-12 w-full rounded-md border border-line bg-white px-4 text-sm outline-none transition focus:border-ink/25 focus:ring-0";
 
+const CAPABILITIES_TIMEOUT_MS = 8_000;
+
+async function fetchCapabilities(): Promise<DeliveryCapabilities> {
+  const timeout = new Promise<never>((_, reject) => {
+    window.setTimeout(
+      () => reject(new Error("Contact availability check timed out")),
+      CAPABILITIES_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([
+    api<DeliveryCapabilities>("/api/v1/public/capabilities"),
+    timeout,
+  ]);
+}
+
 export function ContactForm() {
+  const capabilities = useQuery({
+    queryKey: ["public", "capabilities"],
+    queryFn: fetchCapabilities,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const checking = capabilities.isPending;
+  const canSend =
+    capabilities.isSuccess &&
+    deliveryAvailable(capabilities.data ?? defaultDeliveryCapabilities);
+  const deliveryBlocked = !checking && !canSend;
   const {
     register,
     handleSubmit,
@@ -38,6 +70,12 @@ export function ContactForm() {
     defaultValues: { website: "" },
   });
   const submit = handleSubmit(async (values) => {
+    if (!canSend) {
+      toast.error(
+        "Online messages are temporarily unavailable. Please use the secretariat phone or email listed on this page.",
+      );
+      return;
+    }
     try {
       await api("/api/v1/public/contact", { method: "POST", body: values });
       toast.success("Your message has been received");
@@ -48,6 +86,7 @@ export function ContactForm() {
       );
     }
   });
+
   return (
     <form
       onSubmit={submit}
@@ -61,12 +100,24 @@ export function ContactForm() {
         <h2 className="mt-2 text-2xl font-extrabold text-[#172f4d]">
           How can we assist?
         </h2>
+        {checking ? (
+          <p className="mt-3 text-sm leading-6 text-[#2d4056]" role="status">
+            Checking contact availability…
+          </p>
+        ) : null}
+        {deliveryBlocked ? (
+          <p className="mt-3 text-sm leading-6 text-[#2d4056]" role="status">
+            Online messages are temporarily unavailable. Please use the
+            secretariat phone or email listed on this page.
+          </p>
+        ) : null}
       </div>
       <label className="grid gap-2 text-xs font-bold text-[#2d4056]">
         Name
         <input
           className={input}
           autoComplete="name"
+          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.name)}
           aria-describedby={errors.name ? "contact-name-error" : undefined}
           {...register("name")}
@@ -83,6 +134,7 @@ export function ContactForm() {
           className={input}
           type="email"
           autoComplete="email"
+          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? "contact-email-error" : undefined}
           {...register("email")}
@@ -97,6 +149,7 @@ export function ContactForm() {
         Subject
         <input
           className={input}
+          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.subject)}
           aria-describedby={
             errors.subject ? "contact-subject-error" : undefined
@@ -117,6 +170,7 @@ export function ContactForm() {
         Message
         <textarea
           className={`${input} min-h-40 py-4`}
+          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.message)}
           aria-describedby={
             errors.message ? "contact-message-error" : undefined
@@ -140,7 +194,11 @@ export function ContactForm() {
         {...register("website")}
       />
       <div className="sm:col-span-2">
-        <Button className="rounded-md" type="submit" disabled={isSubmitting}>
+        <Button
+          className="rounded-md"
+          type="submit"
+          disabled={isSubmitting || checking || deliveryBlocked}
+        >
           {isSubmitting ? (
             <LoaderCircle className="size-4 animate-spin" />
           ) : (

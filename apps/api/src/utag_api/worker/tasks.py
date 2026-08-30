@@ -13,6 +13,7 @@ from uuid import UUID
 from PIL import Image, UnidentifiedImageError
 from redis.asyncio import Redis
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from utag_api.config import get_settings
 from utag_api.database import SessionFactory, new_id
@@ -21,6 +22,9 @@ from utag_api.models import (
     Article,
     BackgroundJob,
     Event,
+    Gallery,
+    GalleryItem,
+    GoogleDriveConnection,
     MediaAsset,
     MediaVariant,
     OutboxEvent,
@@ -29,9 +33,16 @@ from utag_api.models import (
 )
 from utag_api.observability import configure_logging, get_logger
 from utag_api.security import decrypt_text
+from utag_api.services import google_drive as drive
 from utag_api.services.events import EventContext, record_change
 from utag_api.services.notifications import deliver_announcement_notifications
-from utag_api.services.storage import s3_client, s3_encryption_args, safe_filename
+from utag_api.services.storage import (
+    delete_storage_objects,
+    quarantine_key,
+    s3_client,
+    s3_encryption_args,
+    safe_filename,
+)
 from utag_api.worker.celery_app import celery_app
 
 settings = get_settings()
@@ -99,6 +110,19 @@ async def _relay_outbox(limit: int = 200) -> int:
 )
 def relay_outbox() -> int:
     return asyncio.run(_relay_outbox())
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.media.delete_storage",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=10,
+)
+def delete_media_storage(storage_keys: list[str]) -> int:
+    """Idempotently remove media bytes after their database record is committed away."""
+    delete_storage_objects(storage_keys)
+    return len(set(storage_keys))
 
 
 @celery_app.task(name="utag.sessions.expire")  # type: ignore[misc]
@@ -507,3 +531,304 @@ def process_media(asset_id: str) -> None:
             await db.commit()
 
     asyncio.run(mark_ready())
+
+
+async def _process_media_for_import(asset_id: UUID) -> None:
+    """Run the synchronous Celery media task without nesting asyncio.run()."""
+    await asyncio.to_thread(process_media, str(asset_id))
+
+
+async def _refresh_processed_media(
+    db: AsyncSession, asset: MediaAsset
+) -> MediaAsset | None:
+    """Refresh only the processed asset, preserving other importer identity state."""
+    await db.refresh(asset, attribute_names=["status", "storage_key"])
+    return asset if asset.status == "ready" else None
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.media.ensure_variants",
+    autoretry_for=(OSError,),
+    retry_backoff=True,
+    max_retries=3,
+)
+def ensure_media_variants(asset_id: str) -> None:
+    """Generate WebP display variants for an already-ready public/private image."""
+
+    async def load() -> tuple[MediaAsset | None, set[str]]:
+        async with SessionFactory() as db:
+            asset = await db.get(MediaAsset, UUID(asset_id))
+            if asset is None:
+                return None, set()
+            existing = {
+                row.variant
+                for row in (
+                    await db.scalars(select(MediaVariant).where(MediaVariant.asset_id == asset.id))
+                ).all()
+            }
+            return asset, existing
+
+    asset, existing = asyncio.run(load())
+    if asset is None or asset.status != "ready" or not asset.content_type.startswith("image/"):
+        return
+    if {"w480", "w960", "w1600"}.issubset(existing):
+        return
+
+    client = s3_client()
+    body = client.get_object(Bucket=settings.media_bucket, Key=asset.storage_key)["Body"]
+    with tempfile.TemporaryFile() as source:
+        for chunk in iter(lambda: body.read(1024 * 1024), b""):
+            source.write(chunk)
+        variant_rows = [
+            row for row in _image_variants(asset, source) if row["variant"] not in existing
+        ]
+
+    async def persist() -> None:
+        async with SessionFactory() as db:
+            row = await db.get(MediaAsset, UUID(asset_id))
+            if row is None:
+                return
+            for variant in variant_rows:
+                db.add(MediaVariant(**variant))
+            await db.commit()
+
+    asyncio.run(persist())
+    logger.info(
+        "media_variants_ensured",
+        asset_id=asset_id,
+        created=[str(row["variant"]) for row in variant_rows],
+    )
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.imports.google_drive_folder",
+    autoretry_for=(OSError,),
+    retry_backoff=True,
+    max_retries=2,
+)
+def import_google_drive_folder(job_id: str) -> None:
+    asyncio.run(_import_google_drive_folder(UUID(job_id)))
+
+
+async def _import_google_drive_folder(job_id: UUID) -> None:
+    async with SessionFactory() as db:
+        job = await db.get(BackgroundJob, job_id)
+        if job is None or job.kind != "gallery.google_drive_import":
+            return
+        if job.status in {"completed", "failed"}:
+            return
+        job.status = "running"
+        job.progress = 5
+        await db.commit()
+
+        gallery_id = UUID(str(job.input_json["gallery_id"]))
+        folder_id = str(job.input_json["folder_id"])
+        folder_url = str(job.input_json.get("folder_url") or "")
+        connection_id = UUID(str(job.input_json["connection_id"]))
+        owner_id = job.owner_id
+        connection = await db.scalar(
+            select(GoogleDriveConnection).where(
+                GoogleDriveConnection.id == connection_id,
+                GoogleDriveConnection.user_id == owner_id,
+            )
+        )
+        gallery = await db.get(Gallery, gallery_id)
+        if connection is None or gallery is None or owner_id is None:
+            job.status = "failed"
+            job.error_code = "import_prerequisites_missing"
+            job.error_message = "Gallery or Google Drive connection is no longer available"
+            await db.commit()
+            return
+
+        try:
+            access_token = await drive.ensure_access_token(connection)
+            await db.commit()
+            importable, oversized = await drive.list_importable_images(
+                access_token,
+                folder_id,
+                max_bytes=settings.upload_max_bytes,
+            )
+        except Exception as exc:
+            message = getattr(exc, "message", None) or str(exc)
+            code = getattr(exc, "code", None) or "google_drive_import_failed"
+            job.status = "failed"
+            job.error_code = str(code)[:100]
+            job.error_message = str(message)[:500]
+            await db.commit()
+            logger.exception("google_drive_import_list_failed", job_id=str(job_id))
+            return
+
+        existing_items = list(
+            (
+                await db.scalars(
+                    select(GalleryItem)
+                    .where(GalleryItem.gallery_id == gallery.id)
+                    .order_by(GalleryItem.position)
+                )
+            ).all()
+        )
+        existing_media_ids = {item.media_asset_id for item in existing_items}
+        next_position = (existing_items[-1].position + 1) if existing_items else 0
+        capacity = max(0, 500 - len(existing_items))
+        skipped_capacity = max(0, len(importable) - capacity)
+        importable = importable[:capacity]
+
+        job.progress = 15
+        job.result_json = {
+            "listed": len(importable) + len(oversized) + skipped_capacity,
+            "oversized": len(oversized),
+            "skipped_capacity": skipped_capacity,
+        }
+        await db.commit()
+
+        imported = 0
+        reused = 0
+        failed = 0
+        attached_ids: list[str] = []
+        client = s3_client()
+        total = max(len(importable), 1)
+
+        for index, file in enumerate(importable):
+            try:
+                access_token = await drive.ensure_access_token(connection)
+                await db.commit()
+                content = await drive.download_file(
+                    access_token,
+                    file.id,
+                    max_bytes=settings.upload_max_bytes,
+                )
+                digest = hashlib.sha256(content).hexdigest()
+                existing = await db.scalar(
+                    select(MediaAsset).where(
+                        MediaAsset.sha256 == digest,
+                        MediaAsset.status == "ready",
+                        MediaAsset.is_private.is_(False),
+                        MediaAsset.content_type.like("image/%"),
+                    )
+                )
+                if existing is not None:
+                    asset = existing
+                    reused += 1
+                else:
+                    asset_id = new_id()
+                    storage_key = quarantine_key(asset_id, file.name)
+                    asset = MediaAsset(
+                        id=asset_id,
+                        owner_id=owner_id,
+                        storage_key=storage_key,
+                        original_filename=safe_filename(file.name),
+                        content_type=file.mime_type,
+                        byte_size=len(content),
+                        sha256=digest,
+                        status="quarantined",
+                        is_private=False,
+                        metadata_json={
+                            "source": "google_drive",
+                            "drive_file_id": file.id,
+                            "import_job_id": str(job_id),
+                        },
+                    )
+                    db.add(asset)
+                    await db.commit()
+                    try:
+                        client.put_object(
+                            Bucket=settings.media_bucket,
+                            Key=storage_key,
+                            Body=content,
+                            ContentType=file.mime_type,
+                            Metadata={
+                                "byte-size": str(len(content)),
+                                "sha256": digest,
+                            },
+                            **s3_encryption_args(),
+                        )
+                    except Exception:
+                        asset.status = "rejected"
+                        asset.metadata_json = {
+                            **asset.metadata_json,
+                            "upload_error": "object_storage_unavailable",
+                        }
+                        await db.commit()
+                        raise
+                    asset.status = "scanning"
+                    await db.commit()
+                    processed_asset_id = asset.id
+                    await _process_media_for_import(processed_asset_id)
+                    refreshed = await _refresh_processed_media(db, asset)
+                    if refreshed is None:
+                        failed += 1
+                        continue
+                    asset = refreshed
+                    imported += 1
+
+                if asset.id not in existing_media_ids:
+                    db.add(
+                        GalleryItem(
+                            id=new_id(),
+                            gallery_id=gallery.id,
+                            media_asset_id=asset.id,
+                            position=next_position,
+                            allow_download=True,
+                        )
+                    )
+                    next_position += 1
+                    existing_media_ids.add(asset.id)
+                    attached_ids.append(str(asset.id))
+                    gallery.version += 1
+                await db.commit()
+            except Exception:
+                failed += 1
+                logger.exception(
+                    "google_drive_import_file_failed",
+                    job_id=str(job_id),
+                    drive_file_id=file.id,
+                )
+                await db.rollback()
+                job = await db.get(BackgroundJob, job_id)
+                gallery = await db.get(Gallery, gallery_id)
+                connection = await db.scalar(
+                    select(GoogleDriveConnection).where(
+                        GoogleDriveConnection.id == connection_id,
+                        GoogleDriveConnection.user_id == owner_id,
+                    )
+                )
+                if job is None or gallery is None or connection is None:
+                    return
+
+            progress = 15 + int(((index + 1) / total) * 75)
+            job = await db.get(BackgroundJob, job_id)
+            if job is not None:
+                job.progress = min(progress, 90)
+                await db.commit()
+
+        job = await db.get(BackgroundJob, job_id)
+        gallery = await db.get(Gallery, gallery_id)
+        if job is None or gallery is None:
+            return
+        if not gallery.external_album_url and folder_url:
+            gallery.external_album_url = folder_url[:1000]
+            gallery.version += 1
+        job.status = "completed"
+        job.progress = 100
+        job.result_json = {
+            **(job.result_json or {}),
+            "imported": imported,
+            "reused": reused,
+            "failed": failed,
+            "attached": len(attached_ids),
+            "media_asset_ids": attached_ids,
+            "oversized": len(oversized),
+            "skipped_capacity": skipped_capacity,
+            "gallery_version": gallery.version,
+        }
+        job.error_code = None
+        job.error_message = None
+        await db.commit()
+        logger.info(
+            "google_drive_import_completed",
+            job_id=str(job_id),
+            imported=imported,
+            reused=reused,
+            failed=failed,
+            attached=len(attached_ids),
+        )

@@ -45,11 +45,19 @@ def test_event_rejects_invalid_registration_link() -> None:
         )
 
 
-def test_gallery_requires_images_or_external_album() -> None:
+def test_gallery_allows_empty_draft_for_deferred_import() -> None:
+    from utag_api.schemas.domain import GalleryCreate
+
+    gallery = GalleryCreate(title="Empty gallery")
+    assert gallery.status == "draft"
+    assert gallery.media_asset_ids == []
+
+
+def test_gallery_requires_images_or_external_album_before_review() -> None:
     from utag_api.schemas.domain import GalleryCreate
 
     with pytest.raises(ValidationError):
-        GalleryCreate(title="Empty gallery")
+        GalleryCreate(title="Empty gallery", status="review")
 
 
 def test_gallery_accepts_external_album_without_images() -> None:
@@ -140,3 +148,24 @@ def test_notification_accepts_internal_deep_link() -> None:
     )
 
     assert notification.deep_link == "/dashboard/events?tab=upcoming"
+
+
+def test_public_executive_view_strips_withheld_email() -> None:
+    from utag_api.schemas.domain import PublicExecutiveView
+
+    profile = PublicExecutiveView(
+        id=UUID("35a55a4e-9482-4ce9-9f66-dfc328f97aec"),
+        user_id=UUID("45a55a4e-9482-4ce9-9f66-dfc328f97aed"),
+        position="Vice-President",
+        full_name="Prof Kofi Sarpong Adu-Manu",
+        title="Prof.",
+        academic_rank="Associate Professor",
+        profile_media_id=None,
+        email="ksadu-manu@ug.edu.gh",
+        phone_number="0240000000",
+        show_email=False,
+        show_phone=False,
+    )
+    assert profile.email is None
+    assert profile.phone_number is None
+    assert profile.show_email is False

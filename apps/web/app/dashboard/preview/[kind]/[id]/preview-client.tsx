@@ -29,7 +29,13 @@ const workspaceUrls: Record<ModerationPreview["kind"], string> = {
   gallery: "/dashboard/galleries",
 };
 
-export function ModerationPreviewClient({ kind, id }: { kind: string; id: string }) {
+export function ModerationPreviewClient({
+  kind,
+  id,
+}: {
+  kind: string;
+  id: string;
+}) {
   const validKind = Object.hasOwn(workspaceUrls, kind)
     ? (kind as ModerationPreview["kind"])
     : null;
@@ -47,7 +53,9 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
       <Card>
         <CardContent className="py-16 text-center">
           <FileWarning className="mx-auto size-8 text-coral" />
-          <h1 className="mt-4 text-xl font-black">This preview type is not supported.</h1>
+          <h1 className="mt-4 text-xl font-black">
+            This preview type is not supported.
+          </h1>
         </CardContent>
       </Card>
     );
@@ -56,7 +64,10 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
   if (preview.isLoading) {
     return (
       <div className="grid min-h-72 place-items-center">
-        <LoaderCircle className="size-8 animate-spin text-coral" aria-label="Loading preview" />
+        <LoaderCircle
+          className="size-8 animate-spin text-coral"
+          aria-label="Loading preview"
+        />
       </div>
     );
   }
@@ -66,7 +77,9 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
       <Card>
         <CardContent className="py-16 text-center">
           <FileWarning className="mx-auto size-8 text-coral" />
-          <h1 className="mt-4 text-xl font-black">The preview could not be loaded.</h1>
+          <h1 className="mt-4 text-xl font-black">
+            The preview could not be loaded.
+          </h1>
           <Button asChild className="mt-6" variant="outline">
             <Link href={workspaceUrls[validKind]}>Back to workspace</Link>
           </Button>
@@ -77,7 +90,9 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
 
   const item = preview.data;
   const heroMediaId =
-    item.kind === "news" || item.kind === "event" ? item.media_asset_ids[0] : undefined;
+    item.kind === "news" || item.kind === "event"
+      ? item.media_asset_ids[0]
+      : undefined;
 
   return (
     <article className="overflow-hidden rounded-3xl border border-line bg-panel shadow-sm">
@@ -86,12 +101,21 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
           Private preview · {humanize(item.kind)} · {humanize(item.status)}
         </p>
         <div className="flex gap-2">
-          <Button asChild size="sm" variant="outline" className="border-white/30 bg-transparent text-white">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="border-white/30 bg-transparent text-white"
+          >
             <Link href="/dashboard/moderation">
               <ArrowLeft className="size-4" /> Moderation
             </Link>
           </Button>
-          <Button asChild size="sm" className="bg-gold text-[#172f4d] hover:bg-gold/90">
+          <Button
+            asChild
+            size="sm"
+            className="bg-gold text-[#172f4d] hover:bg-gold/90"
+          >
             <Link href={workspaceUrls[item.kind]}>Edit content</Link>
           </Button>
         </div>
@@ -134,25 +158,35 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted">No gallery images have been selected.</p>
+              <p className="text-sm text-muted">
+                No gallery images have been selected.
+              </p>
             )
           ) : item.kind === "document" ? (
             item.media_asset_ids[0] ? (
               <Button asChild>
-                <a href={`/api/v1/media/${item.media_asset_ids[0]}/content`} target="_blank" rel="noreferrer">
+                <a
+                  href={`/api/v1/media/${item.media_asset_ids[0]}/content`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <Download className="size-4" /> Open document
                 </a>
               </Button>
             ) : (
-              <p className="text-sm text-muted">No document file is attached.</p>
+              <p className="text-sm text-muted">
+                No document file is attached.
+              </p>
             )
           ) : item.body_html ? (
             <div
-              className="prose max-w-none prose-headings:text-ink prose-a:text-coral"
+              className="themed-prose max-w-none"
               dangerouslySetInnerHTML={{ __html: item.body_html }}
             />
           ) : (
-            <p className="text-sm text-muted">No body content has been added.</p>
+            <p className="text-sm text-muted">
+              No body content has been added.
+            </p>
           )}
         </div>
 
@@ -163,8 +197,12 @@ export function ModerationPreviewClient({ kind, id }: { kind: string; id: string
           <dl className="mt-4 grid gap-4">
             {Object.entries(item.details).map(([label, value]) => (
               <div key={label} className="border-t border-line pt-3">
-                <dt className="text-[.62rem] font-bold text-muted uppercase">{label}</dt>
-                <dd className="mt-1 text-sm font-semibold">{humanize(value)}</dd>
+                <dt className="text-[.62rem] font-bold text-muted uppercase">
+                  {label}
+                </dt>
+                <dd className="mt-1 text-sm font-semibold">
+                  {humanize(value)}
+                </dd>
               </div>
             ))}
           </dl>

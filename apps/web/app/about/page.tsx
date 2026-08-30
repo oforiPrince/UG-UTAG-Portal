@@ -15,23 +15,23 @@ export const metadata: Metadata = { title: "About us" };
 const commitments = [
   [
     GraduationCap,
-    "Quality education",
+    "Quality Education",
     "Defend academic freedom and support the conditions required for excellent teaching.",
   ],
   [
     FlaskConical,
-    "Teaching & research",
-    "Advance research, scholarship, mentorship and community service across the University.",
+    "Teaching & Research",
+    "Advance research, scholarship, mentorship, and community service across the University.",
   ],
   [
     Megaphone,
-    "Member advocacy",
-    "Represent members with clarity before University Management, national leadership and government.",
+    "Member Advocacy",
+    "Represent members with clarity before University Management, National Leadership of UTAG, and government.",
   ],
   [
     HeartHandshake,
-    "Member welfare",
-    "Promote fair conditions, professional wellbeing and mutual support for University teachers.",
+    "Member Welfare",
+    "Promote fair conditions, professional wellbeing, and mutual support for University teachers.",
   ],
 ] as const;
 
@@ -41,7 +41,7 @@ export default function AboutPage() {
       <PageHero
         eyebrow="About us"
         title="University of Ghana Branch of UTAG"
-        intro="A united association representing teaching and research staff and advancing their academic, professional and economic welfare."
+        intro="A united association representing teaching and research staff and advancing their academic, professional, and economic welfare."
       />
 
       <section className="mx-auto grid max-w-[82rem] gap-6 px-5 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8 lg:py-18">
@@ -69,22 +69,21 @@ export default function AboutPage() {
             <p className="mt-6 text-sm leading-7 text-muted sm:text-base">
               The University of Ghana Branch of the University Teachers
               Association of Ghana represents the teaching and research staff of
-              the University. We promote the academic, professional and economic
+              the University. We promote the academic, professional, and economic
               welfare of members and the wider academic community.
             </p>
             <p className="mt-4 text-sm leading-7 text-muted sm:text-base">
-              The association engages University Management, national UTAG and
-              the Government of Ghana on matters affecting members, academic
-              life and the quality of higher education. Our work is guided by
-              the branch constitution and the policies of the national
-              association.
+              The association engages University Management, National leadership of UTAG,
+              and institutions of state on matters affecting members, academic
+              life, and the quality of higher education. Our work is guided by
+              the the National constitution of UTAG and Branch By-laws.
             </p>
             <ul className="mt-6 grid gap-3 text-sm font-semibold text-[#2d4056] sm:grid-cols-2">
               {[
-                "Defend academic freedom",
-                "Advance teaching and research",
-                "Advocate for member needs",
-                "Foster healthy University relations",
+                "Defend Academic Freedom",
+                "Advance Teaching and Research",
+                "Advocate for Member Needs",
+                "Foster Healthy University Relations",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-gold" />
@@ -109,19 +108,19 @@ export default function AboutPage() {
           <p className="text-[.72rem] font-extrabold tracking-[.15em] text-coral uppercase">
             Our purpose
           </p>
-          <h2 className="display-type mt-3 text-3xl text-[#172f4d] sm:text-4xl">
+          {/* <h2 className="display-type mt-3 text-3xl text-[#172f4d] sm:text-4xl">
             Principled representation. Practical service.
-          </h2>
+          </h2> */}
           <p className="mt-4 text-sm leading-7 text-muted sm:text-base">
-            We bring academics together to protect shared interests, strengthen
-            the institution and serve society through knowledge.
+            We bring academics together to protect shared interests,
+            strengthen the University of Ghana, and serve society through knowledge.
           </p>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {[
-            "Academic freedom and responsibility",
-            "Transparent and inclusive governance",
-            "Solidarity across rank and discipline",
+            "Academic Freedom and Responsibility",
+            "Transparent and Inclusive Governance",
+            "Solidarity across Rank and Discipline",
           ].map((value, index) => (
             <article
               key={value}

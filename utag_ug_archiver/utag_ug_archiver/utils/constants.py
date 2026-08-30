@@ -1,12 +1,14 @@
-executive_members_position_order = ['President', 'Vice President', 'Secretary', 'Treasurer',"Women's Executive Officer"]
-executive_committee_members_position_order = ['President', 'Vice President', 'Secretary', 'Treasurer',"Women's Executive Officer","National President","CBAS Rep", "CHS Rep", "COE Rep", "COH Rep"]# Legacy position names that should also be matched in DB queries
+executive_members_position_order = ['President', 'Vice-President', 'Secretary', 'Treasurer',"Women's Executive Officer"]
+executive_committee_members_position_order = ['President', 'Vice-President', 'Secretary', 'Treasurer',"Women's Executive Officer","National President","CBAS Rep", "CHS Rep", "COE Rep", "COH Rep"]# Legacy position names that should also be matched in DB queries
 LEGACY_POSITION_NAMES = [
+    'Vice President',  # pre-hyphenated spelling
     'College of Humanities Rep', 'College of Health Rep', 'College of Education Rep',
     "Women's Executive\xa0Officer",  # non-breaking space variant
 ]
 # Combined list for DB filtering (catches both old and new names)
 executive_committee_members_all_positions = executive_committee_members_position_order + LEGACY_POSITION_NAMES# Mapping of old position names to new abbreviated names for backward compatibility
 POSITION_NAME_MAPPING = {
+    'Vice President': 'Vice-President',
     'College of Humanities Rep': 'COH Rep',
     'College of Health Rep': 'CHS Rep',
     'College of Education Rep': 'COE Rep',

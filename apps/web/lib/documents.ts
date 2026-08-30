@@ -2,7 +2,7 @@ import { humanize } from "./utils";
 
 export type PublicDocument = {
   id: string;
-  public_id: string;
+  public_id?: string;
   title: string;
   sender: string | null;
   receiver: string | null;
@@ -98,7 +98,7 @@ export function publicDocumentPreview(
 ): DocumentPreviewData {
   return {
     id: document.id,
-    reference: document.public_id,
+    reference: document.public_id ?? "",
     title: document.title,
     sender: document.sender,
     receiver: document.receiver,

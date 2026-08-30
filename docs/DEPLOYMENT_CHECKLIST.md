@@ -101,6 +101,78 @@ settings are missing, insecure, or still contain documented placeholders.
   BACKUP_DIRECTORY=/verified/ug-utag-backups ops/scripts/backup-modern.sh
   ```
 
+### Organization hierarchy reconciliation
+
+After changing the canonical college, school, or department reference data—or
+after importing legacy Django organization rows—preview the reconciliation
+against a current backup:
+
+```bash
+docker compose exec api \
+  python -m utag_api.cli reconcile-organization --prune-unlinked
+```
+
+The command is a dry run unless `--apply` is present. Review the counts and any
+member UUIDs requiring manual correction. It normalizes only known harmless
+legacy spelling differences, relinks only unambiguous member affiliations and
+announcement/document audiences, and never prunes administrator-created custom
+units.
+
+When the dry run is accepted and a verified backup exists, apply the same plan:
+
+```bash
+docker compose exec api \
+  python -m utag_api.cli reconcile-organization --apply --prune-unlinked
+```
+
+Only imported legacy units with no remaining member, announcement audience,
+document audience, child-unit, or system-chat-history linkage are deleted.
+Empty legacy system-chat shells are removed with their unit; groups containing
+members, invitations, or messages retain the legacy unit. The command also
+resynchronizes system-managed organization chat memberships after a committed
+reconciliation.
+
+### Member roster affiliation sync
+
+After members were imported with incorrect college, school, or department
+links, sync them from the authoritative members workbook. The command matches
+existing accounts by staff ID and email, overwrites organization assignments,
+fills blank titles and ranks only, and creates missing members. It never
+changes existing passwords, sessions, or login fields. New accounts use the
+staff ID as the temporary password and must change it on first sign-in.
+
+School and department chat groups are remapped with the same sync used on
+member import: members stay in **UTAG UG**, join the rooms for their corrected
+school and department, and leave only the rooms that belonged to the old wrong
+linkage. Rooms with messages, invitations, or memberships are not deleted.
+
+Preview against a current backup. Copy the workbook into the API container
+because production has no `docs/` mount:
+
+```bash
+docker compose cp \
+  "docs/2026 UTAG MEMBERS LIST 26-AUG-26.xlsx" \
+  api:/tmp/utag-members.xlsx
+docker compose exec api \
+  python -m utag_api.cli sync-member-roster \
+  --workbook /tmp/utag-members.xlsx
+```
+
+The command is a dry run unless `--apply` is present. Review conflicts, row
+issues, and leftover units retained because they still have members, audiences,
+or chat history.
+
+When the dry run is accepted and a verified backup exists:
+
+```bash
+docker compose exec api \
+  python -m utag_api.cli sync-member-roster \
+  --workbook /tmp/utag-members.xlsx --apply
+```
+
+Unreferenced leftover college, school, and department rows that are not in the
+workbook are then deleted. Committee units are never removed.
+
 - [ ] The matching backup set has been restored in isolation with
       `ops/scripts/restore-modern.sh`; record recovery time and recovery point.
 - [ ] The previous application images/configuration and traffic rollback steps
@@ -124,6 +196,11 @@ settings are missing, insecure, or still contain documented placeholders.
       password change, profile, member creation/edit/import/export, role and
       permission boundaries, content publication, documents, events,
       notifications, chat/attachments, media scanning, gallery, and logout.
+- [ ] Verify `records.delete` is present for an administrator but absent for a
+      secretary/publisher and from the individual permission-grant catalog.
+- [ ] Verify permanent delete succeeds for an unreferenced staging record,
+      returns a clear conflict for a linked record, and queues media-object
+      cleanup only after the media database delete commits.
 - [ ] Run the authenticated browser journey against staging:
 
   ```bash

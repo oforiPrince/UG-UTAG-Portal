@@ -2,8 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Archive,
   ArrowDownToLine,
+  ArrowLeft,
   ArrowUpDown,
   Check,
   ChevronDown,
@@ -19,16 +19,34 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { WorkspacePanelPreview } from "@/components/dashboard/workspace-panel-preview";
+import { RecordDetailsView } from "@/components/dashboard/record-details-view";
+import { WorkspaceRowActions } from "@/components/dashboard/workspace-row-actions";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
+import { GoogleDriveGalleryImport } from "@/components/dashboard/google-drive-gallery-import";
 import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { API_URL, api } from "@/lib/api";
+import {
+  defaultDeliveryCapabilities,
+  deliveryAvailable as isDeliveryAvailable,
+} from "@/lib/delivery-capabilities";
 import { display, displayChoice } from "@/lib/workspace-display";
+import { visibleDetailEntries } from "@/lib/workspace-detail";
+import { rowActionsFor } from "@/lib/workspace-row-actions";
 import {
   documentAudiencesForCategory,
   nextMultiSelectValue,
@@ -43,13 +61,35 @@ import type {
   WorkspaceConfig,
   WorkspaceField,
   WorkspaceMutation,
+  WorkspacePreviewKind,
   WorkspaceRow,
 } from "@/lib/workspaces";
-import { humanize } from "@/lib/utils";
+import {
+  cn,
+  formatPersonName,
+  formatRankForName,
+  humanize,
+  matchCaseStyle,
+} from "@/lib/utils";
 
 type FormValue = string | boolean | string[];
 type FormValues = Record<string, FormValue>;
 type User = { id: string; permissions: string[] };
+
+type SelectMenuPosition = {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+  placement: "top" | "bottom";
+};
+
+type SelectViewportBounds = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
 
 const PAGE_SIZE = 15;
 type PageResponse = {
@@ -76,6 +116,97 @@ function optionEndpoint(
   if (!source.searchParam || !search.trim()) return source.endpoint;
   const separator = source.endpoint.includes("?") ? "&" : "?";
   return `${source.endpoint}${separator}${encodeURIComponent(source.searchParam)}=${encodeURIComponent(search.trim())}`;
+}
+
+function selectViewportBounds(): SelectViewportBounds {
+  const visualViewport = window.visualViewport;
+  const top = visualViewport?.offsetTop ?? 0;
+  const left = visualViewport?.offsetLeft ?? 0;
+  const right = left + (visualViewport?.width ?? window.innerWidth);
+  let bottom = top + (visualViewport?.height ?? window.innerHeight);
+  const bottomNavigation = document.querySelector<HTMLElement>(
+    "[data-dashboard-bottom-nav]",
+  );
+  const navigationRect = bottomNavigation?.getBoundingClientRect();
+
+  if (
+    navigationRect &&
+    navigationRect.width > 0 &&
+    navigationRect.height > 0 &&
+    navigationRect.top > top &&
+    navigationRect.top < bottom
+  ) {
+    bottom = navigationRect.top;
+  }
+
+  return { top, right, bottom, left };
+}
+
+function selectMenuPositionFor(
+  trigger: HTMLElement,
+  menuHeight = 320,
+): SelectMenuPosition {
+  const rect = trigger.getBoundingClientRect();
+  const viewport = selectViewportBounds();
+  const viewportPadding = 12;
+  const gap = 8;
+  const viewportWidth = Math.max(
+    viewport.right - viewport.left,
+    viewportPadding * 2 + 1,
+  );
+  const width = Math.min(
+    Math.max(rect.width, 256),
+    viewportWidth - viewportPadding * 2,
+  );
+  const left = Math.min(
+    Math.max(viewport.left + viewportPadding, rect.left),
+    Math.max(
+      viewport.left + viewportPadding,
+      viewport.right - width - viewportPadding,
+    ),
+  );
+  const spaceBelow = Math.max(
+    0,
+    viewport.bottom - rect.bottom - gap - viewportPadding,
+  );
+  const spaceAbove = Math.max(
+    0,
+    rect.top - gap - viewport.top - viewportPadding,
+  );
+  const measuredHeight = menuHeight > 0 ? menuHeight : 320;
+  const usefulHeight = Math.min(measuredHeight, 320);
+  const placement =
+    spaceBelow >= Math.min(usefulHeight, 224) || spaceBelow >= spaceAbove
+      ? "bottom"
+      : "top";
+  const availableHeight = placement === "bottom" ? spaceBelow : spaceAbove;
+  const maxHeight = Math.min(320, availableHeight);
+  const renderedHeight = Math.min(measuredHeight, maxHeight);
+  const top =
+    placement === "bottom"
+      ? Math.min(
+          rect.bottom + gap,
+          viewport.bottom - viewportPadding - renderedHeight,
+        )
+      : Math.max(
+          viewport.top + viewportPadding,
+          rect.top - gap - renderedHeight,
+        );
+
+  return { top, left, width, maxHeight, placement };
+}
+
+function sameSelectMenuPosition(
+  current: SelectMenuPosition | null,
+  next: SelectMenuPosition,
+) {
+  return (
+    current?.top === next.top &&
+    current.left === next.left &&
+    current.width === next.width &&
+    current.maxHeight === next.maxHeight &&
+    current.placement === next.placement
+  );
 }
 
 function workspaceEndpoint(
@@ -157,6 +288,9 @@ export function WorkspaceSelect({
   value,
   autoFocus,
   onChange,
+  fallbackOption,
+  formValues,
+  record,
 }: {
   id: string;
   labelledBy: string;
@@ -164,10 +298,20 @@ export function WorkspaceSelect({
   value: FormValue;
   autoFocus: boolean;
   onChange: (value: string) => void;
+  fallbackOption?: { value: string; label: string };
+  formValues?: WorkspaceRow;
+  record?: WorkspaceRow;
 }) {
   const source = field.optionSource;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(
+    null,
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const remoteSearch = useDebouncedValue(source?.searchParam ? search : "");
   const optionsQuery = useQuery({
     queryKey: [
@@ -181,62 +325,322 @@ export function WorkspaceSelect({
   });
   const dynamicOptions = source
     ? rowsFrom(optionsQuery.data)
-        .filter((row) => source.filter?.(row) ?? true)
+        .filter(
+          (row) =>
+            (source.filter?.(row) ?? true) &&
+            (source.filterForValues?.(row, formValues ?? {}, record) ?? true),
+        )
         .map((row) => ({ value: source.value(row), label: source.label(row) }))
     : [];
-  const options = source
+  const loadedOptions = source
     ? dynamicOptions
     : (field.options ?? []).map((option) => ({
         value: option,
         label: humanize(option),
       }));
+  const options =
+    fallbackOption &&
+    String(value) === fallbackOption.value &&
+    !source?.filterForValues &&
+    !loadedOptions.some((option) => option.value === fallbackOption.value)
+      ? [fallbackOption, ...loadedOptions]
+      : loadedOptions;
   const optionState = workspaceOptionQueryState(Boolean(source), optionsQuery);
+  const dependentDisabled =
+    source?.disabledForValues?.(formValues ?? {}, record) ?? false;
+  const contextualEmptyLabel = source?.emptyLabelForValues?.(
+    formValues ?? {},
+    record,
+  );
   const emptyLabel = optionState.isLoading
     ? "Loading available options…"
     : optionState.isError
       ? "Options unavailable — refresh and try again"
       : source && options.length === 0
-        ? (source.emptyLabel ?? "No options available")
+        ? (contextualEmptyLabel ?? source.emptyLabel ?? "No options available")
         : "Select";
 
   const searchable = Boolean(source) || options.length > 10;
-  const containerRef = useRef<HTMLDivElement>(null);
   const selectedOption = options.find(
     (option) => option.value === String(value),
   );
-  const filteredOptions =
-    source?.searchParam && remoteSearch.trim() === search.trim()
-      ? options
-      : options.filter((option) =>
-          option.label.toLowerCase().includes(search.trim().toLowerCase()),
-        );
+  const searchTerm = search.trim().toLowerCase();
+  const remoteSearchSettled =
+    Boolean(source?.searchParam) && remoteSearch.trim() === search.trim();
+  const filteredOptions = options.filter((option) => {
+    if (!searchTerm) return true;
+    if (remoteSearchSettled && option.value !== fallbackOption?.value) {
+      return true;
+    }
+    return option.label.toLowerCase().includes(searchTerm);
+  });
+  const selectedFilteredIndex = filteredOptions.findIndex(
+    (option) => option.value === String(value),
+  );
+
+  const closeMenu = useCallback((restoreFocus = false) => {
+    setOpen(false);
+    setSearch("");
+    setActiveIndex(-1);
+    setMenuPosition(null);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
+
+  const updateMenuPosition = useCallback(
+    (menuHeight = 320) => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const viewport = selectViewportBounds();
+      if (rect.bottom < viewport.top || rect.top > viewport.bottom) {
+        closeMenu();
+        return;
+      }
+      const next = selectMenuPositionFor(trigger, menuHeight);
+      setMenuPosition((current) =>
+        sameSelectMenuPosition(current, next) ? current : next,
+      );
+    },
+    [closeMenu],
+  );
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+  }, [open, updateMenuPosition]);
+
+  useLayoutEffect(() => {
+    if (!open || !menuPosition || !menuRef.current) return;
+    updateMenuPosition(menuRef.current.offsetHeight);
+  }, [filteredOptions.length, menuPosition, open, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+    menuRef.current
+      ?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, open]);
 
   useEffect(() => {
     if (!open) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+      const target = event.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      closeMenu();
+    };
+    const closeOnFocusLeave = (event: FocusEvent) => {
+      if (!menuRef.current) return;
+      const target = event.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeMenu();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeMenu(true);
+    };
+    const reposition = (event: Event) => {
+      if (
+        event.target instanceof Node &&
+        menuRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+      updateMenuPosition(menuRef.current?.offsetHeight ?? 320);
     };
     document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () =>
+    document.addEventListener("focusin", closeOnFocusLeave);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    window.visualViewport?.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("scroll", reposition);
+    return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [open]);
+      document.removeEventListener("focusin", closeOnFocusLeave);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+      window.visualViewport?.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("scroll", reposition);
+    };
+  }, [closeMenu, open, updateMenuPosition]);
 
   if (searchable) {
-    const disabled = Boolean(source) && optionState.isLoading;
+    const disabled =
+      dependentDisabled || (Boolean(source) && optionState.isLoading);
+    const chooseOption = (nextValue: string) => {
+      onChange(nextValue);
+      closeMenu(true);
+    };
+    const menu =
+      open && menuPosition && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="fixed z-[100] flex flex-col overflow-hidden rounded-xl border border-line bg-paper shadow-[0_18px_55px_rgba(12,25,48,.18)]"
+              data-placement={menuPosition.placement}
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+                width: menuPosition.width,
+                maxHeight: menuPosition.maxHeight,
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <label className="flex min-h-11 shrink-0 items-center gap-2 border-b border-line px-3">
+                <Search className="size-4 shrink-0 text-muted" />
+                <span className="sr-only">Search {field.label}</span>
+                <input
+                  autoFocus
+                  value={search}
+                  aria-controls={`${id}-options`}
+                  aria-activedescendant={
+                    activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined
+                  }
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setActiveIndex(0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!filteredOptions.length) return;
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setActiveIndex((current) =>
+                        current < filteredOptions.length - 1 ? current + 1 : 0,
+                      );
+                    } else if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setActiveIndex((current) =>
+                        current > 0 && current < filteredOptions.length
+                          ? current - 1
+                          : filteredOptions.length - 1,
+                      );
+                    } else if (event.key === "Home") {
+                      event.preventDefault();
+                      setActiveIndex(0);
+                    } else if (event.key === "End") {
+                      event.preventDefault();
+                      setActiveIndex(filteredOptions.length - 1);
+                    } else if (
+                      event.key === "Enter" &&
+                      activeIndex >= 0 &&
+                      activeIndex < filteredOptions.length
+                    ) {
+                      event.preventDefault();
+                      chooseOption(filteredOptions[activeIndex]!.value);
+                    }
+                  }}
+                  placeholder={`Search ${field.label.toLowerCase()}`}
+                  className="w-full bg-transparent text-sm font-normal outline-none"
+                />
+              </label>
+              {!field.required && value && !optionState.isLoading ? (
+                <button
+                  type="button"
+                  onClick={() => chooseOption("")}
+                  className="flex min-h-10 shrink-0 items-center border-b border-line px-4 text-left text-xs text-muted transition hover:bg-ink/[.04] focus-visible:bg-ink/[.04] focus-visible:outline-none"
+                >
+                  Clear selection
+                </button>
+              ) : null}
+              <div
+                id={`${id}-options`}
+                role="listbox"
+                aria-labelledby={labelledBy}
+                className="scrollbar-subtle min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-1.5"
+              >
+                {optionState.isLoading ? (
+                  <p
+                    className="px-3 py-4 text-center text-xs font-normal text-muted"
+                    role="status"
+                  >
+                    Searching available options…
+                  </p>
+                ) : optionState.isError ? (
+                  <div className="grid justify-items-center gap-2 px-3 py-4 text-center">
+                    <p
+                      className="text-xs font-normal text-red-700 dark:text-red-300"
+                      role="alert"
+                    >
+                      Options could not be loaded.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => optionsQuery.refetch()}
+                    >
+                      <RefreshCw className="size-3.5" /> Try again
+                    </Button>
+                  </div>
+                ) : null}
+                {!optionState.isLoading && !optionState.isError
+                  ? filteredOptions.map((option, index) => {
+                      const isSelected = option.value === String(value);
+                      const isActive = index === activeIndex;
+                      return (
+                        <button
+                          id={`${id}-option-${index}`}
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          tabIndex={-1}
+                          data-option-index={index}
+                          aria-selected={isSelected}
+                          onPointerMove={() => setActiveIndex(index)}
+                          onClick={() => chooseOption(option.value)}
+                          className={cn(
+                            "flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-xs outline-none transition",
+                            isActive ? "bg-ink/[.06]" : "hover:bg-ink/[.04]",
+                          )}
+                        >
+                          <span className="min-w-0 break-words">
+                            {option.label}
+                          </span>
+                          {isSelected ? (
+                            <Check className="size-4 shrink-0 text-sky" />
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  : null}
+                {!optionState.isLoading &&
+                !optionState.isError &&
+                filteredOptions.length === 0 ? (
+                  <p
+                    className="px-3 py-4 text-center text-xs font-normal text-muted"
+                    role="status"
+                  >
+                    {options.length
+                      ? "No matching options"
+                      : (contextualEmptyLabel ??
+                        source?.emptyLabel ??
+                        "No options available")}
+                  </p>
+                ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null;
+
     return (
-      <div
-        ref={containerRef}
-        className="relative"
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && open) {
-            event.stopPropagation();
-            setOpen(false);
-          }
-        }}
-      >
+      <div ref={containerRef} className="relative min-w-0">
         <button
+          ref={triggerRef}
           id={id}
           type="button"
           role="combobox"
@@ -246,10 +650,39 @@ export function WorkspaceSelect({
           aria-haspopup="listbox"
           autoFocus={autoFocus}
           disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
-          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
+          onClick={() => {
+            if (open) closeMenu();
+            else {
+              setActiveIndex(
+                selectedFilteredIndex >= 0
+                  ? selectedFilteredIndex
+                  : filteredOptions.length
+                    ? 0
+                    : -1,
+              );
+              setOpen(true);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            event.preventDefault();
+            setActiveIndex(
+              selectedFilteredIndex >= 0
+                ? selectedFilteredIndex
+                : filteredOptions.length
+                  ? 0
+                  : -1,
+            );
+            setOpen(true);
+          }}
+          className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none transition focus:border-coral/40 focus:ring-4 focus:ring-coral/10 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <span className={selectedOption ? "text-ink" : "text-muted"}>
+          <span
+            className={cn(
+              "min-w-0 truncate",
+              selectedOption ? "text-ink" : "text-muted",
+            )}
+          >
             {selectedOption?.label ?? emptyLabel}
           </span>
           {optionState.isLoading ? (
@@ -260,94 +693,7 @@ export function WorkspaceSelect({
             />
           )}
         </button>
-        {open ? (
-          <div className="absolute z-50 mt-2 w-full min-w-64 overflow-hidden rounded-xl border border-line bg-paper shadow-xl">
-            <label className="flex min-h-11 items-center gap-2 border-b border-line px-3">
-              <Search className="size-4 shrink-0 text-muted" />
-              <span className="sr-only">Search {field.label}</span>
-              <input
-                autoFocus
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={`Search ${field.label.toLowerCase()}`}
-                className="w-full bg-transparent text-sm font-normal outline-none"
-              />
-            </label>
-            <div
-              id={`${id}-options`}
-              role="listbox"
-              aria-labelledby={labelledBy}
-              className="scrollbar-subtle max-h-64 overflow-y-auto p-1.5"
-            >
-              {optionState.isLoading ? (
-                <p className="px-3 py-4 text-center text-xs font-normal text-muted">
-                  Searching available options…
-                </p>
-              ) : optionState.isError ? (
-                <div className="grid justify-items-center gap-2 px-3 py-4 text-center">
-                  <p className="text-xs font-normal text-red-700">
-                    Options could not be loaded.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => optionsQuery.refetch()}
-                  >
-                    <RefreshCw className="size-3.5" /> Try again
-                  </Button>
-                </div>
-              ) : !field.required && value ? (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  onClick={() => {
-                    onChange("");
-                    setSearch("");
-                    setOpen(false);
-                  }}
-                  className="flex min-h-10 w-full items-center rounded-lg px-3 text-left text-xs text-muted hover:bg-ink/[.04]"
-                >
-                  Clear selection
-                </button>
-              ) : null}
-              {!optionState.isLoading && !optionState.isError
-                ? filteredOptions.map((option) => {
-                    const isSelected = option.value === String(value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          onChange(option.value);
-                          setSearch("");
-                          setOpen(false);
-                        }}
-                        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-xs hover:bg-ink/[.04]"
-                      >
-                        <span>{option.label}</span>
-                        {isSelected ? (
-                          <Check className="size-4 shrink-0 text-sky" />
-                        ) : null}
-                      </button>
-                    );
-                  })
-                : null}
-              {!optionState.isLoading &&
-              !optionState.isError &&
-              filteredOptions.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs font-normal text-muted">
-                  {options.length
-                    ? "No matching options"
-                    : (source?.emptyLabel ?? "No options available")}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {menu}
       </div>
     );
   }
@@ -360,8 +706,11 @@ export function WorkspaceSelect({
       required={field.required}
       value={String(value)}
       disabled={
-        Boolean(source) &&
-        (optionState.isLoading || optionState.isError || options.length === 0)
+        dependentDisabled ||
+        (Boolean(source) &&
+          (optionState.isLoading ||
+            optionState.isError ||
+            options.length === 0))
       }
       onChange={(event) => onChange(event.target.value)}
       className="min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
@@ -445,7 +794,7 @@ function WorkspaceMultiSelect({
         </p>
       ) : optionState.isError ? (
         <div className="grid justify-items-start gap-2 px-2 py-3">
-          <p className="text-xs font-normal text-red-700">
+          <p className="text-xs font-normal text-red-700 dark:text-red-300">
             Options could not be loaded.
           </p>
           <Button
@@ -548,17 +897,50 @@ function objectItemMeta(item: WorkspaceRow) {
     });
 }
 
+function displayWithPersonCase(
+  value: unknown,
+  fieldKey: string,
+  row?: WorkspaceRow,
+) {
+  if (fieldKey === "full_name" && typeof value === "string") {
+    return formatPersonName(value);
+  }
+  if (fieldKey === "academic_rank" && typeof value === "string") {
+    const name = typeof row?.full_name === "string" ? row.full_name : undefined;
+    return formatRankForName(name, value) || display(value, fieldKey);
+  }
+  if (fieldKey === "title" && typeof value === "string") {
+    const name =
+      typeof row?.full_name === "string"
+        ? row.full_name
+        : [row?.other_name, row?.surname].filter(Boolean).join(" ");
+    return name
+      ? matchCaseStyle(String(name), value)
+      : display(value, fieldKey);
+  }
+  return display(value, fieldKey);
+}
+
 function ValueDisplay({
   value,
   fieldKey,
   compact = false,
+  row,
 }: {
   value: unknown;
   fieldKey: string;
   compact?: boolean;
+  row?: WorkspaceRow;
 }) {
   if (isEmptyValue(value)) {
     return <span className="text-muted">Not provided</span>;
+  }
+  if (
+    fieldKey === "academic_rank" ||
+    fieldKey === "full_name" ||
+    fieldKey === "title"
+  ) {
+    return <>{displayWithPersonCase(value, fieldKey, row)}</>;
   }
   if (Array.isArray(value)) {
     if (compact && value.some((item) => typeof item === "object")) {
@@ -754,6 +1136,74 @@ function RecordThumbnail({ row }: { row: WorkspaceRow }) {
   );
 }
 
+function RecordCardMedia({
+  row,
+  aspect = "landscape",
+}: {
+  row: WorkspaceRow;
+  aspect?: "square" | "landscape";
+}) {
+  const image = recordImages(row)[0];
+  const aspectClass = aspect === "square" ? "aspect-square" : "aspect-[16/10]";
+  const contentType =
+    typeof row.content_type === "string" ? row.content_type : "";
+  const status = typeof row.status === "string" ? row.status : "";
+  const filename =
+    typeof row.original_filename === "string"
+      ? row.original_filename
+      : typeof row.title === "string"
+        ? row.title
+        : "Asset";
+
+  if (!image) {
+    const typeLabel = contentType
+      ? contentType.split("/").pop()?.toUpperCase() || contentType
+      : status
+        ? humanize(status)
+        : "File";
+    return (
+      <div
+        className={`flex ${aspectClass} flex-col items-center justify-center gap-1 rounded-t-2xl bg-ink/[.04] px-4 text-center`}
+      >
+        <span className="text-[.62rem] font-black tracking-wide text-muted uppercase">
+          {typeLabel}
+        </span>
+        <span className="line-clamp-2 text-xs font-bold text-ink/70">
+          {filename}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`relative ${aspectClass} overflow-hidden rounded-t-2xl bg-ink/5`}
+    >
+      <Image
+        fill
+        unoptimized
+        alt={image.alt}
+        className="object-cover transition duration-300 group-hover:scale-[1.03]"
+        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+        src={`/api/v1/media/${image.id}/content`}
+      />
+    </div>
+  );
+}
+
+function statusField(key: string) {
+  return [
+    "status",
+    "priority",
+    "outcome",
+    "payment_status",
+    "is_active",
+    "is_public",
+    "is_published",
+    "is_private",
+    "enabled",
+  ].includes(key);
+}
+
 function RecordImagePreview({ row }: { row: WorkspaceRow }) {
   const images = recordImages(row);
   if (!images.length) return null;
@@ -831,13 +1281,28 @@ function fieldsFor(
   mutation: WorkspaceMutation,
   mode: "create" | "edit",
   permissions: string[],
+  deliveryAvailable = true,
 ) {
-  return (mutation.fields ?? []).filter(
-    (field) =>
-      !(mode === "create" && field.editOnly) &&
-      !(mode === "edit" && field.createOnly) &&
-      (!field.permission || permissions.includes(field.permission)),
-  );
+  return (mutation.fields ?? [])
+    .filter(
+      (field) =>
+        !(mode === "create" && field.editOnly) &&
+        !(mode === "edit" && field.createOnly) &&
+        (!field.permission || permissions.includes(field.permission)) &&
+        (!field.requiresDelivery || deliveryAvailable),
+    )
+    .map((field) => {
+      if (!deliveryAvailable && mode === "create" && field.key === "staff_id") {
+        return {
+          ...field,
+          required: true,
+          help:
+            field.help ??
+            "Required. The staff ID is the temporary first password until email delivery is configured.",
+        };
+      }
+      return field;
+    });
 }
 
 function parseStructured(value: FormValue, expectsArray: boolean): unknown {
@@ -922,7 +1387,7 @@ function WorkspaceStructuredEditor({
                     )
                   }
                 >
-                  <Trash2 className="size-4 text-red-700" />
+                  <Trash2 className="size-4 text-red-700 dark:text-red-300" />
                 </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1100,7 +1565,7 @@ function WorkspaceStructuredEditor({
                   updateRecord(next);
                 }}
               >
-                <Trash2 className="size-4 text-red-700" />
+                <Trash2 className="size-4 text-red-700 dark:text-red-300" />
               </Button>
             </>
           )}
@@ -1209,6 +1674,7 @@ function MutationForm({
   mode,
   row,
   permissions,
+  deliveryAvailable = true,
   onSaved,
   close,
   cancelLabel = "Cancel",
@@ -1218,16 +1684,21 @@ function MutationForm({
   mode: "create" | "edit";
   row?: WorkspaceRow;
   permissions: string[];
+  deliveryAvailable?: boolean;
   onSaved?: (row: WorkspaceRow) => void;
   close: () => void;
   cancelLabel?: string;
 }) {
   const queryClient = useQueryClient();
-  const configuredFields = fieldsFor(mutation, mode, permissions).map(
-    (field) =>
-      field.optionsFor
-        ? { ...field, options: field.optionsFor(permissions) }
-        : field,
+  const configuredFields = fieldsFor(
+    mutation,
+    mode,
+    permissions,
+    deliveryAvailable,
+  ).map((field) =>
+    field.optionsFor
+      ? { ...field, options: field.optionsFor(permissions) }
+      : field,
   );
   const [values, setValues] = useState<FormValues>(() =>
     Object.fromEntries(
@@ -1237,6 +1708,13 @@ function MutationForm({
       ]),
     ),
   );
+  const [resourceVersion, setResourceVersion] = useState<unknown>(row?.version);
+  const mutationRow = row
+    ? {
+        ...row,
+        ...(resourceVersion === undefined ? {} : { version: resourceVersion }),
+      }
+    : undefined;
   const fields = configuredFields.map((field) =>
     field.optionsForValues
       ? { ...field, options: field.optionsForValues(values) }
@@ -1244,9 +1722,23 @@ function MutationForm({
   );
   const [busyFields, setBusyFields] = useState<string[]>([]);
 
+  const savedOptionFor = (field: WorkspaceField) => {
+    if (!row || !field.selectedLabelFromRow) return undefined;
+    const savedValue = row[field.key];
+    if (savedValue == null || savedValue === "") return undefined;
+    const label = field.selectedLabelFromRow(row);
+    return label ? { value: String(savedValue), label } : undefined;
+  };
+
   const updateFieldValue = (field: WorkspaceField, nextValue: FormValue) => {
     setValues((current) => {
-      const next = { ...current, [field.key]: nextValue };
+      const next = {
+        ...current,
+        [field.key]: nextValue,
+        ...Object.fromEntries(
+          (field.clearOnChange ?? []).map((key) => [key, ""]),
+        ),
+      };
       if (
         config.queryKey !== "documents" ||
         field.key !== "category" ||
@@ -1281,16 +1773,22 @@ function MutationForm({
       if (missingField) {
         throw new Error(`${missingField.label} is required`);
       }
+      if (mutation.clientOnly) {
+        return null;
+      }
       let payload = Object.fromEntries(
         fields.map((field) => [
           field.key,
           parseFieldValue(field, values[field.key] ?? ""),
         ]),
       );
-      if (mutation.prepare) payload = mutation.prepare(payload, row);
-      return api<unknown>(endpointFor(mutation, row), {
+      if (mutation.prepare) payload = mutation.prepare(payload, mutationRow);
+      return api<unknown>(endpointFor(mutation, mutationRow), {
         method: mutation.method ?? "POST",
-        headers: row && mutation.headers ? mutation.headers(row) : undefined,
+        headers:
+          mutationRow && mutation.headers
+            ? mutation.headers(mutationRow)
+            : undefined,
         body: payload,
       });
     },
@@ -1313,7 +1811,11 @@ function MutationForm({
       <div className="flex items-start justify-between gap-5">
         <div>
           <p className="eyebrow text-coral">
-            {mode === "create" ? "Create record" : "Update record"}
+            {mode === "create"
+              ? mutation.clientOnly
+                ? "Upload"
+                : "Create record"
+              : "Update record"}
           </p>
           <h2 className="display-type mt-3 text-3xl sm:text-4xl">
             {mutation.label}
@@ -1429,107 +1931,150 @@ function MutationForm({
                   }
                 />
               ) : field.type === "media" ? (
-                <WorkspaceMediaField
-                  field={field}
-                  value={Array.isArray(value) ? value : String(value)}
-                  downloadBlockedIds={
-                    field.media?.downloadControl
-                      ? Array.isArray(values.blocked_download_media_ids)
-                        ? values.blocked_download_media_ids.map(String)
-                        : []
-                      : undefined
-                  }
-                  onBusyChange={(busy) =>
-                    setBusyFields((current) =>
-                      busy
-                        ? [...new Set([...current, field.key])]
-                        : current.filter((key) => key !== field.key),
-                    )
-                  }
-                  onChange={(nextValue) =>
-                    setValues((current) => {
-                      const next = {
-                        ...current,
-                        [field.key]: nextValue,
-                      };
-                      if (field.media?.downloadControl) {
-                        const selected = Array.isArray(nextValue)
-                          ? nextValue.map(String)
-                          : nextValue
-                            ? [String(nextValue)]
-                            : [];
-                        const blocked = new Set(
-                          (Array.isArray(current.blocked_download_media_ids)
-                            ? current.blocked_download_media_ids
-                            : []
-                          ).map(String),
-                        );
-                        next.blocked_download_media_ids = selected.filter(
-                          (id) => blocked.has(id),
-                        );
-                      }
-                      return next;
-                    })
-                  }
-                  onDownloadBlockedChange={
-                    field.media?.downloadControl
-                      ? (ids) =>
-                          setValues((current) => ({
-                            ...current,
-                            blocked_download_media_ids: ids,
-                          }))
-                      : undefined
-                  }
-                  picker={
-                    field.media?.multiple ? (
-                      <WorkspaceMultiSelect
-                        id={fieldId}
-                        labelledBy={labelId}
-                        field={field}
-                        value={value}
-                        onChange={(nextValue) =>
-                          setValues((current) => {
-                            const next = {
+                <>
+                  <WorkspaceMediaField
+                    field={field}
+                    value={Array.isArray(value) ? value : String(value)}
+                    downloadBlockedIds={
+                      field.media?.downloadControl
+                        ? Array.isArray(values.blocked_download_media_ids)
+                          ? values.blocked_download_media_ids.map(String)
+                          : []
+                        : undefined
+                    }
+                    onBusyChange={(busy) =>
+                      setBusyFields((current) =>
+                        busy
+                          ? [...new Set([...current, field.key])]
+                          : current.filter((key) => key !== field.key),
+                      )
+                    }
+                    onChange={(nextValue) =>
+                      setValues((current) => {
+                        const next = {
+                          ...current,
+                          [field.key]: nextValue,
+                        };
+                        if (field.media?.downloadControl) {
+                          const selected = Array.isArray(nextValue)
+                            ? nextValue.map(String)
+                            : nextValue
+                              ? [String(nextValue)]
+                              : [];
+                          const blocked = new Set(
+                            (Array.isArray(current.blocked_download_media_ids)
+                              ? current.blocked_download_media_ids
+                              : []
+                            ).map(String),
+                          );
+                          next.blocked_download_media_ids = selected.filter(
+                            (id) => blocked.has(id),
+                          );
+                        }
+                        return next;
+                      })
+                    }
+                    onDownloadBlockedChange={
+                      field.media?.downloadControl
+                        ? (ids) =>
+                            setValues((current) => ({
+                              ...current,
+                              blocked_download_media_ids: ids,
+                            }))
+                        : undefined
+                    }
+                    picker={
+                      field.media?.multiple ? (
+                        <WorkspaceMultiSelect
+                          id={fieldId}
+                          labelledBy={labelId}
+                          field={field}
+                          value={value}
+                          onChange={(nextValue) =>
+                            setValues((current) => {
+                              const next = {
+                                ...current,
+                                [field.key]: nextValue,
+                              };
+                              if (field.media?.downloadControl) {
+                                const selected = Array.isArray(nextValue)
+                                  ? nextValue.map(String)
+                                  : [];
+                                const blocked = new Set(
+                                  (Array.isArray(
+                                    current.blocked_download_media_ids,
+                                  )
+                                    ? current.blocked_download_media_ids
+                                    : []
+                                  ).map(String),
+                                );
+                                next.blocked_download_media_ids =
+                                  selected.filter((id) => blocked.has(id));
+                              }
+                              return next;
+                            })
+                          }
+                        />
+                      ) : (
+                        <WorkspaceSelect
+                          id={fieldId}
+                          labelledBy={labelId}
+                          field={field}
+                          value={value}
+                          autoFocus={index === 0}
+                          fallbackOption={savedOptionFor(field)}
+                          formValues={values}
+                          record={mutationRow}
+                          onChange={(nextValue) =>
+                            setValues((current) => ({
                               ...current,
                               [field.key]: nextValue,
-                            };
-                            if (field.media?.downloadControl) {
-                              const selected = Array.isArray(nextValue)
-                                ? nextValue.map(String)
-                                : [];
-                              const blocked = new Set(
-                                (Array.isArray(
-                                  current.blocked_download_media_ids,
-                                )
-                                  ? current.blocked_download_media_ids
-                                  : []
-                                ).map(String),
-                              );
-                              next.blocked_download_media_ids = selected.filter(
-                                (id) => blocked.has(id),
-                              );
-                            }
-                            return next;
-                          })
+                            }))
+                          }
+                        />
+                      )
+                    }
+                  />
+                  {config.queryKey === "galleries" &&
+                  field.key === "media_asset_ids" ? (
+                    <GoogleDriveGalleryImport
+                      galleryId={
+                        mode === "edit" && row?.id ? String(row.id) : undefined
+                      }
+                      folderUrlHint={
+                        typeof values.external_album_url === "string"
+                          ? values.external_album_url
+                          : undefined
+                      }
+                      onImported={(
+                        mediaIds,
+                        importedFolderUrl,
+                        galleryVersion,
+                      ) => {
+                        if (galleryVersion !== undefined) {
+                          setResourceVersion(galleryVersion);
                         }
-                      />
-                    ) : (
-                      <WorkspaceSelect
-                        id={fieldId}
-                        labelledBy={labelId}
-                        field={field}
-                        value={value}
-                        autoFocus={index === 0}
-                        onChange={(nextValue) =>
-                          setValues((current) => ({
+                        setValues((current) => {
+                          const existing = Array.isArray(
+                            current.media_asset_ids,
+                          )
+                            ? current.media_asset_ids.map(String)
+                            : [];
+                          const merged = [
+                            ...existing,
+                            ...mediaIds.filter((id) => !existing.includes(id)),
+                          ];
+                          return {
                             ...current,
-                            [field.key]: nextValue,
-                          }))
-                        }
-                      />
-                    )
-                  }
-                />
+                            media_asset_ids: merged,
+                            external_album_url:
+                              current.external_album_url || importedFolderUrl,
+                          };
+                        });
+                      }}
+                    />
+                  ) : null}
+                </>
               ) : field.type === "select" ? (
                 <WorkspaceSelect
                   id={fieldId}
@@ -1537,6 +2082,9 @@ function MutationForm({
                   field={field}
                   value={value}
                   autoFocus={index === 0}
+                  fallbackOption={savedOptionFor(field)}
+                  formValues={values}
+                  record={mutationRow}
                   onChange={(nextValue) => updateFieldValue(field, nextValue)}
                 />
               ) : field.type === "multiselect" ? (
@@ -1614,6 +2162,7 @@ function MutationForm({
 
 type WorkspacePanel =
   | { view: "details"; row: WorkspaceRow }
+  | { view: "preview"; row: WorkspaceRow; previewKind: WorkspacePreviewKind }
   | { view: "edit"; row: WorkspaceRow; mutation: WorkspaceMutation }
   | { view: "create"; mutation: WorkspaceMutation };
 
@@ -1652,6 +2201,16 @@ export function WorkspaceClient({
     queryFn: () => api<User>("/api/v1/auth/me"),
     staleTime: 60_000,
   });
+  const capabilities = useQuery({
+    queryKey: ["public", "capabilities"],
+    queryFn: () =>
+      api<typeof defaultDeliveryCapabilities>("/api/v1/public/capabilities"),
+    staleTime: 60_000,
+    placeholderData: defaultDeliveryCapabilities,
+  });
+  const deliveryOn = isDeliveryAvailable(
+    capabilities.data ?? defaultDeliveryCapabilities,
+  );
   const query = useQuery({
     queryKey: [config.queryKey, "workspace", queryEndpoint],
     queryFn: () => api<unknown>(queryEndpoint),
@@ -1665,8 +2224,15 @@ export function WorkspaceClient({
       row: WorkspaceRow;
     }) =>
       api(endpointFor(mutation, row), { method: mutation.method ?? "POST" }),
-    onSuccess: async (_data, variables) => {
-      toast.success(variables.mutation.successMessage);
+    onSuccess: async (data, variables) => {
+      const apiMessage =
+        data &&
+        typeof data === "object" &&
+        "message" in data &&
+        typeof (data as { message: unknown }).message === "string"
+          ? (data as { message: string }).message
+          : null;
+      toast.success(apiMessage ?? variables.mutation.successMessage);
       await queryClient.invalidateQueries({ queryKey: [config.queryKey] });
       setPanel(null);
     },
@@ -1674,8 +2240,18 @@ export function WorkspaceClient({
       toast.error(error instanceof Error ? error.message : "Action failed"),
   });
 
-  const can = (permission: string) =>
-    user.data?.permissions.includes(permission) ?? false;
+  const permissions = user.data?.permissions ?? [];
+  const can = (permission: string) => permissions.includes(permission);
+  const visibleFilters = useMemo(() => {
+    const filters = config.filters ?? [];
+    if (
+      config.queryKey === "events" &&
+      !(user.data?.permissions ?? []).includes("events.manage")
+    ) {
+      return filters.filter((filter) => filter.key !== "publication_status");
+    }
+    return filters;
+  }, [config.filters, config.queryKey, user.data?.permissions]);
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const result = rowsFrom(query.data).filter((row) => {
@@ -1733,6 +2309,21 @@ export function WorkspaceClient({
   }, [panel]);
 
   const detailFields = useMemo(() => workspaceDetailFields(config), [config]);
+  const detailImages = useMemo(
+    () => (selected ? recordImages(selected) : []),
+    [selected],
+  );
+  const curatedDetails = useMemo(() => {
+    if (!selected || !config.detail) return null;
+    return visibleDetailEntries(
+      selected,
+      config.detail,
+      user.data?.permissions ?? [],
+    );
+  }, [selected, config.detail, user.data?.permissions]);
+  const detailTitleKey =
+    config.detail?.titleKey ?? config.columns[0]?.key ?? "id";
+  const detailNoun = config.detail?.noun ?? "Record";
 
   function closePanel() {
     setPanel(null);
@@ -1765,7 +2356,11 @@ export function WorkspaceClient({
 
   function runAction(mutation: WorkspaceMutation, row: WorkspaceRow) {
     if (mutation.confirm && !window.confirm(mutation.confirm)) return;
-    if (mutation.open) {
+    if (mutation.openMode === "panel" && mutation.previewKind) {
+      setPanel({ view: "preview", row, previewKind: mutation.previewKind });
+      return;
+    }
+    if (mutation.open || mutation.openMode === "tab") {
       window.open(
         mutation.href
           ? mutation.href(row)
@@ -1778,45 +2373,29 @@ export function WorkspaceClient({
     action.mutate({ mutation, row });
   }
 
-  const detailActions = selected
-    ? (config.actions ?? []).filter(
-        (item) =>
-          can(item.permission) &&
-          (!item.excludeSelf || selected.id !== user.data?.id) &&
-          (!item.when || item.when(selected, user.data?.permissions ?? [])),
-      )
-    : [];
-  const canUpdateSelected = Boolean(
-    selected &&
-    config.update &&
-    can(config.update.permission) &&
-    (!config.update.excludeSelf || selected.id !== user.data?.id) &&
-    (!config.update.when ||
-      config.update.when(selected, user.data?.permissions ?? [])),
-  );
-  const canArchiveSelected = Boolean(
-    selected &&
-    config.archive &&
-    can(config.archive.permission) &&
-    (!config.archive.excludeSelf || selected.id !== user.data?.id) &&
-    (!config.archive.when ||
-      config.archive.when(selected, user.data?.permissions ?? [])),
-  );
+  function handleRowMutation(row: WorkspaceRow, mutation: WorkspaceMutation) {
+    if (mutation.fields?.length) {
+      openEditor(row, mutation);
+      return;
+    }
+    runAction(mutation, row);
+  }
+
+  const selectedActions = selected
+    ? rowActionsFor(selected, config, permissions, user.data?.id, deliveryOn)
+    : null;
 
   const actions = (
     <div className="flex shrink-0 flex-wrap gap-2">
       {headerAction}
-      {config.exportUrl &&
-      can(config.exportPermission ?? "members.export") ? (
+      {config.exportUrl && can(config.exportPermission ?? "members.export") ? (
         <Button variant="outline" onClick={exportRecords}>
           <ArrowDownToLine className="size-4" /> Export
         </Button>
       ) : null}
       {config.create && can(config.create.permission) ? (
         <Button
-          onClick={() =>
-            setPanel({ mutation: config.create!, view: "create" })
-          }
+          onClick={() => setPanel({ mutation: config.create!, view: "create" })}
         >
           <CirclePlus className="size-4" /> {config.create.label}
         </Button>
@@ -1864,7 +2443,7 @@ export function WorkspaceClient({
             />
           </label>
           <div className="flex gap-2">
-            {config.filters?.length ? (
+            {visibleFilters.length ? (
               <Button
                 size="sm"
                 variant={filtersOpen ? "outline" : "ghost"}
@@ -1887,9 +2466,9 @@ export function WorkspaceClient({
           </div>
         </div>
 
-        {filtersOpen && config.filters?.length ? (
+        {filtersOpen && visibleFilters.length ? (
           <div className="flex flex-wrap items-end gap-3 border-b border-line bg-ink/[.015] p-4">
-            {config.filters.map((filter) => (
+            {visibleFilters.map((filter) => (
               <label
                 key={filter.key}
                 className="grid min-w-40 gap-1.5 text-[.65rem] font-black uppercase"
@@ -1954,28 +2533,148 @@ export function WorkspaceClient({
           <div className="p-16 text-center">
             <p className="font-black">No records found</p>
             <p className="mt-2 text-xs text-muted">
-              Change the search or add the first record.
+              {config.create && can(config.create.permission)
+                ? "Change the search or add the first record."
+                : "Nothing here yet. Try a different search or check back later."}
             </p>
+          </div>
+        ) : config.layout === "grid" ? (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+              );
+              const titleKey = config.columns[0]?.key ?? "title";
+              const metaColumns = config.columns.slice(1);
+              return (
+                <article
+                  key={String(row.id ?? row.key ?? index)}
+                  className="group overflow-hidden rounded-2xl border border-line bg-panel text-left shadow-[0_8px_24px_rgba(12,25,48,.04)] transition hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => openDetails(row)}
+                  >
+                    <RecordCardMedia
+                      row={row}
+                      aspect={config.gridAspect ?? "landscape"}
+                    />
+                    <div className="grid gap-3 p-4">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-black leading-5 break-words">
+                          {displayWithPersonCase(row[titleKey], titleKey, row)}
+                        </h3>
+                        {metaColumns.length ? (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {metaColumns.map((column) => {
+                              const value = row[column.key];
+                              if (
+                                value == null ||
+                                value === "" ||
+                                column.key === "media_name"
+                              ) {
+                                return null;
+                              }
+                              if (
+                                column.key === "is_private" &&
+                                value !== true &&
+                                value !== "true"
+                              ) {
+                                return null;
+                              }
+                              const chipLabel =
+                                column.key === "is_private"
+                                  ? "Private"
+                                  : column.key === "content_type" &&
+                                      typeof value === "string"
+                                    ? value.split("/").pop() || value
+                                    : `${column.label}: ${displayWithPersonCase(value, column.key, row)}`;
+                              return (
+                                <span
+                                  key={column.key}
+                                  className={
+                                    statusField(column.key)
+                                      ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
+                                      : "inline-flex rounded-full bg-ink/5 px-2.5 py-1 text-[.62rem] font-bold text-muted"
+                                  }
+                                >
+                                  {chipLabel}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                  <div className="border-t border-line px-4 py-3">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
+                      compact
+                    />
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : config.columns.length === 0 ? (
           <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleRows.map((row, index) => (
-              <button
-                key={String(row.id ?? row.key ?? index)}
-                className="rounded-2xl border border-line bg-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
-                onClick={() => openDetails(row)}
-              >
-                <span className="text-[.62rem] font-black tracking-wide text-coral uppercase">
-                  {humanize(String(row.group ?? "Metric"))}
-                </span>
-                <b className="mt-2 block text-sm">
-                  {humanize(String(row.key ?? "Value"))}
-                </b>
-                <span className="mt-3 block text-2xl font-black">
-                  {display(row.value, String(row.key ?? "value"))}
-                </span>
-              </button>
-            ))}
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+              );
+              return (
+                <div
+                  key={String(row.id ?? row.key ?? index)}
+                  className="rounded-2xl border border-line bg-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => openDetails(row)}
+                  >
+                    <span className="text-[.62rem] font-black tracking-wide text-coral uppercase">
+                      {humanize(String(row.group ?? "Metric"))}
+                    </span>
+                    <b className="mt-2 block text-sm">
+                      {humanize(String(row.key ?? "Value"))}
+                    </b>
+                    <span className="mt-3 block text-2xl font-black">
+                      {display(row.value, String(row.key ?? "value"))}
+                    </span>
+                  </button>
+                  <div className="mt-4 border-t border-line pt-3">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
+                      compact
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="scrollbar-subtle overflow-x-auto">
@@ -1993,66 +2692,80 @@ export function WorkspaceClient({
                       </button>
                     </th>
                   ))}
-                  <th className="w-12" />
+                  <th className="px-5 py-3 text-right text-[.62rem] font-black tracking-[.1em] text-muted uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {visibleRows.map((row, index) => (
-                  <tr
-                    key={String(row.id ?? row.key ?? index)}
-                    className="cursor-pointer transition hover:bg-ink/[.025]"
-                    onClick={() => openDetails(row)}
-                  >
-                    {config.columns.map((column) => {
-                      const value = row[column.key];
-                      const statusLike = [
-                        "status",
-                        "priority",
-                        "outcome",
-                        "payment_status",
-                        "is_active",
-                        "is_public",
-                        "enabled",
-                      ].includes(column.key);
-                      return (
-                        <td
-                          key={column.key}
-                          className="max-w-xs px-5 py-4 text-xs"
-                        >
-                          <span
-                            className={
-                              statusLike
-                                ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
-                                : column.key === config.columns[0]?.key
-                                  ? "font-black"
-                                  : "text-muted"
-                            }
+                {visibleRows.map((row, index) => {
+                  const rowActions = rowActionsFor(
+                    row,
+                    config,
+                    permissions,
+                    user.data?.id,
+                    deliveryOn,
+                  );
+                  return (
+                    <tr
+                      key={String(row.id ?? row.key ?? index)}
+                      className="cursor-pointer transition hover:bg-ink/[.025]"
+                      onClick={() => openDetails(row)}
+                    >
+                      {config.columns.map((column) => {
+                        const value = row[column.key];
+                        const statusLike = statusField(column.key);
+                        return (
+                          <td
+                            key={column.key}
+                            className="max-w-xs px-5 py-4 text-xs"
                           >
-                            {column.key === config.columns[0]?.key ? (
-                              <span className="flex items-center gap-3">
-                                <RecordThumbnail row={row} />
+                            <span
+                              className={
+                                statusLike
+                                  ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
+                                  : column.key === config.columns[0]?.key
+                                    ? "font-black"
+                                    : "text-muted"
+                              }
+                            >
+                              {column.key === config.columns[0]?.key ? (
+                                <span className="flex items-center gap-3">
+                                  <RecordThumbnail row={row} />
+                                  <ValueDisplay
+                                    value={value}
+                                    fieldKey={column.key}
+                                    row={row}
+                                    compact
+                                  />
+                                </span>
+                              ) : (
                                 <ValueDisplay
                                   value={value}
                                   fieldKey={column.key}
+                                  row={row}
                                   compact
                                 />
-                              </span>
-                            ) : (
-                              <ValueDisplay
-                                value={value}
-                                fieldKey={column.key}
-                                compact
-                              />
-                            )}
-                          </span>
-                        </td>
-                      );
-                    })}
-                    <td className="pr-4">
-                      <ChevronRight className="size-4 text-muted" />
-                    </td>
-                  </tr>
-                ))}
+                              )}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className="px-4 py-3">
+                        <WorkspaceRowActions
+                          actions={rowActions}
+                          pending={action.isPending}
+                          onView={() => openDetails(row)}
+                          onMutation={(mutation) =>
+                            handleRowMutation(row, mutation)
+                          }
+                          onEdit={() => openEditor(row, rowActions.update!)}
+                          onDelete={() => runAction(rowActions.delete!, row)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2092,10 +2805,10 @@ export function WorkspaceClient({
 
       {panel ? (
         <div
-          className="fixed inset-0 z-[85] flex justify-end bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[90] grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target !== event.currentTarget) return;
-            if (panel.view === "edit") {
+            if (panel.view === "edit" || panel.view === "preview") {
               setPanel({ view: "details", row: panel.row });
               return;
             }
@@ -2103,145 +2816,181 @@ export function WorkspaceClient({
           }}
           role="presentation"
         >
-          <aside
-            className={`h-full w-full overflow-y-auto bg-paper p-6 shadow-2xl sm:p-8 ${
-              panel.view === "details" ? "max-w-xl" : "max-w-2xl"
+          <section
+            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-3xl border border-line bg-paper shadow-2xl ${
+              panel.view === "preview" ? "max-w-4xl" : "max-w-2xl"
             }`}
             onMouseDown={(event) => event.stopPropagation()}
             aria-label={
-              panel.view === "details" ? "Record details" : panel.mutation.label
+              panel.view === "details"
+                ? `${detailNoun} details`
+                : panel.view === "preview"
+                  ? `${detailNoun} preview`
+                  : panel.mutation.label
             }
             aria-modal="true"
             role="dialog"
           >
-            {panel.view === "details" ? (
-              <>
-                <div className="flex items-start justify-between gap-5">
-                  <div>
-                    <p className="eyebrow text-coral">Record details</p>
-                    <h2 className="display-type mt-3 text-3xl">
-                      {display(
-                        panel.row[config.columns[0]?.key ?? "id"],
-                        config.columns[0]?.key ?? "id",
-                      )}
-                    </h2>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={closePanel}
-                    aria-label="Close details"
-                  >
-                    <X className="size-5" />
-                  </Button>
-                </div>
-
-                {(canUpdateSelected ||
-                  canArchiveSelected ||
-                  detailActions.length > 0) && (
-                  <div className="mt-6 flex flex-wrap gap-2 border-y border-line py-4">
-                    {config.update && canUpdateSelected ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditor(panel.row, config.update!)}
-                      >
-                        <Pencil className="size-4" /> {config.update.label}
-                      </Button>
-                    ) : null}
-                    {detailActions.map((item) => (
-                      <Button
-                        key={item.label}
-                        size="sm"
-                        variant="outline"
-                        className={
-                          item.danger
-                            ? "border-red-500/30 text-red-700 hover:bg-red-500/10"
-                            : undefined
-                        }
-                        disabled={action.isPending}
-                        onClick={() =>
-                          item.fields?.length
-                            ? openEditor(panel.row, item)
-                            : runAction(item, panel.row)
-                        }
-                      >
-                        {action.isPending ? (
-                          <LoaderCircle className="size-4 animate-spin" />
-                        ) : null}
-                        {item.label}
-                      </Button>
-                    ))}
-                    {config.archive && canArchiveSelected ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500/30 text-red-700 hover:bg-red-500/10"
-                        disabled={action.isPending}
-                        onClick={() => runAction(config.archive!, panel.row)}
-                      >
-                        <Archive className="size-4" /> {config.archive.label}
-                      </Button>
-                    ) : null}
-                  </div>
-                )}
-
-                <RecordImagePreview row={panel.row} />
-
-                <dl className="mt-5 divide-y divide-line">
-                  {Object.entries(panel.row)
-                    .filter(
-                      ([key]) => !key.startsWith("_") && !isTechnicalField(key),
-                    )
-                    .map(([key, value]) => {
-                      const field = detailFields.get(key);
-                      return (
-                        <div
-                          key={key}
-                          className="grid gap-1 py-3 sm:grid-cols-[7.5rem_1fr] sm:gap-3"
-                        >
-                          <dt className="text-[.65rem] font-black tracking-wide text-muted uppercase">
-                            {field?.label ?? humanize(key)}
-                          </dt>
-                          <dd className="min-w-0 break-words text-xs leading-5">
-                            {field?.type === "richtext" &&
-                            typeof value === "string" ? (
-                              <WorkspaceRichTextValue html={value} />
-                            ) : (
-                              <ValueDisplay value={value} fieldKey={key} />
-                            )}
-                          </dd>
-                        </div>
-                      );
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-8">
+              {panel.view === "details" ? (
+                selectedActions ? (
+                  <RecordDetailsView
+                    noun={detailNoun}
+                    title={
+                      detailTitleKey === "full_name" &&
+                      typeof panel.row.full_name === "string"
+                        ? formatPersonName(panel.row.full_name)
+                        : display(panel.row[detailTitleKey], detailTitleKey)
+                    }
+                    subtitle={
+                      config.detail?.subtitleKeys?.length
+                        ? config.detail.subtitleKeys
+                            .map((key) => display(panel.row[key], key))
+                            .filter((value) => value !== "Not provided")
+                            .join(" · ") || undefined
+                        : undefined
+                    }
+                    images={detailImages}
+                    heroShape={
+                      detailImages[0] &&
+                      panel.row.profile_media_id &&
+                      detailImages[0].id === String(panel.row.profile_media_id)
+                        ? "portrait"
+                        : "landscape"
+                    }
+                    entries={(curatedDetails
+                      ? curatedDetails.map(({ field, value }) => ({
+                          key: field.key,
+                          label: field.label,
+                          value:
+                            field.key === "academic_rank" &&
+                            typeof value === "string"
+                              ? formatRankForName(
+                                  typeof panel.row.full_name === "string"
+                                    ? panel.row.full_name
+                                    : undefined,
+                                  value,
+                                )
+                              : field.key === "title" &&
+                                  typeof value === "string"
+                                ? matchCaseStyle(
+                                    typeof panel.row.full_name === "string"
+                                      ? panel.row.full_name
+                                      : [
+                                          panel.row.other_name,
+                                          panel.row.surname,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" "),
+                                    value,
+                                  )
+                                : value,
+                          richtext: field.format === "richtext",
+                          format: field.format,
+                        }))
+                      : Object.entries(panel.row)
+                          .filter(
+                            ([key]) =>
+                              !key.startsWith("_") &&
+                              !isTechnicalField(key) &&
+                              key !== detailTitleKey,
+                          )
+                          .map(([key, value]) => {
+                            const field = detailFields.get(key);
+                            return {
+                              key,
+                              label: field?.label ?? humanize(key),
+                              value,
+                              richtext: field?.type === "richtext",
+                            };
+                          })
+                    ).filter((entry) => {
+                      if (config.detail?.hideEmpty === false) return true;
+                      if (entry.value == null || entry.value === "")
+                        return false;
+                      if (
+                        typeof entry.value === "string" &&
+                        !entry.value.trim()
+                      ) {
+                        return false;
+                      }
+                      return true;
                     })}
-                </dl>
-              </>
-            ) : (
-              <MutationForm
-                key={`${panel.view}-${panel.mutation.label}-${
-                  panel.view === "edit" ? String(panel.row.id) : "new"
-                }`}
-                config={config}
-                mutation={panel.mutation}
-                mode={panel.view === "create" ? "create" : "edit"}
-                row={panel.view === "edit" ? panel.row : undefined}
-                permissions={user.data?.permissions ?? []}
-                cancelLabel={
-                  panel.view === "edit" ? "Back to details" : "Cancel"
-                }
-                onSaved={
-                  panel.view === "edit"
-                    ? (saved) => setPanel({ view: "details", row: saved })
-                    : undefined
-                }
-                close={
-                  panel.view === "edit"
-                    ? () => setPanel({ view: "details", row: panel.row })
-                    : closePanel
-                }
-              />
-            )}
-          </aside>
+                    primaryActions={selectedActions.primary}
+                    secondaryActions={selectedActions.secondary}
+                    canUpdate={selectedActions.canUpdate}
+                    canDelete={selectedActions.canDelete}
+                    updateLabel={selectedActions.update?.label}
+                    deleteLabel={selectedActions.delete?.label}
+                    actionPending={action.isPending}
+                    onClose={closePanel}
+                    onPrimaryAction={(item) =>
+                      handleRowMutation(panel.row, item)
+                    }
+                    onEdit={() =>
+                      openEditor(panel.row, selectedActions.update!)
+                    }
+                    onDelete={() =>
+                      runAction(selectedActions.delete!, panel.row)
+                    }
+                    ValueDisplay={ValueDisplay}
+                  />
+                ) : null
+              ) : panel.view === "preview" ? (
+                <div className="grid gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setPanel({ view: "details", row: panel.row })
+                      }
+                    >
+                      <ArrowLeft className="size-4" /> Back to details
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={closePanel}
+                      aria-label="Close preview"
+                    >
+                      <X className="size-5" />
+                    </Button>
+                  </div>
+                  <WorkspacePanelPreview
+                    kind={panel.previewKind}
+                    row={panel.row}
+                    onBack={() => setPanel({ view: "details", row: panel.row })}
+                  />
+                </div>
+              ) : (
+                <MutationForm
+                  key={`${panel.view}-${panel.mutation.label}-${
+                    panel.view === "edit" ? String(panel.row.id) : "new"
+                  }`}
+                  config={config}
+                  mutation={panel.mutation}
+                  mode={panel.view === "create" ? "create" : "edit"}
+                  row={panel.view === "edit" ? panel.row : undefined}
+                  permissions={permissions}
+                  deliveryAvailable={deliveryOn}
+                  cancelLabel={
+                    panel.view === "edit" ? "Back to details" : "Cancel"
+                  }
+                  onSaved={
+                    panel.view === "edit"
+                      ? (saved) => setPanel({ view: "details", row: saved })
+                      : undefined
+                  }
+                  close={
+                    panel.view === "edit"
+                      ? () => setPanel({ view: "details", row: panel.row })
+                      : closePanel
+                  }
+                />
+              )}
+            </div>
+          </section>
         </div>
       ) : null}
     </div>

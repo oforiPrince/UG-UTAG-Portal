@@ -27,6 +27,9 @@ export function shouldHumanize(key: string) {
 
 export function displayChoice(value: unknown, key = "") {
   const text = String(value);
+  if (key === "position" && text === "Vice President") {
+    return "Vice-President";
+  }
   if (
     (key === "permissions" || key.endsWith("_permissions")) &&
     text.includes(".")
@@ -113,6 +116,17 @@ export function display(value: unknown, key = ""): string {
         ...(value.includes("T") ? { timeStyle: "short" } : {}),
       });
     }
+  }
+  if (
+    (key.endsWith("_time") || key === "time") &&
+    typeof value === "string" &&
+    /^\d{1,2}:\d{2}(:\d{2})?$/.test(value)
+  ) {
+    const [hoursRaw, minutes] = value.split(":");
+    const hours = Number(hoursRaw);
+    const period = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes} ${period}`;
   }
   if (key === "byte_size" && typeof value === "number") {
     return formatBytes(value);

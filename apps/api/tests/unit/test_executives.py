@@ -14,7 +14,7 @@ def test_executive_positions_follow_the_legacy_public_precedence() -> None:
         "Treasurer",
         "President",
         "National President",
-        "Vice President",
+        "Vice-President",
         "Women's Executive Officer",
         "Secretary",
         "CBAS Rep",
@@ -23,7 +23,7 @@ def test_executive_positions_follow_the_legacy_public_precedence() -> None:
     ]
     assert sorted(positions, key=executive_position_order_key) == [
         "President",
-        "Vice President",
+        "Vice-President",
         "Secretary",
         "Treasurer",
         "Women's Executive Officer",
@@ -40,6 +40,7 @@ def test_executive_position_order_normalizes_legacy_variants() -> None:
         "women's executive officer"
     )
     assert normalize_executive_position("Vice-President") == "vice president"
+    assert normalize_executive_position("Vice President") == "vice president"
     assert normalize_executive_position("College of Humanities Rep") == "coh rep"
 
 

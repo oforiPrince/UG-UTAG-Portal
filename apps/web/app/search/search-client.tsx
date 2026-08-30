@@ -32,7 +32,7 @@ export function SearchClient() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           autoFocus
-          placeholder="Search news, events and resources"
+          placeholder="Search news, events, and resources"
           className="w-full bg-transparent text-base outline-none sm:text-lg"
         />
       </label>

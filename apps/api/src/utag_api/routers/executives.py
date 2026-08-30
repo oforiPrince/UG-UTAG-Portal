@@ -21,6 +21,7 @@ from utag_api.models import ExecutiveAppointment, User
 from utag_api.schemas.common import MessageResponse
 from utag_api.schemas.domain import ExecutiveCreate, ExecutiveView
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import commit_permanent_delete
 from utag_api.services.events import record_change
 from utag_api.services.executives import executive_row_order_key
 from utag_api.services.identity import require_public_profile_image
@@ -201,3 +202,34 @@ async def end_executive_appointment(
     )
     await db.commit()
     return MessageResponse(message="Executive appointment ended")
+
+
+@router.delete("/{appointment_id}/permanent", response_model=MessageResponse)
+async def delete_executive_appointment_permanently(
+    appointment_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "executives.manage")),
+    ],
+) -> MessageResponse:
+    appointment = await db.get(ExecutiveAppointment, appointment_id, with_for_update=True)
+    if appointment is None:
+        raise ApiError(404, "executive_not_found", "Executive appointment not found")
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="executive.deleted",
+        resource_type="executive_appointment",
+        resource_id=appointment.id,
+        topic="executives",
+        payload={
+            "appointment_id": str(appointment.id),
+            "user_id": str(appointment.user_id),
+        },
+        reason="Administrator permanently deleted an executive appointment",
+    )
+    await db.delete(appointment)
+    await commit_permanent_delete(db, "executive appointment")
+    return MessageResponse(message="Executive appointment deleted permanently")

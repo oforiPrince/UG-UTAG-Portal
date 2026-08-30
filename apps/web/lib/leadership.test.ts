@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   executiveOfficers,
+  formatExecutivePosition,
   isExecutiveOfficerPosition,
   normalizeExecutivePosition,
+  publishedExecutiveEmail,
   sortLeadership,
 } from "./leadership";
 
 describe("leadership groups", () => {
   it("recognizes the core executive offices", () => {
     expect(isExecutiveOfficerPosition("President")).toBe(true);
-    expect(isExecutiveOfficerPosition("Vice President")).toBe(true);
+    expect(isExecutiveOfficerPosition("Vice-President")).toBe(true);
     expect(isExecutiveOfficerPosition("Women's Executive Officer")).toBe(true);
   });
 
@@ -31,10 +33,10 @@ describe("leadership groups", () => {
       { position: "CBAS Rep" },
       { position: "Treasurer" },
       { position: "President" },
-      { position: "Vice President" },
+      { position: "Vice-President" },
     ];
     expect(executiveOfficers(leaders).map((leader) => leader.position)).toEqual(
-      ["President", "Vice President", "Treasurer"],
+      ["President", "Vice-President", "Treasurer"],
     );
   });
 
@@ -44,7 +46,7 @@ describe("leadership groups", () => {
       { position: "Treasurer" },
       { position: "President" },
       { position: "National President" },
-      { position: "Vice President" },
+      { position: "Vice-President" },
       { position: "Women's Executive Officer" },
       { position: "Secretary" },
       { position: "CBAS Rep" },
@@ -53,7 +55,7 @@ describe("leadership groups", () => {
     ];
     expect(sortLeadership(leaders).map((leader) => leader.position)).toEqual([
       "President",
-      "Vice President",
+      "Vice-President",
       "Secretary",
       "Treasurer",
       "Women's Executive Officer",
@@ -67,6 +69,36 @@ describe("leadership groups", () => {
 
   it("normalizes aliases before ordering", () => {
     expect(normalizeExecutivePosition("Vice-President")).toBe("vice president");
+    expect(normalizeExecutivePosition("Vice President")).toBe("vice president");
     expect(normalizeExecutivePosition("College of Health Rep")).toBe("chs rep");
+  });
+
+  it("shows abbreviated college rep labels on the public site", () => {
+    expect(formatExecutivePosition("College of Health Rep")).toBe("CHS Rep");
+    expect(formatExecutivePosition("College of Humanities Rep")).toBe("COH Rep");
+    expect(formatExecutivePosition("College of Education Rep")).toBe("COE Rep");
+    expect(formatExecutivePosition("CHS Rep")).toBe("CHS Rep");
+    expect(formatExecutivePosition("CBAS Rep")).toBe("CBAS Rep");
+    expect(formatExecutivePosition("Vice-President")).toBe("Vice-President");
+  });
+});
+
+describe("published executive contact", () => {
+  it("withholds email when the office-holder has opted out", () => {
+    expect(
+      publishedExecutiveEmail({
+        email: "ksadu-manu@ug.edu.gh",
+        show_email: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns a consented email", () => {
+    expect(
+      publishedExecutiveEmail({
+        email: " ksadu-manu@ug.edu.gh ",
+        show_email: true,
+      }),
+    ).toBe("ksadu-manu@ug.edu.gh");
   });
 });

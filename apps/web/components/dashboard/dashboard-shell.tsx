@@ -260,7 +260,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </button>
             <div>
               <p className="text-[.62rem] font-bold tracking-[.12em] text-muted uppercase">
-                Member workspace
+                {user.data?.permissions.includes("settings.manage")
+                  ? "Admin workspace"
+                  : user.data?.permissions.includes("members.view")
+                    ? "Executive workspace"
+                    : "Member workspace"}
               </p>
               <h1 className="mt-0.5 text-base font-black">
                 {current?.label ?? "Dashboard"}
@@ -288,11 +292,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               }
               aria-label="Toggle theme"
             >
-              {resolvedTheme === "dark" ? (
-                <Sun className="size-4" />
-              ) : (
-                <Moon className="size-4" />
-              )}
+              <Sun className="hidden size-4 dark:block" />
+              <Moon className="size-4 dark:hidden" />
             </Button>
             <NotificationBell enabled={Boolean(user.data)} />
             <Link
@@ -319,12 +320,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
         <main
           id="main-content"
-          className="mx-auto max-w-[105rem] px-4 py-5 pb-24 sm:px-6 sm:py-7 lg:px-8 lg:pb-8"
+          className="mx-auto max-w-[105rem] px-4 py-5 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-7 lg:px-8 lg:pb-8"
         >
           {children}
         </main>
       </div>
-      <nav className="fixed right-3 bottom-3 left-3 z-40 grid grid-cols-5 rounded-[1.25rem] border border-white/10 bg-[#091529]/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
+      <nav
+        aria-label="Dashboard navigation"
+        data-dashboard-bottom-nav
+        className="fixed right-3 left-3 z-40 grid grid-cols-5 rounded-[1.25rem] border border-white/10 bg-[#091529]/95 p-1.5 shadow-2xl backdrop-blur-xl [bottom:calc(0.75rem+env(safe-area-inset-bottom))] lg:hidden"
+      >
         {items.slice(0, 4).map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;

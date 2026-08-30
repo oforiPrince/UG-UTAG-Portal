@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { PageHero } from "@/components/public/page-hero";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicEmptyState } from "@/components/public/public-empty-state";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
@@ -33,8 +34,8 @@ export default async function NewsPage() {
     <PublicShell>
       <PageHero
         eyebrow="News"
-        title="News, statements and member updates"
-        intro="Official statements, association briefings and stories from across the University of Ghana academic community."
+        title="News, statements, and member updates"
+        intro="Official statements, association briefings, and stories from across the University of Ghana academic community."
       />
       <section className="mx-auto max-w-[82rem] px-5 py-16 sm:px-6 lg:px-8 lg:py-22">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -51,15 +52,12 @@ export default async function NewsPage() {
                 key={article.id}
                 className="group flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_26px_rgb(23_43_69_/_8%)]"
               >
-                <div
-                  className="relative h-52 bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url('${
-                      article.featured_media_id
-                        ? `/api/v1/public/media/${article.featured_media_id}`
-                        : `/brand/${images[index % images.length]}`
-                    }')`,
-                  }}
+                <MediaCover
+                  assetId={article.featured_media_id}
+                  fallbackSrc={`/brand/${images[index % images.length]}`}
+                  alt=""
+                  className="h-52"
+                  variant="w480"
                 >
                   <div className="absolute inset-0 bg-[#102a48]/20" />
                   {article.published_at && (
@@ -70,7 +68,7 @@ export default async function NewsPage() {
                       {format(new Date(article.published_at), "dd MMM yyyy")}
                     </time>
                   )}
-                </div>
+                </MediaCover>
                 <div className="flex flex-1 flex-col p-6">
                   <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
                     {article.tags[0] ?? "UG UTAG news"}

@@ -23,6 +23,11 @@ class MessageResponse(ApiModel):
     message: str
 
 
+class DeliveryCapabilities(ApiModel):
+    email_delivery: bool
+    sms_delivery: bool
+
+
 class ResourceRef(ApiModel):
     id: UUID
     type: str

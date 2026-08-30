@@ -86,7 +86,7 @@ DEMO_ACCOUNTS = (
         "Senior Lecturer",
         ("secretary",),
         "Secretary",
-        "Secretariat, records and branch correspondence",
+        "Secretariat, records, and branch correspondence",
     ),
     DemoAccount(
         "demo.administrator@utag.com",
@@ -107,7 +107,7 @@ DEMO_ACCOUNTS = (
         "Male",
         "Senior Lecturer",
         ("executive",),
-        "Vice President",
+        "Vice-President",
         "Deputy branch leadership and coordination",
     ),
     DemoAccount(
@@ -132,7 +132,7 @@ DEMO_ACCOUNTS = (
         "Senior Lecturer",
         ("executive",),
         "Treasurer",
-        "Finance, reporting and stewardship",
+        "Finance, reporting, and stewardship",
     ),
     DemoAccount(
         "demo.assistant-treasurer@utag.com",

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { formatPersonName, formatRankForName } from "@/lib/utils";
 
 type ImportIssue = { row: number; field: string | null; message: string };
 type ImportPreview = {
@@ -128,8 +129,8 @@ function ImportDialog({ close }: { close: () => void }) {
             <p className="eyebrow text-coral">Bulk account workflow</p>
             <h2 className="display-type mt-3 text-4xl">Import members</h2>
             <p className="mt-2 max-w-xl text-xs leading-6 text-muted">
-              Preview CSV or XLSX rows before creating active accounts and
-              their UTAG, school, and department chats.
+              Preview CSV or XLSX rows before creating active accounts and their
+              UTAG, school, and department chats.
             </p>
           </div>
           <Button
@@ -223,7 +224,7 @@ function ImportDialog({ close }: { close: () => void }) {
 
             {result.issues.length ? (
               <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5">
-                <div className="flex items-center gap-2 text-sm font-black text-red-700">
+                <div className="flex items-center gap-2 text-sm font-black text-red-700 dark:text-red-300">
                   <AlertTriangle className="size-4" /> Fix these rows before
                   importing
                 </div>
@@ -258,14 +259,19 @@ function ImportDialog({ close }: { close: () => void }) {
                         <tr key={`${member.row}-${member.email}`}>
                           <td className="px-4 py-3 text-muted">{member.row}</td>
                           <td className="px-4 py-3 font-bold">
-                            {member.full_name}
+                            {formatPersonName(member.full_name)}
                           </td>
                           <td className="px-4 py-3 font-mono">
                             {member.staff_id}
                           </td>
                           <td className="px-4 py-3">{member.email}</td>
                           <td className="px-4 py-3 text-muted">
-                            {member.academic_rank ?? "—"}
+                            {member.academic_rank
+                              ? formatRankForName(
+                                  member.full_name,
+                                  member.academic_rank,
+                                )
+                              : "—"}
                           </td>
                           <td className="px-4 py-3">
                             {member.roles.join(", ")}

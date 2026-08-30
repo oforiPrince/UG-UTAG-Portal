@@ -59,7 +59,12 @@ type Appointment = {
 type Overview = {
   generated_at: string;
   metrics: Metric[];
-  pulse: { at: string; engagement: number; events: number; publications: number }[];
+  pulse: {
+    at: string;
+    engagement: number;
+    events: number;
+    publications: number;
+  }[];
   upcoming_events: Event[];
   recent_notifications: Notice[];
   recent_activity: Activity[];
@@ -104,8 +109,13 @@ export function DashboardHome() {
     return (
       <Card>
         <CardContent className="py-14 text-center">
-          <p className="font-black">Dashboard data is temporarily unavailable.</p>
-          <button className="mt-4 text-sm text-coral" onClick={() => query.refetch()}>
+          <p className="font-black">
+            Dashboard data is temporarily unavailable.
+          </p>
+          <button
+            className="mt-4 text-sm text-coral"
+            onClick={() => query.refetch()}
+          >
             Try again
           </button>
         </CardContent>
@@ -143,7 +153,10 @@ export function DashboardHome() {
             <p className="eyebrow text-coral">Next up</p>
             <h3 className="mt-2 text-lg font-black">Upcoming events</h3>
           </div>
-          <Link href="/dashboard/events" className="text-xs font-bold text-coral">
+          <Link
+            href="/dashboard/events"
+            className="text-xs font-bold text-coral"
+          >
             View all
           </Link>
         </div>
@@ -181,7 +194,9 @@ export function DashboardHome() {
             </Link>
           ))
         ) : (
-          <p className="py-12 text-center text-xs text-muted">No upcoming events</p>
+          <p className="py-12 text-center text-xs text-muted">
+            No upcoming events
+          </p>
         )}
       </CardContent>
     </Card>
@@ -203,7 +218,9 @@ export function DashboardHome() {
               </p>
               <p className="mt-1 text-[.62rem] text-muted">
                 {humanize(item.resource_type)} ·{" "}
-                {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(item.created_at), {
+                  addSuffix: true,
+                })}
               </p>
             </div>
           </div>
@@ -220,7 +237,10 @@ export function DashboardHome() {
             <p className="eyebrow text-coral">Your inbox</p>
             <h3 className="mt-2 text-lg font-black">Recent notifications</h3>
           </div>
-          <Link href="/dashboard/notifications" className="text-xs font-bold text-coral">
+          <Link
+            href="/dashboard/notifications"
+            className="text-xs font-bold text-coral"
+          >
             Open inbox
           </Link>
         </div>
@@ -240,13 +260,17 @@ export function DashboardHome() {
                 <p className="text-xs font-bold">{item.title}</p>
                 <p className="mt-1 text-[.62rem] text-muted">
                   {humanize(item.priority)} ·{" "}
-                  {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(item.created_at), {
+                    addSuffix: true,
+                  })}
                 </p>
               </div>
             </Link>
           ))
         ) : (
-          <p className="py-12 text-center text-xs text-muted">No notifications yet</p>
+          <p className="py-12 text-center text-xs text-muted">
+            No notifications yet
+          </p>
         )}
       </CardContent>
     </Card>
@@ -258,17 +282,22 @@ export function DashboardHome() {
         <div className="flex items-center justify-between">
           <div>
             <p className="eyebrow text-coral">Your appointment</p>
-            <h3 className="mt-2 text-lg font-black">{humanize(appointment.position)}</h3>
+            <h3 className="mt-2 text-lg font-black">
+              {humanize(appointment.position)}
+            </h3>
           </div>
-          <Link href="/dashboard/profile" className="text-xs font-bold text-coral">
+          <Link
+            href="/dashboard/profile"
+            className="text-xs font-bold text-coral"
+          >
             Edit public profile
           </Link>
         </div>
       </CardHeader>
       <CardContent>
         <span className="inline-flex items-center gap-2 rounded-full bg-ink/5 px-3 py-1.5 text-[.62rem] font-bold">
-          <BriefcaseBusiness className="size-3.5 text-coral" /> Published on the public
-          leadership page
+          <BriefcaseBusiness className="size-3.5 text-coral" /> Published on the
+          public leadership page
         </span>
         <div className="mt-4">
           <WorkspaceRichTextValue html={appointment.biography_html} />
@@ -286,16 +315,20 @@ export function DashboardHome() {
             <p className="eyebrow text-gold">
               {showPulse ? "Association intelligence" : "Your workspace"}
             </p>
-            <h2 className="display-type mt-4 text-4xl sm:text-5xl">Good {greeting()}.</h2>
+            <h2 className="display-type mt-4 text-4xl sm:text-5xl">
+              Good {greeting()}.
+            </h2>
             <p className="mt-3 text-sm text-white/55">
               {showPulse
                 ? "Here is what is moving across UG UTAG right now."
-                : "Here are the events, documents and updates that concern you."}
+                : "Here are the events, documents, and updates that concern you."}
             </p>
           </div>
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[.67rem] text-white/55">
             <Sparkles className="size-3.5 text-gold" /> Refreshed{" "}
-            {formatDistanceToNow(new Date(data.generated_at), { addSuffix: true })}
+            {formatDistanceToNow(new Date(data.generated_at), {
+              addSuffix: true,
+            })}
           </div>
         </div>
       </section>
@@ -312,7 +345,7 @@ export function DashboardHome() {
                   </span>
                   {metric.change != null && (
                     <span
-                      className={`inline-flex items-center gap-1 text-[.62rem] font-bold ${metric.trend === "down" ? "text-red-600" : "text-emerald-600"}`}
+                      className={`inline-flex items-center gap-1 text-[.62rem] font-bold ${metric.trend === "down" ? "text-red-600 dark:text-red-300" : "text-emerald-600 dark:text-emerald-300"}`}
                     >
                       {metric.trend === "down" ? (
                         <TrendingDown className="size-3" />
@@ -324,7 +357,9 @@ export function DashboardHome() {
                   )}
                 </div>
                 <strong className="mt-6 block text-2xl font-black sm:text-3xl">
-                  {typeof metric.value === "number" ? formatNumber(metric.value) : metric.value}
+                  {typeof metric.value === "number"
+                    ? formatNumber(metric.value)
+                    : metric.value}
                 </strong>
                 <span className="mt-1 block truncate text-[.65rem] text-muted sm:text-xs">
                   {metric.label}
@@ -341,7 +376,11 @@ export function DashboardHome() {
             {pulseCard}
             {eventsCard}
           </section>
-          <section className={showActivity ? "grid gap-5 xl:grid-cols-2" : "grid gap-5"}>
+          <section
+            className={
+              showActivity ? "grid gap-5 xl:grid-cols-2" : "grid gap-5"
+            }
+          >
             {showActivity ? activityCard : null}
             {notificationsCard}
           </section>

@@ -8,15 +8,21 @@ import {
 } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import {
+  ArrowLeft,
+  Bell,
+  BellOff,
   Check,
   CheckCheck,
   Copy,
+  Edit3,
   FileText,
   Image as ImageIcon,
+  Info,
   Link2,
   LoaderCircle,
   MessageSquarePlus,
   Paperclip,
+  Reply,
   Search,
   Send,
   Settings2,
@@ -26,13 +32,20 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useRealtime } from "@/components/realtime-provider";
 import { api } from "@/lib/api";
-import { initials } from "@/lib/utils";
+import { initials, formatPersonName, formatRankForName } from "@/lib/utils";
 
 type Conversation = {
   id: string;
@@ -42,6 +55,18 @@ type Conversation = {
   member_count: number;
   unread_count: number;
   last_message_at: string | null;
+  display_title: string;
+  direct_member_id: string | null;
+  current_user_role: "owner" | "admin" | "member";
+  is_muted: boolean;
+  last_message_preview: string | null;
+  last_message_sender: string | null;
+};
+type MessageReply = {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  text: string;
 };
 type Message = {
   id: string;
@@ -49,7 +74,10 @@ type Message = {
   sender_name: string;
   text: string;
   created_at: string;
+  edited_at: string | null;
   client_message_id: string;
+  reply_to_id: string | null;
+  reply_to: MessageReply | null;
   read_by: number;
   attachments: {
     id: string;
@@ -85,9 +113,12 @@ type ChatUpload = {
   original_filename: string;
   status: "quarantined" | "scanning" | "ready" | "rejected";
 };
-type PendingFilePreview = {
+type PendingChatAttachment = {
+  key: string;
   name: string;
-  url: string;
+  previewUrl: string;
+  upload: ChatUpload | null;
+  error: string | null;
 };
 type Invite = {
   id: string;
@@ -96,12 +127,39 @@ type Invite = {
   expires_at: string;
 };
 
-function NewConversationDialog({ close }: { close: () => void }) {
+function subscribeDesktopLayout(onChange: () => void) {
+  const media = window.matchMedia("(min-width: 1024px)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function useDesktopLayout() {
+  return useSyncExternalStore(
+    subscribeDesktopLayout,
+    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => true,
+  );
+}
+
+function NewConversationDialog({
+  close,
+  onCreated,
+}: {
+  close: () => void;
+  onCreated: (conversation: Conversation) => void;
+}) {
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<"direct" | "group">("direct");
   const [title, setTitle] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [close]);
   const directory = useQuery({
     queryKey: ["chat", "directory", query],
     queryFn: () =>
@@ -119,13 +177,14 @@ function NewConversationDialog({ close }: { close: () => void }) {
           member_ids: selected,
         },
       }),
-    onSuccess: async () => {
+    onSuccess: async (conversation) => {
       await queryClient.invalidateQueries({
         queryKey: ["chat", "conversations"],
       });
       toast.success(
         kind === "group" ? "Group created" : "Conversation started",
       );
+      onCreated(conversation);
       close();
     },
     onError: (error) =>
@@ -199,6 +258,7 @@ function NewConversationDialog({ close }: { close: () => void }) {
             <Search className="size-4 text-muted" />
             <span className="sr-only">Search members</span>
             <input
+              autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search the member directory"
@@ -223,10 +283,15 @@ function NewConversationDialog({ close }: { close: () => void }) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-xs">
-                        {member.full_name}
+                        {formatPersonName(member.full_name)}
                       </b>
                       <small className="block truncate text-[.58rem] text-muted">
-                        {member.academic_rank || member.email}
+                        {member.academic_rank
+                          ? formatRankForName(
+                              member.full_name,
+                              member.academic_rank,
+                            )
+                          : member.email}
                       </small>
                     </span>
                     <span
@@ -273,16 +338,25 @@ function GroupPanel({
   conversation,
   meId,
   close,
+  onLeft,
 }: {
   conversation: Conversation;
   meId: string;
   close: () => void;
+  onLeft: () => void;
 }) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(conversation.title ?? "");
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [close]);
   const members = useQuery({
     queryKey: ["chat", "members", conversation.id],
     queryFn: () =>
@@ -310,7 +384,7 @@ function GroupPanel({
       method: string;
       body?: object;
     }) => api(endpoint, { method, body }),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["chat", "members", conversation.id],
@@ -318,6 +392,12 @@ function GroupPanel({
         queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] }),
       ]);
       setSelected([]);
+      if (
+        variables.method === "DELETE" &&
+        variables.endpoint.endsWith(`/members/${meId}`)
+      ) {
+        onLeft();
+      }
       toast.success("Group updated");
     },
     onError: (error) =>
@@ -458,7 +538,9 @@ function GroupPanel({
                     </Button>
                   </>
                 ) : null}
-                {canManage && member.role !== "owner" ? (
+                {canManage &&
+                member.role !== "owner" &&
+                member.user_id !== meId ? (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -574,7 +656,8 @@ function GroupPanel({
               </Button>
             </section>
           </>
-        ) : me?.role !== "owner" ? (
+        ) : null}
+        {me && me.role !== "owner" ? (
           <Button
             className="mt-8"
             variant="outline"
@@ -596,19 +679,24 @@ function GroupPanel({
 
 export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
   const queryClient = useQueryClient();
+  const realtime = useRealtime();
+  const isDesktop = useDesktopLayout();
   const [active, setActive] = useState<string | null>(null);
-  const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [messageSearch, setMessageSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [managing, setManaging] = useState(false);
-  const [pendingAttachment, setPendingAttachment] = useState<ChatUpload | null>(
-    null,
-  );
-  const [pendingFilePreview, setPendingFilePreview] =
-    useState<PendingFilePreview | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<
+    PendingChatAttachment[]
+  >([]);
   const [inviteToken, setInviteToken] = useState(initialInvite);
   const fileInput = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const pendingAttachmentsRef = useRef<PendingChatAttachment[]>([]);
   const me = useQuery({
     queryKey: ["auth", "me"],
     queryFn: () => api<User>("/api/v1/auth/me"),
@@ -620,16 +708,31 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
   const filteredConversations = useMemo(() => {
     const needle = search.trim().toLowerCase();
     if (!needle) return conversations.data ?? [];
-    return (conversations.data ?? []).filter((item) =>
-      (
-        item.title ??
-        (item.kind === "group" ? "Member group" : "Direct conversation")
-      )
-        .toLowerCase()
-        .includes(needle),
-    );
+    return (conversations.data ?? []).filter((item) => {
+      const haystack = [
+        item.display_title,
+        item.last_message_sender,
+        item.last_message_preview,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
   }, [conversations.data, search]);
-  const activeConversationId = active ?? conversations.data?.[0]?.id ?? null;
+  const activeExists = Boolean(
+    active && conversations.data?.some((item) => item.id === active),
+  );
+  const activeConversationId = activeExists
+    ? active
+    : isDesktop
+      ? (conversations.data?.[0]?.id ?? null)
+      : null;
+  const text = activeConversationId ? (drafts[activeConversationId] ?? "") : "";
+  const setText = (value: string) => {
+    if (!activeConversationId) return;
+    setDrafts((current) => ({ ...current, [activeConversationId]: value }));
+  };
   const messages = useInfiniteQuery({
     queryKey: ["chat", "messages", activeConversationId],
     queryFn: ({ pageParam }) => {
@@ -651,6 +754,17 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
       [...(messages.data?.pages ?? [])].reverse().flatMap((page) => page.items),
     [messages.data?.pages],
   );
+  const visibleMessageItems = useMemo(() => {
+    const needle = messageSearch.trim().toLowerCase();
+    if (!needle) return messageItems;
+    return messageItems.filter((message) =>
+      [message.text, message.sender_name, message.reply_to?.text]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [messageItems, messageSearch]);
   const latestMessageId = messageItems.at(-1)?.id;
   const selected = conversations.data?.find(
     (item) => item.id === activeConversationId,
@@ -664,39 +778,41 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
     enabled: Boolean(inviteToken),
     retry: false,
   });
-  const attachmentStatus = useQuery({
-    queryKey: ["chat", "attachment-upload", pendingAttachment?.id],
-    queryFn: () =>
-      api<ChatUpload>(
-        `/api/v1/chat/attachments/uploads/${pendingAttachment!.id}`,
-      ),
-    enabled: Boolean(pendingAttachment?.id),
-    refetchInterval: (query) =>
-      ["quarantined", "scanning"].includes(
-        (query.state.data as ChatUpload | undefined)?.status ??
-          pendingAttachment?.status ??
-          "",
-      )
-        ? 1500
-        : false,
-  });
-  const attachment = attachmentStatus.data ?? pendingAttachment;
-
-  useEffect(
-    () => () => {
-      if (pendingFilePreview?.url) {
-        URL.revokeObjectURL(pendingFilePreview.url);
-      }
-    },
-    [pendingFilePreview?.url],
+  const attachmentsReady =
+    pendingAttachments.length > 0 &&
+    pendingAttachments.every((item) => item.upload?.status === "ready");
+  const attachmentsBusy = pendingAttachments.some(
+    (item) =>
+      item.upload === null ||
+      ["quarantined", "scanning"].includes(item.upload.status),
   );
+  const attachmentsRejected = pendingAttachments.some(
+    (item) => item.error !== null || item.upload?.status === "rejected",
+  );
+  const scanningUploadKey = pendingAttachments
+    .filter(
+      (item) =>
+        item.upload && ["quarantined", "scanning"].includes(item.upload.status),
+    )
+    .map((item) => `${item.key}:${item.upload!.status}`)
+    .join("|");
+
+  useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  useEffect(() => () => {
+    for (const item of pendingAttachmentsRef.current) {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    }
+  });
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConversationId, latestMessageId]);
 
   useEffect(() => {
-    if (!activeConversationId || !messages.data?.pages.length) return;
+    if (!activeConversationId || !latestMessageId) return;
     api(`/api/v1/chat/conversations/${activeConversationId}/read`, {
       method: "POST",
     })
@@ -704,32 +820,81 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
         queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] }),
       )
       .catch(() => undefined);
-  }, [activeConversationId, messages.data?.pages.length, queryClient]);
+  }, [activeConversationId, latestMessageId, queryClient]);
 
   useEffect(() => {
-    if (attachmentStatus.data?.status === "rejected") {
-      toast.error("The attachment did not pass security scanning");
-    }
-  }, [attachmentStatus.data?.status]);
+    if (!scanningUploadKey) return;
+    let cancelled = false;
+    const poll = async () => {
+      const scanning = pendingAttachmentsRef.current.filter(
+        (item) =>
+          item.upload &&
+          ["quarantined", "scanning"].includes(item.upload.status),
+      );
+      const updates = await Promise.all(
+        scanning.map(async (item) => ({
+          key: item.key,
+          upload: await api<ChatUpload>(
+            `/api/v1/chat/attachments/uploads/${item.upload!.id}`,
+          ).catch(() => item.upload!),
+        })),
+      );
+      if (cancelled) return;
+      const byKey = new Map(updates.map((item) => [item.key, item.upload]));
+      setPendingAttachments((current) =>
+        current.map((item) => ({
+          ...item,
+          upload: byKey.get(item.key) ?? item.upload,
+        })),
+      );
+    };
+    void poll();
+    const timer = window.setInterval(poll, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [scanningUploadKey]);
 
   const uploadAttachment = useMutation({
-    mutationFn: (file: File) => {
-      const body = new FormData();
-      body.append("file", file);
-      return api<ChatUpload>("/api/v1/chat/attachments", {
-        method: "POST",
-        body,
-      });
-    },
-    onSuccess: (upload) => {
-      setPendingAttachment(upload);
-      toast.success("Attachment uploaded; security scanning has started");
-    },
-    onError: (error) => {
-      setPendingFilePreview(null);
-      toast.error(
-        error instanceof Error ? error.message : "Attachment could not upload",
+    mutationFn: async (files: { key: string; file: File }[]) =>
+      Promise.all(
+        files.map(async ({ key, file }) => {
+          const body = new FormData();
+          body.append("file", file);
+          try {
+            const upload = await api<ChatUpload>("/api/v1/chat/attachments", {
+              method: "POST",
+              body,
+            });
+            return { key, upload, error: null };
+          } catch (error) {
+            return {
+              key,
+              upload: null,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Attachment could not upload",
+            };
+          }
+        }),
+      ),
+    onSuccess: (results) => {
+      const byKey = new Map(results.map((item) => [item.key, item]));
+      setPendingAttachments((current) =>
+        current.map((item) => {
+          const result = byKey.get(item.key);
+          return result
+            ? { ...item, upload: result.upload, error: result.error }
+            : item;
+        }),
       );
+      const failed = results.filter((item) => item.error).length;
+      if (failed) toast.error(`${failed} attachment(s) could not be uploaded`);
+      if (failed < results.length) {
+        toast.success("Attachment security scanning has started");
+      }
     },
   });
 
@@ -743,7 +908,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
       await queryClient.invalidateQueries({
         queryKey: ["chat", "conversations"],
       });
-      setActive(conversation.id);
+      selectConversation(conversation.id);
       setInviteToken("");
       window.history.replaceState({}, "", "/dashboard/chat");
       toast.success("You joined the group");
@@ -763,8 +928,10 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
           body: {
             text,
             client_message_id: crypto.randomUUID(),
-            attachment_media_ids:
-              attachment?.status === "ready" ? [attachment.id] : [],
+            reply_to_id: replyingTo?.id ?? null,
+            attachment_media_ids: pendingAttachments
+              .filter((item) => item.upload?.status === "ready")
+              .map((item) => item.upload!.id),
           },
         },
       ),
@@ -772,9 +939,18 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
       await queryClient.invalidateQueries({
         queryKey: ["chat", "messages", activeConversationId],
       });
-      setText("");
-      setPendingAttachment(null);
-      setPendingFilePreview(null);
+      if (activeConversationId) {
+        setDrafts((current) => {
+          const next = { ...current };
+          delete next[activeConversationId];
+          return next;
+        });
+      }
+      setReplyingTo(null);
+      for (const item of pendingAttachments) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      }
+      setPendingAttachments([]);
     },
     onError: (error) =>
       toast.error(
@@ -797,6 +973,117 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
       ),
   });
 
+  const editMessage = useMutation({
+    mutationFn: ({ messageId, value }: { messageId: string; value: string }) =>
+      api<Message>(`/api/v1/chat/messages/${messageId}`, {
+        method: "PATCH",
+        body: { text: value },
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["chat", "messages", activeConversationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["chat", "conversations"],
+        }),
+      ]);
+      setEditingMessageId(null);
+      setEditText("");
+      toast.success("Message updated");
+    },
+    onError: (error) =>
+      toast.error(
+        error instanceof Error ? error.message : "Could not update message",
+      ),
+  });
+
+  const updatePreference = useMutation({
+    mutationFn: ({
+      conversationId,
+      isMuted,
+    }: {
+      conversationId: string;
+      isMuted: boolean;
+    }) =>
+      api<Conversation>(
+        `/api/v1/chat/conversations/${conversationId}/preferences`,
+        { method: "PATCH", body: { is_muted: isMuted } },
+      ),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Conversation[]>(
+        ["chat", "conversations"],
+        (current) =>
+          current?.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      toast.success(
+        updated.is_muted ? "Conversation muted" : "Conversation unmuted",
+      );
+    },
+    onError: (error) =>
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update conversation preferences",
+      ),
+  });
+
+  function queueAttachments(fileList: FileList | File[]) {
+    const remaining = Math.max(0, 5 - pendingAttachments.length);
+    const files = Array.from(fileList).slice(0, remaining);
+    if (!files.length) {
+      toast.error("You can attach up to 5 files to one message");
+      return;
+    }
+    if (Array.from(fileList).length > remaining) {
+      toast.error(`Only ${remaining} more attachment(s) can be added`);
+    }
+    const entries = files.map((file) => ({
+      key: crypto.randomUUID(),
+      name: file.name,
+      previewUrl: file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : "",
+      upload: null,
+      error: null,
+      file,
+    }));
+    setPendingAttachments((current) => [
+      ...current,
+      ...entries.map((entry) => ({
+        key: entry.key,
+        name: entry.name,
+        previewUrl: entry.previewUrl,
+        upload: entry.upload,
+        error: entry.error,
+      })),
+    ]);
+    uploadAttachment.mutate(
+      entries.map((entry) => ({ key: entry.key, file: entry.file })),
+    );
+  }
+
+  function removePendingAttachment(key: string) {
+    setPendingAttachments((current) => {
+      const removed = current.find((item) => item.key === key);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return current.filter((item) => item.key !== key);
+    });
+  }
+
+  function selectConversation(conversationId: string | null) {
+    if (conversationId === active) return;
+    setReplyingTo(null);
+    setEditingMessageId(null);
+    setEditText("");
+    setMessageSearch("");
+    for (const item of pendingAttachmentsRef.current) {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    }
+    setPendingAttachments([]);
+    setActive(conversationId);
+  }
+
   return (
     <div className="grid gap-5">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -805,9 +1092,22 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
           <h2 className="display-type mt-3 text-4xl sm:text-5xl">
             Member chat
           </h2>
-          <p className="mt-3 text-sm text-muted">
-            Direct and group conversations, delivered live.
-          </p>
+          <div className="mt-3 flex items-center gap-2 text-sm text-muted">
+            <span
+              className={`size-2 rounded-full ${
+                realtime.state === "live"
+                  ? "bg-emerald-500"
+                  : realtime.state === "connecting"
+                    ? "animate-pulse bg-gold"
+                    : "bg-muted/50"
+              }`}
+            />
+            {realtime.state === "live"
+              ? "Messages update live"
+              : realtime.state === "connecting"
+                ? "Connecting to live updates…"
+                : "Offline — messages will sync when reconnected"}
+          </div>
         </div>
         <Button onClick={() => setCreating(true)}>
           <MessageSquarePlus className="size-4" /> New conversation
@@ -853,9 +1153,9 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
         </div>
       ) : null}
 
-      <Card className="grid min-h-[38rem] overflow-hidden lg:grid-cols-[20rem_1fr]">
+      <Card className="grid h-[calc(100dvh-11rem)] min-h-[38rem] max-h-[56rem] overflow-hidden lg:grid-cols-[20rem_1fr]">
         <aside
-          className={`${active ? "hidden lg:block" : "block"} border-r border-line`}
+          className={`${activeExists ? "hidden lg:block" : "block"} min-h-0 border-r border-line`}
         >
           <div className="flex items-center gap-2 border-b border-line p-3">
             <label className="flex min-h-10 flex-1 items-center gap-2 rounded-xl bg-ink/5 px-3">
@@ -877,72 +1177,177 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
               <MessageSquarePlus className="size-4" />
             </Button>
           </div>
-          <div className="divide-y divide-line">
+          <div className="scrollbar-subtle h-[calc(100%-4.1rem)] divide-y divide-line overflow-y-auto">
+            {conversations.isLoading ? (
+              <div className="grid place-items-center gap-3 p-12 text-center">
+                <LoaderCircle className="size-5 animate-spin text-muted" />
+                <p className="text-xs text-muted">Loading conversations…</p>
+              </div>
+            ) : null}
+            {conversations.isError ? (
+              <div className="grid gap-3 p-6 text-center">
+                <p className="text-xs leading-5 text-muted">
+                  Conversations could not be loaded.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => conversations.refetch()}
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : null}
             {filteredConversations.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActive(item.id)}
-                className={`flex w-full items-center gap-3 p-4 text-left hover:bg-ink/[.025] ${activeConversationId === item.id ? "bg-ink/[.04]" : ""}`}
+                onClick={() => selectConversation(item.id)}
+                className={`relative flex w-full items-center gap-3 p-4 text-left transition hover:bg-ink/[.025] ${activeConversationId === item.id ? "bg-ink/[.05]" : ""}`}
               >
+                {activeConversationId === item.id ? (
+                  <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-coral" />
+                ) : null}
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-[.62rem] font-black text-paper">
-                  {initials(
-                    item.title ??
-                      (item.kind === "group" ? "Group" : "Direct chat"),
-                  )}
+                  {initials(item.display_title)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <b className="block truncate text-xs">
-                    {item.title ??
-                      (item.kind === "group"
-                        ? "Member group"
-                        : "Direct conversation")}
-                  </b>
-                  <small className="mt-1 block truncate text-[.6rem] text-muted">
-                    {item.last_message_at
-                      ? formatDistanceToNow(new Date(item.last_message_at), {
-                          addSuffix: true,
-                        })
-                      : `${item.member_count} members`}
+                  <span className="flex items-center gap-1.5">
+                    <b className="block min-w-0 flex-1 truncate text-xs">
+                      {item.display_title}
+                    </b>
+                    {item.is_muted ? (
+                      <BellOff
+                        className="size-3 shrink-0 text-muted"
+                        aria-label="Muted"
+                      />
+                    ) : null}
+                  </span>
+                  <small className="mt-1 flex min-w-0 items-center gap-1 text-[.6rem] text-muted">
+                    <span className="truncate">
+                      {item.last_message_preview
+                        ? `${item.last_message_sender}: ${item.last_message_preview}`
+                        : item.kind === "group"
+                          ? `${item.member_count} members · No messages yet`
+                          : "No messages yet"}
+                    </span>
+                    {item.last_message_at ? (
+                      <span className="shrink-0" aria-hidden="true">
+                        ·
+                      </span>
+                    ) : null}
+                    {item.last_message_at ? (
+                      <span className="shrink-0">
+                        {formatDistanceToNow(new Date(item.last_message_at))}
+                      </span>
+                    ) : null}
                   </small>
                 </span>
                 {item.unread_count ? (
-                  <span className="grid size-5 place-items-center rounded-full bg-coral text-[.55rem] font-black text-white">
-                    {Math.min(item.unread_count, 9)}
+                  <span className="grid min-w-5 place-items-center rounded-full bg-coral px-1.5 py-1 text-[.55rem] font-black text-white">
+                    {item.unread_count > 99 ? "99+" : item.unread_count}
                   </span>
                 ) : null}
               </button>
             ))}
-            {!conversations.isLoading && filteredConversations.length === 0 ? (
-              <p className="p-8 text-center text-xs text-muted">
-                No conversations yet.
-              </p>
+            {!conversations.isLoading &&
+            !conversations.isError &&
+            filteredConversations.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-xs text-muted">
+                  {search
+                    ? "No conversations match your search."
+                    : "No conversations yet."}
+                </p>
+                {!search ? (
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCreating(true)}
+                  >
+                    Start one
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </aside>
 
         <section
-          className={`${!activeConversationId ? "hidden lg:flex" : "flex"} min-w-0 flex-col`}
+          className={`${!activeConversationId ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col`}
         >
           {selected ? (
             <>
               <div className="flex min-h-16 items-center gap-3 border-b border-line px-5">
-                <button
-                  onClick={() => setActive(null)}
-                  className="text-xs font-bold text-coral lg:hidden"
+                <Button
+                  onClick={() => selectConversation(null)}
+                  size="icon"
+                  variant="ghost"
+                  className="-ml-2 lg:hidden"
+                  aria-label="Back to conversations"
                 >
-                  Back
-                </button>
+                  <ArrowLeft className="size-4" />
+                </Button>
                 <span className="grid size-9 place-items-center rounded-full bg-ink text-[.6rem] font-black text-paper">
-                  {initials(selected.title ?? "Chat")}
+                  {initials(selected.display_title)}
                 </span>
                 <div className="min-w-0 flex-1">
                   <b className="block truncate text-xs">
-                    {selected.title ?? "Conversation"}
+                    {selected.display_title}
                   </b>
-                  <small className="text-[.58rem] text-emerald-600">
-                    Private · live
+                  <small className="text-[.58rem] text-muted">
+                    {selected.kind === "group"
+                      ? `${selected.member_count} members`
+                      : "Direct conversation"}
+                    {selected.is_muted ? " · Muted" : ""}
                   </small>
                 </div>
+                <label className="hidden min-h-9 w-44 items-center gap-2 rounded-xl bg-ink/5 px-3 md:flex">
+                  <Search className="size-3.5 text-muted" />
+                  <span className="sr-only">Search loaded messages</span>
+                  <input
+                    value={messageSearch}
+                    onChange={(event) => setMessageSearch(event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent text-[.68rem] outline-none"
+                    placeholder="Search messages"
+                  />
+                  {messageSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setMessageSearch("")}
+                      aria-label="Clear message search"
+                    >
+                      <X className="size-3.5 text-muted" />
+                    </button>
+                  ) : null}
+                </label>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={updatePreference.isPending}
+                  onClick={() =>
+                    updatePreference.mutate({
+                      conversationId: selected.id,
+                      isMuted: !selected.is_muted,
+                    })
+                  }
+                  aria-label={
+                    selected.is_muted
+                      ? "Unmute conversation"
+                      : "Mute conversation"
+                  }
+                  title={
+                    selected.is_muted
+                      ? "Unmute conversation"
+                      : "Mute conversation"
+                  }
+                >
+                  {selected.is_muted ? (
+                    <BellOff className="size-4" />
+                  ) : (
+                    <Bell className="size-4" />
+                  )}
+                </Button>
                 {selected.kind === "group" ? (
                   <Button
                     size="icon"
@@ -952,12 +1357,55 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                   >
                     <Settings2 className="size-4" />
                   </Button>
-                ) : null}
+                ) : (
+                  <span
+                    className="hidden size-11 place-items-center text-muted sm:grid"
+                    title="Encrypted private conversation"
+                  >
+                    <Info className="size-4" />
+                  </span>
+                )}
               </div>
-              <div className="scrollbar-subtle flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
                 <div className="mx-auto grid max-w-3xl gap-3">
+                  <label className="flex min-h-10 items-center gap-2 rounded-xl bg-ink/5 px-3 md:hidden">
+                    <Search className="size-3.5 text-muted" />
+                    <span className="sr-only">Search loaded messages</span>
+                    <input
+                      value={messageSearch}
+                      onChange={(event) => setMessageSearch(event.target.value)}
+                      className="min-w-0 flex-1 bg-transparent text-xs outline-none"
+                      placeholder="Search loaded messages"
+                    />
+                    {messageSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => setMessageSearch("")}
+                        aria-label="Clear message search"
+                      >
+                        <X className="size-3.5 text-muted" />
+                      </button>
+                    ) : null}
+                  </label>
                   {messages.isLoading ? (
-                    <LoaderCircle className="mx-auto mt-20 size-5 animate-spin text-muted" />
+                    <div className="grid place-items-center gap-3 py-20">
+                      <LoaderCircle className="size-5 animate-spin text-muted" />
+                      <p className="text-xs text-muted">Loading messages…</p>
+                    </div>
+                  ) : null}
+                  {messages.isError ? (
+                    <div className="grid place-items-center gap-3 py-16 text-center">
+                      <p className="text-xs text-muted">
+                        Messages could not be loaded.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => messages.refetch()}
+                      >
+                        Try again
+                      </Button>
+                    </div>
                   ) : null}
                   {messages.hasNextPage ? (
                     <Button
@@ -973,16 +1421,42 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                       Load older messages
                     </Button>
                   ) : null}
-                  {messageItems.map((message, index) => {
+                  {!messages.isLoading &&
+                  !messages.isError &&
+                  messageItems.length === 0 ? (
+                    <div className="mx-auto max-w-sm py-20 text-center">
+                      <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-ink/5">
+                        <Send className="size-5 text-muted" />
+                      </span>
+                      <h3 className="mt-4 text-sm font-black">
+                        Start the conversation
+                      </h3>
+                      <p className="mt-2 text-xs leading-5 text-muted">
+                        Messages and attachments shared here are encrypted at
+                        rest.
+                      </p>
+                    </div>
+                  ) : null}
+                  {messageSearch && visibleMessageItems.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-muted">
+                      No loaded messages match “{messageSearch}”. Load older
+                      messages to search further back.
+                    </div>
+                  ) : null}
+                  {visibleMessageItems.map((message, index) => {
                     const mine = message.sender_id === me.data?.id;
                     const showDay =
                       index === 0 ||
                       new Date(message.created_at).toDateString() !==
                         new Date(
-                          messageItems[index - 1]!.created_at,
+                          visibleMessageItems[index - 1]!.created_at,
                         ).toDateString();
                     return (
-                      <div key={message.id} className="group/message">
+                      <div
+                        key={message.id}
+                        id={`message-${message.id}`}
+                        className="group/message scroll-mt-6"
+                      >
                         {showDay ? (
                           <p className="my-5 text-center text-[.58rem] font-bold text-muted">
                             {format(
@@ -992,25 +1466,49 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                           </p>
                         ) : null}
                         <div
-                          className={`flex items-end gap-1 ${mine ? "justify-end" : "justify-start"}`}
+                          className={`flex items-end gap-1.5 ${mine ? "justify-end" : "justify-start"}`}
                         >
-                          {mine ? (
+                          <span className="mb-1 flex items-center text-muted opacity-60 transition sm:opacity-0 sm:group-hover/message:opacity-100 sm:group-focus-within/message:opacity-100">
                             <button
-                              className="mb-1 p-1 text-muted opacity-0 transition group-hover/message:opacity-100 focus:opacity-100"
-                              aria-label="Delete message"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Delete this message for everyone?",
-                                  )
-                                ) {
-                                  removeMessage.mutate(message.id);
-                                }
-                              }}
+                              className="rounded-md p-1.5 hover:bg-ink/5"
+                              aria-label="Reply to message"
+                              title="Reply"
+                              onClick={() => setReplyingTo(message)}
                             >
-                              <Trash2 className="size-3.5" />
+                              <Reply className="size-3.5" />
                             </button>
-                          ) : null}
+                            {mine ? (
+                              <button
+                                className="rounded-md p-1.5 hover:bg-ink/5"
+                                aria-label="Edit message"
+                                title="Edit"
+                                onClick={() => {
+                                  setEditingMessageId(message.id);
+                                  setEditText(message.text);
+                                }}
+                              >
+                                <Edit3 className="size-3.5" />
+                              </button>
+                            ) : null}
+                            {mine ? (
+                              <button
+                                className="rounded-md p-1.5 hover:bg-ink/5"
+                                aria-label="Delete message"
+                                title="Delete"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      "Delete this message for everyone?",
+                                    )
+                                  ) {
+                                    removeMessage.mutate(message.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            ) : null}
+                          </span>
                           <div
                             className={`max-w-[82%] rounded-2xl px-4 py-3 ${mine ? "rounded-br-md bg-ink text-paper" : "rounded-bl-md bg-ink/5"}`}
                           >
@@ -1019,9 +1517,96 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                                 {message.sender_name}
                               </p>
                             ) : null}
-                            <p className="whitespace-pre-wrap text-sm leading-6">
-                              {message.text}
-                            </p>
+                            {message.reply_to ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  document
+                                    .getElementById(
+                                      `message-${message.reply_to!.id}`,
+                                    )
+                                    ?.scrollIntoView({
+                                      behavior: "smooth",
+                                      block: "center",
+                                    });
+                                }}
+                                className={`mb-2 block w-full rounded-lg border-l-2 px-3 py-2 text-left ${mine ? "border-paper/40 bg-paper/8" : "border-coral/50 bg-paper/60 dark:bg-paper/30"}`}
+                              >
+                                <span className="block text-[.56rem] font-black opacity-70">
+                                  {message.reply_to.sender_name}
+                                </span>
+                                <span className="mt-0.5 block truncate text-[.65rem] opacity-70">
+                                  {message.reply_to.text || "Attachment"}
+                                </span>
+                              </button>
+                            ) : message.reply_to_id ? (
+                              <div className="mb-2 rounded-lg border-l-2 border-current/20 px-3 py-2 text-[.62rem] opacity-60">
+                                Original message is unavailable
+                              </div>
+                            ) : null}
+                            {editingMessageId === message.id ? (
+                              <form
+                                className="grid gap-2"
+                                onSubmit={(event) => {
+                                  event.preventDefault();
+                                  if (
+                                    editText.trim() ||
+                                    message.attachments.length
+                                  )
+                                    editMessage.mutate({
+                                      messageId: message.id,
+                                      value: editText,
+                                    });
+                                }}
+                              >
+                                <textarea
+                                  autoFocus
+                                  aria-label="Edit message"
+                                  rows={2}
+                                  value={editText}
+                                  style={{
+                                    color: "var(--paper)",
+                                    caretColor: "var(--paper)",
+                                  }}
+                                  onChange={(event) =>
+                                    setEditText(event.target.value)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Escape") {
+                                      setEditingMessageId(null);
+                                      setEditText("");
+                                    }
+                                  }}
+                                  className="min-h-16 resize-none rounded-lg border border-current/15 bg-paper/10 px-3 py-2 text-sm outline-none focus:border-current/35"
+                                />
+                                <span className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    className="text-[.62rem] font-bold opacity-70"
+                                    onClick={() => {
+                                      setEditingMessageId(null);
+                                      setEditText("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    disabled={
+                                      editMessage.isPending ||
+                                      (!editText.trim() &&
+                                        message.attachments.length === 0)
+                                    }
+                                    className="rounded-full bg-paper px-3 py-1 text-[.62rem] font-black text-ink disabled:opacity-50"
+                                  >
+                                    {editMessage.isPending ? "Saving…" : "Save"}
+                                  </button>
+                                </span>
+                              </form>
+                            ) : message.text ? (
+                              <p className="whitespace-pre-wrap text-sm leading-6">
+                                {message.text}
+                              </p>
+                            ) : null}
                             {message.attachments?.length ? (
                               <div className="mt-2 grid gap-2">
                                 {message.attachments.map((item) =>
@@ -1067,15 +1652,16 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                               className={`mt-1.5 flex items-center justify-end gap-1 text-[.52rem] ${mine ? "text-paper/50" : "text-muted"}`}
                             >
                               {format(new Date(message.created_at), "HH:mm")}
+                              {message.edited_at ? " · edited" : null}
                               {mine ? (
-                                <CheckCheck
-                                  className="size-3"
-                                  aria-label={
-                                    message.read_by
-                                      ? `Read by ${message.read_by}`
-                                      : "Sent"
-                                  }
-                                />
+                                message.read_by ? (
+                                  <CheckCheck
+                                    className="size-3"
+                                    aria-label={`Read by ${message.read_by}`}
+                                  />
+                                ) : (
+                                  <Check className="size-3" aria-label="Sent" />
+                                )
                               ) : null}
                             </span>
                           </div>
@@ -1089,82 +1675,109 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (text.trim() || attachment?.status === "ready")
+                  if (
+                    !send.isPending &&
+                    !attachmentsBusy &&
+                    !attachmentsRejected &&
+                    (text.trim() || attachmentsReady)
+                  )
                     send.mutate();
                 }}
-                className="border-t border-line p-3 sm:p-4"
+                className="border-t border-line px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-4 sm:pt-4 lg:p-4"
               >
-                {attachment || pendingFilePreview ? (
-                  <div className="mb-2 flex items-center gap-3 rounded-xl border border-line bg-panel px-3 py-2">
-                    {pendingFilePreview?.url ? (
-                      <span className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-ink/5">
-                        <Image
-                          fill
-                          unoptimized
-                          alt={`Preview of ${pendingFilePreview.name}`}
-                          className="object-cover"
-                          sizes="56px"
-                          src={pendingFilePreview.url}
-                        />
-                      </span>
-                    ) : (
-                      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-coral/10">
-                        <FileText className="size-4 text-coral" />
-                      </span>
-                    )}
+                {replyingTo ? (
+                  <div className="mb-2 flex items-center gap-3 rounded-xl border-l-2 border-coral bg-ink/[.035] px-3 py-2">
+                    <Reply className="size-4 shrink-0 text-coral" />
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-xs">
-                        {attachment?.original_filename ??
-                          pendingFilePreview?.name}
+                      <b className="block text-[.62rem] text-coral">
+                        Replying to {replyingTo.sender_name}
                       </b>
-                      <span className="text-[.6rem] text-muted">
-                        {uploadAttachment.isPending
-                          ? "Uploading securely…"
-                          : attachment?.status === "ready"
-                            ? "Ready to send"
-                            : attachment?.status === "rejected"
-                              ? "Rejected by security scan"
-                              : "Security scan in progress…"}
+                      <span className="mt-0.5 block truncate text-xs text-muted">
+                        {replyingTo.text ||
+                          replyingTo.attachments[0]?.filename ||
+                          "Attachment"}
                       </span>
                     </span>
-                    {uploadAttachment.isPending ||
-                    (attachment &&
-                      ["quarantined", "scanning"].includes(
-                        attachment.status,
-                      )) ? (
-                      <LoaderCircle className="size-4 animate-spin text-muted" />
-                    ) : null}
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
-                      disabled={uploadAttachment.isPending}
-                      aria-label="Remove attachment"
-                      onClick={() => {
-                        setPendingAttachment(null);
-                        setPendingFilePreview(null);
-                      }}
+                      className="size-9 min-h-9"
+                      aria-label="Cancel reply"
+                      onClick={() => setReplyingTo(null)}
                     >
                       <X className="size-4" />
                     </Button>
+                  </div>
+                ) : null}
+                {pendingAttachments.length ? (
+                  <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                    {pendingAttachments.map((item) => (
+                      <div
+                        key={item.key}
+                        className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-panel px-3 py-2"
+                      >
+                        {item.previewUrl ? (
+                          <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-ink/5">
+                            <Image
+                              fill
+                              unoptimized
+                              alt={`Preview of ${item.name}`}
+                              className="object-cover"
+                              sizes="48px"
+                              src={item.previewUrl}
+                            />
+                          </span>
+                        ) : (
+                          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-coral/10">
+                            <FileText className="size-4 text-coral" />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <b className="block truncate text-xs">{item.name}</b>
+                          <span
+                            className={`text-[.6rem] ${item.error || item.upload?.status === "rejected" ? "text-red-600 dark:text-red-300" : "text-muted"}`}
+                          >
+                            {item.error
+                              ? item.error
+                              : item.upload?.status === "ready"
+                                ? "Ready to send"
+                                : item.upload?.status === "rejected"
+                                  ? "Rejected by security scan"
+                                  : item.upload
+                                    ? "Security scan in progress…"
+                                    : "Uploading securely…"}
+                          </span>
+                        </span>
+                        {!item.upload ||
+                        ["quarantined", "scanning"].includes(
+                          item.upload.status,
+                        ) ? (
+                          <LoaderCircle className="size-4 shrink-0 animate-spin text-muted" />
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-9 min-h-9 shrink-0"
+                          aria-label={`Remove ${item.name}`}
+                          onClick={() => removePendingAttachment(item.key)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
                 <div className="flex items-end gap-2">
                   <input
                     ref={fileInput}
                     type="file"
+                    multiple
                     className="sr-only"
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        setPendingFilePreview({
-                          name: file.name,
-                          url: file.type.startsWith("image/")
-                            ? URL.createObjectURL(file)
-                            : "",
-                        });
-                        uploadAttachment.mutate(file);
-                      }
+                      if (event.target.files?.length)
+                        queueAttachments(event.target.files);
                       event.target.value = "";
                     }}
                   />
@@ -1172,47 +1785,48 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                     type="button"
                     size="icon"
                     variant="outline"
-                    disabled={
-                      uploadAttachment.isPending ||
-                      Boolean(
-                        attachment &&
-                        ["quarantined", "scanning"].includes(attachment.status),
-                      )
-                    }
+                    disabled={pendingAttachments.length >= 5}
                     onClick={() => fileInput.current?.click()}
                     aria-label="Attach a file"
                   >
-                    {uploadAttachment.isPending ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : (
-                      <Paperclip className="size-4" />
-                    )}
+                    <Paperclip className="size-4" />
                   </Button>
                   <textarea
                     rows={1}
+                    aria-label="Message"
                     value={text}
                     onChange={(event) => setText(event.target.value)}
                     onKeyDown={(event) => {
+                      if (event.key === "Escape" && replyingTo) {
+                        setReplyingTo(null);
+                        return;
+                      }
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
-                        if (text.trim() || attachment?.status === "ready")
+                        if (
+                          !send.isPending &&
+                          !attachmentsBusy &&
+                          !attachmentsRejected &&
+                          (text.trim() || attachmentsReady)
+                        )
                           send.mutate();
                       }
                     }}
-                    placeholder="Write a private message"
+                    placeholder={
+                      replyingTo
+                        ? `Reply to ${replyingTo.sender_name}`
+                        : `Message ${selected.display_title}`
+                    }
+                    maxLength={20_000}
                     className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-ink/25"
                   />
                   <Button
                     size="icon"
                     disabled={
                       send.isPending ||
-                      (!text.trim() && attachment?.status !== "ready") ||
-                      Boolean(
-                        attachment &&
-                        ["quarantined", "scanning", "rejected"].includes(
-                          attachment.status,
-                        ),
-                      )
+                      (!text.trim() && !attachmentsReady) ||
+                      attachmentsBusy ||
+                      attachmentsRejected
                     }
                     aria-label="Send message"
                   >
@@ -1222,6 +1836,12 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                       <Send className="size-4" />
                     )}
                   </Button>
+                </div>
+                <div className="mt-2 flex justify-between px-1 text-[.58rem] text-muted">
+                  <span>Enter to send · Shift + Enter for a new line</span>
+                  {text.length > 18_000 ? (
+                    <span>{text.length.toLocaleString()} / 20,000</span>
+                  ) : null}
                 </div>
               </form>
             </>
@@ -1241,13 +1861,20 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
       </Card>
 
       {creating ? (
-        <NewConversationDialog close={() => setCreating(false)} />
+        <NewConversationDialog
+          close={() => setCreating(false)}
+          onCreated={(conversation) => selectConversation(conversation.id)}
+        />
       ) : null}
       {managing && selected && me.data ? (
         <GroupPanel
           conversation={selected}
           meId={me.data.id}
           close={() => setManaging(false)}
+          onLeft={() => {
+            setManaging(false);
+            selectConversation(null);
+          }}
         />
       ) : null}
     </div>

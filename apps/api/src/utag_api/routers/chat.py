@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import aliased
 from starlette.concurrency import run_in_threadpool
 
 from utag_api.config import get_settings
@@ -37,11 +38,14 @@ from utag_api.schemas.domain import (
     ConversationMemberRoleUpdate,
     ConversationMembersUpdate,
     ConversationOwnershipTransfer,
+    ConversationPreferenceUpdate,
     ConversationUpdate,
     ConversationView,
     MediaView,
     MessageAttachmentView,
     MessageCreateRequest,
+    MessageReplyView,
+    MessageUpdateRequest,
     MessageView,
 )
 from utag_api.services.chat import (
@@ -135,6 +139,207 @@ async def require_group_admin(
     if conversation.kind != "group" or membership.role not in {"owner", "admin"}:
         raise ApiError(403, "group_admin_required", "Group administrator access is required")
     return conversation, membership
+
+
+async def conversation_views(
+    db: DbSession,
+    user_id: UUID,
+    conversation_ids: set[UUID] | None = None,
+) -> list[ConversationView]:
+    """Build member-specific conversation summaries without per-row queries."""
+    if conversation_ids == set():
+        return []
+
+    current_member = aliased(ConversationMember)
+    active_member = aliased(ConversationMember)
+    member_count = (
+        select(func.count(active_member.id))
+        .where(
+            active_member.conversation_id == Conversation.id,
+            active_member.left_at.is_(None),
+        )
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    unread_count = (
+        select(func.count(Message.id))
+        .outerjoin(
+            MessageReceipt,
+            and_(
+                MessageReceipt.message_id == Message.id,
+                MessageReceipt.user_id == user_id,
+            ),
+        )
+        .where(
+            Message.conversation_id == Conversation.id,
+            Message.sender_id != user_id,
+            Message.deleted_at.is_(None),
+            MessageReceipt.read_at.is_(None),
+        )
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    latest_message_id = (
+        select(Message.id)
+        .where(
+            Message.conversation_id == Conversation.id,
+            Message.deleted_at.is_(None),
+        )
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+        .correlate(Conversation)
+        .scalar_subquery()
+    )
+    statement = (
+        select(
+            Conversation,
+            current_member,
+            member_count.label("member_count"),
+            unread_count.label("unread_count"),
+            latest_message_id.label("latest_message_id"),
+        )
+        .join(
+            current_member,
+            and_(
+                current_member.conversation_id == Conversation.id,
+                current_member.user_id == user_id,
+                current_member.left_at.is_(None),
+            ),
+        )
+        .order_by(
+            Conversation.last_message_at.desc().nullslast(),
+            Conversation.created_at.desc(),
+        )
+    )
+    if conversation_ids is not None:
+        statement = statement.where(Conversation.id.in_(conversation_ids))
+    rows = (await db.execute(statement)).all()
+    if not rows:
+        return []
+
+    direct_ids = {conversation.id for conversation, *_rest in rows if conversation.kind == "direct"}
+    direct_members: dict[UUID, User] = {}
+    if direct_ids:
+        direct_members = {
+            conversation_id: member
+            for conversation_id, member in (
+                await db.execute(
+                    select(ConversationMember.conversation_id, User)
+                    .join(User, User.id == ConversationMember.user_id)
+                    .where(
+                        ConversationMember.conversation_id.in_(direct_ids),
+                        ConversationMember.user_id != user_id,
+                        ConversationMember.left_at.is_(None),
+                    )
+                )
+            ).all()
+        }
+
+    latest_ids = {latest_id for *_row, latest_id in rows if latest_id is not None}
+    latest_messages: dict[UUID, tuple[Message, User]] = {}
+    attachment_counts: dict[UUID, int] = {}
+    if latest_ids:
+        latest_messages = {
+            message.id: (message, sender)
+            for message, sender in (
+                await db.execute(
+                    select(Message, User)
+                    .join(User, User.id == Message.sender_id)
+                    .where(Message.id.in_(latest_ids))
+                )
+            ).all()
+        }
+        attachment_counts = {
+            message_id: int(count)
+            for message_id, count in (
+                await db.execute(
+                    select(MessageAttachment.message_id, func.count(MessageAttachment.id))
+                    .where(MessageAttachment.message_id.in_(latest_ids))
+                    .group_by(MessageAttachment.message_id)
+                )
+            ).all()
+        }
+
+    result: list[ConversationView] = []
+    for conversation, membership, count, unread, latest_id in rows:
+        direct_member = direct_members.get(conversation.id)
+        display_title = (
+            direct_member.full_name
+            if direct_member is not None
+            else conversation.title
+            or ("Member group" if conversation.kind == "group" else "Direct conversation")
+        )
+        preview: str | None = None
+        preview_sender: str | None = None
+        latest = latest_messages.get(latest_id) if latest_id is not None else None
+        if latest is not None:
+            message, sender = latest
+            if conversation.encryption_key_ciphertext:
+                try:
+                    preview = " ".join(
+                        decrypt_message(
+                            conversation.encryption_key_ciphertext,
+                            message.ciphertext,
+                        ).split()
+                    )
+                except Exception:
+                    preview = "Encrypted message"
+            attachment_count = attachment_counts.get(message.id, 0)
+            if not preview and attachment_count:
+                preview = (
+                    "Attachment" if attachment_count == 1 else f"{attachment_count} attachments"
+                )
+            if preview and len(preview) > 120:
+                preview = f"{preview[:117].rstrip()}…"
+            preview_sender = "You" if sender.id == user_id else sender.full_name
+        result.append(
+            ConversationView(
+                id=conversation.id,
+                kind=conversation.kind,
+                title=conversation.title,
+                created_by_id=conversation.created_by_id,
+                last_message_at=conversation.last_message_at,
+                member_count=int(count),
+                unread_count=int(unread),
+                display_title=display_title,
+                direct_member_id=direct_member.id if direct_member is not None else None,
+                current_user_role=membership.role,
+                is_muted=membership.is_muted,
+                last_message_preview=preview,
+                last_message_sender=preview_sender,
+                created_at=conversation.created_at,
+            )
+        )
+    return result
+
+
+async def message_reply_map(
+    db: DbSession,
+    conversation: Conversation,
+    reply_ids: set[UUID],
+) -> dict[UUID, MessageReplyView]:
+    if not reply_ids or not conversation.encryption_key_ciphertext:
+        return {}
+    rows = (
+        await db.execute(
+            select(Message, User)
+            .join(User, User.id == Message.sender_id)
+            .where(
+                Message.id.in_(reply_ids),
+                Message.conversation_id == conversation.id,
+                Message.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    return {
+        message.id: MessageReplyView(
+            id=message.id,
+            sender_id=message.sender_id,
+            sender_name=sender.full_name,
+            text=decrypt_message(conversation.encryption_key_ciphertext, message.ciphertext),
+        )
+        for message, sender in rows
+    }
 
 
 @router.post("/attachments", response_model=MediaView, status_code=201)
@@ -304,52 +509,7 @@ async def list_conversations(
     db: DbSession,
     principal: Annotated[Principal, Depends(require_permissions("chat.use"))],
 ) -> list[ConversationView]:
-    unread_count = (
-        select(func.count(Message.id))
-        .outerjoin(
-            MessageReceipt,
-            and_(
-                MessageReceipt.message_id == Message.id,
-                MessageReceipt.user_id == principal.user.id,
-            ),
-        )
-        .where(
-            Message.conversation_id == Conversation.id,
-            Message.sender_id != principal.user.id,
-            Message.deleted_at.is_(None),
-            MessageReceipt.read_at.is_(None),
-        )
-        .correlate(Conversation)
-        .scalar_subquery()
-    )
-    rows = (
-        await db.execute(
-            select(Conversation, func.count(ConversationMember.id), unread_count)
-            .join(ConversationMember, ConversationMember.conversation_id == Conversation.id)
-            .where(
-                Conversation.id.in_(
-                    select(ConversationMember.conversation_id).where(
-                        ConversationMember.user_id == principal.user.id,
-                        ConversationMember.left_at.is_(None),
-                    )
-                )
-            )
-            .group_by(Conversation.id)
-            .order_by(Conversation.last_message_at.desc().nullslast())
-        )
-    ).all()
-    return [
-        ConversationView(
-            **{
-                key: value
-                for key, value in conversation.__dict__.items()
-                if not key.startswith("_")
-            },
-            member_count=member_count,
-            unread_count=unread,
-        )
-        for conversation, member_count, unread in rows
-    ]
+    return await conversation_views(db, principal.user.id)
 
 
 @router.post("/conversations", response_model=ConversationView, status_code=201)
@@ -362,6 +522,9 @@ async def create_conversation(
     member_ids = set(payload.member_ids) | {principal.user.id}
     if payload.kind == "direct" and len(member_ids) != 2:
         raise ApiError(422, "direct_member_count", "Direct chats must have two members")
+    title = payload.title.strip() if payload.title else None
+    if payload.kind == "group" and (title is None or len(title) < 2):
+        raise ApiError(422, "group_title_required", "Give the group a name")
     valid_users = set(
         (
             await db.scalars(
@@ -377,20 +540,16 @@ async def create_conversation(
             select(Conversation).where(Conversation.direct_key == direct_key)
         )
         if existing:
-            return ConversationView(
-                **{
-                    key: value
-                    for key, value in existing.__dict__.items()
-                    if not key.startswith("_")
-                },
-                member_count=2,
-            )
+            summaries = await conversation_views(db, principal.user.id, {existing.id})
+            if not summaries:
+                raise ApiError(409, "conversation_unavailable", "Conversation is unavailable")
+            return summaries[0]
     encrypted_key, key_version = new_conversation_key()
     conversation = Conversation(
         id=new_id(),
         kind=payload.kind,
         direct_key=direct_key,
-        title=payload.title,
+        title=title,
         created_by_id=principal.user.id,
         encryption_key_ciphertext=encrypted_key,
         encryption_key_version=key_version,
@@ -426,10 +585,8 @@ async def create_conversation(
             payload={"conversation_id": str(conversation.id)},
         )
     await db.commit()
-    return ConversationView(
-        **{key: value for key, value in conversation.__dict__.items() if not key.startswith("_")},
-        member_count=len(member_ids),
-    )
+    summaries = await conversation_views(db, principal.user.id, {conversation.id})
+    return summaries[0]
 
 
 @router.get("/conversations/{conversation_id}/members")
@@ -470,18 +627,7 @@ async def update_conversation(
     principal: Annotated[Principal, Depends(require_mutation_permissions("chat.use"))],
 ) -> ConversationView:
     conversation, _ = await require_group_admin(db, conversation_id, principal.user.id)
-    conversation.title = payload.title
-    member_count = int(
-        (
-            await db.scalar(
-                select(func.count(ConversationMember.id)).where(
-                    ConversationMember.conversation_id == conversation.id,
-                    ConversationMember.left_at.is_(None),
-                )
-            )
-        )
-        or 0
-    )
+    conversation.title = payload.title.strip()
     record_change(
         db,
         context=event_context(request, principal),
@@ -492,10 +638,38 @@ async def update_conversation(
         payload={"conversation_id": str(conversation.id), "title": conversation.title},
     )
     await db.commit()
-    return ConversationView(
-        **{key: value for key, value in conversation.__dict__.items() if not key.startswith("_")},
-        member_count=member_count,
+    summaries = await conversation_views(db, principal.user.id, {conversation.id})
+    return summaries[0]
+
+
+@router.patch(
+    "/conversations/{conversation_id}/preferences",
+    response_model=ConversationView,
+)
+async def update_conversation_preferences(
+    conversation_id: UUID,
+    payload: ConversationPreferenceUpdate,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_mutation_permissions("chat.use"))],
+) -> ConversationView:
+    conversation, membership = await require_membership(db, conversation_id, principal.user.id)
+    membership.is_muted = payload.is_muted
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="chat.preferences.updated",
+        resource_type="conversation",
+        resource_id=conversation.id,
+        topic=f"user:{principal.user.id}",
+        payload={
+            "conversation_id": str(conversation.id),
+            "is_muted": membership.is_muted,
+        },
     )
+    await db.commit()
+    summaries = await conversation_views(db, principal.user.id, {conversation.id})
+    return summaries[0]
 
 
 @router.post(
@@ -636,17 +810,6 @@ async def accept_conversation_invite(
         membership.role = "member"
     if joined:
         invite.use_count += 1
-    member_count = int(
-        (
-            await db.scalar(
-                select(func.count(ConversationMember.id)).where(
-                    ConversationMember.conversation_id == conversation.id,
-                    ConversationMember.left_at.is_(None),
-                )
-            )
-        )
-        or 0
-    )
     record_change(
         db,
         context=event_context(request, principal),
@@ -660,10 +823,8 @@ async def accept_conversation_invite(
         },
     )
     await db.commit()
-    return ConversationView(
-        **{key: value for key, value in conversation.__dict__.items() if not key.startswith("_")},
-        member_count=member_count,
-    )
+    summaries = await conversation_views(db, principal.user.id, {conversation.id})
+    return summaries[0]
 
 
 @router.post("/conversations/{conversation_id}/members", response_model=MessageResponse)
@@ -893,6 +1054,11 @@ async def list_messages(
     rows = list(reversed((await db.execute(statement)).all()))
     attachments = await message_attachment_map(db, [message.id for message, _user in rows])
     message_ids = [message.id for message, _user in rows]
+    replies = await message_reply_map(
+        db,
+        conversation,
+        {message.reply_to_id for message, _user in rows if message.reply_to_id is not None},
+    )
     read_counts = {
         message_id: int(read_count)
         for message_id, read_count in (
@@ -926,7 +1092,9 @@ async def list_messages(
             client_message_id=message.client_message_id,
             text=decrypt_message(conversation.encryption_key_ciphertext, message.ciphertext),
             reply_to_id=message.reply_to_id,
+            reply_to=replies.get(message.reply_to_id) if message.reply_to_id else None,
             created_at=message.created_at,
+            edited_at=message.edited_at,
             read_by=read_counts.get(message.id, 0),
             attachments=attachments.get(message.id, []),
         )
@@ -963,7 +1131,18 @@ async def create_message(
         )
     )
     if existing:
+        if existing.conversation_id != conversation.id:
+            raise ApiError(
+                409,
+                "client_message_id_conflict",
+                "This message identifier was already used in another conversation",
+            )
         existing_attachments = await message_attachment_map(db, [existing.id])
+        existing_reply = await message_reply_map(
+            db,
+            conversation,
+            {existing.reply_to_id} if existing.reply_to_id else set(),
+        )
         return MessageView(
             id=existing.id,
             conversation_id=existing.conversation_id,
@@ -972,7 +1151,9 @@ async def create_message(
             client_message_id=existing.client_message_id,
             text=decrypt_message(conversation.encryption_key_ciphertext, existing.ciphertext),
             reply_to_id=existing.reply_to_id,
+            reply_to=(existing_reply.get(existing.reply_to_id) if existing.reply_to_id else None),
             created_at=existing.created_at,
+            edited_at=existing.edited_at,
             attachments=existing_attachments.get(existing.id, []),
         )
     if payload.reply_to_id:
@@ -980,6 +1161,7 @@ async def create_message(
             select(Message.id).where(
                 Message.id == payload.reply_to_id,
                 Message.conversation_id == conversation.id,
+                Message.deleted_at.is_(None),
             )
         )
         if not reply_exists:
@@ -1050,6 +1232,11 @@ async def create_message(
         },
     )
     await db.commit()
+    reply = await message_reply_map(
+        db,
+        conversation,
+        {message.reply_to_id} if message.reply_to_id else set(),
+    )
     return MessageView(
         id=message.id,
         conversation_id=conversation.id,
@@ -1058,8 +1245,81 @@ async def create_message(
         client_message_id=message.client_message_id,
         text=payload.text,
         reply_to_id=message.reply_to_id,
+        reply_to=reply.get(message.reply_to_id) if message.reply_to_id else None,
         created_at=message.created_at,
+        edited_at=message.edited_at,
         attachments=[attachment_view(attachment) for attachment in message_attachments],
+    )
+
+
+@router.patch("/messages/{message_id}", response_model=MessageView)
+async def update_message(
+    message_id: UUID,
+    payload: MessageUpdateRequest,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_mutation_permissions("chat.use"))],
+) -> MessageView:
+    message = await db.get(Message, message_id)
+    if message is None or message.deleted_at is not None:
+        raise ApiError(404, "message_not_found", "Message not found")
+    conversation, _ = await require_membership(db, message.conversation_id, principal.user.id)
+    if message.sender_id != principal.user.id:
+        raise ApiError(403, "message_edit_denied", "You can only edit your own messages")
+    if not conversation.encryption_key_ciphertext:
+        raise ApiError(500, "conversation_key_missing", "Conversation encryption is unavailable")
+    text = payload.text.strip()
+    if not text:
+        has_attachment = await db.scalar(
+            select(MessageAttachment.id).where(MessageAttachment.message_id == message.id).limit(1)
+        )
+        if has_attachment is None:
+            raise ApiError(422, "message_content_required", "A message cannot be empty")
+    message.ciphertext = encrypt_message(conversation.encryption_key_ciphertext, text)
+    message.edited_at = datetime.now(UTC)
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="chat.message.updated",
+        resource_type="message",
+        resource_id=message.id,
+        topic=f"conversation:{conversation.id}",
+        payload={
+            "message_id": str(message.id),
+            "conversation_id": str(conversation.id),
+        },
+    )
+    await db.commit()
+    attachments = await message_attachment_map(db, [message.id])
+    replies = await message_reply_map(
+        db,
+        conversation,
+        {message.reply_to_id} if message.reply_to_id else set(),
+    )
+    read_by = int(
+        (
+            await db.scalar(
+                select(func.count(MessageReceipt.user_id)).where(
+                    MessageReceipt.message_id == message.id,
+                    MessageReceipt.read_at.is_not(None),
+                )
+            )
+        )
+        or 0
+    )
+    return MessageView(
+        id=message.id,
+        conversation_id=message.conversation_id,
+        sender_id=message.sender_id,
+        sender_name=principal.user.full_name,
+        client_message_id=message.client_message_id,
+        text=text,
+        reply_to_id=message.reply_to_id,
+        reply_to=replies.get(message.reply_to_id) if message.reply_to_id else None,
+        created_at=message.created_at,
+        edited_at=message.edited_at,
+        read_by=read_by,
+        attachments=attachments.get(message.id, []),
     )
 
 
@@ -1076,11 +1336,19 @@ async def delete_message(
     conversation, membership = await require_membership(
         db, message.conversation_id, principal.user.id
     )
-    if message.sender_id != principal.user.id and membership.role not in {"owner", "admin"}:
+    can_moderate = conversation.kind == "group" and membership.role in {"owner", "admin"}
+    if message.sender_id != principal.user.id and not can_moderate:
         raise ApiError(403, "message_delete_denied", "You cannot delete this message")
     if message.deleted_at is None:
         message.deleted_at = datetime.now(UTC)
         message.deleted_by_id = principal.user.id
+        conversation.last_message_at = await db.scalar(
+            select(func.max(Message.created_at)).where(
+                Message.conversation_id == conversation.id,
+                Message.id != message.id,
+                Message.deleted_at.is_(None),
+            )
+        )
         record_change(
             db,
             context=event_context(request, principal),
@@ -1115,6 +1383,7 @@ async def mark_conversation_read(
             .where(
                 Message.conversation_id == conversation.id,
                 Message.sender_id != principal.user.id,
+                Message.deleted_at.is_(None),
                 MessageReceipt.read_at.is_(None),
             )
         )

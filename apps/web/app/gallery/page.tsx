@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageHero } from "@/components/public/page-hero";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicEmptyState } from "@/components/public/public-empty-state";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
@@ -33,7 +34,7 @@ export default async function GalleryPage() {
       <PageHero
         eyebrow="Gallery"
         title="UG UTAG in pictures"
-        intro="A moderated visual record of meetings, leadership engagement, scholarly exchange and association life."
+        intro="A moderated visual record of meetings, leadership engagement, scholarly exchange, and association life."
       />
       <section className="mx-auto grid max-w-[82rem] gap-6 px-5 py-16 sm:px-6 md:grid-cols-2 lg:px-8 lg:py-22">
         {galleries.length === 0 && (
@@ -49,14 +50,14 @@ export default async function GalleryPage() {
             className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_26px_rgb(23_43_69_/_8%)]"
           >
             {gallery.images[0] ? (
-              <div
-                className="relative aspect-[16/9] bg-[#e9eff5] bg-cover bg-center transition duration-500 group-hover:scale-[1.015]"
-                style={{ backgroundImage: `url('${gallery.images[0].url}')` }}
-                role="img"
-                aria-label={gallery.images[0].alt_text ?? gallery.title}
+              <MediaCover
+                assetId={gallery.images[0].id}
+                alt={gallery.images[0].alt_text ?? gallery.title}
+                className="aspect-[16/9] transition duration-500 group-hover:scale-[1.015]"
+                variant="w960"
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0e2b49]/55 to-transparent" />
-              </div>
+              </MediaCover>
             ) : (
               <div className="grid aspect-[16/9] place-items-center bg-[#edf3f8]">
                 <Images className="size-10 text-[#8fa2b6]" />

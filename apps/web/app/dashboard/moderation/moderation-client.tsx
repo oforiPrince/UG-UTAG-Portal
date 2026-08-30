@@ -71,7 +71,9 @@ export function ModerationClient() {
   });
   const visible = useMemo(
     () =>
-      (queue.data ?? []).filter((item) => status === "all" || item.status === status),
+      (queue.data ?? []).filter(
+        (item) => status === "all" || item.status === status,
+      ),
     [queue.data, status],
   );
   const counts = useMemo(
@@ -83,7 +85,13 @@ export function ModerationClient() {
     [queue.data],
   );
   const saveDecision = useMutation({
-    mutationFn: ({ item, value }: { item: ModerationItem; value: ModerationDecision }) =>
+    mutationFn: ({
+      item,
+      value,
+    }: {
+      item: ModerationItem;
+      value: ModerationDecision;
+    }) =>
       api<ModerationItem>(`/api/v1/moderation/${item.kind}/${item.id}`, {
         method: "POST",
         body: {
@@ -105,7 +113,9 @@ export function ModerationClient() {
       setNote("");
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Moderation action failed"),
+      toast.error(
+        error instanceof Error ? error.message : "Moderation action failed",
+      ),
   });
 
   return (
@@ -113,21 +123,29 @@ export function ModerationClient() {
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <p className="eyebrow text-coral">Public content control</p>
-          <h2 className="display-type mt-3 text-4xl sm:text-5xl">Moderation queue</h2>
+          <h2 className="display-type mt-3 text-4xl sm:text-5xl">
+            Moderation queue
+          </h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            Review public-site news, events, documents and galleries before release. Every
-            decision is version-checked and recorded in the audit ledger.
+            Review public-site news, events, documents, and galleries before
+            release. Every decision is version-checked and recorded in the audit
+            ledger.
           </p>
         </div>
         <div className="rounded-2xl border border-line bg-panel px-5 py-3">
           <span className="block text-[.62rem] font-black tracking-wide text-muted uppercase">
             Awaiting review
           </span>
-          <strong className="mt-1 block text-2xl font-black text-coral">{counts.review ?? 0}</strong>
+          <strong className="mt-1 block text-2xl font-black text-coral">
+            {counts.review ?? 0}
+          </strong>
         </div>
       </header>
 
-      <div className="scrollbar-subtle flex gap-2 overflow-x-auto pb-1" role="tablist">
+      <div
+        className="scrollbar-subtle flex gap-2 overflow-x-auto pb-1"
+        role="tablist"
+      >
         {filters.map((filter) => (
           <button
             key={filter.value}
@@ -150,15 +168,23 @@ export function ModerationClient() {
       {queue.isLoading ? (
         <div className="grid gap-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-36 animate-pulse rounded-2xl bg-ink/5" />
+            <div
+              key={index}
+              className="h-36 animate-pulse rounded-2xl bg-ink/5"
+            />
           ))}
         </div>
       ) : queue.error ? (
         <Card>
           <CardContent className="py-16 text-center">
             <FileWarning className="mx-auto size-8 text-coral" />
-            <p className="mt-4 font-black">The moderation queue could not be loaded.</p>
-            <button className="mt-3 text-sm font-bold text-coral" onClick={() => queue.refetch()}>
+            <p className="mt-4 font-black">
+              The moderation queue could not be loaded.
+            </p>
+            <button
+              className="mt-3 text-sm font-bold text-coral"
+              onClick={() => queue.refetch()}
+            >
               Try again
             </button>
           </CardContent>
@@ -166,9 +192,11 @@ export function ModerationClient() {
       ) : visible.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <CheckCircle2 className="mx-auto size-8 text-emerald-600" />
+            <CheckCircle2 className="mx-auto size-8 text-emerald-600 dark:text-emerald-300" />
             <p className="mt-4 font-black">Nothing in {humanize(status)}.</p>
-            <p className="mt-2 text-xs text-muted">New submissions will appear here automatically.</p>
+            <p className="mt-2 text-xs text-muted">
+              New submissions will appear here automatically.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -188,7 +216,9 @@ export function ModerationClient() {
                       </span>
                       <span className="inline-flex items-center gap-1 text-[.62rem] text-muted">
                         <Clock3 className="size-3" />
-                        {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(item.updated_at), {
+                          addSuffix: true,
+                        })}
                       </span>
                     </div>
                     <h3 className="mt-3 text-lg font-black">{item.title}</h3>
@@ -198,7 +228,7 @@ export function ModerationClient() {
                   </div>
                   <div className="flex flex-wrap gap-2 lg:justify-end">
                     <Button asChild size="sm" variant="outline">
-                      <Link href={preview} target="_blank" rel="noreferrer">
+                      <Link href={preview}>
                         <Eye className="size-4" /> Preview
                       </Link>
                     </Button>
@@ -234,7 +264,7 @@ export function ModerationClient() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-red-500/30 text-red-700"
+                        className="border-red-500/30 text-red-700 dark:text-red-300"
                         onClick={() => {
                           setNote("");
                           setDecision({ item, value: "withdraw" });
@@ -285,7 +315,8 @@ export function ModerationClient() {
             </div>
             <p className="mt-3 text-sm text-muted">{decision.item.title}</p>
             <label className="mt-6 grid gap-2 text-xs font-bold">
-              Decision note {decision.value === "approve" ? "(optional)" : "(required)"}
+              Decision note{" "}
+              {decision.value === "approve" ? "(optional)" : "(required)"}
               <textarea
                 autoFocus
                 value={note}
@@ -308,10 +339,15 @@ export function ModerationClient() {
                   (decision.value !== "approve" && note.trim().length === 0)
                 }
                 onClick={() =>
-                  saveDecision.mutate({ item: decision.item, value: decision.value })
+                  saveDecision.mutate({
+                    item: decision.item,
+                    value: decision.value,
+                  })
                 }
               >
-                {saveDecision.isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+                {saveDecision.isPending ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : null}
                 Confirm decision
               </Button>
             </div>

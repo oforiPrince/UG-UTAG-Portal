@@ -16,11 +16,17 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Event, EventAttachment, EventRegistration, MediaAsset
+from utag_api.models import Event, EventAttachment, EventRegistration, MediaAsset, Notification
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import EventCreate, EventView
 from utag_api.security import decrypt_text, encrypt_text
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.query import paginate, unique_slug
@@ -374,6 +380,53 @@ async def archive_event(
     )
     await db.commit()
     return MessageResponse(message="Event archived")
+
+
+@router.delete("/{event_id}/permanent", response_model=MessageResponse)
+async def delete_event_permanently(
+    event_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "events.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(Event, event_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "event_not_found", "Event not found")
+    registrations = await count_rows(
+        db,
+        EventRegistration,
+        EventRegistration.event_id == item.id,
+    )
+    notifications = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "event",
+        Notification.resource_id == item.id,
+    )
+    block_delete_if_referenced(
+        "event",
+        [
+            DeleteBlocker("registration record", registrations),
+            DeleteBlocker("member notification", notifications),
+        ],
+        guidance=("Events with participant or communication history must be archived instead"),
+    )
+    await db.execute(delete(EventAttachment).where(EventAttachment.event_id == item.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="event.deleted",
+        resource_type="event",
+        resource_id=item.id,
+        topic="events",
+        payload={"event_id": str(item.id), "slug": item.slug},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "event")
+    return MessageResponse(message="Event deleted permanently")
 
 
 @router.post("/{event_id}/registration", response_model=MessageResponse)

@@ -23,6 +23,7 @@ from utag_api.schemas.domain import (
     SiteSettingUpdate,
 )
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import commit_permanent_delete
 from utag_api.services.events import record_change
 from utag_api.services.query import paginate
 
@@ -181,6 +182,38 @@ async def archive_carousel_slide(
         await db.commit()
         return MessageResponse(message="Carousel slide archived")
     raise ApiError(404, "carousel_slide_not_found", "Carousel slide not found")
+
+
+@router.delete("/carousel/{slide_id}/permanent", response_model=MessageResponse)
+async def delete_carousel_slide_permanently(
+    slide_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "settings.manage")),
+    ],
+) -> MessageResponse:
+    setting = await db.scalar(
+        select(SiteSetting).where(SiteSetting.key == "site.carousel").with_for_update()
+    )
+    rows = carousel_rows(setting)
+    retained = [row for row in rows if str(row.get("id")) != str(slide_id)]
+    if len(retained) == len(rows):
+        raise ApiError(404, "carousel_slide_not_found", "Carousel slide not found")
+    assert setting is not None
+    setting.value = {**setting.value, "slides": retained}
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="carousel.slide.deleted",
+        resource_type="carousel_slide",
+        resource_id=slide_id,
+        topic="settings",
+        payload={"slide_id": str(slide_id)},
+    )
+    await commit_permanent_delete(db, "homepage carousel slide")
+    return MessageResponse(message="Carousel slide deleted permanently")
 
 
 @router.get("/settings")

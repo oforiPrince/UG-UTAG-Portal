@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from utag_api.database import new_id
-from utag_api.models import AdAdvertiser, AdCampaign, AdOrder, AdPlan, AdSlot, MediaAsset, User
+from utag_api.models import AdCampaign, AdOrder, AdPlan, AdSlot, MediaAsset, User
 from utag_api.seed_data import seed_portal_defaults
 
 

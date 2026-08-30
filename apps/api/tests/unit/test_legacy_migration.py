@@ -95,7 +95,10 @@ def test_symlinked_media_is_rejected(tmp_path) -> None:  # type: ignore[no-untyp
 def test_legacy_roles_map_without_privilege_escalation() -> None:
     assert legacy_group_role_key({"id": 1, "name": "Secretary"}) == "secretary"
     assert legacy_group_role_key({"id": 2, "name": "Admin"}) == "administrator"
-    assert legacy_group_role_key({"id": 7, "name": "Special Committee"}) == (
-        "legacy-7-special-committee"
+    assert legacy_group_role_key({"id": 7, "name": "Special Committee"}) is None
+    assert (
+        legacy_group_role_key({"id": 174, "name": "Department: Dept Of History"}) is None
     )
     assert "settings.manage" not in ROLE_GRANTS["secretary"]
+    assert "records.delete" not in ROLE_GRANTS["secretary"]
+    assert "records.delete" in ROLE_GRANTS["administrator"]

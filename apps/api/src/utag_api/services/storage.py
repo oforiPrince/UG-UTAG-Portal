@@ -46,6 +46,11 @@ def s3_encryption_args() -> dict[str, str]:
     settings = get_settings()
     if not settings.s3_server_side_encryption:
         return {}
+    # Custom S3-compatible endpoints (for example MinIO) often advertise AES256
+    # in config for production gates but do not implement AWS SSE-KMS/SSE-S3.
+    endpoint = (settings.s3_endpoint_url or "").casefold()
+    if endpoint and "amazonaws.com" not in endpoint:
+        return {}
     values: dict[str, str] = {"ServerSideEncryption": settings.s3_server_side_encryption}
     if settings.s3_server_side_encryption == "aws:kms" and settings.s3_kms_key_id:
         values["SSEKMSKeyId"] = settings.s3_kms_key_id
@@ -114,3 +119,35 @@ def presign_get(storage_key: str, filename: str) -> str:
             HttpMethod="GET",
         )
     )
+
+
+def delete_storage_objects(storage_keys: list[str]) -> None:
+    keys = list(dict.fromkeys(key for key in storage_keys if key))
+    if not keys:
+        return
+    try:
+        response = s3_client().delete_objects(
+            Bucket=get_settings().media_bucket,
+            Delete={
+                "Objects": [{"Key": key} for key in keys],
+                "Quiet": True,
+            },
+        )
+    except Exception as exc:
+        raise ApiError(
+            502,
+            "media_storage_delete_failed",
+            "The stored file could not be removed; cleanup will be retried",
+        ) from exc
+    errors = response.get("Errors", []) if isinstance(response, dict) else []
+    if errors:
+        raise ApiError(
+            502,
+            "media_storage_delete_failed",
+            "The stored file could not be removed; cleanup will be retried",
+            details={
+                "failed_keys": [
+                    str(error.get("Key", "unknown")) for error in errors if isinstance(error, dict)
+                ]
+            },
+        )

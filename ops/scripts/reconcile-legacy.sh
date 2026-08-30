@@ -9,6 +9,8 @@ fi
 batch_id="${MIGRATION_BATCH_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 evidence_directory="${MIGRATION_EVIDENCE_DIRECTORY:-migration-evidence/${batch_id}}"
 mkdir -p "${evidence_directory}"
+# The API image runs as a non-root user; evidence must be writable inside the mount.
+chmod -R a+rwX "${evidence_directory}" || true
 evidence_directory="$(cd "${evidence_directory}" && pwd)"
 
 run_migration() {

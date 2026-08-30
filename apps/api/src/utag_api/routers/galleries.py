@@ -14,11 +14,21 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Gallery, GalleryItem, MediaAsset
+from utag_api.models import BackgroundJob, Gallery, GalleryItem, GoogleDriveConnection, MediaAsset
 from utag_api.schemas.common import MessageResponse
-from utag_api.schemas.domain import GalleryCreate
+from utag_api.schemas.domain import (
+    GalleryCreate,
+    GoogleDriveImportRequest,
+    GoogleDriveImportResponse,
+)
+from utag_api.services import google_drive as drive
 from utag_api.services.content import sanitize_html
-from utag_api.services.events import record_change
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+)
+from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.query import unique_slug
 
@@ -250,3 +260,108 @@ async def archive_gallery(
     )
     await db.commit()
     return MessageResponse(message="Gallery archived")
+
+
+@router.delete("/{gallery_id}/permanent", response_model=MessageResponse)
+async def delete_gallery_permanently(
+    gallery_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    gallery = await db.get(Gallery, gallery_id, with_for_update=True)
+    if gallery is None:
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
+    imports = list(
+        (
+            await db.scalars(
+                select(BackgroundJob).where(
+                    BackgroundJob.kind == "gallery.google_drive_import",
+                    BackgroundJob.status.in_({"queued", "running"}),
+                )
+            )
+        ).all()
+    )
+    pending_imports = sum(
+        1 for job in imports if str(job.input_json.get("gallery_id")) == str(gallery.id)
+    )
+    block_delete_if_referenced(
+        "gallery",
+        [DeleteBlocker("active Google Drive import", pending_imports)],
+        guidance="Wait for the import to finish before deleting this gallery",
+    )
+    # Gallery items are links owned by the gallery; shared media assets are retained.
+    await db.execute(delete(GalleryItem).where(GalleryItem.gallery_id == gallery.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="gallery.deleted",
+        resource_type="gallery",
+        resource_id=gallery.id,
+        topic="galleries",
+        payload={"gallery_id": str(gallery.id), "slug": gallery.slug},
+    )
+    await db.delete(gallery)
+    await commit_permanent_delete(db, "gallery")
+    return MessageResponse(message="Gallery deleted permanently")
+
+
+@router.post("/{gallery_id}/import/google-drive", response_model=GoogleDriveImportResponse)
+async def import_gallery_from_google_drive(
+    gallery_id: UUID,
+    payload: GoogleDriveImportRequest,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_mutation_permissions("content.edit"))],
+) -> GoogleDriveImportResponse:
+    drive.require_google_drive_configured()
+    gallery = await db.get(Gallery, gallery_id)
+    if gallery is None:
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
+    connection = await db.scalar(
+        select(GoogleDriveConnection).where(GoogleDriveConnection.user_id == principal.user.id)
+    )
+    if connection is None:
+        raise ApiError(
+            409,
+            "google_drive_not_connected",
+            "Connect Google Drive before importing a folder",
+        )
+    folder_id = drive.parse_drive_folder_id(payload.folder_url)
+    job = BackgroundJob(
+        id=new_id(),
+        owner_id=principal.user.id,
+        kind="gallery.google_drive_import",
+        status="queued",
+        progress=0,
+        input_json={
+            "gallery_id": str(gallery.id),
+            "folder_id": folder_id,
+            "folder_url": payload.folder_url.strip(),
+            "connection_id": str(connection.id),
+        },
+        result_json={},
+    )
+    db.add(job)
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="gallery.google_drive_import.queued",
+        resource_type="gallery",
+        resource_id=gallery.id,
+        topic="galleries",
+        payload={"gallery_id": str(gallery.id), "job_id": str(job.id), "folder_id": folder_id},
+    )
+    enqueue_task(
+        db,
+        task_name="utag.imports.google_drive_folder",
+        aggregate_type="background_job",
+        aggregate_id=job.id,
+        args=[str(job.id)],
+        queue="imports",
+    )
+    await db.commit()
+    return GoogleDriveImportResponse(job_id=job.id)

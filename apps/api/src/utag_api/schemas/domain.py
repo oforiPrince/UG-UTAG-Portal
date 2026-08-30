@@ -31,6 +31,7 @@ class MemberCreate(MemberBase):
 
 
 class MemberUpdate(ApiModel):
+    email: EmailStr | None = Field(default=None, max_length=320)
     title: str | None = Field(default=None, max_length=30)
     other_name: str | None = Field(default=None, min_length=1, max_length=120)
     surname: str | None = Field(default=None, min_length=1, max_length=120)
@@ -64,6 +65,8 @@ class PermissionOption(ApiModel):
 
 
 class MemberView(MemberBase):
+    # Stored accounts can include bootstrap/legacy addresses that EmailStr rejects.
+    email: str = Field(min_length=3, max_length=255)
     id: UUID
     full_name: str
     status: str
@@ -157,6 +160,14 @@ class PublicExecutiveView(ExecutiveView):
     school_name: str | None = None
     college_name: str | None = None
     department_name: str | None = None
+
+    @model_validator(mode="after")
+    def hide_withheld_contact(self) -> "PublicExecutiveView":
+        if not self.show_email:
+            self.email = None
+        if not self.show_phone:
+            self.phone_number = None
+        return self
 
 
 class MediaReference(ApiModel):
@@ -530,6 +541,10 @@ class ConversationUpdate(ApiModel):
     title: str = Field(min_length=2, max_length=180)
 
 
+class ConversationPreferenceUpdate(ApiModel):
+    is_muted: bool
+
+
 class ConversationMembersUpdate(ApiModel):
     member_ids: list[UUID] = Field(min_length=1, max_length=250)
 
@@ -550,6 +565,12 @@ class ConversationView(ApiModel):
     last_message_at: datetime | None = None
     member_count: int
     unread_count: int = 0
+    display_title: str = "Conversation"
+    direct_member_id: UUID | None = None
+    current_user_role: str = "member"
+    is_muted: bool = False
+    last_message_preview: str | None = None
+    last_message_sender: str | None = None
     created_at: datetime
 
 
@@ -576,6 +597,13 @@ class MessageAttachmentView(ApiModel):
     thumbnail_url: str | None = None
 
 
+class MessageReplyView(ApiModel):
+    id: UUID
+    sender_id: UUID
+    sender_name: str
+    text: str
+
+
 class MessageView(ApiModel):
     id: UUID
     conversation_id: UUID
@@ -584,9 +612,15 @@ class MessageView(ApiModel):
     client_message_id: str
     text: str
     reply_to_id: UUID | None
+    reply_to: MessageReplyView | None = None
     created_at: datetime
+    edited_at: datetime | None = None
     read_by: int = 0
     attachments: list[MessageAttachmentView] = Field(default_factory=list)
+
+
+class MessageUpdateRequest(ApiModel):
+    text: str = Field(default="", max_length=20_000)
 
 
 class ConversationInviteCreate(ApiModel):
@@ -879,7 +913,11 @@ class GalleryCreate(ApiModel):
 
     @model_validator(mode="after")
     def require_images_or_external_album(self) -> "GalleryCreate":
-        if not self.media_asset_ids and self.external_album_url is None:
+        if (
+            self.status != "draft"
+            and not self.media_asset_ids
+            and self.external_album_url is None
+        ):
             raise ValueError(
                 "Add at least one gallery image or an external album link "
                 "(Google Drive, OneDrive, or similar)"
@@ -889,6 +927,33 @@ class GalleryCreate(ApiModel):
         if blocked - selected:
             raise ValueError("blocked_download_media_ids must only include selected gallery images")
         return self
+
+
+class GoogleDriveImportRequest(ApiModel):
+    folder_url: str = Field(min_length=10, max_length=2000)
+
+
+class GoogleDriveImportResponse(ApiModel):
+    job_id: UUID
+
+
+class GoogleDriveStatus(ApiModel):
+    configured: bool
+    connected: bool
+    email: str | None = None
+
+
+class BackgroundJobView(ApiModel):
+    id: UUID
+    kind: str
+    status: str
+    progress: int
+    input_json: dict[str, object]
+    result_json: dict[str, object]
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ContactRequest(ApiModel):

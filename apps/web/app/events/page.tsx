@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { PageHero } from "@/components/public/page-hero";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicEmptyState } from "@/components/public/public-empty-state";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
@@ -37,7 +38,7 @@ export default async function EventsPage() {
       <PageHero
         eyebrow="Events"
         title="Meetings and activities that bring us together"
-        intro="General meetings, forums, workshops and community activities for members and invited guests."
+        intro="General meetings, forums, workshops, and community activities for members and invited guests."
       />
       <section className="mx-auto max-w-[82rem] px-5 py-16 sm:px-6 lg:px-8 lg:py-22">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -45,7 +46,7 @@ export default async function EventsPage() {
             {data.items.length === 0 && (
               <PublicEmptyState
                 title="No upcoming public events"
-                description="Confirmed general meetings, forums and workshops will be listed here."
+                description="Confirmed general meetings, forums, and workshops will be listed here."
               />
             )}
             {data.items.map((event, index) => (
@@ -54,15 +55,12 @@ export default async function EventsPage() {
                 href={`/events/${event.slug}`}
                 className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_26px_rgb(23_43_69_/_8%)]"
               >
-                <div
-                  className="relative h-52 bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url('${
-                      event.featured_media_id
-                        ? `/api/v1/public/media/${event.featured_media_id}`
-                        : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                    }')`,
-                  }}
+                <MediaCover
+                  assetId={event.featured_media_id}
+                  fallbackSrc={`/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                  alt=""
+                  className="h-52"
+                  variant="w480"
                 >
                   <div className="absolute inset-0 bg-[#102a48]/22" />
                   <time
@@ -76,7 +74,7 @@ export default async function EventsPage() {
                       {format(new Date(event.start_date), "MMM yyyy")}
                     </span>
                   </time>
-                </div>
+                </MediaCover>
                 <div className="p-6">
                   <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
                     {event.event_type}

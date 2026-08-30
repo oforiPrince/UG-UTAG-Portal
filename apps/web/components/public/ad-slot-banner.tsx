@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { publicMediaUrl } from "@/lib/public-media";
+
 type PublicAdCampaign = {
   id: string;
   title: string;
@@ -159,7 +161,10 @@ export function AdSlotBanner({
   const creativeNode = (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/api/v1/public/media/${creative.campaign.media_asset_id}`}
+      src={
+        publicMediaUrl(creative.campaign.media_asset_id, "w960") ??
+        `/api/v1/public/media/${creative.campaign.media_asset_id}`
+      }
       alt={creative.campaign.title}
       width={creative.width}
       height={creative.height}
