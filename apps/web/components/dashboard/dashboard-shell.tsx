@@ -292,11 +292,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               }
               aria-label="Toggle theme"
             >
-              {resolvedTheme === "dark" ? (
-                <Sun className="size-4" />
-              ) : (
-                <Moon className="size-4" />
-              )}
+              <Sun className="hidden size-4 dark:block" />
+              <Moon className="size-4 dark:hidden" />
             </Button>
             <NotificationBell enabled={Boolean(user.data)} />
             <Link
