@@ -203,6 +203,10 @@ for protocol, path_arg, allowed_arg in (
         if not raw_port.isdigit():
             continue
         address = address.strip("[]")
+        # Linux may suffix scoped listener addresses with an interface name
+        # (for example, 127.0.0.53%lo). ip_address() does not accept that
+        # suffix for IPv4, so remove it before deciding whether it is loopback.
+        address = address.rsplit("%", 1)[0]
         try:
             is_loopback = ip_address(address).is_loopback
         except ValueError:
