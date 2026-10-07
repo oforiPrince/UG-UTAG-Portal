@@ -61,7 +61,12 @@ async function installPollMocks(page: Page, organizer = false, liveResults = fal
         ws.send(JSON.stringify({ type: "subscriptions.changed", resync_required: true }));
       }
     });
-    ws.send(JSON.stringify({ type: "connection.ready", resync_required: true }));
+    // Let Chromium attach the page's message listener before the mocked server
+    // sends its opening handshake. Sending synchronously here can race the
+    // listener installation on slower CI workers.
+    setTimeout(() => {
+      ws.send(JSON.stringify({ type: "connection.ready", resync_required: true }));
+    }, 50);
   });
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
