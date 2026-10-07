@@ -94,6 +94,7 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     reply_to_id: Mapped[UUID | None] = mapped_column(ForeignKey("messages.id", ondelete="SET NULL"))
     ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
     key_version: Mapped[str] = mapped_column(String(80), default="v1")
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_by_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 

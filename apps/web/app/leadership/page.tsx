@@ -72,7 +72,7 @@ export default async function LeadershipPage() {
           <div className="mt-4 h-1 w-14 bg-gold" />
           <p className="mt-5 text-sm leading-7 text-muted sm:text-base">
             The principal officers responsible for the branch&apos;s strategic
-            direction, administration, financial stewardship and member
+            direction, administration, financial stewardship, and member
             representation.
           </p>
         </div>

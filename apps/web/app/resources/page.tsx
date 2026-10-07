@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { ArrowDownToLine, Eye, FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -23,7 +23,7 @@ export default async function ResourcesPage() {
       <PageHero
         eyebrow="Resources"
         title="Public documents and association resources"
-        intro="Constitutional, policy and public-interest material approved for public access by the University of Ghana Branch of UTAG."
+        intro="Constitutional, policy, and public-interest material approved for public access by the University of Ghana Branch of UTAG."
       />
       <section className="mx-auto w-full min-w-0 max-w-[82rem] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-22">
         {documents.length === 0 ? (
@@ -39,14 +39,9 @@ export default async function ResourcesPage() {
                 key={document.id}
                 className="flex min-w-0 flex-col overflow-hidden rounded-md border border-line bg-white p-4 shadow-[0_8px_26px_rgb(23_43_69_/_7%)] sm:p-6 lg:p-7"
               >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#edf3f8] text-coral sm:size-12">
-                    <FileText className="size-5" />
-                  </span>
-                  <span className="min-w-0 max-w-[60%] truncate rounded-full bg-[#f5f8fb] px-2.5 py-1.5 text-[.62rem] font-extrabold text-muted uppercase sm:px-3">
-                    {document.public_id}
-                  </span>
-                </div>
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#edf3f8] text-coral sm:size-12">
+                  <FileText className="size-5" />
+                </span>
                 <h2 className="mt-5 text-lg font-extrabold leading-snug break-words text-[#172f4d] sm:mt-6 sm:text-xl">
                   {document.title}
                 </h2>
@@ -76,27 +71,35 @@ export default async function ResourcesPage() {
                   >
                     <Link href={`/resources/${document.id}`}>
                       <Eye className="size-4 shrink-0" />
-                      <span className="truncate">Preview full document</span>
+                      <span className="truncate">Read online</span>
                     </Link>
                   </Button>
-                  {document.files.map((file) => (
-                    <Button
-                      key={file.media_asset_id}
-                      asChild
-                      className="flex w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden rounded-md px-3 sm:gap-3 sm:px-5"
-                      variant="outline"
-                    >
-                      <a href={file.download_url} download={file.filename}>
-                        <span className="min-w-0 flex-1 truncate text-left">
-                          {file.filename}
-                        </span>
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:gap-2">
-                          {fileSize(file.byte_size)}
-                          <ArrowDownToLine className="size-4" />
-                        </span>
-                      </a>
-                    </Button>
-                  ))}
+                  {document.files.map((file) => {
+                    const fileUrl = file.content_url ?? file.download_url;
+                    return (
+                      <Button
+                        key={file.media_asset_id}
+                        asChild
+                        className="flex w-full min-w-0 max-w-full justify-between gap-2 overflow-hidden rounded-md px-3 sm:gap-3 sm:px-5"
+                        variant="outline"
+                      >
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Read ${file.filename} in your browser`}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-left">
+                            {file.filename}
+                          </span>
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs sm:gap-2">
+                            {fileSize(file.byte_size)}
+                            <Eye className="size-4" />
+                          </span>
+                        </a>
+                      </Button>
+                    );
+                  })}
                 </div>
               </article>
             ))}

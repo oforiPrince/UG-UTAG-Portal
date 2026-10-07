@@ -14,8 +14,14 @@ import {
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
-import type { PublicExecutiveProfile } from "@/lib/leadership";
-import { cn, humanize, initials } from "@/lib/utils";
+import {
+  formatExecutivePosition,
+  publishedExecutiveEmail,
+  publishedExecutivePhone,
+  type PublicExecutiveProfile,
+} from "@/lib/leadership";
+import { publicMediaUrl } from "@/lib/public-media";
+import { cn, formatPersonName, formatRankForName, humanize, initials } from "@/lib/utils";
 
 type ExecutiveProfileButtonProps = {
   profile: PublicExecutiveProfile;
@@ -67,6 +73,8 @@ function ExecutiveProfileModal({
     profile.school_name,
     profile.college_name,
   ].filter((value): value is string => Boolean(value));
+  const publicEmail = publishedExecutiveEmail(profile);
+  const publicPhone = publishedExecutivePhone(profile);
   const socialLinks = Object.entries(profile.social_links)
     .map(([name, value]) => ({
       name: SOCIAL_LINK_LABELS[name.toLowerCase()] ?? humanize(name),
@@ -105,7 +113,7 @@ function ExecutiveProfileModal({
       }}
     >
       <div className="grid max-h-[calc(100dvh-1.5rem)] overflow-y-auto md:grid-cols-[19rem_1fr] md:overflow-hidden">
-        <aside className="relative overflow-hidden bg-[#172f4d] px-7 py-9 text-white md:flex md:min-h-[36rem] md:flex-col md:px-8 md:py-10">
+        <aside className="relative min-w-0 overflow-hidden bg-[#172f4d] px-7 py-9 text-white md:flex md:min-h-[36rem] md:flex-col md:px-8 md:py-10">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-gold" />
           <div className="absolute -top-20 -right-20 size-60 rounded-full border border-white/8" />
           <div className="absolute -top-8 -right-8 size-36 rounded-full border border-white/8" />
@@ -115,7 +123,7 @@ function ExecutiveProfileModal({
                 alt={profile.full_name}
                 className="size-28 rounded-full border-4 border-white/18 object-cover shadow-xl md:size-36"
                 height={144}
-                src={`/api/v1/public/media/${profile.profile_media_id}`}
+                src={publicMediaUrl(profile.profile_media_id, "w480")!}
                 unoptimized
                 width={144}
               />
@@ -126,7 +134,7 @@ function ExecutiveProfileModal({
             )}
             <p className="mt-7 text-[.68rem] font-extrabold tracking-[.14em] text-gold uppercase">
               {profile.is_acting ? "Acting " : ""}
-              {profile.position}
+              {formatExecutivePosition(profile.position)}
             </p>
             {profile.portfolio ? (
               <p className="mt-3 text-sm leading-6 text-white/72">
@@ -135,27 +143,38 @@ function ExecutiveProfileModal({
             ) : null}
           </div>
 
-          <div className="relative mt-8 space-y-3 border-t border-white/12 pt-6 md:mt-auto">
-            <a
-              className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-white/82 transition hover:bg-white/8 hover:text-white"
-              href={`mailto:${profile.email}`}
-            >
-              <Mail aria-hidden="true" className="size-4 shrink-0 text-gold" />
-              <span className="min-w-0 break-all">{profile.email}</span>
-            </a>
-            {profile.phone_number ? (
-              <a
-                className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-white/82 transition hover:bg-white/8 hover:text-white"
-                href={`tel:${profile.phone_number.replace(/[^\d+]/g, "")}`}
-              >
-                <Phone
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-gold"
-                />
-                {profile.phone_number}
-              </a>
-            ) : null}
-          </div>
+          {publicEmail || publicPhone ? (
+            <div className="relative mt-8 min-w-0 space-y-3 border-t border-white/12 pt-6 md:mt-auto">
+              {publicEmail ? (
+                <a
+                  className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-2 text-sm text-white transition hover:bg-white/8 hover:text-white visited:text-white"
+                  href={`mailto:${publicEmail}`}
+                >
+                  <Mail
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-gold"
+                  />
+                  <span className="min-w-0 break-all text-white">
+                    {publicEmail}
+                  </span>
+                </a>
+              ) : null}
+              {publicPhone ? (
+                <a
+                  className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-2 text-sm text-white transition hover:bg-white/8 hover:text-white visited:text-white"
+                  href={`tel:${publicPhone.replace(/[^\d+]/g, "")}`}
+                >
+                  <Phone
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-gold"
+                  />
+                  <span className="min-w-0 break-all text-white">
+                    {publicPhone}
+                  </span>
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </aside>
 
         <div className="relative p-6 sm:p-8 md:max-h-[calc(100dvh-1.5rem)] md:overflow-y-auto md:p-10">
@@ -177,9 +196,11 @@ function ExecutiveProfileModal({
               className="display-type mt-2 text-3xl text-[#172f4d] sm:text-4xl"
               id={titleId}
             >
-              {profile.full_name}
+              {formatPersonName(profile.full_name)}
             </h2>
-            <p className="mt-2 font-bold text-coral">{profile.position}</p>
+            <p className="mt-2 font-bold text-coral">
+              {formatExecutivePosition(profile.position)}
+            </p>
             {profile.summary ? (
               <p
                 className="mt-5 max-w-2xl text-sm leading-7 text-muted"
@@ -234,7 +255,9 @@ function ExecutiveProfileModal({
                   Academic rank
                 </dt>
                 <dd className="mt-1 text-sm font-bold text-[#172f4d]">
-                  {profile.academic_rank ?? "Not provided"}
+                  {profile.academic_rank
+                    ? formatRankForName(profile.full_name, profile.academic_rank)
+                    : "Not provided"}
                 </dd>
               </div>
               <div>

@@ -98,3 +98,15 @@ def test_deliver_contact_message_marks_job_failed_when_delivery_fails(
     assert job.error_code == "contact_delivery_failed"
     assert "mailbox unavailable" in (job.error_message or "")
     asyncio.run(engine.dispose())
+
+
+def test_delete_media_storage_delegates_all_storage_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    deleted: list[str] = []
+    monkeypatch.setattr(tasks, "delete_storage_objects", deleted.extend)
+
+    removed = tasks.delete_media_storage(["media/original.png", "media/thumb.png"])
+
+    assert removed == 2
+    assert deleted == ["media/original.png", "media/thumb.png"]

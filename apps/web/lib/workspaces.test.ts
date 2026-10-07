@@ -14,7 +14,7 @@ function configuredFields() {
       [
         config.create,
         config.update,
-        config.archive,
+        config.delete,
         ...(config.actions ?? []),
       ].flatMap((mutation) =>
         (mutation?.fields ?? []).map((field) => ({ workspace, field })),
@@ -23,16 +23,64 @@ function configuredFields() {
 }
 
 describe("workspace content editors", () => {
+  it("reserves every permanent-delete action for administrators", () => {
+    const deletePermissions = Object.entries(workspaces)
+      .filter(([, config]) => Boolean(config.delete))
+      .map(([workspace, config]) => ({
+        workspace,
+        permission: config.delete?.permission,
+      }));
+
+    expect(deletePermissions.length).toBeGreaterThan(0);
+    expect(deletePermissions).toEqual(
+      deletePermissions.map(({ workspace }) => ({
+        workspace,
+        permission: "records.delete",
+      })),
+    );
+  });
+
   it("opens a complete protected preview for every document", () => {
     const preview = workspaces.documents.actions?.find(
       (action) => action.label === "Preview",
     );
     expect(preview).toMatchObject({
       permission: "documents.view",
-      open: true,
+      openMode: "panel",
+      previewKind: "document",
     });
     expect(preview?.href?.({ id: "document-1" })).toBe(
       "/dashboard/documents/document-1/preview",
+    );
+  });
+
+  it("attaches curated detail schemas for every workspace", () => {
+    for (const [key, config] of Object.entries(workspaces)) {
+      expect(config.detail, `${key} missing detail`).toBeTruthy();
+      expect(config.detail?.noun).toBeTruthy();
+      expect(config.detail?.titleKey).toBeTruthy();
+      expect(config.detail?.fields.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("opens news preview inside the details panel", () => {
+    const preview = workspaces.news.actions?.find(
+      (action) => action.label === "Preview",
+    );
+    expect(preview).toMatchObject({
+      openMode: "panel",
+      previewKind: "news",
+    });
+  });
+
+  it("uses dedicated routes for gallery details and editing", () => {
+    const gallery = { id: "gallery-1" };
+
+    expect(workspaces.galleries.detailHref?.(gallery)).toBe(
+      "/dashboard/galleries/gallery-1",
+    );
+    expect(workspaces.galleries.updateHref?.(gallery)).toBe(
+      "/dashboard/galleries/gallery-1/edit",
     );
   });
 
@@ -170,6 +218,12 @@ describe("workspace content editors", () => {
   });
 
   it("keeps carousel create and update forms aligned", () => {
+    expect(workspaces.carousel.layout).toBe("grid");
+    expect(workspaces.media.layout).toBe("grid");
+    expect(workspaces.media.gridAspect).toBe("square");
+    expect(workspaces.media.create?.clientOnly).toBe(true);
+    expect(workspaces.media.create?.label).toBe("Upload assets");
+    expect(workspaces.galleries.layout).toBe("grid");
     for (const workspace of ["carousel", "galleries"]) {
       for (const mutation of [
         workspaces[workspace].create,
@@ -248,7 +302,9 @@ describe("workspace content editors", () => {
     expect(planSlot?.type).toBe("select");
     expect(
       workspaces["advert-plans"].columns.some(
-        (column) => column.key === "placement_name",
+        (column) =>
+          column.key === "placement_name" ||
+          column.subtitleKey === "placement_name",
       ),
     ).toBe(true);
 
@@ -258,11 +314,14 @@ describe("workspace content editors", () => {
     expect(location?.required).toBe(true);
     expect(
       workspaces["advert-slots"].columns.some(
-        (column) => column.key === "location",
+        (column) =>
+          column.key === "location" || column.subtitleKey === "location",
       ),
     ).toBe(true);
     expect(
-      workspaces["advert-slots"].columns.some((column) => column.key === "size"),
+      workspaces["advert-slots"].columns.some(
+        (column) => column.key === "size",
+      ),
     ).toBe(true);
 
     const destination = workspaces.adverts.create?.fields?.find(
@@ -275,7 +334,10 @@ describe("workspace content editors", () => {
     );
     expect(houseAd?.type).toBe("checkbox");
     expect(
-      workspaces.adverts.columns.some((column) => column.key === "fulfilment"),
+      workspaces.adverts.columns.some(
+        (column) =>
+          column.key === "fulfilment" || column.subtitleKey === "fulfilment",
+      ),
     ).toBe(true);
   });
 });

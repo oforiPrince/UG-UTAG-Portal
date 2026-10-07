@@ -35,11 +35,14 @@ from utag_api.routers.documents import router as documents_router
 from utag_api.routers.events import router as events_router
 from utag_api.routers.executives import router as executives_router
 from utag_api.routers.galleries import router as galleries_router
+from utag_api.routers.integrations_google_drive import router as google_drive_router
+from utag_api.routers.jobs import router as jobs_router
 from utag_api.routers.media import router as media_router
 from utag_api.routers.members import router as members_router
 from utag_api.routers.moderation import router as moderation_router
 from utag_api.routers.notifications import router as notifications_router
 from utag_api.routers.organization import router as organization_router
+from utag_api.routers.polls import router as polls_router
 from utag_api.routers.public import router as public_router
 from utag_api.security import constant_time_equal
 from utag_api.services.storage import s3_client
@@ -92,7 +95,12 @@ async def request_context(request: Request, call_next):  # type: ignore[no-untyp
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["X-Frame-Options"] = "DENY"
+    # Public media must be SAMEORIGIN so same-site article/event iframes can
+    # render PDFs inline. Everything else stays DENY.
+    media_prefix = f"{settings.api_prefix}/public/media/"
+    response.headers["X-Frame-Options"] = (
+        "SAMEORIGIN" if request.url.path.startswith(media_prefix) else "DENY"
+    )
     if request.url.path.startswith(f"{settings.api_prefix}/") and not request.url.path.startswith(
         f"{settings.api_prefix}/public/"
     ):
@@ -185,6 +193,7 @@ for api_router in (
     members_router,
     executives_router,
     organization_router,
+    polls_router,
     content_router,
     events_router,
     documents_router,
@@ -193,6 +202,8 @@ for api_router in (
     notifications_router,
     chat_router,
     galleries_router,
+    google_drive_router,
+    jobs_router,
     adverts_router,
     admin_router,
     realtime_router,

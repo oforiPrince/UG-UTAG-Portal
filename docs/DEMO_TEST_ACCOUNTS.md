@@ -27,10 +27,22 @@ appointments. It does not change non-demo users.
 
 All accounts use the password supplied in `DEMO_DATA_PASSWORD`.
 
+## Poll acceptance cohort
+
+The seed includes 12 additional fictional members for testing targeted polls,
+turnout, reminders and poll closure. Their login emails run from
+`demo.voter01@utag.com` through `demo.voter12@utag.com`, and their staff IDs run
+from `DEMO-V01` through `DEMO-V12`.
+
+Each voter has the `member` role, belongs to a seeded college, school and
+department, and uses the same `DEMO_DATA_PASSWORD` as the role acceptance
+accounts. Target these members individually when a test needs an electorate
+that excludes the administrator and executive demo identities.
+
 ## Additional executive accounts
 
 The seed also creates active, public appointments and login-ready Executive
-accounts for Vice President, Assistant Secretary, Treasurer, Assistant
+accounts for Vice-President, Assistant Secretary, Treasurer, Assistant
 Treasurer, Organiser, Women's Executive Officer, Past President, National
 President, and the CBAS, CHS, COE and COH representatives.
 

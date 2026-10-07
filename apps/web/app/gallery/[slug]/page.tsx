@@ -1,28 +1,22 @@
-import { ArrowLeft, Camera, Download, ExternalLink } from "lucide-react";
+import { ArrowLeft, Camera, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import {
+  PublicGalleryViewer,
+  type PublicGalleryImage,
+} from "@/components/public/public-gallery-viewer";
 import { PublicShell } from "@/components/public/public-shell";
 import { publicApi } from "@/lib/api";
 
-type GalleryImage = {
-  id: string;
-  url: string;
-  alt_text: string | null;
-  caption: string | null;
-  credit: string | null;
-  allow_download: boolean;
-  download_url: string | null;
-  original_filename: string | null;
-};
 type Gallery = {
   slug: string;
   title: string;
   description: string;
   external_album_url: string | null;
-  images: GalleryImage[];
+  images: PublicGalleryImage[];
 };
 
 export default async function GalleryDetailPage({
@@ -99,46 +93,10 @@ export default async function GalleryDetailPage({
             </div>
           </div>
         ) : (
-          <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
-            {gallery.images.map((image) => (
-              <figure
-                key={image.id}
-                className="mb-5 break-inside-avoid overflow-hidden rounded-md border border-line bg-white shadow-sm"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image.url}
-                  alt={image.alt_text ?? image.caption ?? gallery.title}
-                  className="h-auto w-full"
-                  loading="lazy"
-                />
-                {image.caption || image.credit || image.allow_download ? (
-                  <figcaption className="grid gap-3 border-t border-line px-4 py-3 text-xs leading-5 text-muted">
-                    {image.caption || image.credit ? (
-                      <div>
-                        {image.caption}
-                        {image.credit ? (
-                          <span className="block font-semibold">
-                            Credit: {image.credit}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {image.allow_download && image.download_url ? (
-                      <a
-                        href={image.download_url}
-                        download={image.original_filename ?? undefined}
-                        className="inline-flex w-fit items-center gap-2 font-bold text-sky transition hover:text-coral"
-                      >
-                        <Download className="size-3.5" />
-                        Download
-                      </a>
-                    ) : null}
-                  </figcaption>
-                ) : null}
-              </figure>
-            ))}
-          </div>
+          <PublicGalleryViewer
+            galleryTitle={gallery.title}
+            images={gallery.images}
+          />
         )}
       </section>
     </PublicShell>

@@ -42,11 +42,20 @@ from utag_api.models.platform import (
     AuditEvent,
     BackgroundJob,
     FeatureFlag,
+    GoogleDriveConnection,
     IdempotencyRecord,
     LegacyArchiveRecord,
     MigrationDisposition,
     OutboxEvent,
     SiteSetting,
+)
+from utag_api.models.polls import (
+    Poll,
+    PollDelivery,
+    PollElectorate,
+    PollOption,
+    PollSelection,
+    PollVote,
 )
 
 __all__ = [
@@ -73,6 +82,7 @@ __all__ = [
     "FeatureFlag",
     "Gallery",
     "GalleryItem",
+    "GoogleDriveConnection",
     "IdempotencyRecord",
     "LegacyArchiveRecord",
     "MediaAsset",
@@ -85,6 +95,12 @@ __all__ = [
     "OrganizationUnit",
     "OutboxEvent",
     "Permission",
+    "Poll",
+    "PollDelivery",
+    "PollElectorate",
+    "PollOption",
+    "PollSelection",
+    "PollVote",
     "Role",
     "RolePermission",
     "Session",

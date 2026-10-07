@@ -30,12 +30,18 @@ PERMISSIONS = (
     PermissionDefinition("documents.manage", "Create and version documents"),
     PermissionDefinition("media.manage", "Upload and manage media"),
     PermissionDefinition("notifications.manage", "Send association notifications"),
+    PermissionDefinition("polls.manage", "Create and manage targeted member polls"),
+    PermissionDefinition("polls.results", "View live poll results and authorized named ballots"),
+    PermissionDefinition("polls.export", "Export authorized poll results"),
     PermissionDefinition("chat.use", "Use direct and group messaging"),
     PermissionDefinition("adverts.manage", "Manage advertising inventory and orders"),
     PermissionDefinition("analytics.view", "View association analytics"),
     PermissionDefinition("audit.view", "View security and activity audit events"),
     PermissionDefinition("settings.manage", "Manage portal settings and feature flags"),
     PermissionDefinition("jobs.manage", "Manage imports, exports, and background jobs"),
+    PermissionDefinition(
+        "records.delete", "Permanently delete unreferenced portal records"
+    ),
 )
 
 ROLE_GRANTS: dict[str, set[str]] = {
@@ -47,6 +53,9 @@ ROLE_GRANTS: dict[str, set[str]] = {
         "documents.view",
         "chat.use",
         "analytics.view",
+        "polls.manage",
+        "polls.results",
+        "polls.export",
     },
     "editor": {
         "dashboard.view",
@@ -93,4 +102,6 @@ ROLE_GRANTS: dict[str, set[str]] = {
     "administrator": {permission.key for permission in PERMISSIONS},
 }
 
-NON_DELEGABLE_DIRECT_PERMISSIONS = frozenset({"members.roles", "members.permissions"})
+NON_DELEGABLE_DIRECT_PERMISSIONS = frozenset(
+    {"members.roles", "members.permissions", "records.delete"}
+)

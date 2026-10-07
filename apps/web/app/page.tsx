@@ -23,6 +23,7 @@ import {
   type HomeCarouselSlide,
 } from "@/components/public/home-hero";
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { MediaCover } from "@/components/public/media-cover";
 import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
@@ -80,56 +81,56 @@ const fallback: HomeData = {
 const pillars = [
   [
     GraduationCap,
-    "Quality education",
+    "Quality Education",
     "Defending academic freedom and the conditions that allow teaching and scholarship to thrive.",
   ],
   [
     FlaskConical,
-    "Teaching & research",
-    "Advancing standards, resources and opportunities for excellent teaching and impactful research.",
+    "Teaching & Research",
+    "Advancing standards, resources, and opportunities for excellent teaching and impactful research.",
   ],
   [
     Megaphone,
-    "Member advocacy",
-    "Representing member concerns to University Management, national UTAG and public authorities.",
+    "Member Advocacy",
+    "Representing member concerns to University Management, UTAG National, and public authorities.",
   ],
   [
     HeartHandshake,
-    "Member welfare",
-    "Promoting fair conditions of service, professional wellbeing and a supportive academic community.",
+    "Member Welfare",
+    "Promoting fair conditions of service, professional wellbeing, and a supportive academic community.",
   ],
 ] as const;
 
 const aims = [
   [
     HandHeart,
-    "Promote welfare",
-    "Seek continuous improvement in the working conditions, facilities and professional wellbeing of University teachers.",
+    "Promote Welfare",
+    "Seek continuous improvement in the working conditions, facilities, and professional wellbeing of University teachers.",
   ],
   [
     UsersRound,
-    "Foster unity",
-    "Build common purpose, mutual support and meaningful participation across rank, discipline and college.",
+    "Foster Unity",
+    "Build common purpose, mutual support, and meaningful participation across rank, discipline, and college.",
   ],
   [
     MessageCircleMore,
-    "Improve communication",
-    "Strengthen dialogue among members, University leadership and stakeholders beyond the campus.",
+    "Improve Communication",
+    "Strengthen dialogue among members, University leadership, and stakeholders beyond the campus.",
   ],
   [
     TrendingUp,
-    "Advance academics",
-    "Support excellent teaching, research, mentorship and public service across the University.",
+    "Advance Academics",
+    "Support excellent teaching, research, mentorship, and public service across the University.",
   ],
   [
     Landmark,
-    "Serve the institution",
-    "Contribute constructively to a strong, accountable and globally respected University of Ghana.",
+    "Serve the Institution",
+    "Contribute constructively to a strong, accountable, and globally respected University of Ghana.",
   ],
   [
     Scale,
-    "Uphold academic freedom",
-    "Protect open inquiry, professional responsibility and the freedom required for scholarship.",
+    "Uphold Academic Freedom",
+    "Protect open inquiry, professional responsibility, and the freedom required for scholarship.",
   ],
 ] as const;
 
@@ -245,12 +246,12 @@ export default async function Home() {
           <p className="mt-6 text-sm leading-7 text-muted sm:text-base">
             The University of Ghana Branch of the University Teachers
             Association of Ghana represents teaching and research staff and
-            champions their academic, professional and economic welfare.
+            champions their academic, professional, and economic welfare.
           </p>
           <p className="mt-4 text-sm leading-7 text-muted sm:text-base">
-            We engage University Management, national leadership and public
-            institutions to promote fair conditions of service, protect academic
-            freedom and strengthen the resources required for teaching, research
+            We engage University Management, National Leadership of UTAG, and institutions of state
+            to promote fair conditions of service, protect academic
+            freedom, and strengthen the resources required for teaching, research,
             and community service.
           </p>
           <Button asChild className="mt-7 rounded-md">
@@ -277,7 +278,7 @@ export default async function Home() {
           <div className="mx-auto max-w-[82rem]">
             <SectionHeading
               kicker="Our events"
-              title="Meet, learn and shape our common work"
+              title="Meet, learn, and shape our common work"
               copy="Upcoming meetings and activities for members and the wider academic community."
             />
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
@@ -287,15 +288,12 @@ export default async function Home() {
                   href={`/events/${event.slug}`}
                   className="group overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div
-                    className="relative h-44 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url('${
-                        event.featured_media_id
-                          ? `/api/v1/public/media/${event.featured_media_id}`
-                          : `/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                      }')`,
-                    }}
+                  <MediaCover
+                    assetId={event.featured_media_id}
+                    fallbackSrc={`/brand/${index % 2 === 0 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                    alt=""
+                    className="h-44"
+                    variant="w480"
                   >
                     <div className="absolute inset-0 bg-[#102a48]/25" />
                     <time
@@ -309,7 +307,7 @@ export default async function Home() {
                         {format(new Date(event.start_date), "MMM yyyy")}
                       </span>
                     </time>
-                  </div>
+                  </MediaCover>
                   <div className="p-6">
                     <p className="text-[.68rem] font-bold tracking-wide text-coral uppercase">
                       {event.event_type}
@@ -345,20 +343,26 @@ export default async function Home() {
             <SectionHeading
               kicker="Our gallery"
               title="UG UTAG in action"
-              copy="A visual record of engagement, leadership and academic community life."
+              copy="A visual record of engagement, leadership, and academic community life."
             />
             <div className="mt-10 grid gap-3 md:grid-cols-[1.25fr_.75fr]">
               <Link
                 href={`/gallery/${galleryHighlights[0].gallerySlug}`}
-                className="group relative min-h-72 overflow-hidden rounded-md bg-cover bg-center md:min-h-[26rem]"
-                style={{
-                  backgroundImage: `url('${galleryHighlights[0].url}')`,
-                }}
+                className="group relative min-h-72 overflow-hidden rounded-md md:min-h-[26rem]"
                 aria-label={
                   galleryHighlights[0].alt_text ??
                   galleryHighlights[0].galleryTitle
                 }
               >
+                <MediaCover
+                  assetId={galleryHighlights[0].id}
+                  alt={
+                    galleryHighlights[0].alt_text ??
+                    galleryHighlights[0].galleryTitle
+                  }
+                  className="absolute inset-0"
+                  variant="w960"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0b2744]/85 via-transparent to-transparent" />
                 <div className="absolute right-0 bottom-0 left-0 p-6 text-white">
                   <p className="text-[.68rem] font-bold tracking-widest text-gold uppercase">
@@ -375,10 +379,15 @@ export default async function Home() {
                   <Link
                     key={image.id}
                     href={`/gallery/${image.gallerySlug}`}
-                    className="group relative min-h-48 overflow-hidden rounded-md bg-cover bg-center"
-                    style={{ backgroundImage: `url('${image.url}')` }}
+                    className="group relative min-h-48 overflow-hidden rounded-md"
                     aria-label={image.alt_text ?? image.galleryTitle}
                   >
+                    <MediaCover
+                      assetId={image.id}
+                      alt={image.alt_text ?? image.galleryTitle}
+                      className="absolute inset-0"
+                      variant="w480"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0b2744]/80 via-transparent to-transparent" />
                     <span className="absolute right-5 bottom-4 left-5 font-extrabold text-white">
                       {image.caption ?? image.galleryTitle}
@@ -425,7 +434,7 @@ export default async function Home() {
           <SectionHeading
             kicker="Our aims"
             title="What guides our work"
-            copy="A clear commitment to member welfare, academic progress and a strong University community."
+            copy="A clear commitment to member welfare, academic progress, and a strong University community."
           />
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {aims.map(([Icon, title, copy]) => (
@@ -452,7 +461,7 @@ export default async function Home() {
             <SectionHeading
               kicker="Our news"
               title="Latest from UG UTAG"
-              copy="Official updates, statements and stories from the association."
+              copy="Official updates, statements, and stories from the Association."
             />
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {data.featured_articles.slice(0, 3).map((article, index) => (
@@ -461,18 +470,15 @@ export default async function Home() {
                   href={`/news/${article.slug}`}
                   className="group flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-[0_8px_24px_rgb(23_43_69_/_7%)]"
                 >
-                  <div
-                    className="relative h-44 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url('${
-                        article.featured_media_id
-                          ? `/api/v1/public/media/${article.featured_media_id}`
-                          : `/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`
-                      }')`,
-                    }}
+                  <MediaCover
+                    assetId={article.featured_media_id}
+                    fallbackSrc={`/brand/${index === 1 ? "campus-main.jpg" : index === 2 ? "hero-leadership.jpg" : "hero-meeting.jpg"}`}
+                    alt=""
+                    className="h-44"
+                    variant="w480"
                   >
                     <div className="absolute inset-0 bg-[#102a48]/22" />
-                  </div>
+                  </MediaCover>
                   <div className="flex flex-1 flex-col p-6">
                     <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
                       {article.tags[0] ?? "Association news"}

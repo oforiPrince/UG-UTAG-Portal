@@ -115,6 +115,10 @@ async def test_publishing_announcement_delivers_once_to_targeted_active_roles(
     announcement = created.json()
     announcement_id = UUID(announcement["id"])
 
+    detail = await client.get(f"/api/v1/content/announcements/{announcement['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "Members-only notice"
+
     async with session_factory() as session:
         deliveries = (
             await session.scalars(

@@ -17,6 +17,40 @@ async def login(client: AsyncClient, email: str, password: str) -> dict[str, str
     return {"X-CSRF-Token": response.json()["csrf_token"]}
 
 
+async def create_chat_member(session_factory, suffix: str) -> tuple[User, str]:  # type: ignore[no-untyped-def]
+    password = f"StrongMemberPassword{suffix}23"
+    async with session_factory() as session:
+        member_role = await session.scalar(select(Role).where(Role.key == "member"))
+        administrator = await session.scalar(
+            select(User).where(User.email == "admin@example.edu.gh")
+        )
+        assert member_role is not None
+        assert administrator is not None
+        member = User(
+            id=new_id(),
+            email=f"chat-member-{suffix}@example.edu.gh",
+            password_hash=hash_password(password),
+            status="active",
+            email_verified=True,
+            title="Dr.",
+            other_name=f"Chat {suffix}",
+            surname="Member",
+        )
+        session.add(member)
+        await session.flush()
+        session.add(
+            UserRole(
+                id=new_id(),
+                user_id=member.id,
+                role_id=member_role.id,
+                assigned_by_id=administrator.id,
+                assigned_at=datetime.now(UTC),
+            )
+        )
+        await session.commit()
+        return member, password
+
+
 async def test_chat_attachments_and_secure_group_invites(
     client: AsyncClient, session_factory
 ) -> None:  # type: ignore[no-untyped-def]
@@ -139,3 +173,89 @@ async def test_chat_attachments_and_secure_group_invites(
     roles = {item["user_id"]: item["role"] for item in members.json()}
     assert roles[str(joining_member.id)] == "owner"
     assert roles[group.json()["created_by_id"]] == "admin"
+
+
+async def test_direct_chat_summaries_replies_edits_and_preferences(
+    client: AsyncClient, session_factory
+) -> None:  # type: ignore[no-untyped-def]
+    member, password = await create_chat_member(session_factory, "features")
+    member_name = member.full_name
+
+    admin_headers = await login(client, "admin@example.edu.gh", "StrongPassword123")
+    created = await client.post(
+        "/api/v1/chat/conversations",
+        headers=admin_headers,
+        json={"kind": "direct", "member_ids": [str(member.id)]},
+    )
+    assert created.status_code == 201
+    conversation = created.json()
+    assert conversation["display_title"] == member_name
+    assert conversation["direct_member_id"] == str(member.id)
+    assert conversation["last_message_preview"] is None
+
+    first = await client.post(
+        f"/api/v1/chat/conversations/{conversation['id']}/messages",
+        headers=admin_headers,
+        json={"text": "Please review the agenda", "client_message_id": "chat-feature-1"},
+    )
+    assert first.status_code == 201
+    reply = await client.post(
+        f"/api/v1/chat/conversations/{conversation['id']}/messages",
+        headers=admin_headers,
+        json={
+            "text": "The revised agenda is ready",
+            "client_message_id": "chat-feature-2",
+            "reply_to_id": first.json()["id"],
+        },
+    )
+    assert reply.status_code == 201
+    assert reply.json()["reply_to"]["text"] == "Please review the agenda"
+
+    edited = await client.patch(
+        f"/api/v1/chat/messages/{reply.json()['id']}",
+        headers=admin_headers,
+        json={"text": "The final agenda is ready"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["text"] == "The final agenda is ready"
+    assert edited.json()["edited_at"] is not None
+
+    muted = await client.patch(
+        f"/api/v1/chat/conversations/{conversation['id']}/preferences",
+        headers=admin_headers,
+        json={"is_muted": True},
+    )
+    assert muted.status_code == 200
+    assert muted.json()["is_muted"] is True
+    assert muted.json()["last_message_preview"] == "The final agenda is ready"
+    assert muted.json()["last_message_sender"] == "You"
+
+    member_headers = await login(client, member.email, password)
+    listed = await client.get("/api/v1/chat/conversations")
+    direct = next(item for item in listed.json() if item["id"] == conversation["id"])
+    assert direct["display_title"] != "Direct conversation"
+    assert direct["last_message_preview"] == "The final agenda is ready"
+    assert direct["last_message_sender"] != "You"
+    assert direct["unread_count"] == 2
+
+    messages = await client.get(f"/api/v1/chat/conversations/{conversation['id']}/messages")
+    assert messages.status_code == 200
+    assert messages.json()["items"][1]["reply_to"]["id"] == first.json()["id"]
+    denied = await client.patch(
+        f"/api/v1/chat/messages/{reply.json()['id']}",
+        headers=member_headers,
+        json={"text": "Changed by somebody else"},
+    )
+    assert denied.status_code == 403
+    member_message = await client.post(
+        f"/api/v1/chat/conversations/{conversation['id']}/messages",
+        headers=member_headers,
+        json={"text": "Member response", "client_message_id": "chat-feature-3"},
+    )
+    assert member_message.status_code == 201
+    admin_headers = await login(client, "admin@example.edu.gh", "StrongPassword123")
+    delete_denied = await client.delete(
+        f"/api/v1/chat/messages/{member_message.json()['id']}",
+        headers=admin_headers,
+    )
+    assert delete_denied.status_code == 403

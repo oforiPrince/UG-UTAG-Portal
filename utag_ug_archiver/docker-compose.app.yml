@@ -13,7 +13,7 @@ services:
     ports:
       # Map a host port (HOST_DB_PORT) to the container's 5432 so the
       # application inside the compose network continues to use DB_PORT=5432.
-      - "${HOST_DB_PORT:-5433}:5432"
+      - "127.0.0.1:${HOST_DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -27,6 +28,7 @@ from utag_api.models import (
     Gallery,
     GalleryItem,
     MediaAsset,
+    MediaVariant,
     OrganizationUnit,
     SiteSetting,
     User,
@@ -34,7 +36,7 @@ from utag_api.models import (
 from utag_api.rate_limit import enforce_rate_limit
 from utag_api.routers.content import article_views
 from utag_api.routers.events import event_attachment_map, serialize_event
-from utag_api.schemas.common import MessageResponse, Page
+from utag_api.schemas.common import DeliveryCapabilities, MessageResponse, Page
 from utag_api.schemas.domain import (
     AdCampaignView,
     ArticleView,
@@ -45,6 +47,7 @@ from utag_api.schemas.domain import (
 )
 from utag_api.services.audiences import includes_general_public
 from utag_api.services.content import sanitize_html
+from utag_api.services.delivery import public_capabilities, require_email_delivery
 from utag_api.services.events import enqueue_task, record_change
 from utag_api.services.executives import (
     executive_row_order_key,
@@ -413,7 +416,8 @@ async def public_gallery_data(db: DbSession, gallery: Gallery) -> dict[str, Any]
             "caption": item.caption,
             "alt_text": asset.alt_text,
             "credit": asset.credit,
-            "url": f"/api/v1/public/media/{asset.id}",
+            "url": f"/api/v1/public/media/{asset.id}?v=w960",
+            "thumb_url": f"/api/v1/public/media/{asset.id}?v=w480",
             "allow_download": item.allow_download,
             "download_url": (
                 f"/api/v1/public/galleries/{gallery.slug}/media/{asset.id}/download"
@@ -568,7 +572,6 @@ async def public_document_views(
             document.id,
             {
                 "id": document.id,
-                "public_id": document.public_id,
                 "title": document.title,
                 "sender": document.sender,
                 "receiver": document.receiver,
@@ -619,8 +622,17 @@ async def public_features(db: DbSession) -> dict[str, bool]:
     return {key: bool(values.get(key, True)) for key in keys}
 
 
+@router.get("/capabilities", response_model=DeliveryCapabilities)
+async def capabilities() -> DeliveryCapabilities:
+    return DeliveryCapabilities(**public_capabilities())
+
+
 @router.get("/media/{asset_id}")
-async def public_media(asset_id: UUID, db: DbSession) -> StreamingResponse:
+async def public_media(
+    asset_id: UUID,
+    db: DbSession,
+    v: Annotated[str | None, Query(pattern="^(w480|w960|w1600|original)$")] = None,
+) -> StreamingResponse:
     asset = await db.get(MediaAsset, asset_id)
     if asset is None or asset.status != "ready":
         raise ApiError(404, "media_not_found", "Media asset not found")
@@ -632,21 +644,39 @@ async def public_media(asset_id: UUID, db: DbSession) -> StreamingResponse:
     )
     if not is_referenced:
         raise ApiError(404, "media_not_found", "Media asset not found")
+
+    storage_key = asset.storage_key
+    content_type = asset.content_type
+    filename = asset.original_filename
+    cache_control = "public, max-age=86400, stale-while-revalidate=604800"
+    if v and v != "original" and asset.content_type.startswith("image/"):
+        variant = await db.scalar(
+            select(MediaVariant).where(
+                MediaVariant.asset_id == asset.id,
+                MediaVariant.variant == v,
+            )
+        )
+        if variant is not None:
+            storage_key = variant.storage_key
+            content_type = variant.content_type
+            filename = f"{Path(asset.original_filename).stem}-{v}.webp"
+            cache_control = "public, max-age=604800, immutable"
+
     try:
         stored = await run_in_threadpool(
             lambda: s3_client().get_object(
                 Bucket=get_settings().media_bucket,
-                Key=asset.storage_key,
+                Key=storage_key,
             )
         )
     except Exception as exc:
         raise ApiError(404, "media_not_found", "Media asset not found") from exc
     return StreamingResponse(
         stored["Body"].iter_chunks(chunk_size=1024 * 1024),
-        media_type=asset.content_type,
+        media_type=content_type,
         headers={
-            "Content-Disposition": f'inline; filename="{safe_filename(asset.original_filename)}"',
-            "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+            "Content-Disposition": f'inline; filename="{safe_filename(filename)}"',
+            "Cache-Control": cache_control,
         },
     )
 
@@ -770,6 +800,7 @@ async def contact(
     # Honeypot submissions receive the same response but are not persisted.
     if payload.website:
         return MessageResponse(message="Thank you. Your message has been received")
+    require_email_delivery()
     request_ip = client_ip(request)
     await enforce_rate_limit("contact", request_ip, limit=5, period_seconds=3600)
     job = BackgroundJob(

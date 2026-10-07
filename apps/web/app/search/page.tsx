@@ -12,7 +12,7 @@ export default function SearchPage() {
       <PageHero
         eyebrow="Search"
         title="Search the UG UTAG website"
-        intro="Find news, events, public resources and leadership information."
+        intro="Find news, events, public resources, and leadership information."
       />
       <section className="mx-auto max-w-4xl px-5 py-14 sm:px-6 lg:py-18">
         <SearchClient />

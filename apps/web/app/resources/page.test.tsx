@@ -43,9 +43,10 @@ describe("public resources", () => {
     expect(
       screen.getByRole("heading", { name: "Public policy brief" }),
     ).toBeTruthy();
+    expect(screen.queryByText("UTAG-PUBLIC")).toBeNull();
     expect(
       screen
-        .getByRole("link", { name: "Preview full document" })
+        .getByRole("link", { name: "Read online" })
         .getAttribute("href"),
     ).toBe("/resources/document-1");
     expect(publicApi).toHaveBeenCalledWith("/api/v1/public/documents", [], {

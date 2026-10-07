@@ -48,8 +48,8 @@
                 <option value="" selected disabled>Select a title</option>
                 <option value="President"
                         {% if executive.executive_position == 'President' %}selected{% endif %}>President</option>
-                <option value="Vice President"
-                        {% if executive.executive_position == 'Vice President' %}selected{% endif %}>
+                <option value="Vice-President"
+                        {% if executive.executive_position == 'Vice-President' or executive.executive_position == 'Vice President' %}selected{% endif %}>
                   Vice-President
                 </option>
                 <option value="Secretary"

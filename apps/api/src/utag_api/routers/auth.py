@@ -48,6 +48,7 @@ from utag_api.security import (
     verify_password,
 )
 from utag_api.services.content import sanitize_html
+from utag_api.services.delivery import require_email_delivery
 from utag_api.services.events import EventContext, enqueue_task, record_change
 from utag_api.services.executives import (
     MIN_PUBLIC_BIOGRAPHY_CHARS,
@@ -104,8 +105,16 @@ def summarize_executive_profile(
     return ExecutiveProfileSummary(
         id=appointment.id,
         position=appointment.position,
+        portfolio=appointment.portfolio,
+        summary=appointment.summary,
         biography_html=sanitize_html(appointment.biography_html),
-        social_links=appointment.social_links,
+        social_links=appointment.social_links or {},
+        term_number=appointment.term_number,
+        is_acting=appointment.is_acting,
+        is_public=appointment.is_public,
+        show_email=appointment.show_email,
+        show_phone=appointment.show_phone,
+        appointed_on=appointment.appointed_on,
     )
 
 
@@ -320,10 +329,14 @@ async def update_executive_profile(
             ),
         )
 
+    appointment.portfolio = payload.portfolio
+    appointment.summary = payload.summary
     appointment.biography_html = biography_html
     appointment.social_links = {
         key: value.strip() for key, value in payload.social_links.items() if value.strip()
     }
+    appointment.show_email = payload.show_email
+    appointment.show_phone = payload.show_phone
     record_change(
         db,
         context=event_context(request, principal),
@@ -336,8 +349,12 @@ async def update_executive_profile(
             "user_id": str(principal.user.id),
         },
         changes={
+            "portfolio": {"to": appointment.portfolio},
+            "summary": {"to": appointment.summary},
             "biography_html": {"updated": True},
             "social_links": {"to": sorted(appointment.social_links)},
+            "show_email": {"to": appointment.show_email},
+            "show_phone": {"to": appointment.show_phone},
         },
     )
     await db.commit()
@@ -455,6 +472,7 @@ async def forgot_password(
     request: Request,
     db: DbSession,
 ) -> MessageResponse:
+    require_email_delivery()
     email = normalize_email(str(payload.email))
     request_ip = client_ip(request)
     await enforce_rate_limit("password-reset", request_ip, limit=8, period_seconds=3600)

@@ -16,14 +16,20 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Event, EventAttachment, EventRegistration, MediaAsset
+from utag_api.models import Event, EventAttachment, EventRegistration, MediaAsset, Notification
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import EventCreate, EventView
 from utag_api.security import decrypt_text, encrypt_text
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
-from utag_api.services.query import paginate, unique_slug
+from utag_api.services.query import apply_sort, paginate, unique_slug
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -146,8 +152,10 @@ async def list_events(
     status: str | None = None,
     publication_status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[EventView]:
-    statement = select(Event).order_by(Event.start_date.desc(), Event.start_time.desc())
+    statement = select(Event)
     if "events.manage" not in principal.permissions:
         statement = statement.where(Event.publication_status == "published")
     if status:
@@ -157,6 +165,19 @@ async def list_events(
     if q and q.strip():
         pattern = f"%{q.strip()}%"
         statement = statement.where(or_(Event.title.ilike(pattern), Event.venue.ilike(pattern)))
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "title": Event.title,
+            "start_date": Event.start_date,
+            "event_type": Event.event_type,
+            "status": Event.status,
+            "publication_status": Event.publication_status,
+        },
+        default=(Event.start_date.desc(), Event.start_time.desc()),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     counts, registered = await event_counts(
         db, [item.id for item in result.items], principal.user.id
@@ -374,6 +395,53 @@ async def archive_event(
     )
     await db.commit()
     return MessageResponse(message="Event archived")
+
+
+@router.delete("/{event_id}/permanent", response_model=MessageResponse)
+async def delete_event_permanently(
+    event_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "events.manage")),
+    ],
+) -> MessageResponse:
+    item = await db.get(Event, event_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "event_not_found", "Event not found")
+    registrations = await count_rows(
+        db,
+        EventRegistration,
+        EventRegistration.event_id == item.id,
+    )
+    notifications = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "event",
+        Notification.resource_id == item.id,
+    )
+    block_delete_if_referenced(
+        "event",
+        [
+            DeleteBlocker("registration record", registrations),
+            DeleteBlocker("member notification", notifications),
+        ],
+        guidance=("Events with participant or communication history must be archived instead"),
+    )
+    await db.execute(delete(EventAttachment).where(EventAttachment.event_id == item.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="event.deleted",
+        resource_type="event",
+        resource_id=item.id,
+        topic="events",
+        payload={"event_id": str(item.id), "slug": item.slug},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "event")
+    return MessageResponse(message="Event deleted permanently")
 
 
 @router.post("/{event_id}/registration", response_model=MessageResponse)

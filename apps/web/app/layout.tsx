@@ -13,7 +13,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.PUBLIC_WEB_URL ?? "http://localhost:3000"),
   title: {
-    default: "UG UTAG — Scholarship, solidarity and service",
+    default: "UG UTAG — Scholarship, solidarity, and service",
     template: "%s — UG UTAG",
   },
   description:

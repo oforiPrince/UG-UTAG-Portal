@@ -1,4 +1,7 @@
+import re
+import unicodedata
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
@@ -7,20 +10,42 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from utag_api.database import new_id
 from utag_api.models import (
-    AdCampaign,
-    AdOrder,
     AdPlan,
     AdSlot,
+    Announcement,
+    Conversation,
+    ConversationInvite,
+    ConversationMember,
+    Document,
     FeatureFlag,
+    Message,
     OrganizationUnit,
     SiteSetting,
+    User,
 )
 from utag_api.services.query import slugify
 
 # University reference data is deliberately kept in one version-controlled location.
 # The structure follows the University's collegiate model: college -> school -> department.
+# Keep this aligned with the 26 Aug 2026 UTAG members roster. Runtime roster sync
+# also upserts from the workbook; this constant is what `cli seed` recreates on boot.
 ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
+    "Central Administration": {
+        "Balme Library": ("Office of the University Librarian",),
+        "Human Resource and Organisation Development Directorate": (),
+        "Institute of Applied Science and Technology": (),
+        "Institutional Research and Planning Office": (),
+        "Sports Directorate": (),
+        "The Pro-Vice-Chancellor (ASA)": (),
+        "The Pro-Vice-Chancellor (RID)": (),
+        "The Vice-Chancellor": (),
+    },
     "College of Basic and Applied Sciences": {
+        "Biotechnology Centre": (),
+        "Centre for Climate Change and Sustainability Studies": (),
+        "Forest and Horticultural Crop Research Centre": (),
+        "Institute for Environment and Sanitation Studies": (),
+        "Livestock and Poultry Research Centre": (),
         "School of Agriculture": (
             "Department of Agricultural Economics and Agribusiness",
             "Department of Agricultural Extension",
@@ -32,10 +57,9 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
         "School of Biological Sciences": (
             "Department of Animal Biology and Conservation Science",
             "Department of Biochemistry, Cell and Molecular Biology",
-            "Department of Botany",
             "Department of Marine and Fisheries Sciences",
-            "Department of Microbiology",
             "Department of Nutrition and Food Science",
+            "Department of Plant and Environmental Biology",
         ),
         "School of Engineering Sciences": (
             "Department of Agricultural Engineering",
@@ -50,23 +74,26 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Earth Science",
             "Department of Mathematics",
             "Department of Physics",
-            "Department of Statistics and Actuarial Science",
+            "Department of Statistics",
         ),
-        "School of Veterinary Medicine": (
-            "Department of Veterinary Anatomy and Physiology",
-            "Department of Veterinary Clinical Studies",
-            "Department of Veterinary Pathology",
-            "Department of Veterinary Public Health and Food Safety",
-        ),
+        "School of Veterinary Medicine": (),
+        "Soil and Irrigation Research Centre": (),
+        "West Africa Centre for Crop Improvement (WACCI)": (),
+        "West African Centre for Cell Biology of Infectious Pathogens": (),
     },
     "College of Education": {
+        "Legon Centre for Education Research and Policy": (),
         "School of Continuing and Distance Education": (
             "Department of Adult Education and Human Resource Studies",
             "Department of Distance Education",
+            "University of Ghana Learning Centre-Cape Coast",
+            "University of Ghana Learning Centre-Kumasi",
+            "University of Ghana Learning Centre-Sekondi/Takoradi",
+            "University of Ghana Learning Centres",
         ),
         "School of Education and Leadership": (
             "Department of Educational Studies and Leadership",
-            "Department of Physical Education and Sport Studies",
+            "Department of Physical Education and Sports",
             "Department of Teacher Education",
         ),
         "School of Information and Communication Studies": (
@@ -75,28 +102,45 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
         ),
     },
     "College of Health Sciences": {
+        "Noguchi Memorial Institute for Medical Research": (
+            "Department of Animal Experimentation",
+            "Department of Bacteriology",
+            "Department of Clinical Pathology",
+            "Department of Electron Microscopy",
+            "Department of Epidemiology",
+            "Department of Immunology",
+            "Department of Nutrition",
+            "Department of Parasitology",
+            "Department of Virology",
+        ),
         "School of Biomedical and Allied Health Sciences": (
+            "Department of Anatomy",
             "Department of Audiology, Speech and Language Therapy",
-            "Department of Dietetics",
             "Department of Medical Laboratory Sciences",
+            "Department of Nutrition and Dietetics",
             "Department of Occupational Therapy",
+            "Department of Pathology",
             "Department of Physiotherapy",
             "Department of Radiography",
+            "Department of Respiration Therapy",
         ),
         "School of Nursing and Midwifery": (
             "Department of Adult Health",
             "Department of Community Health Nursing",
-            "Department of Maternal and Child Health Nursing",
-            "Department of Mental Health Nursing",
-            "Department of Nursing Administration and Education",
+            "Department of Maternal and Child Health",
+            "Department of Mental Health",
+            "Department of Research, Education and Administration",
+            "School of Nursing",
         ),
         "School of Pharmacy": (
             "Department of Pharmaceutical Chemistry",
             "Department of Pharmaceutics and Microbiology",
             "Department of Pharmacognosy and Herbal Medicine",
             "Department of Pharmacology and Toxicology",
+            "Department of Pharmacy Practice and Clinical Pharmacy",
         ),
         "School of Public Health": (
+            "Department of Biological, Environmental and Occupational Health",
             "Department of Biostatistics",
             "Department of Epidemiology and Disease Control",
             "Department of Health Policy, Planning and Management",
@@ -104,40 +148,56 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Social and Behavioural Sciences",
         ),
         "University of Ghana Dental School": (
-            "Department of Adult Oral Health",
-            "Department of Biomaterials Science",
-            "Department of Child Oral Health and Orthodontics",
+            "Department of Biomaterial Sciences",
+            "Department of Oral and Maxillofacial Surgery",
+            "Department of Oral Pathology and Medicine",
+            "Department of Orthodontics and Paedodontics",
+            "Department of Preventive and Community Dentistry",
+            "Department of Restorative Dentistry",
         ),
         "University of Ghana Medical School": (
+            "Centre for Tropical Clinical Pharmacology and Therapeutics",
             "Department of Anaesthesia",
             "Department of Anatomy",
             "Department of Chemical Pathology",
             "Department of Child Health",
-            "Department of Community Health",
+            "Department of Community Health and Occupational Health",
             "Department of Haematology",
             "Department of Medical Biochemistry",
             "Department of Medical Microbiology",
-            "Department of Medicine",
+            "Department of Medicine and Therapeutics",
             "Department of Obstetrics and Gynaecology",
             "Department of Pathology",
-            "Department of Pharmacology",
             "Department of Physiology",
             "Department of Psychiatry",
             "Department of Radiology",
             "Department of Surgery",
+            "GEMP Office",
+            "School of Medicine and Dentistry",
         ),
     },
     "College of Humanities": {
+        "Centre for Ageing Studies": (),
+        "Centre for Migration Studies": (),
+        "Centre for Social Policy Studies": (),
+        "Centre for Urban Management Studies": (),
+        "Institute of African Studies": (),
+        "Institute of Statistical, Social and Economic Research": (),
+        "Legon Centre for International Affairs and Diplomacy": (),
+        "Regional Institute for Population Studies": (),
         "School of Arts": (
+            "Department of Archaeology and Heritage Studies",
             "Department of History",
             "Department of Philosophy and Classics",
-            "Department for the Study of Religions",
+            "Department of Study of Religions",
         ),
         "School of Languages": (
+            "Department of African and Asian Languages",
             "Department of English",
+            "Department of European Languages",
             "Department of French",
             "Department of Linguistics",
-            "Department of Modern Languages",
+            "Language Centre",
         ),
         "School of Law": (),
         "School of Performing Arts": (
@@ -153,11 +213,12 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
             "Department of Social Work",
             "Department of Sociology",
         ),
+        "University of Ghana Accra City Campus": (),
         "University of Ghana Business School": (
             "Department of Accounting",
             "Department of Finance",
             "Department of Health Services Management",
-            "Department of Marketing and Entrepreneurship",
+            "Department of Marketing and Customer Management",
             "Department of Operations and Management Information Systems",
             "Department of Organisation and Human Resource Management",
             "Department of Public Administration",
@@ -165,35 +226,49 @@ ORGANIZATION_STRUCTURE: Mapping[str, Mapping[str, Sequence[str]]] = {
     },
 }
 
+# Canonical office hours for public contact surfaces.
+CANONICAL_OFFICE_HOURS = "Monday-Friday, 9:00 AM-5:00 PM"
+
+# Known stale values previously seeded or hard-coded; reconciled on each seed run.
+STALE_OFFICE_HOURS = frozenset(
+    {
+        "Monday-Friday, 9:00 AM-6:00 PM",
+        "Monday–Friday, 9:00 AM–6:00 PM",  # noqa: RUF001 - exact legacy value
+        "Monday to Friday: 9:00 AM - 6:00 PM",
+        "Mon – Fri : 9:00 – 18:00",  # noqa: RUF001 - exact legacy value
+        "Mon - Fri : 9:00 - 18:00",
+    }
+)
+
 SITE_SETTINGS: Mapping[str, dict[str, object]] = {
     "site.identity": {
         "name": "University of Ghana UTAG",
         "short_name": "UG UTAG",
-        "tagline": "Scholarship, solidarity and service",
+        "tagline": "Scholarship, solidarity, and service",
     },
     "site.contact": {
         "email": "utagoffice@ug.edu.gh",
         "phone": "+233 (0) 24 427 7275",
         "address": "University of Ghana, Legon, Accra",
-        "office_hours": "Monday-Friday, 9:00 AM-6:00 PM",
+        "office_hours": CANONICAL_OFFICE_HOURS,
     },
     "site.social": {},
     "site.home": {
         "eyebrow": "University of Ghana Branch",
         "headline": "The academic voice of the University of Ghana",
-        "introduction": "A trusted home for members, knowledge and collective action.",
+        "introduction": "A trusted home for members, knowledge, and collective action.",
     },
     "site.about": {
         "heading": "A united voice for University of Ghana academics",
         "introduction": (
             "UG UTAG represents teaching and research staff and advances their "
-            "academic, professional and economic welfare."
+            "academic, professional, and economic welfare."
         ),
     },
     "site.resources": {
         "heading": "Public documents and association resources",
         "introduction": (
-            "Constitutional, policy and public-interest material approved for public access."
+            "Constitutional, policy, and public-interest material approved for public access."
         ),
     },
     "site.footer": {
@@ -233,37 +308,133 @@ AD_PLANS = (
         "home-after-hero",
         "1500.00",
         30,
-        "970×250 placement on the home page after the hero.",
+        "970x250 placement on the home page after the hero.",
     ),
     (
         "News sidebar · 30 days",
         "news-sidebar",
         "900.00",
         30,
-        "300×250 medium rectangle on the news listing page.",
+        "300x250 medium rectangle on the news listing page.",
     ),
     (
         "Events sidebar · 30 days",
         "events-sidebar",
         "900.00",
         30,
-        "300×250 medium rectangle on the events listing page.",
+        "300x250 medium rectangle on the events listing page.",
     ),
     (
         "Content inline · 30 days",
         "content-inline",
         "750.00",
         30,
-        "728×90 leaderboard on news, events and gallery detail pages.",
+        "728x90 leaderboard on news, events, and gallery detail pages.",
     ),
     (
         "Site footer · 30 days",
         "footer",
         "1200.00",
         30,
-        "970×90 strip above the site footer on all public pages.",
+        "970x90 strip above the site footer on all public pages.",
     ),
 )
+
+
+@dataclass(frozen=True, slots=True)
+class OrganizationSeedResult:
+    canonical_ids: frozenset[UUID]
+    created: int
+    updated: int
+
+
+@dataclass(frozen=True, slots=True)
+class OrganizationReconcileResult:
+    canonical_created: int
+    canonical_updated: int
+    users_relinked: int
+    announcement_audiences_relinked: int
+    document_audiences_relinked: int
+    unresolved_users: int
+    legacy_units_prunable: int
+    legacy_units_pruned: int
+    legacy_units_retained: int
+    unresolved_user_ids: tuple[UUID, ...]
+
+
+_NAME_FILLER_WORDS = frozenset({"a", "and", "for", "of", "the"})
+_NAME_TOKEN_ALIASES = {
+    "biomed": "biomedical",
+    "comm": "communication",
+    "cont": "continuing",
+    "dept": "department",
+    "dist": "distance",
+    "educ": "education",
+    "hr": "human resource",
+    "info": "information",
+    "inst": "institute",
+    "math": "mathematical",
+    "med": "medical",
+    "mem": "memorial",
+    "mgt": "management",
+    "mis": "management information systems",
+    "ofice": "office",
+    "oganisation": "organisation",
+    "pop": "population",
+    "res": "research",
+    "sc": "sciences",
+    "sch": "school",
+    "universtiy": "university",
+    "univ": "university",
+}
+_NAME_KEY_ALIASES = {
+    "college basic applied sc": "college basic applied sciences",
+    "department biomaterials science": "department biomaterial sciences",
+    "department botany": "department plant environmental biology",
+    "department child oral health orthodontics": "department orthodontics paedodontics",
+    "department community health": "department community health occupational health",
+    "department dietetics": "department nutrition dietetics",
+    "department marketing entrepreneurship": "department marketing customer management",
+    "department maternal child health nursing": "department maternal child health",
+    "department medicine": "department medicine therapeutics",
+    "department mental health nursing": "department mental health",
+    "department nursing administration education": "department research education administration",
+    "department physical education sport studies": "department physical education sports",
+    "department statistics actuarial science": "department statistics",
+    "institute stat soc econ research": "institute statistical social economic research",
+    "legon centre international affairs": "legon centre international affairs diplomacy",
+    "school biomedical allied health": "school biomedical allied health sciences",
+    "school engineering": "school engineering sciences",
+    "school physical mathematical sc": "school physical mathematical sciences",
+}
+
+
+def organization_name_key(value: str) -> str:
+    """Normalize harmless legacy spelling differences without fuzzy matching."""
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    words = re.findall(r"[a-z0-9]+", normalized)
+    tokens: list[str] = []
+    for word in words:
+        if word in _NAME_FILLER_WORDS:
+            continue
+        tokens.extend(_NAME_TOKEN_ALIASES.get(word, word).split())
+    key = " ".join(tokens)
+    return _NAME_KEY_ALIASES.get(key, key)
+
+
+async def _available_organization_slug(
+    db: AsyncSession,
+    *,
+    unit_type: str,
+    name: str,
+) -> str:
+    base = slugify(f"{unit_type}-{name}")
+    slug = base
+    suffix = 2
+    while await db.scalar(select(OrganizationUnit.id).where(OrganizationUnit.slug == slug)):
+        slug = f"{base}-{suffix}"
+        suffix += 1
+    return slug
 
 
 async def _upsert_unit(
@@ -272,49 +443,433 @@ async def _upsert_unit(
     unit_type: str,
     name: str,
     parent_id: UUID | None,
-) -> OrganizationUnit:
-    slug = slugify(f"{unit_type}-{name}")
-    unit = await db.scalar(select(OrganizationUnit).where(OrganizationUnit.slug == slug))
+) -> tuple[OrganizationUnit, bool, bool]:
+    candidates = list(
+        (
+            await db.scalars(
+                select(OrganizationUnit).where(OrganizationUnit.unit_type == unit_type)
+            )
+        ).all()
+    )
+    name_key = organization_name_key(name)
+    matching = [item for item in candidates if organization_name_key(item.name) == name_key]
+    unit = next((item for item in matching if item.parent_id == parent_id), None)
+    if unit is None and len(matching) == 1 and unit_type != "department":
+        # Reuse an unambiguous earlier college/school row so member references
+        # keep their stable UUID while its parent is corrected. Department
+        # names can legitimately repeat under different schools.
+        unit = matching[0]
+    created = unit is None
+    updated = False
     if unit is None:
         unit = OrganizationUnit(
             id=new_id(),
             unit_type=unit_type,
             name=name,
-            slug=slug,
+            slug=await _available_organization_slug(
+                db,
+                unit_type=unit_type,
+                name=name,
+            ),
             parent_id=parent_id,
             is_active=True,
         )
         db.add(unit)
         await db.flush()
     else:
+        updated = unit.name != name or unit.parent_id != parent_id or not unit.is_active
         unit.name = name
         unit.parent_id = parent_id
         unit.is_active = True
-    return unit
+    return unit, created, updated
 
 
-async def seed_organization(db: AsyncSession) -> None:
-    for college_name, schools in ORGANIZATION_STRUCTURE.items():
-        college = await _upsert_unit(
+async def seed_organization(
+    db: AsyncSession,
+    structure: Mapping[str, Mapping[str, Sequence[str]]] | None = None,
+) -> OrganizationSeedResult:
+    source = ORGANIZATION_STRUCTURE if structure is None else structure
+    canonical_ids: set[UUID] = set()
+    created = 0
+    updated = 0
+    for college_name, schools in source.items():
+        college, was_created, was_updated = await _upsert_unit(
             db,
             unit_type="college",
             name=college_name,
             parent_id=None,
         )
+        canonical_ids.add(college.id)
+        created += int(was_created)
+        updated += int(was_updated)
         for school_name, departments in schools.items():
-            school = await _upsert_unit(
+            school, was_created, was_updated = await _upsert_unit(
                 db,
                 unit_type="school",
                 name=school_name,
                 parent_id=college.id,
             )
+            canonical_ids.add(school.id)
+            created += int(was_created)
+            updated += int(was_updated)
             for department_name in departments:
-                await _upsert_unit(
+                department, was_created, was_updated = await _upsert_unit(
                     db,
                     unit_type="department",
                     name=department_name,
                     parent_id=school.id,
                 )
+                canonical_ids.add(department.id)
+                created += int(was_created)
+                updated += int(was_updated)
+    await db.flush()
+    return OrganizationSeedResult(
+        canonical_ids=frozenset(canonical_ids),
+        created=created,
+        updated=updated,
+    )
+
+
+def _unit_context_names(
+    unit: OrganizationUnit,
+    units_by_id: dict[UUID, OrganizationUnit],
+) -> set[str]:
+    names: set[str] = set()
+    current: OrganizationUnit | None = unit
+    visited: set[UUID] = set()
+    while current is not None and current.id not in visited:
+        visited.add(current.id)
+        names.add(organization_name_key(current.name))
+        current = units_by_id.get(current.parent_id) if current.parent_id else None
+    return names
+
+
+def _canonical_chain(
+    unit: OrganizationUnit,
+    canonical_ids: frozenset[UUID],
+    units_by_id: dict[UUID, OrganizationUnit],
+) -> dict[str, OrganizationUnit]:
+    chain: dict[str, OrganizationUnit] = {}
+    current: OrganizationUnit | None = unit
+    visited: set[UUID] = set()
+    while current is not None and current.id not in visited:
+        visited.add(current.id)
+        if current.id not in canonical_ids:
+            break
+        chain[current.unit_type] = current
+        current = units_by_id.get(current.parent_id) if current.parent_id else None
+    return chain
+
+
+def _canonical_match(
+    source: OrganizationUnit,
+    *,
+    canonical_by_name: dict[str, list[OrganizationUnit]],
+    canonical_ids: frozenset[UUID],
+    units_by_id: dict[UUID, OrganizationUnit],
+    context_names: set[str] | None = None,
+) -> OrganizationUnit | None:
+    if source.id in canonical_ids:
+        return source
+    if source.legacy_id is None:
+        return None
+    candidates = canonical_by_name.get(organization_name_key(source.name), [])
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        return None
+    context = context_names or _unit_context_names(source, units_by_id)
+    scored = [
+        (
+            sum(
+                organization_name_key(item.name) in context
+                for item in _canonical_chain(candidate, canonical_ids, units_by_id).values()
+                if item.id != candidate.id
+            ),
+            candidate,
+        )
+        for candidate in candidates
+    ]
+    highest = max(score for score, _ in scored)
+    winners = [candidate for score, candidate in scored if score == highest]
+    return winners[0] if highest > 0 and len(winners) == 1 else None
+
+
+def _unit_depth(unit: OrganizationUnit, units_by_id: dict[UUID, OrganizationUnit]) -> int:
+    depth = 0
+    current = unit
+    visited: set[UUID] = set()
+    while current.parent_id is not None and current.id not in visited:
+        visited.add(current.id)
+        parent = units_by_id.get(current.parent_id)
+        if parent is None:
+            break
+        depth += 1
+        current = parent
+    return depth
+
+
+def _relink_unit_audiences(
+    records: Sequence[Announcement | Document],
+    replacements: Mapping[UUID, UUID],
+) -> int:
+    records_relinked = 0
+    for record in records:
+        changed = False
+        audiences: list[dict[str, str]] = []
+        for audience in record.audiences:
+            updated = dict(audience)
+            if updated.get("type") == "unit":
+                try:
+                    source_id = UUID(str(updated.get("value")))
+                except ValueError:
+                    source_id = None
+                replacement_id = replacements.get(source_id) if source_id else None
+                if replacement_id is not None:
+                    updated["value"] = str(replacement_id)
+                    changed = True
+            audiences.append(updated)
+        if changed:
+            record.audiences = audiences
+            records_relinked += 1
+    return records_relinked
+
+
+def _referenced_unit_ids(records: Sequence[Announcement | Document]) -> set[UUID]:
+    referenced: set[UUID] = set()
+    for record in records:
+        for audience in record.audiences:
+            if audience.get("type") != "unit":
+                continue
+            try:
+                referenced.add(UUID(str(audience.get("value"))))
+            except ValueError:
+                continue
+    return referenced
+
+
+async def reconcile_organization(
+    db: AsyncSession,
+    *,
+    prune_unlinked: bool = False,
+) -> OrganizationReconcileResult:
+    """Reconcile imported legacy affiliations to the canonical UG hierarchy.
+
+    Only deterministic normalized-name matches are applied. Imported rows that
+    remain linked or ambiguous are retained, and only imported legacy rows are
+    eligible for pruning.
+    """
+    seed_result = await seed_organization(db)
+    units = list((await db.scalars(select(OrganizationUnit).with_for_update())).all())
+    units_by_id = {item.id: item for item in units}
+    canonical_units = [item for item in units if item.id in seed_result.canonical_ids]
+    canonical_by_name: dict[str, list[OrganizationUnit]] = {}
+    for item in canonical_units:
+        canonical_by_name.setdefault(organization_name_key(item.name), []).append(item)
+
+    replacements: dict[UUID, UUID] = {}
+    for item in units:
+        match = _canonical_match(
+            item,
+            canonical_by_name=canonical_by_name,
+            canonical_ids=seed_result.canonical_ids,
+            units_by_id=units_by_id,
+        )
+        if match is not None and match.id != item.id:
+            replacements[item.id] = match.id
+
+    users = list((await db.scalars(select(User).with_for_update())).all())
+    users_relinked = 0
+    unresolved_user_ids: list[UUID] = []
+    for user in users:
+        current_ids = [
+            unit_id
+            for unit_id in (user.college_id, user.school_id, user.department_id)
+            if unit_id is not None
+        ]
+        if not current_ids:
+            continue
+        source_units = [units_by_id[unit_id] for unit_id in current_ids if unit_id in units_by_id]
+        context_names = {
+            name for source in source_units for name in _unit_context_names(source, units_by_id)
+        }
+        resolved: list[OrganizationUnit] = []
+        unresolved = False
+        for source in source_units:
+            match = _canonical_match(
+                source,
+                canonical_by_name=canonical_by_name,
+                canonical_ids=seed_result.canonical_ids,
+                units_by_id=units_by_id,
+                context_names=context_names,
+            )
+            if match is None:
+                unresolved = True
+                break
+            resolved.append(match)
+        if unresolved or len(source_units) != len(current_ids):
+            unresolved_user_ids.append(user.id)
+            continue
+
+        proposed: dict[str, OrganizationUnit] = {}
+        conflict = False
+        for match in resolved:
+            for unit_type, canonical in _canonical_chain(
+                match,
+                seed_result.canonical_ids,
+                units_by_id,
+            ).items():
+                existing = proposed.get(unit_type)
+                if existing is not None and existing.id != canonical.id:
+                    conflict = True
+                    break
+                proposed[unit_type] = canonical
+            if conflict:
+                break
+        if conflict:
+            unresolved_user_ids.append(user.id)
+            continue
+
+        proposed_college = proposed.get("college")
+        proposed_school = proposed.get("school")
+        proposed_department = proposed.get("department")
+        next_ids = (
+            proposed_college.id if proposed_college else None,
+            proposed_school.id if proposed_school else None,
+            proposed_department.id if proposed_department else None,
+        )
+        current = (user.college_id, user.school_id, user.department_id)
+        if next_ids != current:
+            user.college_id, user.school_id, user.department_id = next_ids
+            users_relinked += 1
+
+    announcements = list((await db.scalars(select(Announcement).with_for_update())).all())
+    documents = list((await db.scalars(select(Document).with_for_update())).all())
+    announcement_audiences_relinked = _relink_unit_audiences(announcements, replacements)
+    document_audiences_relinked = _relink_unit_audiences(documents, replacements)
+
+    system_groups = list(
+        (
+            await db.scalars(
+                select(Conversation)
+                .where(Conversation.direct_key.like("system:%"))
+                .with_for_update()
+            )
+        ).all()
+    )
+    system_group_by_unit_id: dict[UUID, Conversation] = {}
+    for conversation in system_groups:
+        direct_key = conversation.direct_key or ""
+        prefix, _, raw_unit_id = direct_key.rpartition(":")
+        if prefix not in {"system:school", "system:department"}:
+            continue
+        try:
+            system_group_by_unit_id[UUID(raw_unit_id)] = conversation
+        except ValueError:
+            continue
+    system_group_ids = [conversation.id for conversation in system_group_by_unit_id.values()]
+    linked_system_group_ids: set[UUID] = set()
+    if system_group_ids:
+        linked_system_group_ids.update(
+            (
+                await db.scalars(
+                    select(ConversationMember.conversation_id).where(
+                        ConversationMember.conversation_id.in_(system_group_ids)
+                    )
+                )
+            ).all()
+        )
+        linked_system_group_ids.update(
+            (
+                await db.scalars(
+                    select(ConversationInvite.conversation_id).where(
+                        ConversationInvite.conversation_id.in_(system_group_ids)
+                    )
+                )
+            ).all()
+        )
+        linked_system_group_ids.update(
+            (
+                await db.scalars(
+                    select(Message.conversation_id).where(
+                        Message.conversation_id.in_(system_group_ids)
+                    )
+                )
+            ).all()
+        )
+
+    await db.flush()
+
+    directly_referenced = {
+        unit_id
+        for user in users
+        for unit_id in (user.college_id, user.school_id, user.department_id)
+        if unit_id is not None
+    }
+    directly_referenced.update(_referenced_unit_ids(announcements))
+    directly_referenced.update(_referenced_unit_ids(documents))
+    directly_referenced.update(
+        unit_id
+        for unit_id, conversation in system_group_by_unit_id.items()
+        if conversation.id in linked_system_group_ids
+    )
+
+    legacy_candidates = {
+        item.id
+        for item in units
+        if item.legacy_id is not None and item.id not in seed_result.canonical_ids
+    }
+    protected = legacy_candidates.intersection(directly_referenced)
+    changed = True
+    while changed:
+        changed = False
+        for item in units:
+            if item.parent_id not in legacy_candidates:
+                continue
+            if (
+                item.id not in legacy_candidates or item.id in protected
+            ) and item.parent_id not in protected:
+                protected.add(item.parent_id)
+                changed = True
+
+    prunable = legacy_candidates - protected
+    pruned = 0
+    if prune_unlinked:
+        for item in sorted(
+            (units_by_id[unit_id] for unit_id in prunable),
+            key=lambda value: _unit_depth(value, units_by_id),
+            reverse=True,
+        ):
+            empty_system_group = system_group_by_unit_id.get(item.id)
+            if empty_system_group is not None:
+                await db.delete(empty_system_group)
+            await db.delete(item)
+            pruned += 1
+        await db.flush()
+
+    return OrganizationReconcileResult(
+        canonical_created=seed_result.created,
+        canonical_updated=seed_result.updated,
+        users_relinked=users_relinked,
+        announcement_audiences_relinked=announcement_audiences_relinked,
+        document_audiences_relinked=document_audiences_relinked,
+        unresolved_users=len(unresolved_user_ids),
+        legacy_units_prunable=len(prunable),
+        legacy_units_pruned=pruned,
+        legacy_units_retained=len(protected),
+        unresolved_user_ids=tuple(unresolved_user_ids),
+    )
+
+
+def reconcile_office_hours(value: dict[str, object]) -> dict[str, object]:
+    """Rewrite known stale office-hours strings without touching other contact fields."""
+    current = value.get("office_hours")
+    if not isinstance(current, str):
+        return value
+    normalized = current.strip()
+    if normalized not in STALE_OFFICE_HOURS:
+        return value
+    return {**value, "office_hours": CANONICAL_OFFICE_HOURS}
 
 
 async def seed_portal_defaults(db: AsyncSession) -> None:
@@ -322,6 +877,12 @@ async def seed_portal_defaults(db: AsyncSession) -> None:
     for key, value in SITE_SETTINGS.items():
         if key not in settings:
             db.add(SiteSetting(id=new_id(), key=key, value=value, is_public=True))
+
+    contact = settings.get("site.contact")
+    if contact is not None and isinstance(contact.value, dict):
+        updated = reconcile_office_hours(contact.value)
+        if updated is not contact.value:
+            contact.value = updated
 
     flags = {row.key: row for row in (await db.scalars(select(FeatureFlag))).all()}
     for key, description in FEATURE_FLAGS.items():
@@ -336,7 +897,6 @@ async def seed_portal_defaults(db: AsyncSession) -> None:
             )
 
     slots = {row.key: row for row in (await db.scalars(select(AdSlot))).all()}
-    canonical_keys = {key for key, *_ in AD_SLOTS}
     for key, name, width, height, location, is_active in AD_SLOTS:
         slot = slots.get(key)
         if slot is None:
@@ -357,41 +917,6 @@ async def seed_portal_defaults(db: AsyncSession) -> None:
             slot.height = height
             slot.location = location
             slot.is_active = is_active
-
-    obsolete_slots = [slot for key, slot in slots.items() if key not in canonical_keys]
-    if obsolete_slots:
-        obsolete_ids = [slot.id for slot in obsolete_slots]
-        obsolete_campaigns = list(
-            (
-                await db.scalars(select(AdCampaign).where(AdCampaign.slot_id.in_(obsolete_ids)))
-            ).all()
-        )
-        obsolete_campaign_ids = [campaign.id for campaign in obsolete_campaigns]
-        if obsolete_campaign_ids:
-            obsolete_orders = list(
-                (
-                    await db.scalars(
-                        select(AdOrder).where(AdOrder.campaign_id.in_(obsolete_campaign_ids))
-                    )
-                ).all()
-            )
-            for order in obsolete_orders:
-                await db.delete(order)
-            for campaign in obsolete_campaigns:
-                await db.delete(campaign)
-        obsolete_plans = list(
-            (await db.scalars(select(AdPlan).where(AdPlan.slot_id.in_(obsolete_ids)))).all()
-        )
-        for plan in obsolete_plans:
-            linked_orders = list(
-                (await db.scalars(select(AdOrder).where(AdOrder.plan_id == plan.id))).all()
-            )
-            for order in linked_orders:
-                await db.delete(order)
-            await db.delete(plan)
-        for slot in obsolete_slots:
-            await db.delete(slot)
-            slots.pop(slot.key, None)
 
     await db.flush()
     plans = {row.name: row for row in (await db.scalars(select(AdPlan))).all()}

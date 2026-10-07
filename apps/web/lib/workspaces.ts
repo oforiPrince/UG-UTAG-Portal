@@ -1,6 +1,13 @@
+import { formatPersonName } from "./utils";
 import { documentAudiencesForCategory } from "./workspace-options";
+import {
+  attachWorkspaceDetails,
+  type WorkspaceDetailConfig,
+  type WorkspacePreviewKind,
+} from "./workspace-detail";
 
 export type WorkspaceRow = Record<string, unknown>;
+export type { WorkspaceDetailConfig, WorkspacePreviewKind };
 export type WorkspaceFieldType =
   | "text"
   | "email"
@@ -42,8 +49,27 @@ export type WorkspaceField = {
     value: (row: WorkspaceRow) => string;
     label: (row: WorkspaceRow) => string;
     filter?: (row: WorkspaceRow) => boolean;
+    filterForValues?: (
+      row: WorkspaceRow,
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => boolean;
     emptyLabel?: string;
+    emptyLabelForValues?: (
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => string;
+    disabledForValues?: (
+      values: WorkspaceRow,
+      record?: WorkspaceRow,
+    ) => boolean;
   };
+  /**
+   * Label for the value already stored on the record. Option lists are paged, so
+   * the saved option is often missing from the first page and the control would
+   * otherwise look unset while editing.
+   */
+  selectedLabelFromRow?: (row: WorkspaceRow) => string | undefined;
   placeholder?: string;
   help?: string;
   prominent?: boolean;
@@ -60,11 +86,15 @@ export type WorkspaceField = {
   editOnly?: boolean;
   emptyValue?: unknown;
   valueFromRow?: (row: WorkspaceRow) => unknown;
+  /** Clear dependent form fields when this field changes. */
+  clearOnChange?: string[];
   structuredFields?: WorkspaceStructuredField[];
   structuredItemFields?: WorkspaceStructuredField[];
   addItemLabel?: string;
   /** Include in the save payload without rendering a visible control. */
   hidden?: boolean;
+  /** Hide unless email or SMS delivery is configured on the API. */
+  requiresDelivery?: boolean;
 };
 
 export type WorkspaceMutation = {
@@ -78,29 +108,65 @@ export type WorkspaceMutation = {
   confirm?: string;
   danger?: boolean;
   excludeSelf?: boolean;
+  /** Open an external/binary URL in a new tab. Prefer openMode for dashboard routes. */
   open?: boolean;
+  /** panel = in-drawer preview; tab = binary/external URL in a new tab. */
+  openMode?: "panel" | "tab";
+  previewKind?: WorkspacePreviewKind;
   href?: (row: WorkspaceRow) => string;
   when?: (row: WorkspaceRow, permissions: string[]) => boolean;
   prepare?: (payload: WorkspaceRow, row?: WorkspaceRow) => WorkspaceRow;
   headers?: (row: WorkspaceRow) => HeadersInit;
+  /** Hide unless email or SMS delivery is configured on the API. */
+  requiresDelivery?: boolean;
+  /**
+   * Upload/create panel that does not POST a record — assets are created by
+   * the media field itself; Save/Done only closes the panel.
+   */
+  clientOnly?: boolean;
+};
+
+export type WorkspaceColumn = {
+  key: string;
+  label: string;
+  /** Quiet secondary field under this cell. Must not also be a visible column. */
+  subtitleKey?: string;
+  /** Extra numeric fields composed into this cell after `key`. */
+  metricKeys?: string[];
+  align?: "start" | "end";
+  /** Compact list dates. `date` omits time even when the value is a datetime. */
+  dateStyle?: "date" | "datetime";
 };
 
 export type WorkspaceConfig = {
+  /** Stable key used by the presentation and routing registries. */
+  key?: string;
   title: string;
   description: string;
   endpoint: string;
   queryKey: string;
-  columns: { key: string; label: string }[];
+  columns: WorkspaceColumn[];
+  /** table = data rows (default); grid = media-forward cards */
+  layout?: "table" | "grid";
+  /** Card preview aspect when layout is grid */
+  gridAspect?: "square" | "landscape";
   exportUrl?: string;
   exportPermission?: string;
   filters?: { key: string; label: string; options: string[] }[];
   serverPagination?: {
     searchParam?: string;
     filterParams?: Record<string, string>;
+    /** API-backed fields that can be sorted across the complete result set. */
+    sortFields?: string[];
   };
+  detail?: WorkspaceDetailConfig;
+  /** Route used instead of the generic details dialog. */
+  detailHref?: (row: WorkspaceRow) => string;
+  /** Route used instead of the generic edit dialog. */
+  updateHref?: (row: WorkspaceRow) => string;
   create?: WorkspaceMutation;
   update?: WorkspaceMutation;
-  archive?: WorkspaceMutation;
+  delete?: WorkspaceMutation;
   actions?: WorkspaceMutation[];
 };
 
@@ -133,9 +199,13 @@ const memberFields: WorkspaceField[] = [
     label: "Email",
     type: "email",
     required: true,
-    createOnly: true,
+    help: "Used for sign-in and account communications. Changing it marks the address unverified, signs the member out, and cancels old access links. Send a new access link afterward if needed.",
   },
-  { key: "staff_id", label: "Staff ID" },
+  {
+    key: "staff_id",
+    label: "Staff ID",
+    help: "Required when email invitations are unavailable. The staff ID is the temporary first password.",
+  },
   {
     key: "title",
     label: "Title",
@@ -202,6 +272,7 @@ const memberFields: WorkspaceField[] = [
       value: (row) => String(row.id),
       label: (row) => String(row.name),
     },
+    clearOnChange: ["school_id", "department_id"],
   },
   {
     key: "school_id",
@@ -211,8 +282,16 @@ const memberFields: WorkspaceField[] = [
       endpoint: "/api/v1/organization/units?unit_type=school",
       queryKey: "organization-schools",
       value: (row) => String(row.id),
-      label: (row) => String(row.name),
+      label: (row) =>
+        row.parent_name
+          ? `${String(row.name)} · ${String(row.parent_name)}`
+          : String(row.name),
+      filterForValues: (row, values) =>
+        Boolean(values.college_id) &&
+        String(row.parent_id) === String(values.college_id),
+      emptyLabel: "Select a college to see its schools",
     },
+    clearOnChange: ["department_id"],
   },
   {
     key: "department_id",
@@ -222,7 +301,14 @@ const memberFields: WorkspaceField[] = [
       endpoint: "/api/v1/organization/units?unit_type=department",
       queryKey: "organization-departments",
       value: (row) => String(row.id),
-      label: (row) => String(row.name),
+      label: (row) =>
+        row.parent_name
+          ? `${String(row.name)} · ${String(row.parent_name)}`
+          : String(row.name),
+      filterForValues: (row, values) =>
+        Boolean(values.school_id) &&
+        String(row.parent_id) === String(values.school_id),
+      emptyLabel: "Select a school to see its departments",
     },
   },
   {
@@ -270,6 +356,7 @@ const memberFields: WorkspaceField[] = [
     checkboxLabel: "Email an access invitation",
     defaultValue: true,
     createOnly: true,
+    requiresDelivery: true,
     help: "The member account is created immediately. When enabled, an activation link is emailed to the member.",
   },
 ];
@@ -288,6 +375,11 @@ const executiveFields: WorkspaceField[] = [
       label: (row) => `${String(row.full_name)} · ${String(row.email)}`,
       emptyLabel: "No active members available",
     },
+    selectedLabelFromRow: (row) =>
+      typeof row.full_name === "string" && row.full_name.trim()
+        ? formatPersonName(row.full_name)
+        : undefined,
+    help: "Search by name or email. Only active member accounts can hold an office.",
   },
   {
     key: "profile_media_id",
@@ -319,7 +411,7 @@ const executiveFields: WorkspaceField[] = [
     required: true,
     options: [
       "President",
-      "Vice President",
+      "Vice-President",
       "Secretary",
       "Assistant Secretary",
       "Treasurer",
@@ -992,6 +1084,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status", roles: "role" },
+      sortFields: ["full_name", "email", "academic_rank", "status"],
     },
     exportUrl: "/api/v1/members/exports/csv",
     exportPermission: "members.export",
@@ -1018,8 +1111,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       { key: "full_name", label: "Member" },
       { key: "email", label: "Email" },
       { key: "academic_rank", label: "Rank" },
-      { key: "status", label: "Status" },
       { key: "roles", label: "Roles" },
+      { key: "status", label: "Status" },
     ],
     create: {
       label: "Create member",
@@ -1033,7 +1126,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           Array.isArray(payload.roles) && payload.roles.length
             ? payload.roles
             : ["member"],
-        send_invitation: payload.send_invitation ?? true,
+        send_invitation: Boolean(payload.send_invitation),
       }),
     },
     update: {
@@ -1048,21 +1141,20 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         !row.roles.includes("administrator") ||
         permissions.includes("members.roles"),
     },
-    archive: {
-      label: "Archive member",
-      permission: "members.lifecycle",
-      endpoint: (row) => `/api/v1/members/${row.id}`,
+    delete: {
+      label: "Delete member",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/members/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Member archived",
+      successMessage: "Member deleted permanently",
       confirm:
-        "Archive this member and revoke their active sessions? The record will be retained.",
+        "Permanently delete this member? This cannot be undone. The portal will block deletion if the account has linked appointments, content, media, messages, or other shared history.",
       danger: true,
       excludeSelf: true,
       when: (row, permissions) =>
-        row.status !== "archived" &&
-        (!Array.isArray(row.roles) ||
-          !row.roles.includes("administrator") ||
-          permissions.includes("members.roles")),
+        !Array.isArray(row.roles) ||
+        !row.roles.includes("administrator") ||
+        permissions.includes("members.roles"),
     },
     actions: [
       {
@@ -1102,6 +1194,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         successMessage: "Secure access email queued",
         confirm: "Send a new account access link to this member?",
         excludeSelf: true,
+        requiresDelivery: true,
         when: (row, permissions) =>
           row.status !== "suspended" &&
           row.status !== "archived" &&
@@ -1113,14 +1206,12 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         label: "Reset password",
         permission: "members.credentials",
         endpoint: (row) => `/api/v1/members/${row.id}/password-reset`,
-        successMessage: "Password reset link sent and active sessions revoked",
+        successMessage: "Password reset and active sessions revoked",
         confirm:
-          "Require this member to choose a new password? Their current password and active sessions will stop working immediately.",
-        danger: true,
+          "Reset this member's password and sign them out of all devices? Without email delivery, the temporary password becomes their staff ID and they must change it on next sign-in.",
         excludeSelf: true,
         when: (row, permissions) =>
           row.status === "active" &&
-          row.email_verified === true &&
           (!Array.isArray(row.roles) ||
             !row.roles.includes("administrator") ||
             permissions.includes("members.roles")),
@@ -1179,9 +1270,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   executives: {
     title: "Executive appointments",
     description:
-      "Current and past leadership terms, public biographies, portfolios and social profiles.",
+      "Current and past leadership terms, public biographies, portfolios, and social profiles.",
     endpoint: "/api/v1/executives",
     queryKey: "executives",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { is_active: "is_active" },
+      sortFields: ["full_name", "position", "is_active"],
+    },
     exportUrl: "/api/v1/executives/exports/csv",
     exportPermission: "members.export",
     filters: [
@@ -1190,8 +1286,6 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     columns: [
       { key: "full_name", label: "Executive" },
       { key: "position", label: "Position" },
-      { key: "portfolio", label: "Portfolio" },
-      { key: "term_number", label: "Term" },
       { key: "is_active", label: "Current" },
     ],
     create: {
@@ -1209,28 +1303,39 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       fields: executiveFields,
       successMessage: "Executive appointment updated",
     },
-    archive: {
-      label: "End appointment",
-      permission: "executives.manage",
-      endpoint: (row) => `/api/v1/executives/${row.id}`,
+    delete: {
+      label: "Delete appointment",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/executives/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Executive appointment ended",
-      confirm: "End this appointment while retaining its term history?",
+      successMessage: "Executive appointment deleted permanently",
+      confirm:
+        "Permanently delete this executive appointment and its term history? This cannot be undone.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "End appointment",
+        permission: "executives.manage",
+        endpoint: (row) => `/api/v1/executives/${row.id}`,
+        method: "DELETE",
+        successMessage: "Executive appointment ended",
+        confirm: "End this appointment while retaining its term history?",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   organization: {
     title: "Organization",
     description:
-      "Schools, colleges, departments and committees represented in the association.",
+      "Manage the college → school → department hierarchy used by member profiles, documents, and association groups.",
     endpoint: "/api/v1/organization/units?include_inactive=true",
     queryKey: "organization",
     filters: [
       {
         key: "unit_type",
         label: "Type",
-        options: ["school", "college", "department", "committee"],
+        options: ["college", "school", "department", "committee"],
       },
     ],
     columns: [
@@ -1250,7 +1355,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           type: "select",
           required: true,
           createOnly: true,
-          options: ["school", "college", "department", "committee"],
+          options: ["college", "school", "department", "committee"],
+          clearOnChange: ["parent_id"],
         },
         { key: "name", label: "Unit name", required: true },
         {
@@ -1262,8 +1368,16 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             queryKey: "organization-units",
             value: (row) => String(row.id),
             label: (row) => `${String(row.name)} · ${String(row.unit_type)}`,
+            filterForValues: (row, values) => {
+              if (values.unit_type === "school")
+                return row.unit_type === "college";
+              if (values.unit_type === "department")
+                return row.unit_type === "school";
+              return false;
+            },
+            emptyLabel: "Choose a unit type to see eligible parents",
           },
-          help: "Schools belong to colleges; departments belong to schools.",
+          help: "Schools require a college; departments require a school. Colleges and committees are top-level.",
         },
         {
           key: "is_active",
@@ -1290,33 +1404,54 @@ export const workspaces: Record<string, WorkspaceConfig> = {
             queryKey: "organization-units",
             value: (row) => String(row.id),
             label: (row) => `${String(row.name)} · ${String(row.unit_type)}`,
+            filterForValues: (row, _values, record) => {
+              if (record?.unit_type === "school")
+                return row.unit_type === "college";
+              if (record?.unit_type === "department")
+                return row.unit_type === "school";
+              return false;
+            },
+            emptyLabel: "This unit type does not use a parent",
           },
+          help: "Moving a school or department also updates linked member affiliations.",
         },
         { key: "is_active", label: "Active", type: "checkbox" },
       ],
       successMessage: "Organization unit updated",
     },
-    archive: {
-      label: "Deactivate unit",
-      permission: "organization.manage",
-      endpoint: (row) => `/api/v1/organization/units/${row.id}`,
+    delete: {
+      label: "Delete unit",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/organization/units/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Organization unit deactivated",
+      successMessage: "Organization unit deleted permanently",
       confirm:
-        "Deactivate this unit? Existing member links and history will be retained.",
+        "Permanently delete this organization unit? This cannot be undone. Deletion is allowed only when no members, child units, audiences, or chat history are linked.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate unit",
+        permission: "organization.manage",
+        endpoint: (row) => `/api/v1/organization/units/${row.id}`,
+        method: "DELETE",
+        successMessage: "Organization unit deactivated",
+        confirm:
+          "Deactivate this unit? Linked members and active child units must be reassigned first.",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   news: {
     title: "News & statements",
     description:
-      "Draft, review, schedule and publish the news that appears on the public website.",
+      "Draft, review, schedule, and publish the news that appears on the public website.",
     endpoint: "/api/v1/content/articles?page_size=100",
     queryKey: "content",
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["title", "status", "published_at", "updated_at"],
     },
     filters: [
       {
@@ -1357,16 +1492,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: articlePrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive article",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/content/articles/${row.id}`,
+    delete: {
+      label: "Delete article",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/content/articles/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Article archived",
+      successMessage: "Article deleted permanently",
       confirm:
-        "Archive this article? Its history will be retained and it will leave the public site.",
+        "Permanently delete this article? This cannot be undone. Shared media files will be retained.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
     actions: [
       {
@@ -1375,7 +1509,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/content/articles/${row.id}`,
         href: (row) => `/dashboard/preview/news/${row.id}`,
         successMessage: "Preview opened",
-        open: true,
+        openMode: "panel",
+        previewKind: "news",
       },
     ],
   },
@@ -1388,6 +1523,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { priority: "priority", status: "status" },
+      sortFields: ["title", "priority", "status", "published_at", "expires_at"],
     },
     filters: [
       {
@@ -1426,22 +1562,21 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: announcementPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive announcement",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/content/announcements/${row.id}`,
+    delete: {
+      label: "Delete announcement",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/content/announcements/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Announcement archived",
+      successMessage: "Announcement deleted permanently",
       confirm:
-        "Archive this announcement? Existing inbox deliveries stay in members' notification history.",
+        "Permanently delete this announcement? This cannot be undone. Announcements already delivered to members cannot be deleted.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
   },
   events: {
     title: "Events",
     description:
-      "Planning, schedules, registration, CPD details and protected online access.",
+      "Planning, schedules, registration, CPD details, and protected online access.",
     endpoint: "/api/v1/events?page_size=100",
     queryKey: "events",
     serverPagination: {
@@ -1450,6 +1585,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         status: "status",
         publication_status: "publication_status",
       },
+      sortFields: [
+        "title",
+        "start_date",
+        "event_type",
+        "status",
+        "publication_status",
+      ],
     },
     filters: [
       {
@@ -1488,16 +1630,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: eventPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive event",
-      permission: "events.manage",
-      endpoint: (row) => `/api/v1/events/${row.id}`,
+    delete: {
+      label: "Delete event",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/events/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Event archived",
+      successMessage: "Event deleted permanently",
       confirm:
-        "Archive this event? Registrations and activity history will be retained.",
+        "Permanently delete this event? This cannot be undone. Events with registration or communication history cannot be deleted.",
       danger: true,
-      when: (row) => row.publication_status !== "archived",
     },
     actions: [
       {
@@ -1525,12 +1666,20 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   documents: {
     title: "Documents",
     description:
-      "Audience-controlled records, immutable file versions, retention and legal-hold metadata.",
+      "Audience-controlled records, immutable file versions, retention, and legal-hold metadata.",
     endpoint: "/api/v1/documents?page_size=100",
     queryKey: "documents",
     serverPagination: {
       searchParam: "q",
       filterParams: { category: "category", status: "status" },
+      sortFields: [
+        "public_id",
+        "title",
+        "category",
+        "status",
+        "document_date",
+        "version",
+      ],
     },
     filters: [
       { key: "category", label: "Category", options: ["internal", "external"] },
@@ -1541,12 +1690,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       },
     ],
     columns: [
-      { key: "public_id", label: "Reference" },
-      { key: "title", label: "Document" },
+      { key: "title", label: "Document", subtitleKey: "public_id" },
       { key: "category", label: "Category" },
       { key: "status", label: "Status" },
-      { key: "document_date", label: "Date" },
-      { key: "version", label: "Version" },
+      { key: "document_date", label: "Date", dateStyle: "date" },
     ],
     create: {
       label: "New document",
@@ -1566,14 +1713,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       prepare: documentPrepare,
       headers: (row) => ({ "If-Match": `"${row.version}"` }),
     },
-    archive: {
-      label: "Archive document",
-      permission: "documents.manage",
-      endpoint: (row) => `/api/v1/documents/${row.id}`,
+    delete: {
+      label: "Delete document",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/documents/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Document archived",
+      successMessage: "Document deleted permanently",
       confirm:
-        "Archive this document? Files and every version will be retained.",
+        "Permanently delete this document and its file-version links? This cannot be undone. Shared media files are retained, and legal holds block deletion.",
       danger: true,
     },
     actions: [
@@ -1583,7 +1730,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/documents/${row.id}`,
         href: (row) => `/dashboard/documents/${row.id}/preview`,
         successMessage: "Preview opened",
-        open: true,
+        openMode: "panel",
+        previewKind: "document",
       },
       {
         label: "Add file version",
@@ -1625,6 +1773,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/media/${row.latest_media_asset_id}/content`,
         successMessage: "Document opened",
         open: true,
+        openMode: "tab",
         when: (row) => Boolean(row.latest_media_asset_id),
       },
     ],
@@ -1632,12 +1781,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   media: {
     title: "Media library",
     description:
-      "Secure uploads, malware scanning, private delivery and reusable visual assets.",
+      "Shared library of scanned assets reused by galleries, carousel, profiles, and publishing.",
     endpoint: "/api/v1/media?page_size=100",
     queryKey: "media",
+    layout: "grid",
+    gridAspect: "square",
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["original_filename", "status", "content_type", "is_private"],
     },
     filters: [
       {
@@ -1648,11 +1800,32 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     ],
     columns: [
       { key: "original_filename", label: "Asset" },
-      { key: "content_type", label: "Type" },
-      { key: "byte_size", label: "Size" },
       { key: "status", label: "Status" },
-      { key: "created_at", label: "Uploaded" },
+      { key: "content_type", label: "Type" },
+      { key: "is_private", label: "Private" },
     ],
+    create: {
+      label: "Upload assets",
+      submitLabel: "Done",
+      permission: "media.manage",
+      endpoint: "/api/v1/media",
+      clientOnly: true,
+      fields: [
+        {
+          key: "upload",
+          label: "Files",
+          type: "media",
+          media: {
+            accept: "any",
+            multiple: true,
+            isPrivate: true,
+            aspect: "square",
+          },
+          help: "Files are malware-scanned and added to the library as soon as upload finishes. Mark public later if they should appear on the site.",
+        },
+      ],
+      successMessage: "Assets added to the library",
+    },
     update: {
       label: "Edit media details",
       permission: "media.manage",
@@ -1666,16 +1839,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Media details updated",
     },
-    archive: {
-      label: "Archive media",
-      permission: "media.manage",
-      endpoint: (row) => `/api/v1/media/${row.id}`,
+    delete: {
+      label: "Delete media",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/media/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Media asset archived",
+      successMessage: "Media asset deleted permanently",
       confirm:
-        "Archive this media asset? Stored bytes and audit history will be retained.",
+        "Permanently delete this media asset, its variants, and stored files? This cannot be undone. Any linked profile, article, event, document, gallery, advert, or carousel slide will block deletion.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
     actions: [
       {
@@ -1684,6 +1856,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         endpoint: (row) => `/api/v1/media/${row.id}/content`,
         successMessage: "File opened",
         open: true,
+        openMode: "tab",
         when: (row) => row.status === "ready",
       },
     ],
@@ -1694,6 +1867,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Curated visual stories for the public site and association record.",
     endpoint: "/api/v1/galleries",
     queryKey: "galleries",
+    detailHref: (row) => `/dashboard/galleries/${row.id}`,
+    updateHref: (row) => `/dashboard/galleries/${row.id}/edit`,
+    layout: "grid",
+    gridAspect: "landscape",
     filters: [
       {
         key: "status",
@@ -1704,8 +1881,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     columns: [
       { key: "title", label: "Gallery" },
       { key: "status", label: "Status" },
-      { key: "published_at", label: "Published" },
       { key: "items", label: "Images" },
+      { key: "published_at", label: "Published" },
     ],
     create: {
       label: "New gallery",
@@ -1758,7 +1935,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
               String(row.content_type).startsWith("image/"),
             emptyLabel: "No ready public images",
           },
-          help: "Upload images here or reuse ready images from the Media library. Use Allow download on each image to control the public gallery download button. For Google Drive or OneDrive albums, use the external album link below instead of (or in addition to) uploading.",
+          help: "Upload images here or reuse ready images from the Media library. Use Allow download on each image to control the public gallery download button. To copy a Google Drive folder into this gallery, save the gallery first, then use Import from Google Drive on edit.",
         },
         {
           key: "blocked_download_media_ids",
@@ -1772,7 +1949,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           key: "external_album_url",
           label: "External album link",
           type: "url",
-          help: "Optional shared Google Drive, OneDrive or similar album. Visitors can open it from the public gallery page.",
+          help: "Optional shared Google Drive, OneDrive or similar album. Visitors can open it from the public gallery page. This does not import images — use Import from Google Drive after saving.",
         },
       ],
       successMessage: "Gallery created",
@@ -1828,7 +2005,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
               String(row.content_type).startsWith("image/"),
             emptyLabel: "No ready public images",
           },
-          help: "Upload images here or reuse ready images from the Media library. Toggle Allow download per image for the public gallery.",
+          help: "Upload images here or reuse ready images from the Media library. Toggle Allow download per image for the public gallery. Use Import from Google Drive below to copy a shared folder into the Media library.",
         },
         {
           key: "blocked_download_media_ids",
@@ -1846,7 +2023,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           key: "external_album_url",
           label: "External album link",
           type: "url",
-          help: "Optional shared Google Drive, OneDrive or similar album.",
+          help: "Optional shared album visitors can open. Separate from Import from Google Drive, which copies images into this gallery.",
         },
       ],
       successMessage: "Gallery updated",
@@ -1872,15 +2049,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         };
       },
     },
-    archive: {
-      label: "Archive gallery",
-      permission: "content.publish",
-      endpoint: (row) => `/api/v1/galleries/${row.id}`,
+    delete: {
+      label: "Delete gallery",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/galleries/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Gallery archived",
-      confirm: "Archive this gallery while retaining all images and history?",
+      successMessage: "Gallery deleted permanently",
+      confirm:
+        "Permanently delete this gallery? This cannot be undone. Its shared media assets will be retained.",
       danger: true,
-      when: (row) => row.status !== "archived",
     },
   },
   carousel: {
@@ -1889,6 +2066,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Ordered, accessible homepage hero slides using scanned public media assets.",
     endpoint: "/api/v1/admin/carousel",
     queryKey: "settings",
+    layout: "grid",
     filters: [
       { key: "is_published", label: "Published", options: ["true", "false"] },
     ],
@@ -2002,16 +2180,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Homepage slide updated",
     },
-    archive: {
-      label: "Archive slide",
-      permission: "settings.manage",
-      endpoint: (row) => `/api/v1/admin/carousel/${row.id}`,
+    delete: {
+      label: "Delete slide",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/admin/carousel/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Homepage slide archived",
+      successMessage: "Homepage slide deleted permanently",
       confirm:
-        "Archive this slide? Its audit history and media asset will be retained.",
+        "Permanently delete this homepage slide? This cannot be undone. The linked media asset will be retained.",
       danger: true,
-      when: (row) => row.archived !== true,
     },
   },
   adverts: {
@@ -2028,14 +2205,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       },
     ],
     columns: [
-      { key: "title", label: "Campaign" },
-      { key: "placement_name", label: "Placement" },
-      { key: "fulfilment", label: "Fulfilment" },
-      { key: "advertiser_name", label: "Advertiser" },
-      { key: "status", label: "Status" },
-      { key: "starts_at", label: "Starts" },
-      { key: "impressions", label: "Impressions" },
-      { key: "clicks", label: "Clicks" },
+      { key: "title", label: "Campaign", subtitleKey: "advertiser_name" },
+      { key: "status", label: "Status", subtitleKey: "fulfilment" },
+      { key: "starts_at", label: "Schedule", dateStyle: "date" },
+      {
+        key: "impressions",
+        label: "Delivery",
+        metricKeys: ["clicks"],
+        align: "end",
+      },
     ],
     create: {
       label: "New campaign",
@@ -2052,16 +2230,27 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       fields: campaignFields,
       successMessage: "Campaign updated",
     },
-    archive: {
-      label: "Complete campaign",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}`,
+    delete: {
+      label: "Delete campaign",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Campaign completed",
-      confirm: "Complete this campaign? Performance records will be retained.",
+      successMessage: "Advertising campaign deleted permanently",
+      confirm:
+        "Permanently delete this campaign? This cannot be undone. Linked orders or recorded performance will block deletion.",
       danger: true,
-      when: (row) => row.status !== "completed",
     },
+    actions: [
+      {
+        label: "Complete campaign",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/campaigns/${row.id}`,
+        method: "DELETE",
+        successMessage: "Campaign completed",
+        confirm: "Complete this campaign while retaining performance records?",
+        when: (row) => row.status !== "completed",
+      },
+    ],
   },
   "advert-slots": {
     title: "Advertising placements",
@@ -2070,9 +2259,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/slots",
     queryKey: "adverts",
     columns: [
-      { key: "name", label: "Placement" },
-      { key: "key", label: "Key" },
-      { key: "location", label: "Site location" },
+      { key: "name", label: "Placement", subtitleKey: "location" },
       { key: "size", label: "Size" },
       { key: "is_active", label: "Active" },
     ],
@@ -2143,6 +2330,16 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertising placement updated",
     },
+    delete: {
+      label: "Delete placement",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/slots/${row.id}/permanent`,
+      method: "DELETE",
+      successMessage: "Advertising placement deleted permanently",
+      confirm:
+        "Permanently delete this advertising placement? Linked plans or campaigns will block deletion.",
+      danger: true,
+    },
   },
   "advert-plans": {
     title: "Advertising plans",
@@ -2151,10 +2348,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/plans",
     queryKey: "adverts",
     columns: [
-      { key: "name", label: "Plan" },
-      { key: "placement_name", label: "Placement" },
-      { key: "price", label: "Price (GHS)" },
-      { key: "duration_days", label: "Days" },
+      { key: "name", label: "Plan", subtitleKey: "placement_name" },
+      { key: "price", label: "Price", align: "end" },
+      { key: "duration_days", label: "Days", align: "end" },
       { key: "is_active", label: "Active" },
     ],
     create: {
@@ -2234,16 +2430,27 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertising plan updated",
     },
-    archive: {
-      label: "Deactivate plan",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/plans/${row.id}`,
+    delete: {
+      label: "Delete plan",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/plans/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertising plan deactivated",
-      confirm: "Deactivate this plan? Existing orders will be retained.",
+      successMessage: "Advertising plan deleted permanently",
+      confirm:
+        "Permanently delete this advertising plan? Existing orders will block deletion.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate plan",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/plans/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertising plan deactivated",
+        confirm: "Deactivate this plan while retaining existing orders?",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   "advert-orders": {
     title: "Advertising orders",
@@ -2265,11 +2472,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     ],
     columns: [
       { key: "advertiser_name", label: "Client" },
-      { key: "plan_name", label: "Plan" },
-      { key: "campaign_name", label: "Campaign" },
-      { key: "status", label: "Status" },
-      { key: "payment_status", label: "Payment" },
-      { key: "starts_on", label: "Starts" },
+      { key: "campaign_name", label: "Campaign", subtitleKey: "plan_name" },
+      { key: "status", label: "Status", subtitleKey: "payment_status" },
+      { key: "starts_on", label: "Starts", dateStyle: "date" },
     ],
     create: {
       label: "New order",
@@ -2396,17 +2601,28 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertising order updated",
     },
-    archive: {
-      label: "Cancel order",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/orders/${row.id}`,
+    delete: {
+      label: "Delete order",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/orders/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertising order cancelled",
+      successMessage: "Advertising order deleted permanently",
       confirm:
-        "Cancel this order? Its linked campaign will be paused if it was live.",
+        "Permanently delete this order? Linked campaigns, payment activity, or fulfilled history will block deletion.",
       danger: true,
-      when: (row) => row.status !== "cancelled",
     },
+    actions: [
+      {
+        label: "Cancel order",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/orders/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertising order cancelled",
+        confirm:
+          "Cancel this order? Its linked campaign will be paused if it was live.",
+        when: (row) => row.status !== "cancelled",
+      },
+    ],
   },
   "advert-advertisers": {
     title: "Advertiser clients",
@@ -2415,10 +2631,12 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/advertisers",
     queryKey: "adverts",
     columns: [
-      { key: "organization_name", label: "Organization" },
-      { key: "contact_name", label: "Contact" },
+      {
+        key: "organization_name",
+        label: "Client",
+        subtitleKey: "contact_name",
+      },
       { key: "email", label: "Email" },
-      { key: "phone", label: "Phone" },
       { key: "is_active", label: "Active" },
     ],
     create: {
@@ -2465,22 +2683,33 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       ],
       successMessage: "Advertiser client updated",
     },
-    archive: {
-      label: "Deactivate client",
-      permission: "adverts.manage",
-      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+    delete: {
+      label: "Delete client",
+      permission: "records.delete",
+      endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}/permanent`,
       method: "DELETE",
-      successMessage: "Advertiser client deactivated",
+      successMessage: "Advertiser client deleted permanently",
       confirm:
-        "Deactivate this client? Existing orders stay on record; new orders will require an active client.",
+        "Permanently delete this advertiser client? Existing orders will block deletion.",
       danger: true,
-      when: (row) => row.is_active === true,
     },
+    actions: [
+      {
+        label: "Deactivate client",
+        permission: "adverts.manage",
+        endpoint: (row) => `/api/v1/adverts/advertisers/${row.id}`,
+        method: "DELETE",
+        successMessage: "Advertiser client deactivated",
+        confirm:
+          "Deactivate this client? Existing orders stay on record; new orders will require an active client.",
+        when: (row) => row.is_active === true,
+      },
+    ],
   },
   analytics: {
     title: "Analytics",
     description:
-      "A current, privacy-aware view of membership, publishing and event participation.",
+      "A current, privacy-aware view of membership, publishing, and event participation.",
     endpoint: "/api/v1/dashboard/analytics",
     queryKey: "analytics",
     columns: [],
@@ -2488,22 +2717,24 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   audit: {
     title: "Audit ledger",
     description:
-      "Immutable evidence of sensitive reads, writes, decisions and security events.",
+      "Immutable evidence of sensitive reads, writes, decisions, and security events.",
     endpoint: "/api/v1/admin/audit?page_size=100",
     queryKey: "audit",
-    serverPagination: { searchParam: "q" },
+    serverPagination: {
+      searchParam: "q",
+      sortFields: ["action", "resource_type", "outcome", "created_at"],
+    },
     columns: [
       { key: "actor_name", label: "Actor" },
-      { key: "action", label: "Action" },
-      { key: "resource_type", label: "Resource" },
-      { key: "outcome", label: "Outcome" },
+      { key: "action", label: "Action", subtitleKey: "resource_type" },
       { key: "created_at", label: "Time" },
+      { key: "outcome", label: "Outcome" },
     ],
   },
   settings: {
     title: "Portal settings",
     description:
-      "Runtime-managed public identity, contact details and homepage controls.",
+      "Runtime-managed public identity, contact details, and homepage controls.",
     endpoint: "/api/v1/admin/settings",
     queryKey: "settings",
     columns: [
@@ -2559,7 +2790,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           emptyValue: "",
         },
         { key: "enabled", label: "Enabled", type: "checkbox" },
-        { key: "rules", label: "Rules", type: "json", defaultValue: "{}" },
+        {
+          key: "rules",
+          label: "Rules",
+          type: "json",
+          defaultValue: "{}",
+          hidden: true,
+        },
       ],
       successMessage: "Feature flag updated",
     },
@@ -2567,12 +2804,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   jobs: {
     title: "Background jobs",
     description:
-      "Imports, exports, contact requests and long-running processing with progress.",
+      "Imports, exports, contact requests, and long-running processing with progress.",
     endpoint: "/api/v1/admin/jobs?page_size=100",
     queryKey: "jobs",
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["kind", "status", "progress", "created_at", "error_message"],
     },
     filters: [
       {
@@ -2591,4 +2829,6 @@ export const workspaces: Record<string, WorkspaceConfig> = {
   },
 };
 
+attachWorkspaceDetails(workspaces);
+for (const [key, config] of Object.entries(workspaces)) config.key = key;
 workspaces.content = workspaces.news;

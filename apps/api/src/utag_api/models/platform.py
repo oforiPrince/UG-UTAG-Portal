@@ -10,11 +10,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     Uuid,
+)
+from sqlalchemy import (
     text as sa_text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -83,6 +86,26 @@ class BackgroundJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     result_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     error_code: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)
+
+
+class GoogleDriveConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Per-user Google OAuth tokens for Drive folder imports."""
+
+    __tablename__ = "google_drive_connections"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_google_drive_connections_user_id"),
+        Index("ix_google_drive_connections_user_id", "user_id"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    google_sub: Mapped[str] = mapped_column(String(128), index=True)
+    google_email: Mapped[str] = mapped_column(String(255), default="")
+    access_token_encrypted: Mapped[bytes] = mapped_column(LargeBinary)
+    refresh_token_encrypted: Mapped[bytes] = mapped_column(LargeBinary)
+    token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scopes: Mapped[str] = mapped_column(Text, default="")
 
 
 class FeatureFlag(UUIDPrimaryKeyMixin, TimestampMixin, Base):

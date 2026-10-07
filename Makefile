@@ -1,4 +1,4 @@
-.PHONY: dev down logs api-install api-check api-test seed-demo web-install web-check migrate migration ship-rehearsal
+.PHONY: dev down logs api-install api-check api-test seed-demo web-install web-check migrate migration ship-rehearsal deploy-production-dry-run deploy-production
 
 dev:
 	docker compose up --build
@@ -37,3 +37,9 @@ migration:
 ship-rehearsal:
 	@test -n "$$LEGACY_DATABASE_URL" || (echo "Set LEGACY_DATABASE_URL first" && exit 1)
 	ops/scripts/ship-production.sh --mode rehearsal
+
+deploy-production-dry-run:
+	ops/scripts/push-production-update.sh --dry-run --no-push
+
+deploy-production:
+	ops/scripts/push-production-update.sh --deploy

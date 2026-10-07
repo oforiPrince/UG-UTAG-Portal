@@ -14,7 +14,14 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Announcement, Article, ArticleAttachment, MediaAsset, User
+from utag_api.models import (
+    Announcement,
+    Article,
+    ArticleAttachment,
+    MediaAsset,
+    Notification,
+    User,
+)
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import (
     AnnouncementCreate,
@@ -24,10 +31,16 @@ from utag_api.schemas.domain import (
     ArticleView,
 )
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.notifications import deliver_announcement_notifications
-from utag_api.services.query import paginate, unique_slug
+from utag_api.services.query import apply_sort, paginate, unique_slug
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -138,8 +151,10 @@ async def list_articles(
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[ArticleView]:
-    statement = select(Article).order_by(Article.updated_at.desc())
+    statement = select(Article)
     if status:
         statement = statement.where(Article.status == status)
     if q and q.strip():
@@ -147,6 +162,18 @@ async def list_articles(
         statement = statement.where(
             or_(Article.title.ilike(pattern), Article.excerpt.ilike(pattern))
         )
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "title": Article.title,
+            "status": Article.status,
+            "published_at": Article.published_at,
+            "updated_at": Article.updated_at,
+        },
+        default=(Article.updated_at.desc(),),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[ArticleView](
         items=await article_views(db, list(result.items)),
@@ -319,6 +346,48 @@ async def archive_article(
     return MessageResponse(message="Article archived")
 
 
+@router.delete("/articles/{article_id}/permanent", response_model=MessageResponse)
+async def delete_article_permanently(
+    article_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    article = await db.get(Article, article_id, with_for_update=True)
+    if article is None:
+        raise ApiError(404, "article_not_found", "Article not found")
+    notification_count = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "article",
+        Notification.resource_id == article.id,
+    )
+    block_delete_if_referenced(
+        "article",
+        [DeleteBlocker("member notification", notification_count)],
+        guidance=(
+            "Remove the related member notifications first, or archive the article to "
+            "preserve communication history"
+        ),
+    )
+    await db.execute(delete(ArticleAttachment).where(ArticleAttachment.article_id == article.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="article.deleted",
+        resource_type="article",
+        resource_id=article.id,
+        topic="content",
+        payload={"article_id": str(article.id), "slug": article.slug},
+    )
+    await db.delete(article)
+    await commit_permanent_delete(db, "article")
+    return MessageResponse(message="Article deleted permanently")
+
+
 @router.get("/announcements", response_model=Page[AnnouncementView])
 async def list_announcements(
     db: DbSession,
@@ -328,6 +397,8 @@ async def list_announcements(
     status: str | None = None,
     priority: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[AnnouncementView]:
     statement = select(Announcement)
     if status:
@@ -336,12 +407,20 @@ async def list_announcements(
         statement = statement.where(Announcement.priority == priority)
     if q and q.strip():
         statement = statement.where(Announcement.title.ilike(f"%{q.strip()}%"))
-    result = await paginate(
-        db,
-        statement.order_by(Announcement.updated_at.desc()),
-        page=page,
-        page_size=page_size,
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "title": Announcement.title,
+            "priority": Announcement.priority,
+            "status": Announcement.status,
+            "published_at": Announcement.published_at,
+            "expires_at": Announcement.expires_at,
+        },
+        default=(Announcement.updated_at.desc(),),
     )
+    result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[AnnouncementView](
         items=[AnnouncementView.model_validate(item) for item in result.items],
         page=result.page,
@@ -349,6 +428,19 @@ async def list_announcements(
         total=result.total,
         pages=result.pages,
     )
+
+
+@router.get("/announcements/{announcement_id}", response_model=AnnouncementView)
+async def get_announcement(
+    announcement_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("content.view"))],
+) -> AnnouncementView:
+    del principal
+    item = await db.get(Announcement, announcement_id)
+    if item is None:
+        raise ApiError(404, "announcement_not_found", "Announcement not found")
+    return AnnouncementView.model_validate(item)
 
 
 @router.post("/announcements", response_model=AnnouncementView, status_code=201)
@@ -449,3 +541,47 @@ async def archive_announcement(
     )
     await db.commit()
     return MessageResponse(message="Announcement archived")
+
+
+@router.delete(
+    "/announcements/{announcement_id}/permanent",
+    response_model=MessageResponse,
+)
+async def delete_announcement_permanently(
+    announcement_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "content.publish")),
+    ],
+) -> MessageResponse:
+    item = await db.get(Announcement, announcement_id, with_for_update=True)
+    if item is None:
+        raise ApiError(404, "announcement_not_found", "Announcement not found")
+    notification_count = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "announcement",
+        Notification.resource_id == item.id,
+    )
+    block_delete_if_referenced(
+        "announcement",
+        [DeleteBlocker("member delivery", notification_count, "member deliveries")],
+        guidance=(
+            "Delivered announcements must be archived so members' communication history "
+            "remains valid"
+        ),
+    )
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="announcement.deleted",
+        resource_type="announcement",
+        resource_id=item.id,
+        topic="announcements",
+        payload={"announcement_id": str(item.id)},
+    )
+    await db.delete(item)
+    await commit_permanent_delete(db, "announcement")
+    return MessageResponse(message="Announcement deleted permanently")

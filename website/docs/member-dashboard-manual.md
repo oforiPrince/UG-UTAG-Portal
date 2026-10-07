@@ -86,7 +86,8 @@ by the server for history, messages, receipts, and WebSocket subscriptions.
 ### Members
 
 The **Members** workspace provides search, status filters, sorting, details,
-edit, invite, access-link, archive, import, and export actions.
+edit, invite, access-link, deactivate/reactivate, permanent delete, import, and
+export actions.
 
 To import members:
 
@@ -108,23 +109,32 @@ records audit/job evidence, and queues invitations. Existing emails or staff
 IDs are reported rather than overwritten.
 
 Use **Export** for the authorized CSV view. Spreadsheet-formula prefixes are
-escaped before download. Use **Archive member** for deactivation; records are
-retained. The portal prevents an administrator from archiving their own active
-account.
+escaped before download. Use **Deactivate member** to suspend access while
+retaining the account and its history. Use **Delete member** only for an
+unneeded account with no shared history. Permanent Delete actions are available
+only to administrators and cannot be delegated as extra access. The portal
+blocks self-deletion and explains every linked appointment, message, content
+record, media asset, or other dependency that must be resolved first.
 
 ### Executive officers and councils
 
 Open **Executives** to create an appointment from an existing member, record
 position, portfolio, biography, appointment dates, term, acting state, active
-state, and public visibility. Use **End appointment** instead of deleting the
-history. Public navigation presents the approved groups as **Executive
-Officers** and **Local Executive Council Members**.
+state, and public visibility. **End appointment** preserves the term history;
+**Delete appointment** permanently removes an incorrect appointment. Public
+navigation presents the approved groups as **Executive Officers** and **Local
+Executive Council Members**.
 
 ### Organization records
 
-Open **Organization** to manage schools, colleges, departments, and committees.
-Deactivate obsolete records instead of deleting references used by member
-history.
+Open **Organization** to add, rename, move, reactivate, or deactivate colleges,
+schools, departments, and committees. The hierarchy is **college → school →
+department**; colleges and committees are top-level. Parent choices are filtered
+to valid types, and moving a school or department updates linked member
+affiliations in the same transaction. A unit with active children or linked
+members cannot be deactivated until those records are moved, so member history
+is not silently broken. **Delete unit** is permanent and is blocked while any
+member, child unit, audience rule, or system-chat history is linked.
 
 ### Media library
 
@@ -137,21 +147,23 @@ history.
 5. Upload and wait for the state to become **Ready**. Quarantined, scanning, or
    rejected files cannot be published.
 
-Archive removes an asset from normal use while retaining its stored evidence
-and audit history.
+**Delete media** permanently removes the database record and generated-variant
+links, then queues idempotent stored-file cleanup through the media worker. The
+portal blocks deletion during upload scanning or while a profile, article,
+event, document, gallery, advert, or carousel slide still uses the asset.
 
 ### Homepage carousel
 
 Open **Homepage carousel** and select **New slide**. Choose a ready public image
 from the media-library picker, add title/description and an optional HTTPS link,
 set display order, then enable **Published**. The public homepage supplies manual
-previous/next controls and does not automatically rotate. Archiving a slide
-removes it from the public homepage without erasing it.
+previous/next controls and does not automatically rotate. **Delete slide**
+permanently removes the slide while retaining its shared media asset.
 
 ### Articles, announcements, events, documents, and galleries
 
-Each publishing workspace uses explicit workflow state and retained archive
-actions:
+Each publishing workspace uses explicit workflow state and guarded permanent
+delete actions:
 
 - **Articles:** title, excerpt, body, featured image, tags, citations, feature
   flag, publication state and time;
@@ -165,6 +177,11 @@ actions:
 
 Open a row for its detail view. Edit actions use version/ETag protection where
 provided so concurrent changes do not silently overwrite each other.
+Delete removes the selected record and only its owned links; shared media is
+retained. Delivery history, registrations, legal holds, and other dependencies
+block deletion with a specific explanation. The server rechecks database
+constraints at commit time so a concurrently added dependency also results in
+a safe conflict instead of partial deletion.
 
 ### Notifications and chat administration
 
@@ -192,7 +209,9 @@ unsanitized advert HTML.
 
 ## 5. Safe operating rules
 
-- Use archive/deactivate/end actions rather than database deletion.
+- Use deactivate, end, complete, cancel, or workflow status changes when
+  history must be retained. Use Delete only for records that should be removed
+  permanently. Delete is administrator-only and cannot be delegated.
 - Do not paste production secrets, passwords, private document links, or raw
   member exports into tickets or chat.
 - Make public media non-private only after rights, alternative text, and content

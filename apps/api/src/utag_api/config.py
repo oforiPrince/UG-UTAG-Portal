@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     metrics_enabled: bool = True
     metrics_bearer_token: SecretStr | None = None
 
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: SecretStr | None = None
+    google_oauth_redirect_uri: str = (
+        "http://localhost:8000/api/v1/integrations/google-drive/callback"
+    )
+
     @field_validator("app_secret_key")
     @classmethod
     def validate_secret(cls, value: SecretStr) -> SecretStr:
@@ -96,6 +102,25 @@ class Settings(BaseSettings):
             len(secret.get_secret_value()) < 32 for secret in self.field_encryption_keys.values()
         ):
             raise ValueError("Every field encryption key must contain at least 32 characters")
+        has_google_client_id = bool(
+            self.google_oauth_client_id and self.google_oauth_client_id.strip()
+        )
+        has_google_client_secret = bool(
+            self.google_oauth_client_secret
+            and self.google_oauth_client_secret.get_secret_value().strip()
+        )
+        if has_google_client_id != has_google_client_secret:
+            raise ValueError(
+                "GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET must be configured together"
+            )
+        if has_google_client_id:
+            redirect_url = urlsplit(self.google_oauth_redirect_uri)
+            if redirect_url.scheme not in {"http", "https"} or not redirect_url.hostname:
+                raise ValueError("GOOGLE_OAUTH_REDIRECT_URI must be an absolute HTTP(S) URL")
+            if self.field_encryption_key_version not in self.field_encryption_keys:
+                raise ValueError(
+                    "Google Drive OAuth token storage requires the active field encryption key"
+                )
         if self.environment != "production":
             return self
         if self.database_url.startswith("sqlite"):
@@ -114,6 +139,7 @@ class Settings(BaseSettings):
             ("SMTP_PASSWORD", self.smtp_password),
             ("BOOTSTRAP_ADMIN_PASSWORD", self.bootstrap_admin_password),
             ("METRICS_BEARER_TOKEN", self.metrics_bearer_token),
+            ("GOOGLE_OAUTH_CLIENT_SECRET", self.google_oauth_client_secret),
         ):
             if secret is not None:
                 placeholder_values[name] = secret.get_secret_value()
@@ -147,6 +173,8 @@ class Settings(BaseSettings):
             raise ValueError("Production uploads require a configured malware scanner")
         if not self.smtp_host:
             raise ValueError("Production account and contact workflows require SMTP")
+        # Username/password are required for delivery_available(), but production may
+        # still boot with host-only SMTP so public pages stay up while mail is wired.
         if not self.s3_server_side_encryption:
             raise ValueError("Production object storage must enable server-side encryption")
         if self.s3_server_side_encryption == "aws:kms" and not self.s3_kms_key_id:
@@ -155,11 +183,23 @@ class Settings(BaseSettings):
             raise ValueError("Production metrics require a bearer token")
         if self.demo_data_password:
             raise ValueError("Production must not configure DEMO_DATA_PASSWORD")
+        if has_google_client_id and urlsplit(self.google_oauth_redirect_uri).scheme != "https":
+            raise ValueError("Production GOOGLE_OAUTH_REDIRECT_URI must use HTTPS")
         return self
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def google_drive_configured(self) -> bool:
+        return bool(
+            self.google_oauth_client_id
+            and self.google_oauth_client_id.strip()
+            and self.google_oauth_client_secret
+            and self.google_oauth_client_secret.get_secret_value().strip()
+            and self.field_encryption_key_version in self.field_encryption_keys
+        )
 
 
 @lru_cache

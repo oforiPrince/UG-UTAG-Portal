@@ -30,7 +30,7 @@ treated as missing production features.
 | Reactivate a member | Complete | **Reactivate member** restores an archived or suspended account without deleting its history |
 | Sign a member out everywhere | Complete | **Sign out all devices** revokes all active sessions |
 | Resend account access | Complete | **Send access link** replaces expired invitations or sends reset instructions |
-| Delete a member | Modernized | **Archive member** retains historical and relational data and revokes access |
+| Delete a member | Complete | Administrator-only **Delete member** permanently removes only an unreferenced account; linked history blocks deletion with specific reasons. **Deactivate member** retains the account and revokes access. |
 | Manage administrators | Complete | Administrators are managed in the unified Members workspace by filtering Role to Administrator; the same create, edit, access and lifecycle actions apply |
 | Bulk upload administrators | Complete | The unified member import accepts `administrator` in the roles column and enforces the protected `members.roles` permission |
 | Prevent privilege escalation | Complete | Creating members is separate from assigning roles; only `members.roles` can assign privileged roles or manage another administrator |
@@ -49,6 +49,7 @@ treated as missing production features.
 | `members.roles` | Assign privileged roles and manage administrators |
 | `members.permissions` | Grant and revoke auditable extra permissions on an individual member |
 | `organization.manage` | Create, edit and deactivate organization units |
+| `records.delete` | Permanently delete unreferenced records; administrator-only and non-delegable |
 
 Members and administrators share one account workspace. An administrator is a
 member whose roles include `administrator`; the unified Role filter replaces a

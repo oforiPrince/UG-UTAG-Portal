@@ -27,6 +27,9 @@ export function shouldHumanize(key: string) {
 
 export function displayChoice(value: unknown, key = "") {
   const text = String(value);
+  if (key === "position" && text === "Vice President") {
+    return "Vice-President";
+  }
   if (
     (key === "permissions" || key.endsWith("_permissions")) &&
     text.includes(".")
@@ -83,6 +86,42 @@ function contentTypeLabel(contentType: string) {
   return humanize(contentType.replace("/", " "));
 }
 
+export function displayTitleWithoutDuplicateSubtitle(
+  title: unknown,
+  subtitle: unknown,
+) {
+  if (typeof title !== "string") return title;
+  if (typeof subtitle !== "string") return title;
+  const trimmed = subtitle.trim();
+  if (!trimmed) return title;
+  const suffix = ` · ${trimmed}`;
+  if (title === trimmed) return title;
+  if (title.endsWith(suffix)) return title.slice(0, -suffix.length).trim();
+  return title;
+}
+
+export function compactDateLabel(
+  value: unknown,
+  style: "date" | "datetime" = "datetime",
+) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}(T|$)/.test(value)) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) return null;
+  const date = parsed.toLocaleDateString("en-GH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  if (style === "date" || !value.includes("T")) return date;
+  const time = parsed.toLocaleTimeString("en-GH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${date} ${time}`;
+}
+
 export function display(value: unknown, key = ""): string {
   if (value == null || value === "") return "Not provided";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -113,6 +152,17 @@ export function display(value: unknown, key = ""): string {
         ...(value.includes("T") ? { timeStyle: "short" } : {}),
       });
     }
+  }
+  if (
+    (key.endsWith("_time") || key === "time") &&
+    typeof value === "string" &&
+    /^\d{1,2}:\d{2}(:\d{2})?$/.test(value)
+  ) {
+    const [hoursRaw, minutes] = value.split(":");
+    const hours = Number(hoursRaw);
+    const period = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes} ${period}`;
   }
   if (key === "byte_size" && typeof value === "number") {
     return formatBytes(value);

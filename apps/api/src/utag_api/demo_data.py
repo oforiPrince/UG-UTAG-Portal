@@ -33,7 +33,7 @@ class DemoAccount:
     portfolio: str | None = None
 
 
-DEMO_ACCOUNTS = (
+DEMO_ROLE_ACCOUNTS = (
     DemoAccount(
         "demo.member@utag.com",
         "DEMO-001",
@@ -86,7 +86,7 @@ DEMO_ACCOUNTS = (
         "Senior Lecturer",
         ("secretary",),
         "Secretary",
-        "Secretariat, records and branch correspondence",
+        "Secretariat, records, and branch correspondence",
     ),
     DemoAccount(
         "demo.administrator@utag.com",
@@ -107,7 +107,7 @@ DEMO_ACCOUNTS = (
         "Male",
         "Senior Lecturer",
         ("executive",),
-        "Vice President",
+        "Vice-President",
         "Deputy branch leadership and coordination",
     ),
     DemoAccount(
@@ -132,7 +132,7 @@ DEMO_ACCOUNTS = (
         "Senior Lecturer",
         ("executive",),
         "Treasurer",
-        "Finance, reporting and stewardship",
+        "Finance, reporting, and stewardship",
     ),
     DemoAccount(
         "demo.assistant-treasurer@utag.com",
@@ -243,6 +243,25 @@ DEMO_ACCOUNTS = (
         "College of Humanities representation",
     ),
 )
+
+# A clearly fictional voting cohort for poll acceptance tests. Keeping these
+# accounts in the normal idempotent seed makes it possible to exercise frozen
+# electorates, partial turnout, reminders, and post-close results repeatedly.
+DEMO_POLL_MEMBER_ACCOUNTS = tuple(
+    DemoAccount(
+        email=f"demo.voter{index:02d}@utag.com",
+        staff_id=f"DEMO-V{index:02d}",
+        title="Dr.",
+        other_name="Demo",
+        surname=f"Voter {index:02d}",
+        gender="Female" if index % 2 == 0 else "Male",
+        academic_rank="Lecturer",
+        roles=("member",),
+    )
+    for index in range(1, 13)
+)
+
+DEMO_ACCOUNTS = DEMO_ROLE_ACCOUNTS + DEMO_POLL_MEMBER_ACCOUNTS
 
 
 @dataclass(frozen=True, slots=True)

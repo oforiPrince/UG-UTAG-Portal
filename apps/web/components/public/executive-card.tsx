@@ -1,8 +1,12 @@
 import Image from "next/image";
 
 import { ExecutiveProfileButton } from "@/components/public/executive-profile-button";
-import type { PublicExecutiveProfile } from "@/lib/leadership";
-import { cn, initials } from "@/lib/utils";
+import {
+  formatExecutivePosition,
+  type PublicExecutiveProfile,
+} from "@/lib/leadership";
+import { publicMediaUrl } from "@/lib/public-media";
+import { cn, formatPersonName, formatRankForName, initials } from "@/lib/utils";
 
 export function ExecutiveCard({
   profile,
@@ -37,7 +41,7 @@ export function ExecutiveCard({
                     ? "(min-width: 1024px) 16vw, (min-width: 640px) 50vw, 100vw"
                     : "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                 }
-                src={`/api/v1/public/media/${profile.profile_media_id}`}
+                src={publicMediaUrl(profile.profile_media_id, "w480")!}
                 unoptimized
               />
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#102a46]/24 to-transparent" />
@@ -62,7 +66,7 @@ export function ExecutiveCard({
           )}
         >
           <p className="text-[.68rem] font-extrabold tracking-wide text-coral uppercase">
-            {profile.position}
+            {formatExecutivePosition(profile.position)}
           </p>
           <h3
             className={cn(
@@ -70,11 +74,11 @@ export function ExecutiveCard({
               compact ? "text-base" : "text-lg",
             )}
           >
-            {profile.full_name}
+            {formatPersonName(profile.full_name)}
           </h3>
           {profile.academic_rank ? (
             <p className="mt-1 text-xs font-semibold text-muted">
-              {profile.academic_rank}
+              {formatRankForName(profile.full_name, profile.academic_rank)}
             </p>
           ) : null}
           <div className={cn("mt-auto", compact ? "pt-5" : "pt-6")}>

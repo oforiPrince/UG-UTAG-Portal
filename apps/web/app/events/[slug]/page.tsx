@@ -1,11 +1,9 @@
 import { format } from "date-fns";
 import {
-  ArrowDownToLine,
   CalendarDays,
   Camera,
   Clock3,
   ExternalLink,
-  FileText,
   Mail,
   MapPin,
   Phone,
@@ -14,9 +12,11 @@ import {
 import { notFound } from "next/navigation";
 
 import { AdSlotBanner } from "@/components/public/ad-slot-banner";
+import { PublicAttachments } from "@/components/public/public-attachments";
 import { PublicShell } from "@/components/public/public-shell";
 import { Button } from "@/components/ui/button";
 import { publicApi } from "@/lib/api";
+import { publicMediaUrl } from "@/lib/public-media";
 
 type EventSpeaker = {
   name?: string;
@@ -57,6 +57,7 @@ type Event = {
     media_asset_id: string;
     filename: string;
     content_type: string;
+    byte_size?: number;
     content_url: string;
   }[] | null;
 };
@@ -87,15 +88,19 @@ export default async function EventPage({
   return (
     <PublicShell>
       <header className="relative isolate overflow-hidden bg-[#122b48] text-white">
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('${
-              event.featured_media_id
-                ? `/api/v1/public/media/${event.featured_media_id}`
-                : "/brand/hero-leadership.jpg"
-            }')`,
-          }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={
+            publicMediaUrl(event.featured_media_id, "w1600") ??
+            "/brand/hero-leadership.jpg"
+          }
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 -z-20 size-full object-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          sizes="100vw"
         />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(13,41,71,.95),rgba(13,41,71,.72))]" />
         <div className="mx-auto max-w-[82rem] px-5 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
@@ -191,48 +196,15 @@ export default async function EventPage({
             </section>
           ) : null}
           {attachments.length ? (
-            <section className="mt-12 border-t border-line pt-8">
-              <h2 className="text-xl font-black text-[#172f4d]">
-                Event files and images
-              </h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {attachments.map((attachment) =>
-                  attachment.content_type.startsWith("image/") ? (
-                    <a
-                      key={attachment.media_asset_id}
-                      href={attachment.content_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="overflow-hidden rounded-md border border-line bg-panel"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={attachment.content_url}
-                        alt={attachment.filename}
-                        className="aspect-[4/3] w-full object-cover"
-                      />
-                      <b className="block truncate p-3 text-sm">
-                        {attachment.filename}
-                      </b>
-                    </a>
-                  ) : (
-                    <a
-                      key={attachment.media_asset_id}
-                      href={attachment.content_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3 rounded-md border border-line bg-panel p-4"
-                    >
-                      <FileText className="size-5 shrink-0 text-coral" />
-                      <b className="min-w-0 flex-1 truncate text-sm">
-                        {attachment.filename}
-                      </b>
-                      <ArrowDownToLine className="size-4 text-coral" />
-                    </a>
-                  ),
-                )}
-              </div>
-            </section>
+            <div className="mt-12 border-t border-line pt-8">
+              <PublicAttachments
+                attachments={attachments}
+                eyebrow="Event materials"
+                title="Event files and images"
+                description="Files open here so you can read or view them without downloading."
+                id="event-documents"
+              />
+            </div>
           ) : null}
         </div>
         <aside className="h-fit rounded-md border border-line bg-panel p-6 shadow-[0_10px_30px_rgb(23_43_69_/_8%)]">

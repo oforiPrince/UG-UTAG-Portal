@@ -21,12 +21,7 @@ import {
   Undo2,
   Unlink,
 } from "lucide-react";
-import {
-  type ComponentType,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { normalizeEditorHtml, normalizeLinkHref } from "@/lib/rich-text";
@@ -123,7 +118,7 @@ export function RichTextEditor({
         "aria-labelledby": labelledBy,
         "aria-multiline": "true",
         "aria-required": required ? "true" : "false",
-        class: "rich-text-content",
+        class: "rich-text-content rich-text-editor-content",
         id,
         role: "textbox",
         spellcheck: "true",
@@ -188,7 +183,7 @@ export function RichTextEditor({
   }
 
   return (
-    <div className="overflow-clip rounded-xl border border-line bg-paper shadow-[0_8px_28px_rgb(23_43_69_/_6%)] focus-within:border-ink/25 focus-within:ring-0">
+    <div className="workspace-control overflow-clip rounded-xl focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--coral)_52%,transparent),0_0_0_4px_color-mix(in_srgb,var(--coral)_12%,transparent)]">
       <div
         aria-label="Text formatting"
         role="toolbar"
@@ -367,7 +362,10 @@ export function RichTextEditor({
               className="min-h-10 rounded-lg border border-line bg-paper px-3 text-xs font-normal outline-none focus:border-ink/25"
             />
             {linkError ? (
-              <span role="alert" className="font-normal text-red-700">
+              <span
+                role="alert"
+                className="font-normal text-red-700 dark:text-red-300"
+              >
                 {linkError}
               </span>
             ) : null}

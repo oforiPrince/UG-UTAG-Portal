@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
@@ -18,12 +18,14 @@ from utag_api.dependencies import (
 )
 from utag_api.errors import ApiError
 from utag_api.models import ExecutiveAppointment, User
-from utag_api.schemas.common import MessageResponse
+from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import ExecutiveCreate, ExecutiveView
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import commit_permanent_delete
 from utag_api.services.events import record_change
 from utag_api.services.executives import executive_row_order_key
 from utag_api.services.identity import require_public_profile_image
+from utag_api.services.query import paginate_sequence
 
 router = APIRouter(prefix="/executives", tags=["executives"])
 
@@ -38,23 +40,77 @@ def view(appointment: ExecutiveAppointment, user: User) -> ExecutiveView:
     )
 
 
-@router.get("", response_model=list[ExecutiveView])
+@router.get("", response_model=Page[ExecutiveView])
 async def list_executives(
     db: DbSession,
     principal: Annotated[Principal, Depends(require_permissions("members.view"))],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 25,
+    q: str | None = None,
     include_past: bool = True,
-) -> list[ExecutiveView]:
+    is_active: bool | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
+) -> Page[ExecutiveView]:
     del principal
     statement = select(ExecutiveAppointment, User).join(
         User, User.id == ExecutiveAppointment.user_id
     )
-    if not include_past:
+    if is_active is not None:
+        statement = statement.where(ExecutiveAppointment.is_active.is_(is_active))
+    elif not include_past:
         statement = statement.where(ExecutiveAppointment.is_active.is_(True))
     rows = sorted(
         (await db.execute(statement)).all(),
         key=lambda row: executive_row_order_key(row[0], row[1]),
     )
-    return [view(appointment, user) for appointment, user in rows]
+    items = [view(appointment, user) for appointment, user in rows]
+    if q and q.strip():
+        needle = q.strip().casefold()
+        items = [
+            item
+            for item in items
+            if needle
+            in " ".join(
+                part
+                for part in (
+                    item.full_name,
+                    item.position,
+                    item.portfolio or "",
+                    item.title,
+                )
+                if part
+            ).casefold()
+        ]
+    sortable = {"full_name", "position", "is_active"}
+    if sort_by in sortable:
+        reverse = sort_dir == "desc"
+        items = sorted(
+            items,
+            key=lambda item: (getattr(item, sort_by), item.full_name.casefold()),
+            reverse=reverse,
+        )
+    return paginate_sequence(items, page=page, page_size=page_size)
+
+
+@router.get("/{appointment_id:uuid}", response_model=ExecutiveView)
+async def get_executive(
+    appointment_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("members.view"))],
+) -> ExecutiveView:
+    del principal
+    row = (
+        await db.execute(
+            select(ExecutiveAppointment, User)
+            .join(User, User.id == ExecutiveAppointment.user_id)
+            .where(ExecutiveAppointment.id == appointment_id)
+        )
+    ).one_or_none()
+    if row is None:
+        raise ApiError(404, "executive_not_found", "Executive appointment not found")
+    appointment, user = row
+    return view(appointment, user)
 
 
 @router.get("/exports/csv")
@@ -201,3 +257,34 @@ async def end_executive_appointment(
     )
     await db.commit()
     return MessageResponse(message="Executive appointment ended")
+
+
+@router.delete("/{appointment_id}/permanent", response_model=MessageResponse)
+async def delete_executive_appointment_permanently(
+    appointment_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "executives.manage")),
+    ],
+) -> MessageResponse:
+    appointment = await db.get(ExecutiveAppointment, appointment_id, with_for_update=True)
+    if appointment is None:
+        raise ApiError(404, "executive_not_found", "Executive appointment not found")
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="executive.deleted",
+        resource_type="executive_appointment",
+        resource_id=appointment.id,
+        topic="executives",
+        payload={
+            "appointment_id": str(appointment.id),
+            "user_id": str(appointment.user_id),
+        },
+        reason="Administrator permanently deleted an executive appointment",
+    )
+    await db.delete(appointment)
+    await commit_permanent_delete(db, "executive appointment")
+    return MessageResponse(message="Executive appointment deleted permanently")

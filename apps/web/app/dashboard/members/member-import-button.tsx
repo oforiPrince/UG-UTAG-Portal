@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { formatPersonName, formatRankForName } from "@/lib/utils";
 
 type ImportIssue = { row: number; field: string | null; message: string };
 type ImportPreview = {
@@ -110,7 +111,7 @@ function ImportDialog({ close }: { close: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-end bg-black/45 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex justify-end bg-ink/20"
       role="presentation"
       onMouseDown={() => {
         if (!busy) close();
@@ -126,10 +127,12 @@ function ImportDialog({ close }: { close: () => void }) {
         <div className="flex items-start justify-between gap-5">
           <div>
             <p className="eyebrow text-coral">Bulk account workflow</p>
-            <h2 className="display-type mt-3 text-4xl">Import members</h2>
+            <h2 className="mt-1.5 text-xl font-semibold tracking-tight">
+              Import members
+            </h2>
             <p className="mt-2 max-w-xl text-xs leading-6 text-muted">
-              Preview CSV or XLSX rows before creating active accounts and
-              their UTAG, school, and department chats.
+              Preview CSV or XLSX rows before creating active accounts and their
+              UTAG, school, and department chats.
             </p>
           </div>
           <Button
@@ -223,7 +226,7 @@ function ImportDialog({ close }: { close: () => void }) {
 
             {result.issues.length ? (
               <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5">
-                <div className="flex items-center gap-2 text-sm font-black text-red-700">
+                <div className="flex items-center gap-2 text-sm font-black text-red-700 dark:text-red-300">
                   <AlertTriangle className="size-4" /> Fix these rows before
                   importing
                 </div>
@@ -258,14 +261,19 @@ function ImportDialog({ close }: { close: () => void }) {
                         <tr key={`${member.row}-${member.email}`}>
                           <td className="px-4 py-3 text-muted">{member.row}</td>
                           <td className="px-4 py-3 font-bold">
-                            {member.full_name}
+                            {formatPersonName(member.full_name)}
                           </td>
                           <td className="px-4 py-3 font-mono">
                             {member.staff_id}
                           </td>
                           <td className="px-4 py-3">{member.email}</td>
                           <td className="px-4 py-3 text-muted">
-                            {member.academic_rank ?? "—"}
+                            {member.academic_rank
+                              ? formatRankForName(
+                                  member.full_name,
+                                  member.academic_rank,
+                                )
+                              : "—"}
                           </td>
                           <td className="px-4 py-3">
                             {member.roles.join(", ")}
@@ -332,7 +340,7 @@ export function MemberImportButton() {
   if (!user.data?.permissions.includes("members.create")) return null;
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
         <FileSpreadsheet className="size-4" /> Import
       </Button>
       {open ? <ImportDialog close={() => setOpen(false)} /> : null}

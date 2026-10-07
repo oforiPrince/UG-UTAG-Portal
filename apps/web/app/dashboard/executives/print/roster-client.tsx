@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { sortLeadership } from "@/lib/leadership";
+import { formatPersonName, formatRankForName } from "@/lib/utils";
 
 type Executive = {
   id: string;
@@ -25,10 +26,13 @@ type Executive = {
 export function ExecutiveRosterClient() {
   const query = useQuery({
     queryKey: ["executives", "print-roster"],
-    queryFn: () => api<Executive[]>("/api/v1/executives?include_past=true"),
+    queryFn: () =>
+      api<{ items: Executive[] }>(
+        "/api/v1/executives?include_past=true&page_size=100",
+      ),
   });
 
-  const ordered = sortLeadership(query.data ?? []);
+  const ordered = sortLeadership(query.data?.items ?? []);
   const current = ordered.filter((item) => item.is_active);
   const past = ordered.filter((item) => !item.is_active);
 
@@ -58,7 +62,7 @@ export function ExecutiveRosterClient() {
       {query.isLoading ? (
         <p className="py-16 text-center text-sm text-muted">Loading roster…</p>
       ) : query.error ? (
-        <p className="py-16 text-center text-sm text-red-700">
+        <p className="py-16 text-center text-sm text-red-700 dark:text-red-300">
           The executive roster could not be loaded.
         </p>
       ) : (
@@ -107,11 +111,13 @@ function RosterSection({
               <tr key={item.id} className="break-inside-avoid">
                 <td className="py-4 pr-4">
                   <b>
-                    {[item.title, item.full_name].filter(Boolean).join(" ")}
+                    {formatPersonName(
+                      [item.title, item.full_name].filter(Boolean).join(" "),
+                    )}
                   </b>
                   {item.academic_rank ? (
                     <span className="mt-1 block text-xs text-muted">
-                      {item.academic_rank}
+                      {formatRankForName(item.full_name, item.academic_rank)}
                     </span>
                   ) : null}
                 </td>

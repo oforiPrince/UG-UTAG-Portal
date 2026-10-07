@@ -20,6 +20,7 @@ import {
   ToggleRight,
   UserRoundCog,
   Users,
+  Vote,
 } from "lucide-react";
 
 export const navigation = [
@@ -87,7 +88,7 @@ export const navigation = [
     group: "Knowledge",
   },
   {
-    label: "Media",
+    label: "Media library",
     href: "/dashboard/media",
     icon: ImageIcon,
     permission: "media.manage",
@@ -111,6 +112,13 @@ export const navigation = [
     label: "Notifications",
     href: "/dashboard/notifications",
     icon: Bell,
+    permission: "dashboard.view",
+    group: "Communications",
+  },
+  {
+    label: "Polls",
+    href: "/dashboard/polls",
+    icon: Vote,
     permission: "dashboard.view",
     group: "Communications",
   },
@@ -173,3 +181,26 @@ export const navigation = [
 ] as const;
 
 export type NavItem = (typeof navigation)[number];
+
+export function isNavigationHrefActive(href: string, pathname: string) {
+  if (
+    href === "/dashboard/adverts" &&
+    pathname.startsWith("/dashboard/advert-orders/")
+  ) {
+    return true;
+  }
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(`${href}/`))
+  );
+}
+
+export function navigationItemForPath(
+  items: readonly NavItem[],
+  pathname: string,
+) {
+  return (
+    items.find((item) => item.href === pathname) ??
+    items.find((item) => isNavigationHrefActive(item.href, pathname))
+  );
+}

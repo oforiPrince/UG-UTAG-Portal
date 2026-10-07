@@ -12,6 +12,14 @@ const POSITION_ALIASES: Record<string, string> = {
   "college of education rep": "coe rep",
 };
 
+/** Canonical public labels for college reps (legacy full names still exist in data). */
+const POSITION_DISPLAY_LABELS: Record<string, string> = {
+  "coh rep": "COH Rep",
+  "chs rep": "CHS Rep",
+  "coe rep": "COE Rep",
+  "cbas rep": "CBAS Rep",
+};
+
 const PUBLIC_POSITION_ORDER = [
   ...EXECUTIVE_POSITION_ORDER,
   "national president",
@@ -41,12 +49,37 @@ export type PublicExecutiveProfile = {
   is_active: boolean;
   academic_rank: string | null;
   profile_media_id: string | null;
-  email: string;
+  email: string | null;
   phone_number: string | null;
+  show_email?: boolean;
+  show_phone?: boolean;
   school_name: string | null;
   college_name: string | null;
   department_name: string | null;
 };
+
+function publishedContactValue(
+  value: string | null | undefined,
+  consented?: boolean,
+) {
+  if (consented === false) return null;
+  const published = value?.trim();
+  return published ? published : null;
+}
+
+/** Email shown on the public profile only when the office-holder has consented. */
+export function publishedExecutiveEmail(
+  profile: Pick<PublicExecutiveProfile, "email" | "show_email">,
+) {
+  return publishedContactValue(profile.email, profile.show_email);
+}
+
+/** Phone shown on the public profile only when the office-holder has consented. */
+export function publishedExecutivePhone(
+  profile: Pick<PublicExecutiveProfile, "phone_number" | "show_phone">,
+) {
+  return publishedContactValue(profile.phone_number, profile.show_phone);
+}
 
 export function normalizeExecutivePosition(position: string) {
   const normalized = position
@@ -57,6 +90,15 @@ export function normalizeExecutivePosition(position: string) {
     .trim()
     .toLowerCase();
   return POSITION_ALIASES[normalized] ?? normalized;
+}
+
+/** Short public label for leadership cards (e.g. College of Health Rep → CHS Rep). */
+export function formatExecutivePosition(position: string) {
+  const normalized = normalizeExecutivePosition(position);
+  if (POSITION_DISPLAY_LABELS[normalized]) {
+    return POSITION_DISPLAY_LABELS[normalized];
+  }
+  return position.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export function isExecutiveOfficerPosition(position: string) {

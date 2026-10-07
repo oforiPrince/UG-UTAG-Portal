@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import EmailStr, Field, field_validator
@@ -69,18 +69,38 @@ class ProfileUpdate(ApiModel):
 class ExecutiveProfileSummary(ApiModel):
     id: UUID
     position: str
+    portfolio: str | None = None
+    summary: str | None = None
     biography_html: str
     social_links: dict[str, str]
+    term_number: int = 1
+    is_acting: bool = False
+    is_public: bool = True
+    show_email: bool = False
+    show_phone: bool = False
+    appointed_on: date | None = None
 
 
 class ExecutiveProfileUpdate(ApiModel):
+    portfolio: str | None = Field(default=None, max_length=180)
+    summary: str | None = Field(default=None, max_length=500)
     biography_html: str = Field(default="", max_length=50_000)
     social_links: dict[str, str] = Field(default_factory=dict)
+    show_email: bool = False
+    show_phone: bool = False
 
     @field_validator("social_links")
     @classmethod
     def validate_links(cls, value: dict[str, str]) -> dict[str, str]:
         return validate_social_links(value)
+
+    @field_validator("portfolio", "summary")
+    @classmethod
+    def empty_to_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
 
 class ForgotPasswordRequest(ApiModel):

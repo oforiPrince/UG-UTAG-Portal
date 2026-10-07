@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from starlette.concurrency import run_in_threadpool
 
 from utag_api.config import get_settings
@@ -17,7 +17,7 @@ from utag_api.dependencies import (
     require_permissions,
 )
 from utag_api.errors import ApiError
-from utag_api.models import Document, DocumentFile, MediaAsset
+from utag_api.models import Document, DocumentFile, MediaAsset, Notification
 from utag_api.schemas.common import MessageResponse, Page
 from utag_api.schemas.domain import (
     DocumentCreate,
@@ -27,16 +27,21 @@ from utag_api.schemas.domain import (
 )
 from utag_api.services.audiences import includes_general_public
 from utag_api.services.content import sanitize_html
+from utag_api.services.deletion import (
+    DeleteBlocker,
+    block_delete_if_referenced,
+    commit_permanent_delete,
+    count_rows,
+)
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
+from utag_api.services.query import apply_sort
 from utag_api.services.storage import s3_client, safe_filename
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-def ensure_document_audience_category(
-    category: str, audiences: list[dict[str, str]]
-) -> None:
+def ensure_document_audience_category(category: str, audiences: list[dict[str, str]]) -> None:
     if category != "external" and includes_general_public(audiences):
         raise ApiError(
             422,
@@ -138,6 +143,8 @@ async def list_documents(
     category: str | None = None,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[DocumentView]:
     statement = select(Document)
     if status:
@@ -148,7 +155,20 @@ async def list_documents(
         statement = statement.where(Document.category == category)
     if q:
         statement = statement.where(Document.title.ilike(f"%{q.strip()}%"))
-    statement = statement.order_by(Document.document_date.desc(), Document.created_at.desc())
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "public_id": Document.public_id,
+            "title": Document.title,
+            "category": Document.category,
+            "status": Document.status,
+            "document_date": Document.document_date,
+            "version": Document.version,
+        },
+        default=(Document.document_date.desc(), Document.created_at.desc()),
+    )
     rows = list((await db.scalars(statement)).all())
     authorized = [item for item in rows if audience_allows(item, principal)]
     total = len(authorized)
@@ -272,9 +292,10 @@ async def create_document(
     ensure_publish_permission(principal.permissions, payload.status)
     ensure_document_audience_category(payload.category, payload.audiences)
     assets = await ready_document_assets(db, payload.media_asset_ids)
+    document_id = new_id()
     document = Document(
-        id=new_id(),
-        public_id=f"UTAG-{str(new_id()).split('-')[0].upper()}",
+        id=document_id,
+        public_id=f"UTAG-{document_id.hex[-12:].upper()}",
         title=payload.title,
         category=payload.category,
         sender=payload.sender,
@@ -380,6 +401,63 @@ async def archive_document(
     )
     await db.commit()
     return MessageResponse(message="Document archived")
+
+
+@router.delete("/{document_id}/permanent", response_model=MessageResponse)
+async def delete_document_permanently(
+    document_id: UUID,
+    request: Request,
+    db: DbSession,
+    principal: Annotated[
+        Principal,
+        Depends(require_mutation_permissions("records.delete", "documents.manage")),
+    ],
+) -> MessageResponse:
+    document = await db.get(Document, document_id, with_for_update=True)
+    if document is None:
+        raise ApiError(404, "document_not_found", "Document not found")
+    if document.legal_hold:
+        raise ApiError(
+            409,
+            "document_delete_blocked",
+            (
+                "Cannot delete this document because it is under legal hold. "
+                "Remove the hold only after the retention requirement has been resolved"
+            ),
+            details={
+                "dependencies": [{"label": "legal hold", "count": 1}],
+                "guidance": "Resolve the legal hold before permanent deletion",
+            },
+        )
+    notifications = await count_rows(
+        db,
+        Notification,
+        Notification.resource_type == "document",
+        Notification.resource_id == document.id,
+    )
+    block_delete_if_referenced(
+        "document",
+        [DeleteBlocker("member notification", notifications)],
+        guidance=(
+            "Remove the related member notifications first, or archive the document to "
+            "preserve communication history"
+        ),
+    )
+    # File-version links belong to the document. The shared media assets and their
+    # stored bytes remain available to any other record that references them.
+    await db.execute(delete(DocumentFile).where(DocumentFile.document_id == document.id))
+    record_change(
+        db,
+        context=event_context(request, principal),
+        action="document.deleted",
+        resource_type="document",
+        resource_id=document.id,
+        topic="documents",
+        payload={"document_id": str(document.id), "public_id": document.public_id},
+    )
+    await db.delete(document)
+    await commit_permanent_delete(db, "document")
+    return MessageResponse(message="Document deleted permanently")
 
 
 @router.post("/{document_id}/versions", response_model=DocumentView)
