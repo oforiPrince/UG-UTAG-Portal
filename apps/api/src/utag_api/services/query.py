@@ -30,6 +30,19 @@ async def unique_slug(
     return candidate
 
 
+def paginate_sequence(items: list[Any], *, page: int, page_size: int) -> Page[Any]:
+    total = len(items)
+    pages = max(1, math.ceil(total / page_size)) if total else 1
+    start = max(0, (page - 1) * page_size)
+    return Page(
+        items=items[start : start + page_size],
+        page=page,
+        page_size=page_size,
+        total=total,
+        pages=pages,
+    )
+
+
 async def paginate(
     db: AsyncSession,
     statement: Select[tuple[Any]],
@@ -49,3 +62,19 @@ async def paginate(
         total=total,
         pages=max(1, math.ceil(total / page_size)),
     )
+
+
+def apply_sort(
+    statement: Select[Any],
+    *,
+    sort_by: str | None,
+    sort_dir: str,
+    allowed: dict[str, Any],
+    default: tuple[Any, ...],
+) -> Select[Any]:
+    """Apply a client-selected ordering without interpolating SQL identifiers."""
+    column = allowed.get(sort_by or "")
+    if column is None:
+        return statement.order_by(*default)
+    direction = column.desc() if sort_dir == "desc" else column.asc()
+    return statement.order_by(direction)

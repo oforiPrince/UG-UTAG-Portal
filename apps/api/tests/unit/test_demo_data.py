@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from utag_api.demo_data import DEMO_ACCOUNTS, seed_demo_data
+from utag_api.demo_data import DEMO_ACCOUNTS, DEMO_POLL_MEMBER_ACCOUNTS, seed_demo_data
 from utag_api.models import ExecutiveAppointment, Role, User, UserRole
 from utag_api.security import verify_password
 
@@ -89,3 +89,10 @@ async def test_demo_seed_is_complete_login_ready_and_idempotent(session_factory,
         "Treasurer",
         "Women's Executive Officer",
     ]
+
+
+def test_demo_poll_cohort_is_large_distinct_and_member_only() -> None:
+    assert len(DEMO_POLL_MEMBER_ACCOUNTS) == 12
+    assert len({account.email for account in DEMO_POLL_MEMBER_ACCOUNTS}) == 12
+    assert len({account.staff_id for account in DEMO_POLL_MEMBER_ACCOUNTS}) == 12
+    assert all(account.roles == ("member",) for account in DEMO_POLL_MEMBER_ACCOUNTS)

@@ -5,10 +5,10 @@ import base64
 import hashlib
 import json
 import mimetypes
+import os
 from collections.abc import Iterable, Mapping
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
-import os
 from pathlib import Path
 from typing import Any
 from uuid import UUID

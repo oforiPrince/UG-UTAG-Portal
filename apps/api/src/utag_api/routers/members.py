@@ -45,6 +45,7 @@ from utag_api.models import (
     Notification,
     OrganizationUnit,
     Permission,
+    PollElectorate,
     Role,
     Session,
     User,
@@ -84,7 +85,7 @@ from utag_api.services.organization import (
     organization_assignment_errors,
     validate_organization_assignment,
 )
-from utag_api.services.query import paginate
+from utag_api.services.query import apply_sort, paginate
 from utag_api.services.system_chat_groups import sync_system_chat_groups
 
 router = APIRouter(prefix="/members", tags=["members"])
@@ -345,8 +346,10 @@ async def list_members(
     status: str | None = None,
     unit_id: UUID | None = None,
     role: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[MemberView]:
-    statement = select(User).order_by(User.surname, User.other_name)
+    statement = select(User)
     if q:
         pattern = f"%{q.strip()}%"
         statement = statement.where(
@@ -373,6 +376,18 @@ async def list_members(
             .join(Role, Role.id == UserRole.role_id)
             .where(Role.key == role)
         )
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "full_name": User.surname,
+            "email": User.email,
+            "academic_rank": User.academic_rank,
+            "status": User.status,
+        },
+        default=(User.surname.asc(), User.other_name.asc()),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     access = await load_user_access_map(db, [item.id for item in result.items])
     organization_names = await organization_name_map(db, result.items)
@@ -1310,6 +1325,10 @@ async def delete_member_permanently(
     announcement_audiences = list((await db.scalars(select(Announcement.audiences))).all())
     document_audiences = list((await db.scalars(select(Document.audiences))).all())
     blockers = [
+        DeleteBlocker(
+            "published poll electorate",
+            await count_rows(db, PollElectorate, PollElectorate.user_id == user.id),
+        ),
         DeleteBlocker(
             "executive appointment",
             await count_rows(db, ExecutiveAppointment, ExecutiveAppointment.user_id == user.id),

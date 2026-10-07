@@ -18,14 +18,17 @@ export default defineConfig({
     ? undefined
     : {
         command: "pnpm dev --hostname 127.0.0.1 --port 3100",
-        url: baseURL,
+        url: `${baseURL}/login`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: process.env.PLAYWRIGHT_CHANNEL,
+      },
     },
   ],
 });

@@ -111,6 +111,27 @@ async def list_galleries(
     ]
 
 
+@router.get("/{gallery_id}")
+async def get_gallery(
+    gallery_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("content.view"))],
+) -> dict[str, Any]:
+    gallery = await db.get(Gallery, gallery_id)
+    if gallery is None:
+        raise ApiError(404, "gallery_not_found", "Gallery not found")
+    items = list(
+        (
+            await db.scalars(
+                select(GalleryItem)
+                .where(GalleryItem.gallery_id == gallery.id)
+                .order_by(GalleryItem.position)
+            )
+        ).all()
+    )
+    return await gallery_data(db, gallery, items)
+
+
 @router.post("", status_code=201)
 async def create_gallery(
     payload: GalleryCreate,

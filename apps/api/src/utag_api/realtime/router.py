@@ -10,6 +10,7 @@ from utag_api.database import SessionFactory
 from utag_api.dependencies import Principal, resolve_principal
 from utag_api.models import ConversationMember
 from utag_api.observability import get_logger
+from utag_api.services.polls import authorized_poll_topics
 
 router = APIRouter(tags=["realtime"])
 logger = get_logger()
@@ -46,6 +47,7 @@ async def authorized_topics(principal: Principal) -> list[str]:
                 )
             )
         ).all()
+        topics.update(f"utag:{topic}" for topic in await authorized_poll_topics(db, principal))
     topics.update(f"utag:conversation:{conversation_id}" for conversation_id in conversation_ids)
     return sorted(topics)
 
@@ -80,28 +82,11 @@ async def realtime(websocket: WebSocket) -> None:
         }
     )
 
-    async def forward_events() -> None:
-        async for message in pubsub.listen():
-            if message["type"] != "message":
-                continue
-            data = message["data"]
-            if isinstance(data, bytes):
-                data = data.decode()
-            await websocket.send_text(data)
+    refresh_lock = asyncio.Lock()
 
-    async def receive_client() -> None:
-        while True:
-            message = await websocket.receive_json()
-            message_type = message.get("type")
-            if message_type == "ping":
-                await websocket.send_json({"type": "pong"})
-            elif message_type == "resync.complete":
-                await websocket.send_json({"type": "resync.acknowledged"})
-
-    async def heartbeat() -> None:
+    async def refresh_authorization(*, force_resync: bool = False) -> None:
         nonlocal principal, topics
-        while True:
-            await asyncio.sleep(settings.realtime_heartbeat_seconds)
+        async with refresh_lock:
             async with SessionFactory() as db:
                 refreshed = await resolve_principal(db, raw_token, touch=False)
             if (
@@ -121,7 +106,7 @@ async def realtime(websocket: WebSocket) -> None:
                 await pubsub.subscribe(*sorted(added))
             if removed:
                 await pubsub.unsubscribe(*sorted(removed))
-            if added or removed:
+            if added or removed or force_resync:
                 await websocket.send_json(
                     {
                         "type": "subscriptions.changed",
@@ -133,6 +118,32 @@ async def realtime(websocket: WebSocket) -> None:
                 )
             principal = refreshed
             topics = refreshed_topics
+
+    async def forward_events() -> None:
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+            data = message["data"]
+            if isinstance(data, bytes):
+                data = data.decode()
+            await websocket.send_text(data)
+
+    async def receive_client() -> None:
+        while True:
+            message = await websocket.receive_json()
+            message_type = message.get("type")
+            if message_type == "ping":
+                await websocket.send_json({"type": "pong"})
+            elif message_type == "resync.complete":
+                await websocket.send_json({"type": "resync.acknowledged"})
+            elif message_type == "subscriptions.refresh":
+                # Resolve grants server-side; never accept client-selected topics.
+                await refresh_authorization(force_resync=True)
+
+    async def heartbeat() -> None:
+        while True:
+            await asyncio.sleep(settings.realtime_heartbeat_seconds)
+            await refresh_authorization()
             await websocket.send_json({"type": "heartbeat"})
 
     tasks = [

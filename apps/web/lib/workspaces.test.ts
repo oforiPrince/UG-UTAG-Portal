@@ -73,6 +73,17 @@ describe("workspace content editors", () => {
     });
   });
 
+  it("uses dedicated routes for gallery details and editing", () => {
+    const gallery = { id: "gallery-1" };
+
+    expect(workspaces.galleries.detailHref?.(gallery)).toBe(
+      "/dashboard/galleries/gallery-1",
+    );
+    expect(workspaces.galleries.updateHref?.(gallery)).toBe(
+      "/dashboard/galleries/gallery-1/edit",
+    );
+  });
+
   it("offers General Public only for external documents", () => {
     const audience = workspaces.documents.create?.fields?.find(
       (field) => field.key === "audiences",
@@ -291,7 +302,9 @@ describe("workspace content editors", () => {
     expect(planSlot?.type).toBe("select");
     expect(
       workspaces["advert-plans"].columns.some(
-        (column) => column.key === "placement_name",
+        (column) =>
+          column.key === "placement_name" ||
+          column.subtitleKey === "placement_name",
       ),
     ).toBe(true);
 
@@ -301,7 +314,8 @@ describe("workspace content editors", () => {
     expect(location?.required).toBe(true);
     expect(
       workspaces["advert-slots"].columns.some(
-        (column) => column.key === "location",
+        (column) =>
+          column.key === "location" || column.subtitleKey === "location",
       ),
     ).toBe(true);
     expect(
@@ -320,7 +334,10 @@ describe("workspace content editors", () => {
     );
     expect(houseAd?.type).toBe("checkbox");
     expect(
-      workspaces.adverts.columns.some((column) => column.key === "fulfilment"),
+      workspaces.adverts.columns.some(
+        (column) =>
+          column.key === "fulfilment" || column.subtitleKey === "fulfilment",
+      ),
     ).toBe(true);
   });
 });

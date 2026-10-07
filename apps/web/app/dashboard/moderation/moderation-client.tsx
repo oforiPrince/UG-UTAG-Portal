@@ -119,50 +119,38 @@ export function ModerationClient() {
   });
 
   return (
-    <div className="grid gap-5">
-      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow text-coral">Public content control</p>
-          <h2 className="display-type mt-3 text-4xl sm:text-5xl">
-            Moderation queue
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            Review public-site news, events, documents, and galleries before
-            release. Every decision is version-checked and recorded in the audit
-            ledger.
-          </p>
+    <div className="grid gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="scrollbar-subtle flex gap-2 overflow-x-auto pb-1"
+          role="tablist"
+        >
+          {filters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              role="tab"
+              aria-selected={status === filter.value}
+              onClick={() => setStatus(filter.value)}
+              className={`min-h-10 shrink-0 rounded-full border px-4 text-xs font-bold transition ${
+                status === filter.value
+                  ? "border-ink bg-ink text-paper"
+                  : "border-line bg-panel text-muted hover:text-ink"
+              }`}
+            >
+              {filter.label}
+              {filter.value !== "all" ? ` · ${counts[filter.value] ?? 0}` : ""}
+            </button>
+          ))}
         </div>
-        <div className="rounded-2xl border border-line bg-panel px-5 py-3">
+        <div className="rounded-2xl border border-line bg-panel px-4 py-2">
           <span className="block text-[.62rem] font-black tracking-wide text-muted uppercase">
             Awaiting review
           </span>
-          <strong className="mt-1 block text-2xl font-black text-coral">
+          <strong className="mt-0.5 block text-xl font-black text-coral">
             {counts.review ?? 0}
           </strong>
         </div>
-      </header>
-
-      <div
-        className="scrollbar-subtle flex gap-2 overflow-x-auto pb-1"
-        role="tablist"
-      >
-        {filters.map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            role="tab"
-            aria-selected={status === filter.value}
-            onClick={() => setStatus(filter.value)}
-            className={`min-h-10 shrink-0 rounded-full border px-4 text-xs font-bold transition ${
-              status === filter.value
-                ? "border-ink bg-ink text-paper"
-                : "border-line bg-panel text-muted hover:text-ink"
-            }`}
-          >
-            {filter.label}
-            {filter.value !== "all" ? ` · ${counts[filter.value] ?? 0}` : ""}
-          </button>
-        ))}
       </div>
 
       {queue.isLoading ? (
@@ -283,7 +271,7 @@ export function ModerationClient() {
 
       {decision ? (
         <div
-          className="fixed inset-0 z-[90] grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[90] grid place-items-center bg-ink/20 p-4"
           onMouseDown={() => setDecision(undefined)}
         >
           <section

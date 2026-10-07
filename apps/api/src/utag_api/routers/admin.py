@@ -25,7 +25,7 @@ from utag_api.schemas.domain import (
 from utag_api.services.content import sanitize_html
 from utag_api.services.deletion import commit_permanent_delete
 from utag_api.services.events import record_change
-from utag_api.services.query import paginate
+from utag_api.services.query import apply_sort, paginate
 
 router = APIRouter(prefix="/admin", tags=["administration"])
 
@@ -73,6 +73,25 @@ async def carousel(
         slide.model_copy(update={"media_name": media_names.get(slide.media_asset_id)})
         for slide in slides
     ]
+
+
+@router.get("/carousel/{slide_id}", response_model=CarouselSlideView)
+async def get_carousel_slide(
+    slide_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("settings.manage"))],
+) -> CarouselSlideView:
+    del principal
+    setting = await db.scalar(select(SiteSetting).where(SiteSetting.key == "site.carousel"))
+    row = next(
+        (item for item in carousel_rows(setting) if str(item.get("id")) == str(slide_id)),
+        None,
+    )
+    if row is None:
+        raise ApiError(404, "carousel_slide_not_found", "Carousel slide not found")
+    slide = CarouselSlideView.model_validate(row)
+    asset = await db.get(MediaAsset, slide.media_asset_id)
+    return slide.model_copy(update={"media_name": asset.original_filename if asset else None})
 
 
 @router.post("/carousel", response_model=CarouselSlideView, status_code=201)
@@ -310,8 +329,10 @@ async def audit_log(
     page_size: Annotated[int, Query(ge=1, le=100)] = 50,
     action: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
 ) -> Page[dict[str, Any]]:
-    statement = select(AuditEvent).order_by(AuditEvent.created_at.desc())
+    statement = select(AuditEvent)
     if action:
         statement = statement.where(AuditEvent.action == action)
     if q and q.strip():
@@ -324,6 +345,18 @@ async def audit_log(
                 AuditEvent.reason.ilike(pattern),
             )
         )
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "action": AuditEvent.action,
+            "resource_type": AuditEvent.resource_type,
+            "outcome": AuditEvent.outcome,
+            "created_at": AuditEvent.created_at,
+        },
+        default=(AuditEvent.created_at.desc(),),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     actor_ids = {row.actor_id for row in result.items if row.actor_id}
     users = {
@@ -363,6 +396,8 @@ async def jobs(
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
 ) -> Page[dict[str, Any]]:
     statement = select(BackgroundJob)
     if status:
@@ -375,12 +410,21 @@ async def jobs(
                 BackgroundJob.error_message.ilike(pattern),
             )
         )
-    result = await paginate(
-        db,
-        statement.order_by(BackgroundJob.created_at.desc()),
-        page=page,
-        page_size=page_size,
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "kind": BackgroundJob.kind,
+            "status": BackgroundJob.status,
+            "progress": BackgroundJob.progress,
+            "created_at": BackgroundJob.created_at,
+            "updated_at": BackgroundJob.updated_at,
+            "error_message": BackgroundJob.error_message,
+        },
+        default=(BackgroundJob.created_at.desc(),),
     )
+    result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[dict[str, Any]](
         items=[
             {key: value for key, value in row.__dict__.items() if not key.startswith("_")}

@@ -37,6 +37,10 @@ celery_app.conf.update(
             "task": "utag.content.publish_scheduled",
             "schedule": 60.0,
         },
+        "reconcile-polls-every-fifteen-seconds": {
+            "task": "utag.polls.reconcile",
+            "schedule": 15.0,
+        },
     },
     task_routes={
         "utag.media.*": {"queue": "media"},

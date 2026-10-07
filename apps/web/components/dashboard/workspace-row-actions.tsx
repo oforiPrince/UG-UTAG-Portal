@@ -8,12 +8,13 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import {
-  inlineRowMutations,
   overflowRowItems,
   type RowActionSet,
 } from "@/lib/workspace-row-actions";
@@ -43,6 +44,68 @@ function menuPositionFor(
   return { top, left };
 }
 
+function IconActionButton({
+  compact,
+  label,
+  expanded,
+  controls,
+  hasPopup = false,
+  onClick,
+  children,
+}: {
+  compact: boolean;
+  label: string;
+  expanded?: boolean;
+  controls?: string;
+  hasPopup?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const popupProps = hasPopup
+    ? {
+        "aria-haspopup": "menu" as const,
+        "aria-expanded": expanded,
+        "aria-controls": controls,
+      }
+    : {};
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className="grid size-7 min-h-7 place-items-center rounded-md text-muted hover:bg-ink/5 hover:text-ink"
+        aria-label={label}
+        title={label}
+        onClick={onClick}
+        {...popupProps}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="size-8 min-h-8 text-muted hover:text-ink"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      {...popupProps}
+    >
+      {children}
+    </Button>
+  );
+}
+
+function menuItems(menu: HTMLElement | null) {
+  return Array.from(
+    menu?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ??
+      [],
+  );
+}
+
 export function WorkspaceRowActions({
   actions,
   pending = false,
@@ -66,7 +129,6 @@ export function WorkspaceRowActions({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const inline = inlineRowMutations(actions);
   const overflow = overflowRowItems(actions);
 
   const updatePosition = useCallback(() => {
@@ -75,6 +137,14 @@ export function WorkspaceRowActions({
     setPosition(menuPositionFor(triggerRef.current, estimatedHeight));
   }, [overflow.length]);
 
+  const closeMenu = useCallback((restoreFocus = false) => {
+    setOpen(false);
+    setPosition(null);
+    if (restoreFocus) {
+      triggerRef.current?.querySelector("button")?.focus();
+    }
+  }, []);
+
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
@@ -82,6 +152,7 @@ export function WorkspaceRowActions({
       setPosition(
         menuPositionFor(triggerRef.current, menuRef.current.offsetHeight),
       );
+      menuItems(menuRef.current)[0]?.focus();
     }
   }, [open, updatePosition]);
 
@@ -95,10 +166,13 @@ export function WorkspaceRowActions({
       ) {
         return;
       }
-      setOpen(false);
+      closeMenu();
     }
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu(true);
+      }
     }
     function onReposition() {
       updatePosition();
@@ -113,7 +187,28 @@ export function WorkspaceRowActions({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open, updatePosition]);
+  }, [closeMenu, open, updatePosition]);
+
+  function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = menuItems(menuRef.current);
+    if (!items.length) return;
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      items[(index + 1 + items.length) % items.length]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      items[(index - 1 + items.length) % items.length]?.focus();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      items[0]?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      items[items.length - 1]?.focus();
+    } else if (event.key === "Tab") {
+      closeMenu();
+    }
+  }
 
   const menu =
     open && position && typeof document !== "undefined"
@@ -122,10 +217,12 @@ export function WorkspaceRowActions({
             ref={menuRef}
             id={menuId}
             role="menu"
-            className="fixed z-[95] min-w-48 overflow-hidden rounded-xl border border-line bg-paper py-1 shadow-xl"
+            aria-label="Row actions"
+            className="workspace-folio fixed z-[95] min-w-48 overflow-hidden rounded-xl py-1"
             style={{ top: position.top, left: position.left }}
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
+            onKeyDown={onMenuKeyDown}
           >
             {overflow.map((item) => {
               const danger =
@@ -141,17 +238,17 @@ export function WorkspaceRowActions({
                   )}
                   disabled={pending}
                   onClick={() => {
-                    setOpen(false);
+                    closeMenu();
                     if (item.kind === "update") onEdit();
                     else if (item.kind === "delete") onDelete();
                     else onMutation(item.mutation);
                   }}
                 >
                   {item.kind === "update" ? (
-                    <Pencil className="size-3.5 shrink-0" />
+                    <Pencil className="size-3.5 shrink-0" aria-hidden="true" />
                   ) : null}
                   {item.kind === "delete" ? (
-                    <Trash2 className="size-3.5 shrink-0" />
+                    <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
                   ) : null}
                   {item.mutation.label}
                 </button>
@@ -162,71 +259,45 @@ export function WorkspaceRowActions({
         )
       : null;
 
+  function toggleOverflow() {
+    if (open) {
+      closeMenu();
+      return;
+    }
+    if (triggerRef.current) {
+      setPosition(
+        menuPositionFor(
+          triggerRef.current,
+          Math.min(320, 8 + overflow.length * 40),
+        ),
+      );
+    }
+    setOpen(true);
+  }
+
   return (
     <div
       ref={containerRef}
-      className={cn(
-        "relative flex flex-wrap items-center gap-1.5",
-        compact ? "justify-end" : "justify-end",
-      )}
+      className="relative flex flex-nowrap items-center justify-end gap-0.5"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-8 min-h-8 px-3"
-        onClick={onView}
-      >
-        <Eye className="size-3.5" />
-        View
-      </Button>
-      {inline.map((mutation) => (
-        <Button
-          key={mutation.label}
-          size="sm"
-          variant={mutation.openMode === "panel" ? "primary" : "outline"}
-          className={cn(
-            "h-8 min-h-8 px-3",
-            mutation.danger
-              ? "border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
-              : undefined,
-          )}
-          disabled={pending}
-          onClick={() => onMutation(mutation)}
-        >
-          {mutation.label}
-        </Button>
-      ))}
+      <IconActionButton compact={compact} label="View" onClick={onView}>
+        <Eye className="size-3.5" aria-hidden="true" />
+      </IconActionButton>
       {overflow.length ? (
         <>
           <span ref={triggerRef} className="inline-flex">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-8 min-h-8"
-              aria-label="More actions"
-              aria-expanded={open}
-              aria-controls={menuId}
-              onClick={() => {
-                if (open) {
-                  setOpen(false);
-                  setPosition(null);
-                  return;
-                }
-                if (triggerRef.current) {
-                  setPosition(
-                    menuPositionFor(
-                      triggerRef.current,
-                      Math.min(320, 8 + overflow.length * 40),
-                    ),
-                  );
-                }
-                setOpen(true);
-              }}
+            <IconActionButton
+              compact={compact}
+              label="More actions"
+              hasPopup
+              expanded={open}
+              controls={menuId}
+              onClick={toggleOverflow}
             >
-              <MoreHorizontal className="size-4" />
-            </Button>
+              <MoreHorizontal className="size-3.5" aria-hidden="true" />
+            </IconActionButton>
           </span>
           {menu}
         </>

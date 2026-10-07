@@ -42,6 +42,7 @@ from utag_api.routers.members import router as members_router
 from utag_api.routers.moderation import router as moderation_router
 from utag_api.routers.notifications import router as notifications_router
 from utag_api.routers.organization import router as organization_router
+from utag_api.routers.polls import router as polls_router
 from utag_api.routers.public import router as public_router
 from utag_api.security import constant_time_equal
 from utag_api.services.storage import s3_client
@@ -192,6 +193,7 @@ for api_router in (
     members_router,
     executives_router,
     organization_router,
+    polls_router,
     content_router,
     events_router,
     documents_router,

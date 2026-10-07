@@ -40,7 +40,7 @@ from utag_api.services.deletion import (
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
 from utag_api.services.notifications import deliver_announcement_notifications
-from utag_api.services.query import paginate, unique_slug
+from utag_api.services.query import apply_sort, paginate, unique_slug
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -151,8 +151,10 @@ async def list_articles(
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[ArticleView]:
-    statement = select(Article).order_by(Article.updated_at.desc())
+    statement = select(Article)
     if status:
         statement = statement.where(Article.status == status)
     if q and q.strip():
@@ -160,6 +162,18 @@ async def list_articles(
         statement = statement.where(
             or_(Article.title.ilike(pattern), Article.excerpt.ilike(pattern))
         )
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "title": Article.title,
+            "status": Article.status,
+            "published_at": Article.published_at,
+            "updated_at": Article.updated_at,
+        },
+        default=(Article.updated_at.desc(),),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[ArticleView](
         items=await article_views(db, list(result.items)),
@@ -383,6 +397,8 @@ async def list_announcements(
     status: str | None = None,
     priority: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[AnnouncementView]:
     statement = select(Announcement)
     if status:
@@ -391,12 +407,20 @@ async def list_announcements(
         statement = statement.where(Announcement.priority == priority)
     if q and q.strip():
         statement = statement.where(Announcement.title.ilike(f"%{q.strip()}%"))
-    result = await paginate(
-        db,
-        statement.order_by(Announcement.updated_at.desc()),
-        page=page,
-        page_size=page_size,
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "title": Announcement.title,
+            "priority": Announcement.priority,
+            "status": Announcement.status,
+            "published_at": Announcement.published_at,
+            "expires_at": Announcement.expires_at,
+        },
+        default=(Announcement.updated_at.desc(),),
     )
+    result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[AnnouncementView](
         items=[AnnouncementView.model_validate(item) for item in result.items],
         page=result.page,
@@ -404,6 +428,19 @@ async def list_announcements(
         total=result.total,
         pages=result.pages,
     )
+
+
+@router.get("/announcements/{announcement_id}", response_model=AnnouncementView)
+async def get_announcement(
+    announcement_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("content.view"))],
+) -> AnnouncementView:
+    del principal
+    item = await db.get(Announcement, announcement_id)
+    if item is None:
+        raise ApiError(404, "announcement_not_found", "Announcement not found")
+    return AnnouncementView.model_validate(item)
 
 
 @router.post("/announcements", response_model=AnnouncementView, status_code=201)

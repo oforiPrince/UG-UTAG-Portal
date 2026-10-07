@@ -47,7 +47,7 @@ from utag_api.services.deletion import (
     count_rows,
 )
 from utag_api.services.events import enqueue_task, record_change
-from utag_api.services.query import paginate
+from utag_api.services.query import apply_sort, paginate
 from utag_api.services.storage import (
     presign_get,
     presign_put,
@@ -69,8 +69,10 @@ async def list_media(
     page_size: Annotated[int, Query(ge=1, le=100)] = 30,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[MediaView]:
-    statement = select(MediaAsset).order_by(MediaAsset.created_at.desc())
+    statement = select(MediaAsset)
     if status:
         statement = statement.where(MediaAsset.status == status)
     if q and q.strip():
@@ -82,6 +84,18 @@ async def list_media(
                 MediaAsset.content_type.ilike(pattern),
             )
         )
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "original_filename": MediaAsset.original_filename,
+            "status": MediaAsset.status,
+            "content_type": MediaAsset.content_type,
+            "is_private": MediaAsset.is_private,
+        },
+        default=(MediaAsset.created_at.desc(),),
+    )
     result = await paginate(db, statement, page=page, page_size=page_size)
     return Page[MediaView](
         items=[MediaView.model_validate(item) for item in result.items],

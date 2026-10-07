@@ -40,7 +40,10 @@ function isEmptyDetailValue(value: unknown) {
   if (typeof value === "boolean") return false;
   if (Array.isArray(value)) return value.length === 0;
   if (typeof value === "object") return Object.keys(value).length === 0;
-  if (typeof value === "string" && ["[]", "{}", "Not provided"].includes(value.trim())) {
+  if (
+    typeof value === "string" &&
+    ["[]", "{}", "Not provided"].includes(value.trim())
+  ) {
     return true;
   }
   return false;
@@ -98,10 +101,7 @@ function composeWhen(row: WorkspaceDetailRow) {
 
   let when = startDate;
   if (startTime) when = when ? `${when} · ${startTime}` : startTime;
-  const endPart = [
-    endDate && endDate !== startDate ? endDate : "",
-    endTime,
-  ]
+  const endPart = [endDate && endDate !== startDate ? endDate : "", endTime]
     .filter(Boolean)
     .join(" · ");
   if (endPart) when = `${when} – ${endPart}`;
@@ -209,7 +209,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "last_login_at", label: "Last sign-in", format: "datetime" },
       { key: "extra_permissions", label: "Extra permissions" },
     ],
-    staffFields: [{ key: "id", label: "Internal reference" }],
   },
   executives: {
     noun: "Executive",
@@ -264,10 +263,9 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "tags", label: "Tags" },
     ],
     manageFields: [
-      { key: "slug", label: "Slug" },
       { key: "updated_at", label: "Updated", format: "datetime" },
-      { key: "version", label: "Version" },
       { key: "citations", label: "Citations", format: "json" },
+      { key: "attachments", label: "Supporting files" },
     ],
   },
   content: {
@@ -282,11 +280,7 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "is_featured", label: "Featured", format: "boolean" },
       { key: "tags", label: "Tags" },
     ],
-    manageFields: [
-      { key: "slug", label: "Slug" },
-      { key: "updated_at", label: "Updated", format: "datetime" },
-      { key: "version", label: "Version" },
-    ],
+    manageFields: [{ key: "updated_at", label: "Updated", format: "datetime" }],
   },
   announcements: {
     noun: "Announcement",
@@ -300,10 +294,7 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "published_at", label: "Published", format: "datetime" },
       { key: "expires_at", label: "Expires", format: "datetime" },
     ],
-    manageFields: [
-      { key: "audiences", label: "Audience" },
-      { key: "version", label: "Version" },
-    ],
+    manageFields: [{ key: "audiences", label: "Audience" }],
   },
   events: {
     noun: "Event",
@@ -314,7 +305,13 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       {
         key: "when",
         label: "When",
-        compose: ["start_date", "start_time", "end_date", "end_time", "timezone"],
+        compose: [
+          "start_date",
+          "start_time",
+          "end_date",
+          "end_time",
+          "timezone",
+        ],
       },
       { key: "event_type", label: "Type", format: "status" },
       { key: "status", label: "Status", format: "status" },
@@ -323,12 +320,15 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "venue", label: "Venue" },
       { key: "address", label: "Address" },
       { key: "is_online", label: "Online", format: "boolean" },
-      { key: "registration_required", label: "Registration required", format: "boolean" },
+      {
+        key: "registration_required",
+        label: "Registration required",
+        format: "boolean",
+      },
       { key: "registered", label: "You are registered", format: "boolean" },
       { key: "registrations", label: "Registrations" },
     ],
     manageFields: [
-      { key: "slug", label: "Slug" },
       { key: "publication_status", label: "Publication", format: "status" },
       { key: "published_at", label: "Publish at", format: "datetime" },
       { key: "online_platform", label: "Platform" },
@@ -337,12 +337,15 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "max_participants", label: "Capacity" },
       { key: "expected_participants", label: "Expected" },
       { key: "cpd_credits", label: "CPD credits" },
-      { key: "registration_deadline", label: "Registration deadline", format: "datetime" },
+      {
+        key: "registration_deadline",
+        label: "Registration deadline",
+        format: "datetime",
+      },
       { key: "registration_url", label: "External registration" },
       { key: "organizer", label: "Organizer", format: "json" },
       { key: "speakers", label: "Speakers", format: "json" },
       { key: "schedule", label: "Schedule", format: "json" },
-      { key: "version", label: "Version" },
     ],
   },
   documents: {
@@ -372,7 +375,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
     titleKey: "original_filename",
     hideEmpty: true,
     managePermission: "media.manage",
-    staffPermission: "settings.manage",
     fields: [
       { key: "content_type", label: "Type" },
       { key: "byte_size", label: "Size" },
@@ -384,10 +386,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "scan_status", label: "Scan status", format: "status" },
       { key: "scan_result", label: "Scan result" },
       { key: "usage_count", label: "Linked uses" },
-    ],
-    staffFields: [
-      { key: "storage_key", label: "Storage key" },
-      { key: "sha256", label: "Checksum" },
     ],
   },
   galleries: {
@@ -402,10 +400,7 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "items", label: "Images" },
       { key: "external_album_url", label: "External album" },
     ],
-    manageFields: [
-      { key: "slug", label: "Slug" },
-      { key: "updated_at", label: "Updated", format: "datetime" },
-    ],
+    manageFields: [{ key: "updated_at", label: "Updated", format: "datetime" }],
   },
   carousel: {
     noun: "Slide",
@@ -417,7 +412,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "link_url", label: "Link" },
       { key: "order", label: "Order" },
       { key: "is_published", label: "Published", format: "boolean" },
-      { key: "media_name", label: "Image" },
     ],
     manageFields: [
       { key: "starts_at", label: "Starts", format: "datetime" },
@@ -442,7 +436,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
     manageFields: [
       { key: "is_house_ad", label: "House ad", format: "boolean" },
       { key: "target_url", label: "Target URL" },
-      { key: "order_id", label: "Order reference" },
     ],
   },
   "advert-slots": {
@@ -524,21 +517,13 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
     titleKey: "action",
     hideEmpty: true,
     managePermission: "audit.view",
-    staffPermission: "settings.manage",
     fields: [
       { key: "actor_name", label: "Actor" },
       { key: "resource_type", label: "Resource", format: "status" },
       { key: "outcome", label: "Outcome", format: "status" },
       { key: "created_at", label: "Time", format: "datetime" },
-    ],
-    manageFields: [
-      { key: "ip_address", label: "IP address" },
-      { key: "user_agent", label: "User agent" },
-      { key: "request_id", label: "Request ID" },
-    ],
-    staffFields: [
-      { key: "resource_id", label: "Resource ID" },
-      { key: "metadata", label: "Metadata", format: "json" },
+      { key: "reason", label: "Reason" },
+      { key: "changes", label: "Changes" },
     ],
   },
   settings: {
@@ -547,7 +532,6 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
     hideEmpty: true,
     managePermission: "settings.manage",
     fields: [
-      { key: "value", label: "Value", format: "json" },
       { key: "is_public", label: "Public", format: "boolean" },
       { key: "description", label: "Description" },
     ],
@@ -562,23 +546,18 @@ export const workspaceDetails: Record<string, WorkspaceDetailConfig> = {
       { key: "description", label: "Description" },
       { key: "enabled", label: "Enabled", format: "boolean" },
     ],
-    manageFields: [{ key: "rules", label: "Rules", format: "json" }],
   },
   jobs: {
     noun: "Job",
     titleKey: "kind",
     hideEmpty: true,
     managePermission: "jobs.manage",
-    staffPermission: "settings.manage",
     fields: [
       { key: "status", label: "Status", format: "status" },
       { key: "progress", label: "Progress" },
       { key: "created_at", label: "Created", format: "datetime" },
+      { key: "updated_at", label: "Updated", format: "datetime" },
       { key: "error_message", label: "Issue" },
-    ],
-    staffFields: [
-      { key: "id", label: "Job ID" },
-      { key: "payload", label: "Payload", format: "json" },
     ],
   },
 };

@@ -92,6 +92,11 @@ describe("executive profile authoring", () => {
     expect(
       await screen.findByRole("tab", { name: "Public leadership" }),
     ).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Profile" })).toBeNull();
+    expect(screen.queryByText(/Keep your association identity/i)).toBeNull();
+    expect(
+      screen.queryByText(/public leadership profile members see/i),
+    ).toBeNull();
     expect(await screen.findByLabelText("Portfolio")).toBeTruthy();
     expect(await screen.findByLabelText("Public summary")).toBeTruthy();
     expect(await screen.findByLabelText("LinkedIn")).toBeTruthy();
@@ -117,6 +122,10 @@ describe("executive profile authoring", () => {
     await screen
       .findByRole("tab", { name: "Account" })
       .then((tab) => tab.click());
+    expect(
+      screen.getByRole("button", { name: "Save account" }).parentElement
+        ?.className,
+    ).toContain("dashboard-action-dock");
     const academicRank = await screen.findByLabelText("Academic rank");
     expect(academicRank.tagName).toBe("SELECT");
     expect((academicRank as HTMLSelectElement).value).toBe("Senior Lecturer");

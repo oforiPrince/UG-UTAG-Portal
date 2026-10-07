@@ -132,8 +132,8 @@ export function AdSlotBanner({
     const node = rootRef.current;
     if (!node || !creative) return;
     if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
+      const timeout = window.setTimeout(() => setVisible(true), 0);
+      return () => window.clearTimeout(timeout);
     }
     const observer = new IntersectionObserver(
       (entries) => {

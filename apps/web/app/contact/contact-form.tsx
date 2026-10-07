@@ -117,7 +117,6 @@ export function ContactForm() {
         <input
           className={input}
           autoComplete="name"
-          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.name)}
           aria-describedby={errors.name ? "contact-name-error" : undefined}
           {...register("name")}
@@ -134,7 +133,6 @@ export function ContactForm() {
           className={input}
           type="email"
           autoComplete="email"
-          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? "contact-email-error" : undefined}
           {...register("email")}
@@ -149,7 +147,6 @@ export function ContactForm() {
         Subject
         <input
           className={input}
-          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.subject)}
           aria-describedby={
             errors.subject ? "contact-subject-error" : undefined
@@ -170,7 +167,6 @@ export function ContactForm() {
         Message
         <textarea
           className={`${input} min-h-40 py-4`}
-          disabled={deliveryBlocked}
           aria-invalid={Boolean(errors.message)}
           aria-describedby={
             errors.message ? "contact-message-error" : undefined
@@ -197,7 +193,7 @@ export function ContactForm() {
         <Button
           className="rounded-md"
           type="submit"
-          disabled={isSubmitting || checking || deliveryBlocked}
+          disabled={isSubmitting}
         >
           {isSubmitting ? (
             <LoaderCircle className="size-4 animate-spin" />
