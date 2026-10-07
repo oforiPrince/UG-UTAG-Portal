@@ -292,9 +292,10 @@ async def create_document(
     ensure_publish_permission(principal.permissions, payload.status)
     ensure_document_audience_category(payload.category, payload.audiences)
     assets = await ready_document_assets(db, payload.media_asset_ids)
+    document_id = new_id()
     document = Document(
-        id=new_id(),
-        public_id=f"UTAG-{str(new_id()).split('-')[0].upper()}",
+        id=document_id,
+        public_id=f"UTAG-{document_id.hex[-12:].upper()}",
         title=payload.title,
         category=payload.category,
         sender=payload.sender,
