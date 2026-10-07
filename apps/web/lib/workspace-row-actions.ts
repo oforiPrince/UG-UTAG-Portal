@@ -102,6 +102,7 @@ export function rowActionsFor(
 
 /** Tables keep only View inline. Mutations always sit in the overflow menu. */
 export function inlineRowMutations(_actions: RowActionSet): WorkspaceMutation[] {
+  void _actions;
   return [];
 }
 
