@@ -9,16 +9,21 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
   CirclePlus,
   Filter,
+  ImageIcon,
+  Inbox,
   LoaderCircle,
   Pencil,
   RefreshCw,
   Search,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -32,19 +37,29 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { WorkspacePanelPreview } from "@/components/dashboard/workspace-panel-preview";
 import { RecordDetailsView } from "@/components/dashboard/record-details-view";
 import { WorkspaceRowActions } from "@/components/dashboard/workspace-row-actions";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { WorkspaceMediaField } from "@/components/dashboard/workspace-media-field";
 import { GoogleDriveGalleryImport } from "@/components/dashboard/google-drive-gallery-import";
-import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { API_URL, api } from "@/lib/api";
 import {
   defaultDeliveryCapabilities,
   deliveryAvailable as isDeliveryAvailable,
 } from "@/lib/delivery-capabilities";
-import { display, displayChoice } from "@/lib/workspace-display";
+import {
+  analyticsSnapshotFrom,
+  formatAnalyticsValue,
+  type AnalyticsSnapshot,
+} from "@/lib/workspace-analytics";
+import {
+  compactDateLabel,
+  display,
+  displayChoice,
+  displayTitleWithoutDuplicateSubtitle,
+} from "@/lib/workspace-display";
 import { visibleDetailEntries } from "@/lib/workspace-detail";
 import { rowActionsFor } from "@/lib/workspace-row-actions";
 import {
@@ -53,11 +68,17 @@ import {
   workspaceOptionQueryState,
 } from "@/lib/workspace-options";
 import {
-  workspaceDetailFields,
   workspaceFilterMatches,
   workspaceRowFromMutationResult,
 } from "@/lib/workspaces";
+import {
+  collectionLabel,
+  wizardStepIndexForField,
+  workspacePresentationFor,
+  type WorkspaceWizardStep,
+} from "@/lib/workspace-presentation";
 import type {
+  WorkspaceColumn,
   WorkspaceConfig,
   WorkspaceField,
   WorkspaceMutation,
@@ -69,12 +90,65 @@ import {
   formatPersonName,
   formatRankForName,
   humanize,
+  initials,
   matchCaseStyle,
 } from "@/lib/utils";
 
 type FormValue = string | boolean | string[];
 type FormValues = Record<string, FormValue>;
 type User = { id: string; permissions: string[] };
+
+const SITE_SETTING_LABELS: Record<string, string> = {
+  "site.identity": "Site identity",
+  "site.contact": "Contact information",
+  "site.social": "Social media",
+  "site.home": "Homepage introduction",
+  "site.about": "About page introduction",
+  "site.resources": "Resources introduction",
+  "site.footer": "Footer content",
+  "site.carousel": "Homepage carousel",
+};
+
+const SITE_SETTING_FIELDS: Record<
+  string,
+  NonNullable<WorkspaceField["structuredFields"]>
+> = {
+  "site.identity": [
+    { key: "name", label: "Association name" },
+    { key: "short_name", label: "Short name" },
+    { key: "tagline", label: "Tagline" },
+  ],
+  "site.contact": [
+    { key: "email", label: "Public email", type: "email" },
+    { key: "phone", label: "Public phone" },
+    { key: "address", label: "Office address", type: "textarea" },
+    { key: "office_hours", label: "Office hours" },
+  ],
+  "site.social": [
+    { key: "facebook", label: "Facebook URL", type: "url" },
+    { key: "x", label: "X / Twitter URL", type: "url" },
+    { key: "linkedin", label: "LinkedIn URL", type: "url" },
+    { key: "instagram", label: "Instagram URL", type: "url" },
+    { key: "youtube", label: "YouTube URL", type: "url" },
+  ],
+  "site.home": [
+    { key: "eyebrow", label: "Section label" },
+    { key: "headline", label: "Homepage headline" },
+    { key: "introduction", label: "Homepage introduction", type: "textarea" },
+  ],
+  "site.about": [
+    { key: "heading", label: "About heading" },
+    { key: "introduction", label: "About introduction", type: "textarea" },
+  ],
+  "site.resources": [
+    { key: "heading", label: "Resources heading" },
+    { key: "introduction", label: "Resources introduction", type: "textarea" },
+  ],
+  "site.footer": [
+    { key: "copyright_name", label: "Copyright name" },
+    { key: "membership_note", label: "Membership note", type: "textarea" },
+  ],
+};
 
 type SelectMenuPosition = {
   top: number;
@@ -214,6 +288,7 @@ function workspaceEndpoint(
   page: number,
   search: string,
   filters: Record<string, string>,
+  sort?: { key: string; direction: "asc" | "desc" },
 ) {
   if (!config.serverPagination) return config.endpoint;
   const [path, existing = ""] = config.endpoint.split("?", 2);
@@ -231,6 +306,10 @@ function workspaceEndpoint(
     const value = filters[field];
     if (value) params.set(parameter, value);
     else params.delete(parameter);
+  }
+  if (sort) {
+    params.set("sort_by", sort.key);
+    params.set("sort_dir", sort.direction);
   }
   return `${path}?${params}`;
 }
@@ -675,7 +754,7 @@ export function WorkspaceSelect({
             );
             setOpen(true);
           }}
-          className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 text-left text-sm font-normal outline-none transition focus:border-coral/40 focus:ring-4 focus:ring-coral/10 disabled:cursor-not-allowed disabled:opacity-70"
+          className="workspace-control flex min-h-10 w-full min-w-0 items-center justify-between gap-3 rounded-xl px-4 text-left text-sm font-normal disabled:cursor-not-allowed disabled:opacity-70"
         >
           <span
             className={cn(
@@ -713,7 +792,7 @@ export function WorkspaceSelect({
             options.length === 0))
       }
       onChange={(event) => onChange(event.target.value)}
-      className="min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25 disabled:cursor-not-allowed disabled:opacity-70"
+      className="workspace-control min-h-10 rounded-xl px-4 text-sm font-normal disabled:cursor-not-allowed disabled:opacity-70"
     >
       <option value="">{emptyLabel}</option>
       {options.map((option) => (
@@ -773,7 +852,7 @@ function WorkspaceMultiSelect({
     <fieldset
       id={id}
       aria-labelledby={labelledBy}
-      className="max-h-64 overflow-y-auto rounded-xl border border-line bg-panel p-2"
+      className="workspace-control max-h-64 overflow-y-auto rounded-xl p-2"
     >
       <legend className="sr-only">{field.label}</legend>
       {searchable ? (
@@ -897,6 +976,34 @@ function objectItemMeta(item: WorkspaceRow) {
     });
 }
 
+function audienceLabel(item: unknown, index: number) {
+  if (!item || typeof item !== "object") {
+    return displayChoice(item, "audiences");
+  }
+  const audience = item as WorkspaceRow;
+  const type = String(audience.type ?? "");
+  const value = String(audience.value ?? "");
+  if (type === "general_public") return "General public";
+  if (type === "everyone" || type === "all_members") return "All members";
+  if (type === "role" && value) {
+    const roleLabels: Record<string, string> = {
+      member: "Members",
+      executive: "Executives",
+      editor: "Editors",
+      publisher: "Publishers",
+      secretary: "Secretaries",
+      administrator: "Administrators",
+    };
+    return roleLabels[value] ?? `${displayChoice(value, "role")} role`;
+  }
+  if (type === "user") {
+    return String(
+      audience.full_name ?? audience.email ?? `Selected member ${index + 1}`,
+    );
+  }
+  return objectItemLabel(audience, index);
+}
+
 function displayWithPersonCase(
   value: unknown,
   fieldKey: string,
@@ -921,16 +1028,18 @@ function displayWithPersonCase(
   return display(value, fieldKey);
 }
 
-function ValueDisplay({
+export function ValueDisplay({
   value,
   fieldKey,
   compact = false,
   row,
+  dateStyle,
 }: {
   value: unknown;
   fieldKey: string;
   compact?: boolean;
   row?: WorkspaceRow;
+  dateStyle?: WorkspaceColumn["dateStyle"];
 }) {
   if (isEmptyValue(value)) {
     return <span className="text-muted">Not provided</span>;
@@ -942,17 +1051,44 @@ function ValueDisplay({
   ) {
     return <>{displayWithPersonCase(value, fieldKey, row)}</>;
   }
+  if (fieldKey === "key" && typeof value === "string") {
+    return (
+      <>{SITE_SETTING_LABELS[value] ?? humanize(value.replace(/[.-]/g, " "))}</>
+    );
+  }
+  if (fieldKey === "audiences" && Array.isArray(value)) {
+    return (
+      <span className="flex flex-wrap gap-1">
+        {value.map((item, index) => (
+          <span
+            key={`${audienceLabel(item, index)}-${index}`}
+            className={
+              compact
+                ? "workspace-table-chip w-fit max-w-full bg-ink/5 text-muted"
+                : "rounded-full bg-ink/5 px-2.5 py-1 text-[.68rem] font-semibold"
+            }
+          >
+            {audienceLabel(item, index)}
+          </span>
+        ))}
+      </span>
+    );
+  }
   if (Array.isArray(value)) {
     if (compact && value.some((item) => typeof item === "object")) {
       return <>{display(value, fieldKey)}</>;
     }
     if (value.every((item) => typeof item !== "object")) {
       return (
-        <span className="flex flex-wrap gap-1.5">
+        <span className={cn("flex flex-wrap", compact ? "gap-1" : "gap-1.5")}>
           {value.map((item, index) => (
             <span
               key={`${String(item)}-${index}`}
-              className="rounded-full bg-ink/5 px-2.5 py-1 text-[.68rem]"
+              className={
+                compact
+                  ? "workspace-table-chip w-fit max-w-full bg-ink/5 text-muted"
+                  : "rounded-full bg-ink/5 px-2.5 py-1 text-[.68rem]"
+              }
             >
               {displayChoice(item, fieldKey)}
             </span>
@@ -1009,6 +1145,12 @@ function ValueDisplay({
       </span>
     );
   }
+  if (compact) {
+    const compactDate = compactDateLabel(value, dateStyle ?? "datetime");
+    if (compactDate) {
+      return <span className="whitespace-nowrap">{compactDate}</span>;
+    }
+  }
   if (typeof value === "object") {
     return (
       <span className="grid gap-1.5">
@@ -1053,6 +1195,12 @@ const TECHNICAL_FIELDS = new Set([
   "request_id",
   "sha256",
   "storage_key",
+  "slug",
+  "version",
+  "metadata",
+  "input_json",
+  "result_json",
+  "payload",
 ]);
 
 function isTechnicalField(key: string) {
@@ -1067,7 +1215,7 @@ type RecordImage = {
   alt: string;
 };
 
-function recordImages(row: WorkspaceRow): RecordImage[] {
+export function recordImages(row: WorkspaceRow): RecordImage[] {
   const images: RecordImage[] = [];
   const add = (id: unknown, name: unknown, alt: unknown = name) => {
     if (!id) return;
@@ -1123,17 +1271,119 @@ function RecordThumbnail({ row }: { row: WorkspaceRow }) {
   const image = recordImages(row)[0];
   if (!image) return null;
   return (
-    <span className="relative size-10 shrink-0 overflow-hidden rounded-lg border border-line bg-ink/5">
+    <span className="relative size-7 shrink-0 overflow-hidden rounded-md bg-ink/5">
       <Image
         fill
         unoptimized
         alt=""
         className="object-cover"
-        sizes="40px"
+        sizes="28px"
         src={`/api/v1/media/${image.id}/content`}
       />
     </span>
   );
+}
+
+function isDateField(key: string) {
+  return /(_at|_on|_date)$/.test(key) || key === "date";
+}
+
+function AnalyticsDashboard({ snapshot }: { snapshot: AnalyticsSnapshot }) {
+  return (
+    <div className="grid gap-0">
+      <div className="grid grid-cols-1 divide-y divide-line border-b border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        {snapshot.groups.map((group) => {
+          const headline = group.metrics[0];
+          return (
+            <div key={group.id} className="min-w-0 px-4 py-3">
+              <p className="text-[.6rem] font-semibold tracking-[.08em] text-muted uppercase">
+                {group.label}
+              </p>
+              <p className="mt-1 truncate text-[13px] font-medium tabular-nums text-ink">
+                {headline
+                  ? `${formatAnalyticsValue(headline.value)} ${headline.label.toLowerCase()}`
+                  : "—"}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid gap-6 p-4 lg:grid-cols-3">
+        {snapshot.groups.map((group) => (
+          <section key={group.id} className="min-w-0">
+            <h2 className="text-[.6rem] font-semibold tracking-[.08em] text-muted uppercase">
+              {group.label}
+            </h2>
+            <dl className="mt-2 divide-y divide-line/80 border-y border-line/80">
+              {group.metrics.map((metric) => (
+                <div
+                  key={metric.key}
+                  className="flex items-baseline justify-between gap-4 py-2"
+                >
+                  <dt className="text-[13px] text-muted">{metric.label}</dt>
+                  <dd className="text-[13px] font-medium tabular-nums text-ink">
+                    {formatAnalyticsValue(metric.value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DirectoryAvatar({
+  row,
+  name,
+  compact = false,
+}: {
+  row: WorkspaceRow;
+  name: string;
+  compact?: boolean;
+}) {
+  const image = recordImages(row)[0];
+  const [broken, setBroken] = useState(false);
+  const shell = compact
+    ? "relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0b1a2e] text-paper"
+    : "relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0b1a2e] text-paper";
+  if (image && !broken) {
+    return (
+      <span className={shell}>
+        <Image
+          fill
+          unoptimized
+          alt=""
+          className="object-cover"
+          sizes={compact ? "28px" : "44px"}
+          src={`/api/v1/media/${image.id}/content`}
+          onError={() => setBroken(true)}
+        />
+      </span>
+    );
+  }
+  return (
+    <span className={shell}>
+      <span
+        className={
+          compact
+            ? "text-[.58rem] font-semibold tracking-wide"
+            : "text-xs font-semibold tracking-wide"
+        }
+      >
+        {initials(name) || "—"}
+      </span>
+    </span>
+  );
+}
+
+function ListEmptyGlyph({ variant }: { variant?: string }) {
+  if (variant === "directory") return <Users className="size-5" />;
+  if (variant === "media" || variant === "cards") {
+    return <ImageIcon className="size-5" />;
+  }
+  return <Inbox className="size-5" />;
 }
 
 function RecordCardMedia({
@@ -1163,7 +1413,7 @@ function RecordCardMedia({
         : "File";
     return (
       <div
-        className={`flex ${aspectClass} flex-col items-center justify-center gap-1 rounded-t-2xl bg-ink/[.04] px-4 text-center`}
+        className={`flex ${aspectClass} flex-col items-center justify-center gap-1 bg-[#0b1a2e]/[0.04] px-4 text-center`}
       >
         <span className="text-[.62rem] font-black tracking-wide text-muted uppercase">
           {typeLabel}
@@ -1176,7 +1426,7 @@ function RecordCardMedia({
   }
   return (
     <div
-      className={`relative ${aspectClass} overflow-hidden rounded-t-2xl bg-ink/5`}
+      className={`relative ${aspectClass} overflow-hidden bg-ink/5`}
     >
       <Image
         fill
@@ -1202,35 +1452,6 @@ function statusField(key: string) {
     "is_private",
     "enabled",
   ].includes(key);
-}
-
-function RecordImagePreview({ row }: { row: WorkspaceRow }) {
-  const images = recordImages(row);
-  if (!images.length) return null;
-  return (
-    <section aria-label="Image preview" className="mt-5">
-      <div className="grid grid-cols-3 gap-2">
-        {images.slice(0, 6).map((image) => (
-          <div
-            key={image.id}
-            className="relative aspect-square overflow-hidden rounded-xl border border-line bg-ink/5"
-          >
-            <Image
-              fill
-              unoptimized
-              alt={image.alt}
-              className="object-cover"
-              sizes="160px"
-              src={`/api/v1/media/${image.id}/content`}
-            />
-            <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pt-5 pb-1.5 text-[.58rem] font-bold text-white">
-              {image.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
 }
 
 function statusClass(value: unknown) {
@@ -1271,7 +1492,162 @@ function statusClass(value: unknown) {
   return "bg-ink/5 text-muted";
 }
 
-function endpointFor(mutation: WorkspaceMutation, row?: WorkspaceRow) {
+function columnSubtitle(column: WorkspaceColumn, row: WorkspaceRow) {
+  if (!column.subtitleKey) return null;
+  const value = row[column.subtitleKey];
+  return isEmptyValue(value) ? null : value;
+}
+
+function WorkspaceTableCell({
+  column,
+  row,
+  isPrimary,
+}: {
+  column: WorkspaceColumn;
+  row: WorkspaceRow;
+  isPrimary: boolean;
+}) {
+  const value = row[column.key];
+  const subtitle = columnSubtitle(column, row);
+  const statusLike = statusField(column.key);
+  const metricKeys = column.metricKeys ?? [];
+
+  if (isPrimary) {
+    const titleValue = displayTitleWithoutDuplicateSubtitle(value, subtitle);
+    return (
+      <span className="flex min-w-0 items-center gap-2.5">
+        {column.key === "full_name" ? (
+          <DirectoryAvatar
+            compact
+            row={row}
+            name={displayWithPersonCase(titleValue, column.key, row)}
+          />
+        ) : (
+          <RecordThumbnail row={row} />
+        )}
+        <span className="min-w-0">
+          <span className="block truncate font-medium text-ink">
+            <ValueDisplay
+              value={titleValue}
+              fieldKey={column.key}
+              row={row}
+              compact
+              dateStyle={column.dateStyle}
+            />
+          </span>
+          {subtitle != null && column.subtitleKey ? (
+            <span className="mt-0.5 block truncate text-[12px] font-normal text-muted">
+              <ValueDisplay
+                value={subtitle}
+                fieldKey={column.subtitleKey}
+                row={row}
+                compact
+              />
+            </span>
+          ) : null}
+        </span>
+      </span>
+    );
+  }
+
+  if (metricKeys.length) {
+    const parts = [column.key, ...metricKeys].map((key) => ({
+      key,
+      value: row[key],
+    }));
+    const label = parts
+      .map(
+        (part) =>
+          `${display(part.value, part.key)} ${humanize(part.key).toLowerCase()}`,
+      )
+      .join(", ");
+    return (
+      <span
+        className="inline-flex items-baseline justify-end gap-0 tabular-nums"
+        aria-label={label}
+        title={label}
+      >
+        {parts.map((part, index) => (
+          <span key={part.key} className="inline-flex items-baseline">
+            {index > 0 ? (
+              <span className="px-1 font-normal text-muted/80">/</span>
+            ) : null}
+            <span
+              className={
+                index === 0 ? "font-medium text-ink" : "text-muted"
+              }
+            >
+              {isEmptyValue(part.value) ? "—" : display(part.value, part.key)}
+            </span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 flex-col items-start gap-0.5",
+        column.align === "end" && "items-end text-right",
+      )}
+    >
+      <span
+        className={
+          statusLike
+            ? `workspace-table-chip w-fit max-w-full ${statusClass(value)}`
+            : "text-[13px] text-muted"
+        }
+      >
+        <ValueDisplay
+          value={value}
+          fieldKey={column.key}
+          row={row}
+          compact
+          dateStyle={column.dateStyle}
+        />
+      </span>
+      {subtitle != null && column.subtitleKey ? (
+        <span className="max-w-[12rem] truncate text-[12px] font-normal text-muted">
+          <ValueDisplay
+            value={subtitle}
+            fieldKey={column.subtitleKey}
+            row={row}
+            compact
+          />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function settingHighlights(value: unknown) {
+  let parsed = value;
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value) as unknown;
+    } catch {
+      return value.trim() ? [{ key: "value", label: "Value", value }] : [];
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return isEmptyValue(parsed)
+      ? []
+      : [{ key: "value", label: "Value", value: parsed }];
+  }
+  return Object.entries(parsed)
+    .filter(([, item]) => !isEmptyValue(item))
+    .filter(([, item]) => {
+      if (!item || typeof item !== "object") return true;
+      return (
+        Array.isArray(item) && item.every((entry) => typeof entry !== "object")
+      );
+    })
+    .slice(0, 4)
+    .map(([key, item]) => ({ key, label: humanize(key), value: item }));
+}
+
+export function endpointFor(mutation: WorkspaceMutation, row?: WorkspaceRow) {
   if (typeof mutation.endpoint === "string") return mutation.endpoint;
   if (!row) throw new Error("This action requires a selected record");
   return mutation.endpoint(row);
@@ -1668,7 +2044,7 @@ function parseFieldValue(field: WorkspaceField, value: FormValue): unknown {
   return text;
 }
 
-function MutationForm({
+export function MutationForm({
   config,
   mutation,
   mode,
@@ -1678,6 +2054,11 @@ function MutationForm({
   onSaved,
   close,
   cancelLabel = "Cancel",
+  showCloseButton = true,
+  steps,
+  variant = "dialog",
+  draftKey,
+  recoverableFields = [],
 }: {
   config: WorkspaceConfig;
   mutation: WorkspaceMutation;
@@ -1688,6 +2069,11 @@ function MutationForm({
   onSaved?: (row: WorkspaceRow) => void;
   close: () => void;
   cancelLabel?: string;
+  showCloseButton?: boolean;
+  steps?: WorkspaceWizardStep[];
+  variant?: "dialog" | "page";
+  draftKey?: string;
+  recoverableFields?: string[];
 }) {
   const queryClient = useQueryClient();
   const configuredFields = fieldsFor(
@@ -1695,19 +2081,38 @@ function MutationForm({
     mode,
     permissions,
     deliveryAvailable,
-  ).map((field) =>
-    field.optionsFor
+  ).map((field) => {
+    const permissionField = field.optionsFor
       ? { ...field, options: field.optionsFor(permissions) }
-      : field,
+      : field;
+    if (
+      config.key === "settings" &&
+      field.key === "value" &&
+      typeof row?.key === "string" &&
+      SITE_SETTING_FIELDS[row.key]
+    ) {
+      return {
+        ...permissionField,
+        label: SITE_SETTING_LABELS[row.key] ?? "Setting values",
+        structuredFields: SITE_SETTING_FIELDS[row.key],
+      };
+    }
+    return permissionField;
+  });
+  const [initialValues] = useState<FormValues>(
+    () =>
+      Object.fromEntries(
+        configuredFields.map((field) => [
+          field.key,
+          initialFieldValue(field, row),
+        ]),
+      ) as FormValues,
   );
-  const [values, setValues] = useState<FormValues>(() =>
-    Object.fromEntries(
-      configuredFields.map((field) => [
-        field.key,
-        initialFieldValue(field, row),
-      ]),
-    ),
-  );
+  const [values, setValues] = useState<FormValues>(initialValues);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [farthestStep, setFarthestStep] = useState(0);
+  const [draftReady, setDraftReady] = useState(!draftKey);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [resourceVersion, setResourceVersion] = useState<unknown>(row?.version);
   const mutationRow = row
     ? {
@@ -1721,6 +2126,80 @@ function MutationForm({
       : field,
   );
   const [busyFields, setBusyFields] = useState<string[]>([]);
+  const fieldByKey = useMemo(
+    () => new Map(fields.map((field) => [field.key, field])),
+    [fields],
+  );
+  const wizardSteps = useMemo(() => {
+    if (!steps?.length) return [];
+    const configuredKeys = new Set(fields.map((field) => field.key));
+    return steps
+      .map((step) => ({
+        ...step,
+        fieldKeys: step.fieldKeys.filter((key) => configuredKeys.has(key)),
+      }))
+      .filter((step) => step.id === "review" || step.fieldKeys.length > 0);
+  }, [fields, steps]);
+  const activeStep = wizardSteps[stepIndex];
+  const reviewStepActive = activeStep?.id === "review";
+  const formNoun = config.detail?.noun ?? config.title.replace(/^All\s+/i, "");
+  const visibleFields = activeStep
+    ? activeStep.fieldKeys.flatMap((key) => {
+        const field = fieldByKey.get(key);
+        return field ? [field] : [];
+      })
+    : fields;
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    const recovered: FormValues = {};
+    try {
+      const stored = window.sessionStorage.getItem(draftKey);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, unknown>;
+        const allowed = new Set(recoverableFields);
+        for (const [key, value] of Object.entries(parsed)) {
+          if (!allowed.has(key)) continue;
+          if (
+            typeof value === "string" ||
+            typeof value === "boolean" ||
+            (Array.isArray(value) &&
+              value.every((item) => typeof item === "string"))
+          ) {
+            recovered[key] = value;
+          }
+        }
+      }
+    } catch {
+      window.sessionStorage.removeItem(draftKey);
+    }
+    const frame = window.requestAnimationFrame(() => {
+      if (Object.keys(recovered).length) {
+        setValues((current) => ({ ...current, ...recovered }));
+      }
+      setDraftReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [draftKey, recoverableFields]);
+
+  useEffect(() => {
+    if (!draftKey || !draftReady) return;
+    const allowed = new Set(recoverableFields);
+    const safeDraft = Object.fromEntries(
+      Object.entries(values).filter(([key]) => allowed.has(key)),
+    );
+    if (Object.keys(safeDraft).length) {
+      window.sessionStorage.setItem(draftKey, JSON.stringify(safeDraft));
+    }
+  }, [draftKey, draftReady, recoverableFields, values]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const savedOptionFor = (field: WorkspaceField) => {
     if (!row || !field.selectedLabelFromRow) return undefined;
@@ -1795,6 +2274,7 @@ function MutationForm({
     onSuccess: async (result) => {
       const savedRow = workspaceRowFromMutationResult(result);
       toast.success(mutation.successMessage);
+      if (draftKey) window.sessionStorage.removeItem(draftKey);
       await queryClient.invalidateQueries({ queryKey: [config.queryKey] });
       if (onSaved && savedRow) {
         onSaved(savedRow);
@@ -1806,335 +2286,566 @@ function MutationForm({
       toast.error(error instanceof Error ? error.message : "Could not save"),
   });
 
+  function missingRequiredField(checkFields: WorkspaceField[]) {
+    return checkFields.find((field) => {
+      if (!field.required) return false;
+      const value = values[field.key];
+      return Array.isArray(value)
+        ? value.length === 0
+        : value == null || String(value).trim() === "";
+    });
+  }
+
+  function scrollFormTop() {
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (typeof window.scrollTo === "function") {
+      window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    }
+  }
+
+  function goNext() {
+    const missing = missingRequiredField(visibleFields);
+    if (missing) {
+      toast.error(`${missing.label} is required`);
+      document.getElementById(`workspace-${mode}-${missing.key}`)?.focus();
+      return;
+    }
+    const next = Math.min(wizardSteps.length - 1, stepIndex + 1);
+    setStepIndex(next);
+    setFarthestStep((current) => Math.max(current, next));
+    scrollFormTop();
+  }
+
+  function goToStep(index: number) {
+    if (index < 0 || index > farthestStep) return;
+    setStepIndex(index);
+    scrollFormTop();
+  }
+
+  function requestClose() {
+    if (dirty) {
+      setConfirmDiscard(true);
+      return;
+    }
+    close();
+  }
+
+  function reviewValue(field: WorkspaceField, value: FormValue) {
+    if (field.type === "checkbox") return value ? "Yes" : "No";
+    if (field.type === "media" || field.type === "multiselect") {
+      const count = Array.isArray(value) ? value.length : value ? 1 : 0;
+      return `${count} selected`;
+    }
+    if (field.type === "richtext") {
+      return String(value)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+    if (field.type === "json") {
+      try {
+        const parsed = JSON.parse(String(value)) as unknown;
+        if (Array.isArray(parsed))
+          return `${parsed.length} item${parsed.length === 1 ? "" : "s"}`;
+        if (parsed && typeof parsed === "object") {
+          return `${Object.keys(parsed).length} detail${Object.keys(parsed).length === 1 ? "" : "s"}`;
+        }
+      } catch {
+        return "Needs attention";
+      }
+    }
+    return String(value || "Not provided");
+  }
+
   return (
-    <div>
-      <div className="flex items-start justify-between gap-5">
+    <div
+      className={variant === "page" ? "mx-auto w-full max-w-5xl" : undefined}
+    >
+      {variant === "page" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="mb-4 w-fit px-1 text-xs text-muted hover:bg-transparent hover:text-ink"
+          onClick={requestClose}
+        >
+          <ArrowLeft className="size-4" />
+          {mode === "edit"
+            ? `Back to ${formNoun.toLowerCase()}`
+            : `Back to ${config.title}`}
+        </Button>
+      ) : null}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <p className="eyebrow text-coral">
             {mode === "create"
               ? mutation.clientOnly
-                ? "Upload"
-                : "Create record"
-              : "Update record"}
+                ? config.title
+                : `New ${formNoun.toLowerCase()}`
+              : `Edit ${formNoun.toLowerCase()}`}
           </p>
-          <h2 className="display-type mt-3 text-3xl sm:text-4xl">
+          <h2 className="mt-1.5 text-xl font-semibold tracking-tight">
             {mutation.label}
           </h2>
-          <p className="mt-2 text-xs leading-5 text-muted">
-            Required fields are marked. Changes are recorded in the audit
-            ledger.
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted">
+            {wizardSteps.length
+              ? "Work through each section, then review everything before saving. Required fields are marked."
+              : "Required fields are marked. Save when the information is complete."}
           </p>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={close}
-          aria-label="Close form"
-        >
-          <X className="size-5" />
-        </Button>
+        {showCloseButton ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={requestClose}
+            aria-label="Close form"
+          >
+            <X className="size-5" />
+          </Button>
+        ) : null}
       </div>
+      {wizardSteps.length ? (
+        <nav
+          aria-label="Form progress"
+          className="workspace-stepper scrollbar-subtle mt-5"
+        >
+          {wizardSteps.map((step, index) => (
+            <button
+              key={step.id}
+              type="button"
+              disabled={index > farthestStep}
+              aria-current={index === stepIndex ? "step" : undefined}
+              data-complete={index <= farthestStep || undefined}
+              onClick={() => goToStep(index)}
+              className="workspace-step disabled:opacity-45"
+            >
+              <span className="workspace-step-node" aria-hidden="true">
+                {index !== stepIndex && index <= farthestStep ? (
+                  <Check className="size-3" />
+                ) : (
+                  index + 1
+                )}
+              </span>
+              <span className="min-w-0">
+                <span
+                  className="block text-[.62rem] font-bold tracking-[.12em] text-muted uppercase"
+                  aria-hidden="true"
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className={cn(
+                    "mt-1 block truncate text-sm",
+                    index === stepIndex
+                      ? "font-semibold text-ink"
+                      : "font-medium text-muted",
+                  )}
+                >
+                  {step.title}
+                </span>
+              </span>
+            </button>
+          ))}
+        </nav>
+      ) : null}
       <form
-        className="mt-8 grid gap-5 sm:grid-cols-2"
+        className={`mt-5 grid gap-x-5 gap-y-5 sm:grid-cols-2 ${
+          variant === "page"
+            ? "workspace-folio rounded-2xl p-4 sm:p-6"
+            : ""
+        }`}
         onSubmit={(event) => {
           event.preventDefault();
+          if (wizardSteps.length && !reviewStepActive) {
+            goNext();
+            return;
+          }
           save.mutate();
         }}
       >
-        {fields.map((field, index) => {
-          if (field.hidden) return null;
-          const value =
-            values[field.key] ?? (field.type === "checkbox" ? false : "");
-          const wide =
-            ["textarea", "richtext", "json"].includes(field.type ?? "") ||
-            field.help ||
-            field.prominent ||
-            field.type === "media";
-          const fieldId = `workspace-${mode}-${field.key}`;
-          const labelId = `${fieldId}-label`;
-          return (
-            <div
-              key={field.key}
-              className={`grid content-start gap-2 text-xs font-bold ${wide ? "sm:col-span-2" : ""}`}
-            >
-              <label id={labelId} htmlFor={fieldId}>
-                {field.label}
-                {field.required ? (
-                  <span className="ml-1 text-coral" aria-hidden="true">
-                    *
-                  </span>
-                ) : null}
-              </label>
-              {field.type === "checkbox" ? (
+        {activeStep ? (
+          <div className="sm:col-span-2">
+            <p className="eyebrow text-coral">
+              Step {stepIndex + 1} of {wizardSteps.length}
+            </p>
+            <h3 className="mt-1 text-lg font-semibold tracking-tight">
+              {activeStep.title}
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+              {activeStep.description}
+            </p>
+          </div>
+        ) : null}
+        {reviewStepActive ? (
+          <div className="grid gap-0 sm:col-span-2">
+            {fields
+              .filter((field) => !field.hidden)
+              .map((field) => {
+                const incomplete = Boolean(missingRequiredField([field]));
+                const ownerIndex = wizardStepIndexForField(
+                  wizardSteps,
+                  field.key,
+                );
+                return (
+                  <button
+                    key={field.key}
+                    type="button"
+                    aria-label={`Edit ${field.label}`}
+                    onClick={() =>
+                      ownerIndex >= 0 ? goToStep(ownerIndex) : undefined
+                    }
+                    className={cn(
+                      "grid gap-1 border-t border-line/80 py-4 text-left transition first:border-t-0 hover:bg-ink/[.02] sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-start sm:gap-6",
+                      incomplete && "bg-coral/[.04]",
+                    )}
+                  >
+                    <p className="text-[.62rem] font-bold tracking-[.1em] text-muted uppercase">
+                      {field.label}
+                    </p>
+                    <p className="line-clamp-4 text-sm leading-6 font-medium text-ink">
+                      {reviewValue(field, values[field.key] ?? "") ||
+                        "Not provided"}
+                    </p>
+                    {incomplete ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-coral">
+                        <CircleAlert className="size-3.5" />
+                        Required
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-coral">
+                        Edit
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+        ) : (
+          visibleFields.map((field, index) => {
+            if (field.hidden) return null;
+            const value =
+              values[field.key] ?? (field.type === "checkbox" ? false : "");
+            const wide =
+              ["textarea", "richtext", "json"].includes(field.type ?? "") ||
+              field.help ||
+              field.prominent ||
+              field.type === "media";
+            const fieldId = `workspace-${mode}-${field.key}`;
+            const labelId = `${fieldId}-label`;
+            return (
+              <div
+                key={field.key}
+                className={`grid content-start gap-2.5 ${wide ? "sm:col-span-2" : ""}`}
+              >
                 <label
+                  id={labelId}
                   htmlFor={fieldId}
-                  className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-panel px-4"
+                  className="text-[.68rem] font-bold tracking-[.1em] text-muted uppercase"
                 >
-                  <input
+                  {field.label}
+                  {field.required ? (
+                    <span className="ml-1 text-coral" aria-hidden="true">
+                      *
+                    </span>
+                  ) : null}
+                </label>
+                {field.type === "checkbox" ? (
+                  <label
+                    htmlFor={fieldId}
+                    className="workspace-control flex min-h-10 items-center gap-3 rounded-xl px-4"
+                  >
+                    <input
+                      id={fieldId}
+                      type="checkbox"
+                      checked={Boolean(value)}
+                      onChange={(event) =>
+                        setValues((current) => ({
+                          ...current,
+                          [field.key]: event.target.checked,
+                        }))
+                      }
+                      className="size-4 accent-sky"
+                    />
+                    <span className="font-normal text-muted">
+                      {field.checkboxLabel ?? "Enabled"}
+                    </span>
+                  </label>
+                ) : field.type === "json" ? (
+                  <WorkspaceStructuredEditor
                     id={fieldId}
-                    type="checkbox"
-                    checked={Boolean(value)}
+                    labelledBy={labelId}
+                    field={field}
+                    value={value}
+                    onChange={(nextValue) =>
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: nextValue,
+                      }))
+                    }
+                  />
+                ) : field.type === "textarea" ? (
+                  <textarea
+                    id={fieldId}
+                    autoFocus={variant !== "page" && index === 0}
+                    required={field.required}
+                    value={String(value)}
+                    placeholder={field.placeholder}
                     onChange={(event) =>
                       setValues((current) => ({
                         ...current,
-                        [field.key]: event.target.checked,
+                        [field.key]: event.target.value,
                       }))
                     }
-                    className="size-4 accent-sky"
+                    className="workspace-control min-h-32 rounded-xl p-4 text-sm font-normal"
                   />
-                  <span className="font-normal text-muted">
-                    {field.checkboxLabel ?? "Enabled"}
-                  </span>
-                </label>
-              ) : field.type === "json" ? (
-                <WorkspaceStructuredEditor
-                  id={fieldId}
-                  labelledBy={labelId}
-                  field={field}
-                  value={value}
-                  onChange={(nextValue) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.key]: nextValue,
-                    }))
-                  }
-                />
-              ) : field.type === "textarea" ? (
-                <textarea
-                  id={fieldId}
-                  autoFocus={index === 0}
-                  required={field.required}
-                  value={String(value)}
-                  placeholder={field.placeholder}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.key]: event.target.value,
-                    }))
-                  }
-                  className="min-h-32 rounded-xl border border-line bg-panel p-4 text-sm font-normal outline-none focus:border-ink/25"
-                />
-              ) : field.type === "richtext" ? (
-                <RichTextEditor
-                  id={fieldId}
-                  labelledBy={labelId}
-                  required={field.required}
-                  value={String(value)}
-                  placeholder={
-                    field.placeholder ?? `Write ${field.label.toLowerCase()}…`
-                  }
-                  onChange={(nextValue) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.key]: nextValue,
-                    }))
-                  }
-                />
-              ) : field.type === "media" ? (
-                <>
-                  <WorkspaceMediaField
-                    field={field}
-                    value={Array.isArray(value) ? value : String(value)}
-                    downloadBlockedIds={
-                      field.media?.downloadControl
-                        ? Array.isArray(values.blocked_download_media_ids)
-                          ? values.blocked_download_media_ids.map(String)
-                          : []
-                        : undefined
-                    }
-                    onBusyChange={(busy) =>
-                      setBusyFields((current) =>
-                        busy
-                          ? [...new Set([...current, field.key])]
-                          : current.filter((key) => key !== field.key),
-                      )
+                ) : field.type === "richtext" ? (
+                  <RichTextEditor
+                    id={fieldId}
+                    labelledBy={labelId}
+                    required={field.required}
+                    value={String(value)}
+                    placeholder={
+                      field.placeholder ?? `Write ${field.label.toLowerCase()}…`
                     }
                     onChange={(nextValue) =>
-                      setValues((current) => {
-                        const next = {
-                          ...current,
-                          [field.key]: nextValue,
-                        };
-                        if (field.media?.downloadControl) {
-                          const selected = Array.isArray(nextValue)
-                            ? nextValue.map(String)
-                            : nextValue
-                              ? [String(nextValue)]
-                              : [];
-                          const blocked = new Set(
-                            (Array.isArray(current.blocked_download_media_ids)
-                              ? current.blocked_download_media_ids
-                              : []
-                            ).map(String),
-                          );
-                          next.blocked_download_media_ids = selected.filter(
-                            (id) => blocked.has(id),
-                          );
-                        }
-                        return next;
-                      })
-                    }
-                    onDownloadBlockedChange={
-                      field.media?.downloadControl
-                        ? (ids) =>
-                            setValues((current) => ({
-                              ...current,
-                              blocked_download_media_ids: ids,
-                            }))
-                        : undefined
-                    }
-                    picker={
-                      field.media?.multiple ? (
-                        <WorkspaceMultiSelect
-                          id={fieldId}
-                          labelledBy={labelId}
-                          field={field}
-                          value={value}
-                          onChange={(nextValue) =>
-                            setValues((current) => {
-                              const next = {
-                                ...current,
-                                [field.key]: nextValue,
-                              };
-                              if (field.media?.downloadControl) {
-                                const selected = Array.isArray(nextValue)
-                                  ? nextValue.map(String)
-                                  : [];
-                                const blocked = new Set(
-                                  (Array.isArray(
-                                    current.blocked_download_media_ids,
-                                  )
-                                    ? current.blocked_download_media_ids
-                                    : []
-                                  ).map(String),
-                                );
-                                next.blocked_download_media_ids =
-                                  selected.filter((id) => blocked.has(id));
-                              }
-                              return next;
-                            })
-                          }
-                        />
-                      ) : (
-                        <WorkspaceSelect
-                          id={fieldId}
-                          labelledBy={labelId}
-                          field={field}
-                          value={value}
-                          autoFocus={index === 0}
-                          fallbackOption={savedOptionFor(field)}
-                          formValues={values}
-                          record={mutationRow}
-                          onChange={(nextValue) =>
-                            setValues((current) => ({
-                              ...current,
-                              [field.key]: nextValue,
-                            }))
-                          }
-                        />
-                      )
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: nextValue,
+                      }))
                     }
                   />
-                  {config.queryKey === "galleries" &&
-                  field.key === "media_asset_ids" ? (
-                    <GoogleDriveGalleryImport
-                      galleryId={
-                        mode === "edit" && row?.id ? String(row.id) : undefined
-                      }
-                      folderUrlHint={
-                        typeof values.external_album_url === "string"
-                          ? values.external_album_url
+                ) : field.type === "media" ? (
+                  <>
+                    <WorkspaceMediaField
+                      field={field}
+                      value={Array.isArray(value) ? value : String(value)}
+                      downloadBlockedIds={
+                        field.media?.downloadControl
+                          ? Array.isArray(values.blocked_download_media_ids)
+                            ? values.blocked_download_media_ids.map(String)
+                            : []
                           : undefined
                       }
-                      onImported={(
-                        mediaIds,
-                        importedFolderUrl,
-                        galleryVersion,
-                      ) => {
-                        if (galleryVersion !== undefined) {
-                          setResourceVersion(galleryVersion);
-                        }
+                      onBusyChange={(busy) =>
+                        setBusyFields((current) =>
+                          busy
+                            ? [...new Set([...current, field.key])]
+                            : current.filter((key) => key !== field.key),
+                        )
+                      }
+                      onChange={(nextValue) =>
                         setValues((current) => {
-                          const existing = Array.isArray(
-                            current.media_asset_ids,
-                          )
-                            ? current.media_asset_ids.map(String)
-                            : [];
-                          const merged = [
-                            ...existing,
-                            ...mediaIds.filter((id) => !existing.includes(id)),
-                          ];
-                          return {
+                          const next = {
                             ...current,
-                            media_asset_ids: merged,
-                            external_album_url:
-                              current.external_album_url || importedFolderUrl,
+                            [field.key]: nextValue,
                           };
-                        });
-                      }}
+                          if (field.media?.downloadControl) {
+                            const selected = Array.isArray(nextValue)
+                              ? nextValue.map(String)
+                              : nextValue
+                                ? [String(nextValue)]
+                                : [];
+                            const blocked = new Set(
+                              (Array.isArray(current.blocked_download_media_ids)
+                                ? current.blocked_download_media_ids
+                                : []
+                              ).map(String),
+                            );
+                            next.blocked_download_media_ids = selected.filter(
+                              (id) => blocked.has(id),
+                            );
+                          }
+                          return next;
+                        })
+                      }
+                      onDownloadBlockedChange={
+                        field.media?.downloadControl
+                          ? (ids) =>
+                              setValues((current) => ({
+                                ...current,
+                                blocked_download_media_ids: ids,
+                              }))
+                          : undefined
+                      }
+                      picker={
+                        field.media?.multiple ? (
+                          <WorkspaceMultiSelect
+                            id={fieldId}
+                            labelledBy={labelId}
+                            field={field}
+                            value={value}
+                            onChange={(nextValue) =>
+                              setValues((current) => {
+                                const next = {
+                                  ...current,
+                                  [field.key]: nextValue,
+                                };
+                                if (field.media?.downloadControl) {
+                                  const selected = Array.isArray(nextValue)
+                                    ? nextValue.map(String)
+                                    : [];
+                                  const blocked = new Set(
+                                    (Array.isArray(
+                                      current.blocked_download_media_ids,
+                                    )
+                                      ? current.blocked_download_media_ids
+                                      : []
+                                    ).map(String),
+                                  );
+                                  next.blocked_download_media_ids =
+                                    selected.filter((id) => blocked.has(id));
+                                }
+                                return next;
+                              })
+                            }
+                          />
+                        ) : (
+                          <WorkspaceSelect
+                            id={fieldId}
+                            labelledBy={labelId}
+                            field={field}
+                            value={value}
+                            autoFocus={variant !== "page" && index === 0}
+                            fallbackOption={savedOptionFor(field)}
+                            formValues={values}
+                            record={mutationRow}
+                            onChange={(nextValue) =>
+                              setValues((current) => ({
+                                ...current,
+                                [field.key]: nextValue,
+                              }))
+                            }
+                          />
+                        )
+                      }
                     />
-                  ) : null}
-                </>
-              ) : field.type === "select" ? (
-                <WorkspaceSelect
-                  id={fieldId}
-                  labelledBy={labelId}
-                  field={field}
-                  value={value}
-                  autoFocus={index === 0}
-                  fallbackOption={savedOptionFor(field)}
-                  formValues={values}
-                  record={mutationRow}
-                  onChange={(nextValue) => updateFieldValue(field, nextValue)}
-                />
-              ) : field.type === "multiselect" ? (
-                <WorkspaceMultiSelect
-                  id={fieldId}
-                  labelledBy={labelId}
-                  field={field}
-                  value={value}
-                  onChange={(nextValue) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.key]: nextValue,
-                    }))
-                  }
-                />
-              ) : (
-                <input
-                  id={fieldId}
-                  autoFocus={index === 0}
-                  required={field.required}
-                  type={field.type === "list" ? "text" : (field.type ?? "text")}
-                  step={field.type === "number" ? "any" : undefined}
-                  value={String(value)}
-                  placeholder={field.placeholder}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.key]: event.target.value,
-                    }))
-                  }
-                  className={
-                    field.prominent
-                      ? "min-h-15 rounded-xl border border-line bg-panel px-5 text-base font-semibold outline-none focus:border-ink/25"
-                      : "min-h-12 rounded-xl border border-line bg-panel px-4 text-sm font-normal outline-none focus:border-ink/25"
-                  }
-                />
-              )}
-              {field.help ? (
-                <span className="font-normal leading-5 text-muted">
-                  {field.help}
-                </span>
-              ) : null}
-            </div>
-          );
-        })}
-        <div className="mt-3 flex justify-end gap-2 sm:col-span-2">
-          <Button type="button" variant="outline" onClick={close}>
-            {cancelLabel}
-          </Button>
+                    {config.queryKey === "galleries" &&
+                    field.key === "media_asset_ids" ? (
+                      <GoogleDriveGalleryImport
+                        galleryId={
+                          mode === "edit" && row?.id
+                            ? String(row.id)
+                            : undefined
+                        }
+                        folderUrlHint={
+                          typeof values.external_album_url === "string"
+                            ? values.external_album_url
+                            : undefined
+                        }
+                        onImported={(
+                          mediaIds,
+                          importedFolderUrl,
+                          galleryVersion,
+                        ) => {
+                          if (galleryVersion !== undefined) {
+                            setResourceVersion(galleryVersion);
+                          }
+                          setValues((current) => {
+                            const existing = Array.isArray(
+                              current.media_asset_ids,
+                            )
+                              ? current.media_asset_ids.map(String)
+                              : [];
+                            const merged = [
+                              ...existing,
+                              ...mediaIds.filter(
+                                (id) => !existing.includes(id),
+                              ),
+                            ];
+                            return {
+                              ...current,
+                              media_asset_ids: merged,
+                              external_album_url:
+                                current.external_album_url || importedFolderUrl,
+                            };
+                          });
+                        }}
+                      />
+                    ) : null}
+                  </>
+                ) : field.type === "select" ? (
+                  <WorkspaceSelect
+                    id={fieldId}
+                    labelledBy={labelId}
+                    field={field}
+                    value={value}
+                    autoFocus={variant !== "page" && index === 0}
+                    fallbackOption={savedOptionFor(field)}
+                    formValues={values}
+                    record={mutationRow}
+                    onChange={(nextValue) => updateFieldValue(field, nextValue)}
+                  />
+                ) : field.type === "multiselect" ? (
+                  <WorkspaceMultiSelect
+                    id={fieldId}
+                    labelledBy={labelId}
+                    field={field}
+                    value={value}
+                    onChange={(nextValue) =>
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: nextValue,
+                      }))
+                    }
+                  />
+                ) : (
+                  <input
+                    id={fieldId}
+                    autoFocus={variant !== "page" && index === 0}
+                    required={field.required}
+                    type={
+                      field.type === "list" ? "text" : (field.type ?? "text")
+                    }
+                    step={field.type === "number" ? "any" : undefined}
+                    value={String(value)}
+                    placeholder={field.placeholder}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: event.target.value,
+                      }))
+                    }
+                    className={
+                      field.prominent
+                        ? "workspace-control min-h-11 rounded-xl px-4 text-sm font-semibold"
+                        : "workspace-control min-h-10 rounded-xl px-4 text-sm font-normal"
+                    }
+                  />
+                )}
+                {field.help ? (
+                  <span className="font-normal leading-5 text-muted">
+                    {field.help}
+                  </span>
+                ) : null}
+              </div>
+            );
+          })
+        )}
+        <div
+          className={`flex flex-wrap justify-between gap-2 sm:col-span-2 ${
+            variant === "page"
+              ? "dashboard-action-dock"
+              : "mt-4 border-t border-line/80 pt-4"
+          }`}
+        >
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={requestClose}>
+              {cancelLabel}
+            </Button>
+            {wizardSteps.length && stepIndex > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => goToStep(stepIndex - 1)}
+              >
+                <ChevronLeft className="size-4" /> Back
+              </Button>
+            ) : null}
+          </div>
           <Button
+            size="sm"
             disabled={save.isPending || busyFields.length > 0}
             className={
               mutation.danger
@@ -2149,13 +2860,28 @@ function MutationForm({
             ) : (
               <Pencil className="size-4" />
             )}
-            {busyFields.length
-              ? "Checking upload…"
-              : (mutation.submitLabel ??
-                (mode === "create" ? mutation.label : "Save changes"))}
+            {wizardSteps.length && !reviewStepActive
+              ? "Continue"
+              : busyFields.length
+                ? "Checking upload…"
+                : (mutation.submitLabel ??
+                  (mode === "create" ? mutation.label : "Save changes"))}
           </Button>
         </div>
       </form>
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="Discard unsaved changes?"
+        description="The changes in this form have not been saved. Leaving now will discard this editing session."
+        confirmLabel="Discard changes"
+        danger
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          if (draftKey) window.sessionStorage.removeItem(draftKey);
+          setConfirmDiscard(false);
+          close();
+        }}
+      />
     </div>
   );
 }
@@ -2169,32 +2895,96 @@ type WorkspacePanel =
 export function WorkspaceClient({
   config,
   headerAction,
-  embedded = false,
 }: {
   config: WorkspaceConfig;
   headerAction?: React.ReactNode;
-  /** Hide the full page title when nested inside a tabbed hub. */
+  /** Kept for tabbed hubs that previously hid the list title. */
   embedded?: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
+  const presentation = workspacePresentationFor(config);
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [panel, setPanel] = useState<WorkspacePanel | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<Record<string, string>>({});
-  const [sort, setSort] = useState<{
-    key: string;
-    direction: "asc" | "desc";
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    mutation: WorkspaceMutation;
+    row: WorkspaceRow;
   }>();
-  const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(() =>
+    (config.filters ?? []).some((filter) => searchParams.has(filter.key)),
+  );
+  const [filters, setFilters] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (config.filters ?? [])
+        .map((filter) => [filter.key, searchParams.get(filter.key) ?? ""])
+        .filter(([, value]) => Boolean(value)),
+    ),
+  );
+  const [sort, setSort] = useState<
+    | {
+        key: string;
+        direction: "asc" | "desc";
+      }
+    | undefined
+  >(() => {
+    const key = searchParams.get("sort_by");
+    if (!key) return undefined;
+    return {
+      key,
+      direction: searchParams.get("sort_dir") === "desc" ? "desc" : "asc",
+    };
+  });
+  const [page, setPage] = useState(() => {
+    const parsed = Number(searchParams.get("page") ?? "1");
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+  });
   const debouncedSearch = useDebouncedValue(search);
   const queryEndpoint = workspaceEndpoint(
     config,
     page,
     debouncedSearch,
     filters,
+    sort,
   );
 
   const selected = panel && panel.view !== "create" ? panel.row : null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
+    else params.delete("q");
+    for (const filter of config.filters ?? []) {
+      const value = filters[filter.key];
+      if (value) params.set(filter.key, value);
+      else params.delete(filter.key);
+    }
+    if (sort) {
+      params.set("sort_by", sort.key);
+      params.set("sort_dir", sort.direction);
+    } else {
+      params.delete("sort_by");
+      params.delete("sort_dir");
+    }
+    if (page > 1) params.set("page", String(page));
+    else params.delete("page");
+    const query = params.toString();
+    const next = query ? `${pathname}?${query}` : pathname;
+    const current = searchParams.toString()
+      ? `${pathname}?${searchParams.toString()}`
+      : pathname;
+    if (next !== current) router.replace(next, { scroll: false });
+  }, [
+    config.filters,
+    debouncedSearch,
+    filters,
+    page,
+    pathname,
+    router,
+    searchParams,
+    sort,
+  ]);
 
   const user = useQuery({
     queryKey: ["auth", "me"],
@@ -2223,7 +3013,10 @@ export function WorkspaceClient({
       mutation: WorkspaceMutation;
       row: WorkspaceRow;
     }) =>
-      api(endpointFor(mutation, row), { method: mutation.method ?? "POST" }),
+      api(endpointFor(mutation, row), {
+        method: mutation.method ?? "POST",
+        headers: mutation.headers ? mutation.headers(row) : undefined,
+      }),
     onSuccess: async (data, variables) => {
       const apiMessage =
         data &&
@@ -2234,6 +3027,7 @@ export function WorkspaceClient({
           : null;
       toast.success(apiMessage ?? variables.mutation.successMessage);
       await queryClient.invalidateQueries({ queryKey: [config.queryKey] });
+      setPendingConfirmation(undefined);
       setPanel(null);
     },
     onError: (error) =>
@@ -2252,6 +3046,26 @@ export function WorkspaceClient({
     }
     return filters;
   }, [config.filters, config.queryKey, user.data?.permissions]);
+  const visibleColumns = useMemo(
+    () =>
+      config.columns.filter((column) => {
+        if (["slug", "media_name", "rules", "value"].includes(column.key)) {
+          return false;
+        }
+        if (column.key === "version" && config.key !== "documents") {
+          return false;
+        }
+        return true;
+      }),
+    [config.columns, config.key],
+  );
+  const cardLayout = ["cards", "media"].includes(
+    presentation?.listVariant ?? "",
+  );
+  const analyticsSnapshot =
+    presentation?.listVariant === "analytics"
+      ? analyticsSnapshotFrom(query.data)
+      : null;
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const result = rowsFrom(query.data).filter((row) => {
@@ -2308,7 +3122,6 @@ export function WorkspaceClient({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panel]);
 
-  const detailFields = useMemo(() => workspaceDetailFields(config), [config]);
   const detailImages = useMemo(
     () => (selected ? recordImages(selected) : []),
     [selected],
@@ -2330,10 +3143,29 @@ export function WorkspaceClient({
   }
 
   function openDetails(row: WorkspaceRow) {
+    if (presentation?.listVariant === "analytics") return;
+    const href =
+      presentation?.viewHref?.(row) ??
+      presentation?.detailHref?.(row) ??
+      config.detailHref?.(row);
+    if (href) {
+      const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(`${href}?returnTo=${encodeURIComponent(current)}`);
+      return;
+    }
     setPanel({ view: "details", row });
   }
 
   function openEditor(row: WorkspaceRow, mutation: WorkspaceMutation) {
+    const href =
+      mutation === config.update
+        ? (presentation?.editHref?.(row) ?? config.updateHref?.(row))
+        : undefined;
+    if (href) {
+      const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(`${href}?returnTo=${encodeURIComponent(current)}`);
+      return;
+    }
     setPanel({ view: "edit", row, mutation });
   }
 
@@ -2354,8 +3186,23 @@ export function WorkspaceClient({
     );
   }
 
+  function openCreate() {
+    if (!config.create) return;
+    if (presentation?.createHref) {
+      const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      router.push(
+        `${presentation.createHref}?returnTo=${encodeURIComponent(current)}`,
+      );
+      return;
+    }
+    setPanel({ mutation: config.create, view: "create" });
+  }
+
   function runAction(mutation: WorkspaceMutation, row: WorkspaceRow) {
-    if (mutation.confirm && !window.confirm(mutation.confirm)) return;
+    if (mutation.confirm) {
+      setPendingConfirmation({ mutation, row });
+      return;
+    }
     if (mutation.openMode === "panel" && mutation.previewKind) {
       setPanel({ view: "preview", row, previewKind: mutation.previewKind });
       return;
@@ -2384,19 +3231,23 @@ export function WorkspaceClient({
   const selectedActions = selected
     ? rowActionsFor(selected, config, permissions, user.data?.id, deliveryOn)
     : null;
-
+  const collection = collectionLabel(config.detail?.noun);
+  const hasActiveQuery =
+    Boolean(search.trim()) || Object.values(filters).some(Boolean);
+  const activeFilterEntries = visibleFilters.flatMap((filter) => {
+    const value = filters[filter.key];
+    return value ? [{ key: filter.key, label: filter.label, value }] : [];
+  });
   const actions = (
-    <div className="flex shrink-0 flex-wrap gap-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-2">
       {headerAction}
       {config.exportUrl && can(config.exportPermission ?? "members.export") ? (
-        <Button variant="outline" onClick={exportRecords}>
+        <Button size="sm" variant="ghost" onClick={exportRecords}>
           <ArrowDownToLine className="size-4" /> Export
         </Button>
       ) : null}
       {config.create && can(config.create.permission) ? (
-        <Button
-          onClick={() => setPanel({ mutation: config.create!, view: "create" })}
-        >
+        <Button size="sm" onClick={openCreate}>
           <CirclePlus className="size-4" /> {config.create.label}
         </Button>
       ) : null}
@@ -2404,52 +3255,58 @@ export function WorkspaceClient({
   );
 
   return (
-    <div className="grid gap-5">
-      {embedded ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-3xl text-sm leading-6 text-muted">
-            {config.description}
-          </p>
-          {actions}
-        </div>
-      ) : (
-        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <p className="eyebrow text-coral">Live workspace</p>
-            <h2 className="display-type mt-3 text-4xl sm:text-5xl">
-              {config.title}
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-              {config.description}
-            </p>
-          </div>
-          {actions}
-        </header>
-      )}
-
+    <div>
       <Card className="overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-line p-3 sm:flex-row sm:items-center">
-          <label className="flex min-h-11 flex-1 items-center gap-3 rounded-xl bg-ink/[.035] px-3">
-            <Search className="size-4 text-muted" />
-            <span className="sr-only">Search {config.title}</span>
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder={`Search ${config.title.toLowerCase()}`}
-              className="w-full bg-transparent text-sm outline-none"
-            />
-          </label>
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3 border-b border-line/70 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
+          {analyticsSnapshot ? (
+            <p className="min-w-0 flex-1 text-[13px] text-muted">
+              {analyticsSnapshot.generatedAt
+                ? `Snapshot as of ${display(analyticsSnapshot.generatedAt, "generated_at")}`
+                : "Association snapshot"}
+            </p>
+          ) : (
+            <label className="flex min-h-10 flex-1 items-center gap-3 rounded-full bg-ink/[.035] px-3.5">
+              <Search className="size-4 text-muted" />
+              <span className="sr-only">Search {collection}</span>
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder={`Search ${collection}`}
+                className="w-full bg-transparent text-sm outline-none"
+              />
+              {search ? (
+                <button
+                  type="button"
+                  className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-ink/8 hover:text-ink"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  aria-label="Clear search"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : null}
+            </label>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
             {visibleFilters.length ? (
               <Button
                 size="sm"
-                variant={filtersOpen ? "outline" : "ghost"}
+                variant={
+                  filtersOpen || activeFilterEntries.length ? "outline" : "ghost"
+                }
                 onClick={() => setFiltersOpen((value) => !value)}
               >
                 <Filter className="size-4" /> Filters
+                {activeFilterEntries.length ? (
+                  <span className="grid size-5 place-items-center rounded-full bg-ink text-[.58rem] text-paper">
+                    {activeFilterEntries.length}
+                  </span>
+                ) : null}
               </Button>
             ) : null}
             <Button
@@ -2463,6 +3320,7 @@ export function WorkspaceClient({
               />{" "}
               Refresh
             </Button>
+            {actions}
           </div>
         </div>
 
@@ -2507,39 +3365,133 @@ export function WorkspaceClient({
           </div>
         ) : null}
 
+        {hasActiveQuery ? (
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+            <span className="text-[.62rem] font-black tracking-[.08em] text-muted uppercase">
+              Showing
+            </span>
+            {search.trim() ? (
+              <button
+                type="button"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-paper px-3 text-[.68rem] font-bold"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+              >
+                “{search.trim()}”
+                <X className="size-3" />
+              </button>
+            ) : null}
+            {activeFilterEntries.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-paper px-3 text-[.68rem] font-bold"
+                onClick={() => {
+                  setPage(1);
+                  setFilters((current) => ({ ...current, [filter.key]: "" }));
+                }}
+              >
+                {filter.label}: {humanize(filter.value)}
+                <X className="size-3" />
+              </button>
+            ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPage(1);
+                setSearch("");
+                setFilters({});
+              }}
+            >
+              Clear all
+            </Button>
+          </div>
+        ) : null}
+
         {query.isLoading ? (
-          <div className="grid gap-3 p-5">
+          <div className="grid gap-2 p-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className="h-12 animate-pulse rounded-xl bg-ink/5"
+                className="h-9 animate-pulse rounded-lg bg-ink/5"
               />
             ))}
           </div>
         ) : query.error ? (
-          <div className="p-16 text-center">
-            <p className="font-black">This workspace could not be loaded.</p>
-            <p className="mt-2 text-xs text-muted">
-              Check your access or reconnect, then try again.
+          <div className="grid place-items-center px-6 py-12 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink/5 text-muted">
+              <Inbox className="size-5" />
+            </span>
+            <p className="mt-4 text-lg font-semibold tracking-tight">
+              {config.title} could not be loaded
             </p>
-            <button
-              className="mt-3 text-sm font-bold text-coral"
-              onClick={() => query.refetch()}
-            >
-              Try again
-            </button>
+            <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+              Check your connection or access, then try again.
+            </p>
+            <Button size="sm" className="mt-5" onClick={() => query.refetch()}>
+              <RefreshCw className="size-4" /> Try again
+            </Button>
           </div>
+        ) : analyticsSnapshot ? (
+          analyticsSnapshot.groups.length ? (
+            <AnalyticsDashboard snapshot={analyticsSnapshot} />
+          ) : (
+            <div className="grid place-items-center px-6 py-12 text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-ink/5 text-muted">
+                <Inbox className="size-5" />
+              </span>
+              <p className="mt-4 text-lg font-semibold tracking-tight">
+                No analytics snapshot yet
+              </p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+                Membership, publishing, and event counts will appear here when
+                the association has records to summarize.
+              </p>
+            </div>
+          )
         ) : rows.length === 0 ? (
-          <div className="p-16 text-center">
-            <p className="font-black">No records found</p>
-            <p className="mt-2 text-xs text-muted">
-              {config.create && can(config.create.permission)
-                ? "Change the search or add the first record."
-                : "Nothing here yet. Try a different search or check back later."}
+          <div className="grid place-items-center px-6 py-12 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink/5 text-muted">
+              <ListEmptyGlyph variant={presentation?.listVariant} />
+            </span>
+            <p className="mt-4 text-lg font-semibold tracking-tight">
+              {hasActiveQuery
+                ? `No matching ${collection}`
+                : `No ${collection} yet`}
             </p>
+            <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+              {hasActiveQuery
+                ? "Try a different search or clear the current filters."
+                : config.create && can(config.create.permission)
+                  ? `Create the first ${config.detail?.noun.toLowerCase() ?? "item"} to start this workspace.`
+                  : "Nothing has been added here yet."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {hasActiveQuery ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPage(1);
+                    setSearch("");
+                    setFilters({});
+                  }}
+                >
+                  Clear search and filters
+                </Button>
+              ) : null}
+              {config.create && can(config.create.permission) && !hasActiveQuery ? (
+                <Button size="sm" onClick={openCreate}>
+                  <CirclePlus className="size-4" /> {config.create.label}
+                </Button>
+              ) : null}
+            </div>
           </div>
-        ) : config.layout === "grid" ? (
-          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+        ) : presentation?.listVariant === "directory" ? (
+          <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-2">
             {visibleRows.map((row, index) => {
               const rowActions = rowActionsFor(
                 row,
@@ -2547,13 +3499,283 @@ export function WorkspaceClient({
                 permissions,
                 user.data?.id,
                 deliveryOn,
+                presentation?.listViewReplacesActionLabel,
               );
-              const titleKey = config.columns[0]?.key ?? "title";
-              const metaColumns = config.columns.slice(1);
+              const titleKey = visibleColumns[0]?.key ?? "title";
+              const title = displayWithPersonCase(row[titleKey], titleKey, row);
+              const metaColumns = visibleColumns.slice(1);
               return (
                 <article
                   key={String(row.id ?? row.key ?? index)}
-                  className="group overflow-hidden rounded-2xl border border-line bg-panel text-left shadow-[0_8px_24px_rgba(12,25,48,.04)] transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="flex flex-col overflow-hidden rounded-xl border border-line/70 bg-paper"
+                >
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left"
+                    onClick={() => openDetails(row)}
+                  >
+                    <DirectoryAvatar row={row} name={title} />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-semibold leading-5 break-words">
+                        {title}
+                      </h3>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {metaColumns.map((column) => {
+                          const value = row[column.key];
+                          if (value == null || value === "") return null;
+                          return (
+                            <span
+                              key={column.key}
+                              className={
+                                statusField(column.key)
+                                  ? `inline-flex rounded-full px-2 py-0.5 text-[.62rem] font-bold ${statusClass(value)}`
+                                  : "workspace-chip"
+                              }
+                            >
+                              {statusField(column.key)
+                                ? displayChoice(value, column.key)
+                                : displayWithPersonCase(
+                                    value,
+                                    column.key,
+                                    row,
+                                  )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </button>
+                  <div className="border-t border-line/70 px-3 py-2">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
+                      compact
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : presentation?.listVariant === "settings" ? (
+          <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-2">
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+                presentation?.listViewReplacesActionLabel,
+              );
+              const highlights = settingHighlights(row.value);
+              const statusValue = row.enabled ?? row.is_public;
+              return (
+                <article
+                  key={String(row.id ?? row.key ?? index)}
+                  className="overflow-hidden rounded-xl border border-line/70 bg-paper"
+                >
+                  <button
+                    type="button"
+                    className="block w-full p-4 text-left transition hover:bg-ink/[.02]"
+                    onClick={() => openDetails(row)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="eyebrow text-coral">
+                          {row.enabled === undefined
+                            ? "Portal content"
+                            : "Portal capability"}
+                        </p>
+                        <h3 className="mt-1.5 text-sm font-semibold">
+                          <ValueDisplay
+                            value={row.key}
+                            fieldKey="key"
+                            row={row}
+                          />
+                        </h3>
+                      </div>
+                      {statusValue !== undefined ? (
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(statusValue)}`}
+                        >
+                          {row.enabled !== undefined
+                            ? row.enabled
+                              ? "Enabled"
+                              : "Disabled"
+                            : row.is_public
+                              ? "Public"
+                              : "Internal"}
+                        </span>
+                      ) : null}
+                    </div>
+                    {typeof row.description === "string" && row.description ? (
+                      <p className="mt-3 text-xs leading-5 text-muted">
+                        {row.description}
+                      </p>
+                    ) : null}
+                    {highlights.length ? (
+                      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {highlights.map((item) => (
+                          <div key={item.key} className="min-w-0">
+                            <dt className="text-[.58rem] font-black tracking-wide text-muted uppercase">
+                              {item.label}
+                            </dt>
+                            <dd className="mt-1 truncate text-xs font-bold">
+                              <ValueDisplay
+                                value={item.value}
+                                fieldKey={item.key}
+                                row={row}
+                                compact
+                              />
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
+                  </button>
+                  <div className="border-t border-line px-4 py-3">
+                    <WorkspaceRowActions
+                      actions={rowActions}
+                      pending={action.isPending}
+                      onView={() => openDetails(row)}
+                      onMutation={(mutation) =>
+                        handleRowMutation(row, mutation)
+                      }
+                      onEdit={() => openEditor(row, rowActions.update!)}
+                      onDelete={() => runAction(rowActions.delete!, row)}
+                      compact
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : presentation?.listVariant === "timeline" ? (
+          <div className="p-3 sm:p-4">
+            <ol className="relative grid gap-3 before:absolute before:top-3 before:bottom-3 before:left-[.43rem] before:w-px before:bg-line">
+              {visibleRows.map((row, index) => {
+                const rowActions = rowActionsFor(
+                  row,
+                  config,
+                  permissions,
+                  user.data?.id,
+                  deliveryOn,
+                  presentation?.listViewReplacesActionLabel,
+                );
+                const state = row.outcome ?? row.status;
+                const title = row.action ?? row.kind ?? "Activity";
+                const context = [row.actor_name, row.resource_type]
+                  .filter(Boolean)
+                  .map(String)
+                  .join(" · ");
+                const note = row.reason ?? row.error_message;
+                const progress =
+                  typeof row.progress === "number" ? row.progress : null;
+                return (
+                  <li
+                    key={String(row.id ?? row.key ?? index)}
+                    className="relative grid grid-cols-[.9rem_minmax(0,1fr)] gap-4"
+                  >
+                    <span className="relative z-10 mt-5 size-3.5 rounded-full border-[3px] border-paper bg-coral shadow-[0_0_0_1px_var(--line)]" />
+                    <article className="overflow-hidden rounded-xl border border-line/70 bg-paper">
+                      <button
+                        type="button"
+                        className="block w-full p-4 text-left transition hover:bg-ink/[.02] sm:p-5"
+                        onClick={() => openDetails(row)}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-black">
+                              {humanize(String(title))}
+                            </h3>
+                            {context ? (
+                              <p className="mt-1 text-xs text-muted">
+                                {context}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {state !== undefined ? (
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(state)}`}
+                              >
+                                {displayChoice(state, "status")}
+                              </span>
+                            ) : null}
+                            {row.created_at ? (
+                              <span className="text-[.62rem] font-bold text-muted">
+                                {display(row.created_at, "created_at")}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        {typeof note === "string" && note ? (
+                          <p className="mt-3 text-xs leading-5 text-muted">
+                            {note}
+                          </p>
+                        ) : null}
+                        {progress !== null ? (
+                          <div className="mt-4">
+                            <div className="mb-1.5 flex justify-between text-[.6rem] font-bold text-muted">
+                              <span>Progress</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-ink/8">
+                              <span
+                                className="block h-full rounded-full bg-coral"
+                                style={{
+                                  width: `${Math.min(100, Math.max(0, progress))}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                      </button>
+                      <div className="border-t border-line px-4 py-3">
+                        <WorkspaceRowActions
+                          actions={rowActions}
+                          pending={action.isPending}
+                          onView={() => openDetails(row)}
+                          onMutation={(mutation) =>
+                            handleRowMutation(row, mutation)
+                          }
+                          onEdit={() => openEditor(row, rowActions.update!)}
+                          onDelete={() => runAction(rowActions.delete!, row)}
+                          compact
+                        />
+                      </div>
+                    </article>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ) : config.layout === "grid" || cardLayout ? (
+          <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+            {visibleRows.map((row, index) => {
+              const rowActions = rowActionsFor(
+                row,
+                config,
+                permissions,
+                user.data?.id,
+                deliveryOn,
+                presentation?.listViewReplacesActionLabel,
+              );
+              const titleKey = visibleColumns[0]?.key ?? "title";
+              const metaColumns = visibleColumns.slice(1);
+              const albumCard =
+                presentation?.listVariant === "media" ||
+                config.key === "galleries";
+              return (
+                <article
+                  key={String(row.id ?? row.key ?? index)}
+                  className="group overflow-hidden rounded-xl border border-line/70 bg-paper text-left"
                 >
                   <button
                     type="button"
@@ -2562,15 +3784,19 @@ export function WorkspaceClient({
                   >
                     <RecordCardMedia
                       row={row}
-                      aspect={config.gridAspect ?? "landscape"}
+                      aspect={
+                        albumCard
+                          ? "landscape"
+                          : (config.gridAspect ?? "landscape")
+                      }
                     />
-                    <div className="grid gap-3 p-4">
+                    <div className="grid gap-2 p-3">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-black leading-5 break-words">
+                        <h3 className="text-sm font-semibold leading-5 break-words">
                           {displayWithPersonCase(row[titleKey], titleKey, row)}
                         </h3>
                         {metaColumns.length ? (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap gap-1">
                             {metaColumns.map((column) => {
                               const value = row[column.key];
                               if (
@@ -2600,7 +3826,7 @@ export function WorkspaceClient({
                                   className={
                                     statusField(column.key)
                                       ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
-                                      : "inline-flex rounded-full bg-ink/5 px-2.5 py-1 text-[.62rem] font-bold text-muted"
+                                      : "workspace-chip"
                                   }
                                 >
                                   {chipLabel}
@@ -2612,7 +3838,7 @@ export function WorkspaceClient({
                       </div>
                     </div>
                   </button>
-                  <div className="border-t border-line px-4 py-3">
+                  <div className="border-t border-line/70 px-3 py-2">
                     <WorkspaceRowActions
                       actions={rowActions}
                       pending={action.isPending}
@@ -2629,8 +3855,8 @@ export function WorkspaceClient({
               );
             })}
           </div>
-        ) : config.columns.length === 0 ? (
-          <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+        ) : visibleColumns.length === 0 ? (
+          <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
             {visibleRows.map((row, index) => {
               const rowActions = rowActionsFor(
                 row,
@@ -2638,11 +3864,12 @@ export function WorkspaceClient({
                 permissions,
                 user.data?.id,
                 deliveryOn,
+                presentation?.listViewReplacesActionLabel,
               );
               return (
                 <div
                   key={String(row.id ?? row.key ?? index)}
-                  className="rounded-2xl border border-line bg-panel p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="rounded-xl border border-line/70 bg-paper p-4 text-left"
                 >
                   <button
                     type="button"
@@ -2652,10 +3879,10 @@ export function WorkspaceClient({
                     <span className="text-[.62rem] font-black tracking-wide text-coral uppercase">
                       {humanize(String(row.group ?? "Metric"))}
                     </span>
-                    <b className="mt-2 block text-sm">
+                    <b className="mt-1.5 block text-sm font-semibold">
                       {humanize(String(row.key ?? "Value"))}
                     </b>
-                    <span className="mt-3 block text-2xl font-black">
+                    <span className="mt-2 block text-lg font-semibold">
                       {display(row.value, String(row.key ?? "value"))}
                     </span>
                   </button>
@@ -2678,21 +3905,70 @@ export function WorkspaceClient({
           </div>
         ) : (
           <div className="scrollbar-subtle overflow-x-auto">
-            <table className="w-full min-w-[46rem] border-collapse text-left">
+            <table
+              className="workspace-data-table w-full min-w-[36rem] border-collapse text-left"
+              aria-label={config.title}
+            >
               <thead>
-                <tr className="border-b border-line bg-ink/[.018]">
-                  {config.columns.map((column) => (
-                    <th key={column.key} className="px-5 py-3">
-                      <button
-                        className="inline-flex items-center gap-1.5 text-[.62rem] font-black tracking-[.1em] text-muted uppercase hover:text-ink"
-                        onClick={() => toggleSort(column.key)}
+                <tr className="border-b border-line/70">
+                  {visibleColumns.map((column, columnIndex) => {
+                    const sortable =
+                      !config.serverPagination ||
+                      Boolean(
+                        config.serverPagination.sortFields?.includes(
+                          column.key,
+                        ),
+                      );
+                    const sorted = sort?.key === column.key;
+                    return (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        aria-sort={
+                          sorted
+                            ? sort?.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                        className={cn(
+                          "px-3 py-2",
+                          columnIndex === 0 && "w-[42%] min-w-[12rem]",
+                          column.align === "end" && "text-right",
+                          (isDateField(column.key) || column.dateStyle) &&
+                            "whitespace-nowrap",
+                        )}
                       >
-                        {column.label}
-                        <ArrowUpDown className="size-3" />
-                      </button>
-                    </th>
-                  ))}
-                  <th className="px-5 py-3 text-right text-[.62rem] font-black tracking-[.1em] text-muted uppercase">
+                        {sortable ? (
+                          <button
+                            className={cn(
+                              "group inline-flex items-center gap-1 text-[.6rem] font-semibold tracking-[.08em] text-muted uppercase hover:text-ink",
+                              column.align === "end" && "justify-end",
+                            )}
+                            onClick={() => toggleSort(column.key)}
+                          >
+                            {column.label}
+                            <ArrowUpDown
+                              className={cn(
+                                "size-3",
+                                sorted
+                                  ? "text-ink/45"
+                                  : "opacity-0 group-hover:opacity-50",
+                              )}
+                            />
+                          </button>
+                        ) : (
+                          <span className="text-[.6rem] font-semibold tracking-[.08em] text-muted uppercase">
+                            {column.label}
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
+                  <th
+                    scope="col"
+                    className="w-px px-2 py-2 text-right text-[.6rem] font-semibold tracking-[.08em] text-muted uppercase"
+                  >
                     Actions
                   </th>
                 </tr>
@@ -2705,6 +3981,7 @@ export function WorkspaceClient({
                     permissions,
                     user.data?.id,
                     deliveryOn,
+                    presentation?.listViewReplacesActionLabel,
                   );
                   return (
                     <tr
@@ -2712,46 +3989,29 @@ export function WorkspaceClient({
                       className="cursor-pointer transition hover:bg-ink/[.025]"
                       onClick={() => openDetails(row)}
                     >
-                      {config.columns.map((column) => {
-                        const value = row[column.key];
-                        const statusLike = statusField(column.key);
-                        return (
-                          <td
-                            key={column.key}
-                            className="max-w-xs px-5 py-4 text-xs"
-                          >
-                            <span
-                              className={
-                                statusLike
-                                  ? `inline-flex rounded-full px-2.5 py-1 text-[.62rem] font-bold ${statusClass(value)}`
-                                  : column.key === config.columns[0]?.key
-                                    ? "font-black"
-                                    : "text-muted"
-                              }
-                            >
-                              {column.key === config.columns[0]?.key ? (
-                                <span className="flex items-center gap-3">
-                                  <RecordThumbnail row={row} />
-                                  <ValueDisplay
-                                    value={value}
-                                    fieldKey={column.key}
-                                    row={row}
-                                    compact
-                                  />
-                                </span>
-                              ) : (
-                                <ValueDisplay
-                                  value={value}
-                                  fieldKey={column.key}
-                                  row={row}
-                                  compact
-                                />
-                              )}
-                            </span>
-                          </td>
-                        );
-                      })}
-                      <td className="px-4 py-3">
+                      {visibleColumns.map((column, columnIndex) => (
+                        <td
+                          key={column.key}
+                          className={cn(
+                            "px-3 py-2 text-[13px] leading-snug",
+                            columnIndex === 0 && "w-[42%] min-w-[12rem]",
+                            column.align === "end" &&
+                              "text-right tabular-nums",
+                            isDateField(column.key) || column.dateStyle
+                              ? "whitespace-nowrap"
+                              : columnIndex === 0
+                                ? "max-w-md"
+                                : "max-w-[14rem]",
+                          )}
+                        >
+                          <WorkspaceTableCell
+                            column={column}
+                            row={row}
+                            isPrimary={columnIndex === 0}
+                          />
+                        </td>
+                      ))}
+                      <td className="w-px px-2 py-2 text-right whitespace-nowrap">
                         <WorkspaceRowActions
                           actions={rowActions}
                           pending={action.isPending}
@@ -2761,6 +4021,7 @@ export function WorkspaceClient({
                           }
                           onEdit={() => openEditor(row, rowActions.update!)}
                           onDelete={() => runAction(rowActions.delete!, row)}
+                          compact
                         />
                       </td>
                     </tr>
@@ -2771,11 +4032,13 @@ export function WorkspaceClient({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3 text-[.65rem] text-muted">
+        {analyticsSnapshot ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-3 py-2 text-[.65rem] text-muted">
           <span>
-            {recordTotal} record{recordTotal === 1 ? "" : "s"} · Updated live
+            {recordTotal} {recordTotal === 1 ? (config.detail?.noun.toLowerCase() ?? "item") : collection}
+            {hasActiveQuery ? " matching current filters" : " on file"}
           </span>
-          {pageCount > 1 ? (
+          {pageCount > 0 && recordTotal > 0 ? (
             <div className="flex items-center gap-2">
               <Button
                 size="icon"
@@ -2801,11 +4064,12 @@ export function WorkspaceClient({
             </div>
           ) : null}
         </div>
+        )}
       </Card>
 
       {panel ? (
         <div
-          className="fixed inset-0 z-[90] grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[90] grid place-items-center bg-ink/20 p-4"
           onMouseDown={(event) => {
             if (event.target !== event.currentTarget) return;
             if (panel.view === "edit" || panel.view === "preview") {
@@ -2858,64 +4122,45 @@ export function WorkspaceClient({
                         ? "portrait"
                         : "landscape"
                     }
-                    entries={(curatedDetails
-                      ? curatedDetails.map(({ field, value }) => ({
-                          key: field.key,
-                          label: field.label,
-                          value:
-                            field.key === "academic_rank" &&
-                            typeof value === "string"
-                              ? formatRankForName(
+                    entries={(curatedDetails ?? [])
+                      .map(({ field, value }) => ({
+                        key: field.key,
+                        label: field.label,
+                        value:
+                          field.key === "academic_rank" &&
+                          typeof value === "string"
+                            ? formatRankForName(
+                                typeof panel.row.full_name === "string"
+                                  ? panel.row.full_name
+                                  : undefined,
+                                value,
+                              )
+                            : field.key === "title" && typeof value === "string"
+                              ? matchCaseStyle(
                                   typeof panel.row.full_name === "string"
                                     ? panel.row.full_name
-                                    : undefined,
+                                    : [panel.row.other_name, panel.row.surname]
+                                        .filter(Boolean)
+                                        .join(" "),
                                   value,
                                 )
-                              : field.key === "title" &&
-                                  typeof value === "string"
-                                ? matchCaseStyle(
-                                    typeof panel.row.full_name === "string"
-                                      ? panel.row.full_name
-                                      : [
-                                          panel.row.other_name,
-                                          panel.row.surname,
-                                        ]
-                                          .filter(Boolean)
-                                          .join(" "),
-                                    value,
-                                  )
-                                : value,
-                          richtext: field.format === "richtext",
-                          format: field.format,
-                        }))
-                      : Object.entries(panel.row)
-                          .filter(
-                            ([key]) =>
-                              !key.startsWith("_") &&
-                              !isTechnicalField(key) &&
-                              key !== detailTitleKey,
-                          )
-                          .map(([key, value]) => {
-                            const field = detailFields.get(key);
-                            return {
-                              key,
-                              label: field?.label ?? humanize(key),
-                              value,
-                              richtext: field?.type === "richtext",
-                            };
-                          })
-                    ).filter((entry) => {
-                      if (config.detail?.hideEmpty === false) return true;
-                      if (entry.value == null || entry.value === "")
-                        return false;
-                      if (
-                        typeof entry.value === "string" &&
-                        !entry.value.trim()
-                      ) {
-                        return false;
-                      }
-                      return true;
-                    })}
+                              : value,
+                        richtext: field.format === "richtext",
+                        format: field.format,
+                      }))
+                      .filter((entry) => {
+                        if (config.detail?.hideEmpty === false) return true;
+                        if (entry.value == null || entry.value === "")
+                          return false;
+                        if (
+                          typeof entry.value === "string" &&
+                          !entry.value.trim()
+                        ) {
+                          return false;
+                        }
+                        return true;
+                      })}
+                    sections={presentation?.detailSections}
                     primaryActions={selectedActions.primary}
                     secondaryActions={selectedActions.secondary}
                     canUpdate={selectedActions.canUpdate}
@@ -2993,6 +4238,20 @@ export function WorkspaceClient({
           </section>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={Boolean(pendingConfirmation)}
+        title={pendingConfirmation?.mutation.label ?? "Confirm action"}
+        description={
+          pendingConfirmation?.mutation.confirm ?? "Confirm this action."
+        }
+        confirmLabel={pendingConfirmation?.mutation.label}
+        danger={pendingConfirmation?.mutation.danger}
+        busy={action.isPending}
+        onCancel={() => setPendingConfirmation(undefined)}
+        onConfirm={() => {
+          if (pendingConfirmation) action.mutate(pendingConfirmation);
+        }}
+      />
     </div>
   );
 }

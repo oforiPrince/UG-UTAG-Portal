@@ -647,6 +647,12 @@ async def test_member_and_executive_creation_accept_inline_profile_images(
     assert created_executive.status_code == 201
     assert created_executive.json()["profile_media_id"] == str(public_image_id)
 
+    executive_detail = await client.get(
+        f"/api/v1/executives/{created_executive.json()['id']}"
+    )
+    assert executive_detail.status_code == 200
+    assert executive_detail.json()["full_name"] == "Inline Photo"
+
     rejected_member = await client.post(
         "/api/v1/members",
         headers=headers,
@@ -1164,6 +1170,11 @@ async def test_carousel_archive_and_permanent_delete_both_retain_media(
     listing = await client.get("/api/v1/admin/carousel")
     assert listing.status_code == 200
     assert listing.json()[0]["title"] == "Member solidarity"
+
+    detail = await client.get(f"/api/v1/admin/carousel/{slide_id}")
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "Member solidarity"
+    assert detail.json()["media_name"] == "homepage.png"
 
     public_settings = await client.get("/api/v1/public/settings")
     assert public_settings.status_code == 200

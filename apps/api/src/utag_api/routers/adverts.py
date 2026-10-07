@@ -421,6 +421,19 @@ async def campaigns(
     return await campaign_views(db, rows)
 
 
+@router.get("/campaigns/{campaign_id}", response_model=AdCampaignView)
+async def get_campaign(
+    campaign_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("adverts.manage"))],
+) -> AdCampaignView:
+    del principal
+    item = await db.get(AdCampaign, campaign_id)
+    if item is None:
+        raise ApiError(404, "campaign_not_found", "Campaign not found")
+    return (await campaign_views(db, [item]))[0]
+
+
 @router.post("/campaigns", response_model=AdCampaignView, status_code=201)
 async def create_campaign(
     payload: AdCampaignCreate,
@@ -709,6 +722,19 @@ async def orders(
 ) -> list[AdOrderView]:
     rows = list((await db.scalars(select(AdOrder).order_by(AdOrder.created_at.desc()))).all())
     return await order_views(db, rows)
+
+
+@router.get("/orders/{order_id}", response_model=AdOrderView)
+async def get_order(
+    order_id: UUID,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(require_permissions("adverts.manage"))],
+) -> AdOrderView:
+    del principal
+    item = await db.get(AdOrder, order_id)
+    if item is None:
+        raise ApiError(404, "ad_order_not_found", "Advertising order not found")
+    return (await order_views(db, [item]))[0]
 
 
 @router.get("/advertisers", response_model=list[AdAdvertiserView])

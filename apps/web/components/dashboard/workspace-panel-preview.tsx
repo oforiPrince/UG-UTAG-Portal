@@ -129,7 +129,7 @@ function NewsPanelPreview({ id, onBack }: { id: string; onBack: () => void }) {
           />
         ) : null}
         <div className="absolute inset-0 -z-10 bg-[#102a48]/90" />
-        <h2 className="display-type max-w-3xl text-3xl leading-tight">
+        <h2 className="max-w-3xl text-xl leading-snug font-semibold tracking-tight">
           {item.title}
         </h2>
         {item.summary ? (

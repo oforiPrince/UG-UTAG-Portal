@@ -43,6 +43,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useRealtime } from "@/components/realtime-provider";
 import { api } from "@/lib/api";
 import { initials, formatPersonName, formatRankForName } from "@/lib/utils";
@@ -204,7 +205,7 @@ function NewConversationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] grid place-items-center bg-ink/20 p-4"
       onMouseDown={close}
     >
       <section
@@ -350,13 +351,20 @@ function GroupPanel({
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [inviteUrl, setInviteUrl] = useState("");
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    danger?: boolean;
+    run: () => void;
+  } | null>(null);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape" && !confirmation) close();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [close]);
+  }, [close, confirmation]);
   const members = useQuery({
     queryKey: ["chat", "members", conversation.id],
     queryFn: () =>
@@ -431,7 +439,7 @@ function GroupPanel({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-end bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex justify-end bg-ink/20"
       onMouseDown={close}
     >
       <aside
@@ -521,16 +529,16 @@ function GroupPanel({
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Transfer group ownership to ${member.full_name}? You will remain an administrator.`,
-                          )
-                        )
-                          return;
-                        mutate.mutate({
-                          endpoint: `/api/v1/chat/conversations/${conversation.id}/owner`,
-                          method: "PATCH",
-                          body: { user_id: member.user_id },
+                        setConfirmation({
+                          title: "Transfer group ownership?",
+                          description: `${member.full_name} will become the group owner. You will remain an administrator.`,
+                          confirmLabel: "Transfer ownership",
+                          run: () =>
+                            mutate.mutate({
+                              endpoint: `/api/v1/chat/conversations/${conversation.id}/owner`,
+                              method: "PATCH",
+                              body: { user_id: member.user_id },
+                            }),
                         });
                       }}
                     >
@@ -546,15 +554,16 @@ function GroupPanel({
                     variant="ghost"
                     aria-label={`Remove ${member.full_name}`}
                     onClick={() => {
-                      if (
-                        !window.confirm(
-                          `Remove ${member.full_name} from this group?`,
-                        )
-                      )
-                        return;
-                      mutate.mutate({
-                        endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${member.user_id}`,
-                        method: "DELETE",
+                      setConfirmation({
+                        title: "Remove group member?",
+                        description: `${member.full_name} will lose access to this conversation and its future messages.`,
+                        confirmLabel: "Remove member",
+                        danger: true,
+                        run: () =>
+                          mutate.mutate({
+                            endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${member.user_id}`,
+                            method: "DELETE",
+                          }),
                       });
                     }}
                   >
@@ -662,10 +671,17 @@ function GroupPanel({
             className="mt-8"
             variant="outline"
             onClick={() => {
-              if (!window.confirm("Leave this group?")) return;
-              mutate.mutate({
-                endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${meId}`,
-                method: "DELETE",
+              setConfirmation({
+                title: "Leave this group?",
+                description:
+                  "You will no longer receive messages from this group. A group administrator can add you again later.",
+                confirmLabel: "Leave group",
+                danger: true,
+                run: () =>
+                  mutate.mutate({
+                    endpoint: `/api/v1/chat/conversations/${conversation.id}/members/${meId}`,
+                    method: "DELETE",
+                  }),
               });
             }}
           >
@@ -673,6 +689,19 @@ function GroupPanel({
           </Button>
         ) : null}
       </aside>
+      <ConfirmDialog
+        open={Boolean(confirmation)}
+        title={confirmation?.title ?? "Confirm change"}
+        description={confirmation?.description ?? ""}
+        confirmLabel={confirmation?.confirmLabel}
+        danger={confirmation?.danger}
+        busy={mutate.isPending}
+        onCancel={() => setConfirmation(null)}
+        onConfirm={() => {
+          confirmation?.run();
+          setConfirmation(null);
+        }}
+      />
     </div>
   );
 }
@@ -688,6 +717,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
   const [creating, setCreating] = useState(false);
   const [managing, setManaging] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<Message | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<
@@ -1085,34 +1115,28 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
   }
 
   return (
-    <div className="grid gap-5">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow text-coral">Private communications</p>
-          <h2 className="display-type mt-3 text-4xl sm:text-5xl">
-            Member chat
-          </h2>
-          <div className="mt-3 flex items-center gap-2 text-sm text-muted">
-            <span
-              className={`size-2 rounded-full ${
-                realtime.state === "live"
-                  ? "bg-emerald-500"
-                  : realtime.state === "connecting"
-                    ? "animate-pulse bg-gold"
-                    : "bg-muted/50"
-              }`}
-            />
-            {realtime.state === "live"
-              ? "Messages update live"
-              : realtime.state === "connecting"
-                ? "Connecting to live updates…"
-                : "Offline — messages will sync when reconnected"}
-          </div>
+    <div className="grid gap-4">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span
+            className={`size-2 rounded-full ${
+              realtime.state === "live"
+                ? "bg-emerald-500"
+                : realtime.state === "connecting"
+                  ? "animate-pulse bg-gold"
+                  : "bg-muted/50"
+            }`}
+          />
+          {realtime.state === "live"
+            ? "Messages update live"
+            : realtime.state === "connecting"
+              ? "Connecting to live updates…"
+              : "Offline — messages will sync when reconnected"}
         </div>
         <Button onClick={() => setCreating(true)}>
           <MessageSquarePlus className="size-4" /> New conversation
         </Button>
-      </header>
+      </div>
 
       {inviteToken ? (
         <div className="flex flex-col justify-between gap-4 rounded-2xl border border-coral/20 bg-coral/5 p-5 sm:flex-row sm:items-center">
@@ -1495,15 +1519,7 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
                                 className="rounded-md p-1.5 hover:bg-ink/5"
                                 aria-label="Delete message"
                                 title="Delete"
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      "Delete this message for everyone?",
-                                    )
-                                  ) {
-                                    removeMessage.mutate(message.id);
-                                  }
-                                }}
+                                onClick={() => setDeleteMessage(message)}
                               >
                                 <Trash2 className="size-3.5" />
                               </button>
@@ -1877,6 +1893,21 @@ export function ChatClient({ initialInvite = "" }: { initialInvite?: string }) {
           }}
         />
       ) : null}
+      <ConfirmDialog
+        open={Boolean(deleteMessage)}
+        title="Delete this message?"
+        description="This message will be removed for everyone in the conversation. This action cannot be undone."
+        confirmLabel="Delete message"
+        danger
+        busy={removeMessage.isPending}
+        onCancel={() => setDeleteMessage(null)}
+        onConfirm={() => {
+          if (!deleteMessage) return;
+          removeMessage.mutate(deleteMessage.id, {
+            onSuccess: () => setDeleteMessage(null),
+          });
+        }}
+      />
     </div>
   );
 }

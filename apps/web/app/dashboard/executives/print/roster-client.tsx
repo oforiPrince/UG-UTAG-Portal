@@ -26,10 +26,13 @@ type Executive = {
 export function ExecutiveRosterClient() {
   const query = useQuery({
     queryKey: ["executives", "print-roster"],
-    queryFn: () => api<Executive[]>("/api/v1/executives?include_past=true"),
+    queryFn: () =>
+      api<{ items: Executive[] }>(
+        "/api/v1/executives?include_past=true&page_size=100",
+      ),
   });
 
-  const ordered = sortLeadership(query.data ?? []);
+  const ordered = sortLeadership(query.data?.items ?? []);
   const current = ordered.filter((item) => item.is_active);
   const past = ordered.filter((item) => !item.is_active);
 

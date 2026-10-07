@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function ExecutivePrintButton() {
   return (
-    <Button asChild variant="outline">
+    <Button asChild size="sm" variant="outline">
       <Link href="/dashboard/executives/print">
         <Printer className="size-4" /> Print roster
       </Link>

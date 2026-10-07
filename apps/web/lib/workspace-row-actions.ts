@@ -57,6 +57,7 @@ export function rowActionsFor(
   permissions: string[],
   currentUserId?: string,
   deliveryAvailable = true,
+  representedActionLabel?: string,
 ): RowActionSet {
   const update =
     config.update &&
@@ -80,8 +81,10 @@ export function rowActionsFor(
     )
       ? config.delete
       : undefined;
-  const actions = (config.actions ?? []).filter((item) =>
-    mutationAllowed(item, row, permissions, currentUserId, deliveryAvailable),
+  const actions = (config.actions ?? []).filter(
+    (item) =>
+      item.label !== representedActionLabel &&
+      mutationAllowed(item, row, permissions, currentUserId, deliveryAvailable),
   );
   const { primary, secondary } = partitionDetailActions(actions);
 
@@ -97,29 +100,21 @@ export function rowActionsFor(
   };
 }
 
-/** Buttons shown inline on the row (besides View). Rest go in overflow. */
-export function inlineRowMutations(actions: RowActionSet): WorkspaceMutation[] {
-  return actions.primary.slice(0, 2);
+/** Tables keep only View inline. Mutations always sit in the overflow menu. */
+export function inlineRowMutations(_actions: RowActionSet): WorkspaceMutation[] {
+  return [];
 }
 
-export function overflowRowItems(
-  actions: RowActionSet,
-): Array<
+export type OverflowRowItem =
   | { kind: "mutation"; mutation: WorkspaceMutation }
   | { kind: "update"; mutation: WorkspaceMutation }
-  | { kind: "delete"; mutation: WorkspaceMutation }
-> {
-  const inline = new Set(inlineRowMutations(actions));
-  const items: Array<
-    | { kind: "mutation"; mutation: WorkspaceMutation }
-    | { kind: "update"; mutation: WorkspaceMutation }
-    | { kind: "delete"; mutation: WorkspaceMutation }
-  > = [];
+  | { kind: "delete"; mutation: WorkspaceMutation };
+
+export function overflowRowItems(actions: RowActionSet): OverflowRowItem[] {
+  const items: OverflowRowItem[] = [];
 
   for (const mutation of actions.primary) {
-    if (!inline.has(mutation)) {
-      items.push({ kind: "mutation", mutation });
-    }
+    items.push({ kind: "mutation", mutation });
   }
   for (const mutation of actions.secondary) {
     items.push({ kind: "mutation", mutation });

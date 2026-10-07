@@ -49,6 +49,14 @@ from utag_api.models.platform import (
     OutboxEvent,
     SiteSetting,
 )
+from utag_api.models.polls import (
+    Poll,
+    PollDelivery,
+    PollElectorate,
+    PollOption,
+    PollSelection,
+    PollVote,
+)
 
 __all__ = [
     "AccountToken",
@@ -87,6 +95,12 @@ __all__ = [
     "OrganizationUnit",
     "OutboxEvent",
     "Permission",
+    "Poll",
+    "PollDelivery",
+    "PollElectorate",
+    "PollOption",
+    "PollSelection",
+    "PollVote",
     "Role",
     "RolePermission",
     "Session",

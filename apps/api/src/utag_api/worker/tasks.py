@@ -36,6 +36,7 @@ from utag_api.security import decrypt_text
 from utag_api.services import google_drive as drive
 from utag_api.services.events import EventContext, record_change
 from utag_api.services.notifications import deliver_announcement_notifications
+from utag_api.services.polls import reconcile_poll_lifecycle
 from utag_api.services.storage import (
     delete_storage_objects,
     quarantine_key,
@@ -230,6 +231,21 @@ async def _publish_scheduled_content() -> int:
 @celery_app.task(name="utag.content.publish_scheduled")  # type: ignore[misc]
 def publish_scheduled_content() -> int:
     return asyncio.run(_publish_scheduled_content())
+
+
+async def _reconcile_polls() -> int:
+    async with SessionFactory() as db:
+        changed = await reconcile_poll_lifecycle(db)
+        await db.commit()
+        return changed
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="utag.polls.reconcile", autoretry_for=(Exception,), retry_backoff=True
+)
+def reconcile_polls() -> int:
+    """Deliver due poll notices; voting windows are enforced independently by the API."""
+    return asyncio.run(_reconcile_polls())
 
 
 def _send_message(message: EmailMessage) -> None:

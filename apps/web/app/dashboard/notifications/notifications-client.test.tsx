@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/lib/api";
 
@@ -9,6 +14,8 @@ import { NotificationsClient } from "./notifications-client";
 vi.mock("@/lib/api", () => ({ api: vi.fn() }));
 
 const mockedApi = vi.mocked(api);
+
+afterEach(cleanup);
 
 describe("notification authoring", () => {
   beforeEach(() => {
@@ -93,5 +100,10 @@ describe("notification authoring", () => {
     );
     expect(container.textContent).not.toContain("<strong>");
     expect(screen.getByText(/Official announcement/)).toBeTruthy();
+    expect(screen.queryByText("Personal inbox")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull();
+    expect(
+      screen.queryByText(/Your personal inbox for official announcements/i),
+    ).toBeNull();
   });
 });

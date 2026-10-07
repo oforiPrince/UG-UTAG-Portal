@@ -72,9 +72,50 @@ describe("rowActionsFor", () => {
     const overflow = overflowRowItems(actions);
     expect(overflow.some((item) => item.kind === "update")).toBe(true);
     expect(overflow.some((item) => item.kind === "delete")).toBe(true);
-    expect(inlineRowMutations(actions).map((item) => item.label)).toContain(
-      "Register",
+    expect(inlineRowMutations(actions)).toEqual([]);
+    expect(
+      overflow.some(
+        (item) =>
+          item.kind === "mutation" && item.mutation.label === "Register",
+      ),
+    ).toBe(true);
+  });
+
+  it("never inlines row mutations so tables stay View plus overflow", () => {
+    const member = rowActionsFor(
+      {
+        id: "user-2",
+        status: "active",
+        email_verified: true,
+        roles: ["member"],
+      },
+      workspaces.members,
+      [
+        "members.update",
+        "members.lifecycle",
+        "members.credentials",
+        "members.permissions",
+      ],
+      "admin-1",
     );
+    expect(inlineRowMutations(member)).toEqual([]);
+    expect(
+      overflowRowItems(member).map((item) => item.mutation.label),
+    ).toEqual(
+      expect.arrayContaining(["Reset password", "Sign out all devices"]),
+    );
+
+    const campaign = rowActionsFor(
+      { id: "campaign-1", status: "active" },
+      workspaces.adverts,
+      ["adverts.manage"],
+    );
+    expect(inlineRowMutations(campaign)).toEqual([]);
+    expect(
+      overflowRowItems(campaign).some(
+        (item) => item.mutation.label === "Complete campaign",
+      ),
+    ).toBe(true);
   });
 
   it("surfaces End appointment for executives.manage, not viewers", () => {
@@ -154,5 +195,18 @@ describe("rowActionsFor", () => {
     expect(actions.primary).toEqual([]);
     expect(actions.secondary).toEqual([]);
     expect(actions.canUpdate).toBe(false);
+  });
+
+  it("does not repeat an action already represented by the list view button", () => {
+    const actions = rowActionsFor(
+      { id: "document-1" },
+      workspaces.documents,
+      ["documents.view"],
+      undefined,
+      true,
+      "Preview",
+    );
+
+    expect(actions.actions.map((item) => item.label)).not.toContain("Preview");
   });
 });

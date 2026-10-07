@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -15,6 +16,7 @@ type ConnectionState = "connecting" | "live" | "offline";
 type RealtimeContextValue = {
   state: ConnectionState;
   lastEventAt: Date | null;
+  refreshSubscriptions: () => void;
 };
 
 export function realtimeUrl(
@@ -32,6 +34,7 @@ export function realtimeUrl(
 const RealtimeContext = createContext<RealtimeContextValue>({
   state: "offline",
   lastEventAt: null,
+  refreshSubscriptions: () => {},
 });
 
 const topicKeys: Record<string, string[]> = {
@@ -47,7 +50,27 @@ const topicKeys: Record<string, string[]> = {
   settings: ["settings", "public-home"],
   executives: ["executives", "public-home"],
   galleries: ["galleries", "public-home"],
+  notifications: ["notifications", "dashboard"],
+  polls: ["polls", "dashboard"],
 };
+
+export function realtimeInvalidationKeys(event: {
+  type?: string;
+  topic?: string;
+}) {
+  const topic = event.topic ?? "";
+  const baseTopic = topic.startsWith("user:")
+    ? "notifications"
+    : topic.startsWith("conversation:")
+      ? "chat"
+      : topic.startsWith("poll:") || topic === "polls:management"
+        ? "polls"
+        : topic;
+  const keys = topicKeys[baseTopic] ?? (baseTopic ? [baseTopic] : []);
+  return event.type?.startsWith("poll.")
+    ? Array.from(new Set([...keys, "polls", "dashboard"]))
+    : keys;
+}
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -55,17 +78,26 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ConnectionState>("offline");
   const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
   const retryRef = useRef(0);
+  const socketRef = useRef<WebSocket | null>(null);
+  const refreshSubscriptions = useCallback(() => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: "subscriptions.refresh" }));
+    }
+  }, []);
 
   useEffect(() => {
     if (!pathname.startsWith("/dashboard")) return;
     let socket: WebSocket | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let closed = false;
+    let invalidationTimer: ReturnType<typeof setTimeout> | null = null;
+    const pendingKeys = new Set<string>();
 
     const connect = () => {
       setState("connecting");
       const url = realtimeUrl(window.location, process.env.NEXT_PUBLIC_WS_URL);
       socket = new WebSocket(url, "utag.v1");
+      socketRef.current = socket;
       socket.onopen = () => {
         retryRef.current = 0;
         setState("live");
@@ -90,14 +122,21 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         setLastEventAt(new Date());
-        const topic = event.topic ?? "";
-        const baseTopic = topic.startsWith("user:")
-          ? "notifications"
-          : topic.startsWith("conversation:")
-            ? "chat"
-            : topic;
-        for (const key of topicKeys[baseTopic] ?? [baseTopic]) {
-          queryClient.invalidateQueries({ queryKey: [key] });
+        const keys = realtimeInvalidationKeys(event);
+        if (keys.includes("polls")) {
+          // Batch bursts of votes without postponing updates indefinitely.
+          keys.forEach((key) => pendingKeys.add(key));
+          invalidationTimer ??= setTimeout(() => {
+            pendingKeys.forEach((key) => {
+              void queryClient.invalidateQueries({ queryKey: [key] });
+            });
+            pendingKeys.clear();
+            invalidationTimer = null;
+          }, 250);
+        } else {
+          keys.forEach((key) => {
+            void queryClient.invalidateQueries({ queryKey: [key] });
+          });
         }
       };
       socket.onclose = () => {
@@ -115,11 +154,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       closed = true;
       if (retryTimer) clearTimeout(retryTimer);
+      if (invalidationTimer) clearTimeout(invalidationTimer);
       socket?.close();
+      socketRef.current = null;
     };
   }, [pathname, queryClient]);
 
-  const value = useMemo(() => ({ state, lastEventAt }), [state, lastEventAt]);
+  const value = useMemo(
+    () => ({ state, lastEventAt, refreshSubscriptions }),
+    [state, lastEventAt, refreshSubscriptions],
+  );
   return (
     <RealtimeContext.Provider value={value}>
       {children}

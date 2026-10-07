@@ -37,12 +37,12 @@ describe("workspace detail field sets", () => {
     ).toContain("10:30 AM");
   });
 
-  it("includes manage fields when the user can manage events", () => {
+  it("includes meaningful workflow fields without exposing implementation details", () => {
     const entries = visibleDetailEntries(eventRow, workspaceDetails.events, [
       "dashboard.view",
       "events.manage",
     ]);
-    expect(entries.some((entry) => entry.field.key === "slug")).toBe(true);
+    expect(entries.some((entry) => entry.field.key === "slug")).toBe(false);
     expect(
       entries.some((entry) => entry.field.key === "publication_status"),
     ).toBe(true);

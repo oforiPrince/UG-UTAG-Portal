@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { display, displayChoice } from "@/lib/workspace-display";
 import type { WorkspaceDetailField } from "@/lib/workspace-detail";
 import type { WorkspaceMutation } from "@/lib/workspaces";
+import type { WorkspaceDetailSection } from "@/lib/workspace-presentation";
 import { cn, humanize } from "@/lib/utils";
 
 export { partitionDetailActions } from "@/lib/workspace-row-actions";
 
-type DetailEntry = {
+export type DetailEntry = {
   key: string;
   label: string;
   value: unknown;
@@ -210,6 +211,8 @@ export function RecordDetailsView({
   onEdit,
   onDelete,
   ValueDisplay,
+  sections = [],
+  variant = "dialog",
 }: {
   noun: string;
   title: string;
@@ -224,11 +227,13 @@ export function RecordDetailsView({
   updateLabel?: string;
   deleteLabel?: string;
   actionPending: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onPrimaryAction: (mutation: WorkspaceMutation) => void;
   onEdit: () => void;
   onDelete: () => void;
   ValueDisplay: ValueDisplayComponent;
+  sections?: WorkspaceDetailSection[];
+  variant?: "dialog" | "page";
 }) {
   const chips = entries.filter(
     (entry) =>
@@ -261,132 +266,248 @@ export function RecordDetailsView({
   const portraitHero = heroShape === "portrait" ? hero : undefined;
   const galleryHero = portraitHero ? undefined : hero;
   const extraImages = images.slice(1, 5);
+  const entriesByKey = new Map(entries.map((entry) => [entry.key, entry]));
+  const sectionGroups = sections
+    .map((section) => ({
+      ...section,
+      entries: section.fieldKeys.flatMap((key) => {
+        const entry = entriesByKey.get(key);
+        return entry && !chipKeys.has(key) ? [entry] : [];
+      }),
+    }))
+    .filter((section) => section.entries.length > 0);
+  const hasActions =
+    primaryActions.length > 0 ||
+    secondaryActions.length > 0 ||
+    canUpdate ||
+    canDelete;
 
   return (
-    <div className="flex flex-col">
-      <header className="border-b border-line/80 pb-4">
-        <div className="flex items-start justify-between gap-4">
-          {portraitHero ? (
-            <div className="relative w-24 shrink-0 overflow-hidden rounded-2xl border border-line bg-panel sm:w-28">
-              <div className="relative aspect-[4/5]">
-                <Image
-                  fill
-                  unoptimized
-                  alt={portraitHero.alt}
-                  className="object-cover"
-                  sizes="112px"
-                  src={`/api/v1/media/${portraitHero.id}/content`}
-                />
+    <div
+      className={cn(
+        "flex flex-col",
+        variant === "page" && "mx-auto w-full max-w-5xl",
+      )}
+    >
+      <header
+        className={cn(
+          "relative overflow-hidden",
+          variant === "page"
+            ? portraitHero
+              ? "rounded-2xl bg-[#0b1a2e] text-paper"
+              : "workspace-folio rounded-2xl p-5 sm:p-6"
+            : "border-b border-line/70 pb-4",
+        )}
+      >
+        <div
+          className={cn(
+            "grid items-start gap-5",
+            variant === "page" &&
+              hasActions &&
+              "lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10",
+            variant === "page" && portraitHero && "p-5 sm:p-6",
+          )}
+        >
+          <div
+            className={cn("flex min-w-0 items-start gap-5", onClose && "pr-12")}
+          >
+            {portraitHero ? (
+              <div className="relative w-16 shrink-0 overflow-hidden rounded-xl bg-white/8 sm:w-20">
+                <div className="relative aspect-[4/5]">
+                  <Image
+                    fill
+                    unoptimized
+                    alt={portraitHero.alt}
+                    className="object-cover"
+                    sizes="80px"
+                    src={`/api/v1/media/${portraitHero.id}/content`}
+                  />
+                </div>
               </div>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "eyebrow",
+                  variant === "page" && portraitHero ? "text-gold" : "text-coral",
+                )}
+              >
+                {noun}
+              </p>
+              <h2
+                className={cn(
+                  "mt-1.5 max-w-3xl text-xl leading-snug font-semibold tracking-tight break-words sm:text-2xl",
+                  variant === "page" && portraitHero && "text-paper",
+                )}
+              >
+                {title}
+              </h2>
+              {subtitle ? (
+                <p
+                  className={cn(
+                    "mt-2 max-w-2xl text-sm leading-6",
+                    variant === "page" && portraitHero
+                      ? "text-white/62"
+                      : "text-muted",
+                  )}
+                >
+                  {subtitle}
+                </p>
+              ) : null}
+              {chips.length ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {chips.map((entry) => (
+                    <span
+                      key={entry.key}
+                      className={cn(
+                        "inline-flex rounded-full px-2.5 py-1 text-[.68rem] font-bold tracking-wide",
+                        variant === "page" && portraitHero
+                          ? "bg-white/10 text-paper"
+                          : statusTone(entry.value),
+                      )}
+                    >
+                      {formatPlain(entry.value, entry.key)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {onClose ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn(
+                "absolute top-0 right-0 shrink-0",
+                variant === "page" && portraitHero && "text-white/70 hover:bg-white/10 hover:text-white",
+              )}
+              onClick={onClose}
+              aria-label="Close details"
+            >
+              <X className="size-5" />
+            </Button>
+          ) : null}
+          {hasActions ? (
+            <div
+              className={cn(
+                "flex flex-col gap-2",
+                variant === "page" && "lg:max-w-[22rem] lg:items-end",
+              )}
+            >
+              {primaryActions.length ? (
+                <div
+                  className={cn(
+                    "flex flex-wrap gap-2",
+                    variant === "page" && "lg:justify-end",
+                  )}
+                >
+                  {primaryActions.map((item) => (
+                    <Button
+                      key={item.label}
+                      size="sm"
+                      variant={item.danger ? "danger" : "primary"}
+                      className={cn(
+                        "min-w-[7.5rem]",
+                        variant === "page" &&
+                          portraitHero &&
+                          !item.danger &&
+                          "bg-paper text-ink hover:bg-paper/90",
+                      )}
+                      disabled={actionPending}
+                      onClick={() => onPrimaryAction(item)}
+                    >
+                      {actionPending ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : null}
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              {(secondaryActions.length > 0 || canUpdate || canDelete) && (
+                <div
+                  className={cn(
+                    "flex flex-wrap gap-2",
+                    variant === "page" && "lg:justify-end",
+                  )}
+                >
+                  {secondaryActions.map((item) => (
+                    <Button
+                      key={item.label}
+                      size="sm"
+                      variant="ghost"
+                      className={
+                        item.danger
+                          ? "text-red-700 hover:bg-red-500/10 dark:text-red-300"
+                          : variant === "page" && portraitHero
+                            ? "text-white/75 hover:bg-white/10 hover:text-white"
+                            : "text-muted hover:text-ink"
+                      }
+                      disabled={actionPending}
+                      onClick={() => onPrimaryAction(item)}
+                    >
+                      {actionPending ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : null}
+                      {item.label}
+                    </Button>
+                  ))}
+                  {canUpdate ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={
+                        variant === "page" && portraitHero
+                          ? "text-white/75 hover:bg-white/10 hover:text-white"
+                          : "text-muted hover:text-ink"
+                      }
+                      onClick={onEdit}
+                    >
+                      <Pencil className="size-4" /> {updateLabel ?? "Edit"}
+                    </Button>
+                  ) : null}
+                  {canDelete ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={
+                        variant === "page" && portraitHero
+                          ? "text-red-200 hover:bg-white/10"
+                          : "text-red-700 hover:bg-red-500/10 dark:text-red-300"
+                      }
+                      disabled={actionPending}
+                      onClick={onDelete}
+                    >
+                      <Trash2 className="size-4" /> {deleteLabel ?? "Delete"}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
             </div>
           ) : null}
-          <div className="min-w-0 flex-1">
-            <p className="eyebrow text-coral">{noun}</p>
-            <h2 className="display-type mt-2 text-[1.85rem] leading-[1.1] break-words sm:text-3xl">
-              {title}
-            </h2>
-            {subtitle ? (
-              <p className="mt-2 text-sm leading-6 text-muted">{subtitle}</p>
-            ) : null}
-            {chips.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {chips.map((entry) => (
-                  <span
-                    key={entry.key}
-                    className={cn(
-                      "inline-flex rounded-full px-2.5 py-1 text-[.68rem] font-bold tracking-wide",
-                      statusTone(entry.value),
-                    )}
-                  >
-                    {formatPlain(entry.value, entry.key)}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="shrink-0"
-            onClick={onClose}
-            aria-label="Close details"
-          >
-            <X className="size-5" />
-          </Button>
         </div>
-
-        {(primaryActions.length > 0 ||
-          secondaryActions.length > 0 ||
-          canUpdate ||
-          canDelete) && (
-          <div className="mt-4 flex flex-col gap-2">
-            {primaryActions.length ? (
-              <div className="flex flex-wrap gap-2">
-                {primaryActions.map((item) => (
-                  <Button
-                    key={item.label}
-                    size="sm"
-                    variant={item.danger ? "danger" : "primary"}
-                    className="min-w-[8.5rem]"
-                    disabled={actionPending}
-                    onClick={() => onPrimaryAction(item)}
-                  >
-                    {actionPending ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : null}
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-            {(secondaryActions.length > 0 || canUpdate || canDelete) && (
-              <div className="flex flex-wrap gap-2">
-                {secondaryActions.map((item) => (
-                  <Button
-                    key={item.label}
-                    size="sm"
-                    variant="outline"
-                    className={
-                      item.danger
-                        ? "border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
-                        : undefined
-                    }
-                    disabled={actionPending}
-                    onClick={() => onPrimaryAction(item)}
-                  >
-                    {actionPending ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : null}
-                    {item.label}
-                  </Button>
-                ))}
-                {canUpdate ? (
-                  <Button size="sm" variant="outline" onClick={onEdit}>
-                    <Pencil className="size-4" /> {updateLabel ?? "Edit"}
-                  </Button>
-                ) : null}
-                {canDelete ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-red-500/30 text-red-700 hover:bg-red-500/10 dark:text-red-300"
-                    disabled={actionPending}
-                    onClick={onDelete}
-                  >
-                    <Trash2 className="size-4" /> {deleteLabel ?? "Delete"}
-                  </Button>
-                ) : null}
-              </div>
-            )}
-          </div>
-        )}
       </header>
 
-      <div className="mt-5 grid flex-1 gap-6 pb-2">
+      <div
+        className={cn(
+          "mt-5 grid flex-1 gap-5 pb-2",
+          variant === "page" && "lg:grid-cols-2 lg:gap-x-8 lg:gap-y-8",
+        )}
+      >
         {galleryHero || extraImages.length ? (
-          <section aria-label="Featured media" className="grid gap-2">
+          <section
+            aria-label="Featured media"
+            className={cn("grid gap-3", variant === "page" && "lg:col-span-2")}
+          >
             {galleryHero ? (
-              <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-panel">
+              <div
+                className={cn(
+                  "relative overflow-hidden rounded-xl bg-ink/5",
+                  variant === "page"
+                    ? "h-[clamp(11rem,28vw,18rem)]"
+                    : "aspect-[16/10]",
+                )}
+              >
                 <Image
                   fill
                   unoptimized
@@ -398,11 +519,14 @@ export function RecordDetailsView({
               </div>
             ) : null}
             {extraImages.length ? (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {extraImages.map((image) => (
                   <div
                     key={image.id}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-line bg-panel"
+                    className={cn(
+                      "relative overflow-hidden rounded-2xl bg-ink/5",
+                      variant === "page" ? "h-28 sm:h-36" : "aspect-square",
+                    )}
                   >
                     <Image
                       fill
@@ -419,21 +543,133 @@ export function RecordDetailsView({
           </section>
         ) : null}
 
-        {spotlight.length ? (
+        {sectionGroups.length
+          ? sectionGroups.map((section, sectionIndex) => {
+              const sectionProse = section.entries.filter(
+                (entry) =>
+                  entry.richtext ||
+                  PROSE_KEYS.has(entry.key) ||
+                  entry.format === "richtext",
+              );
+              const proseKeys = new Set(sectionProse.map((entry) => entry.key));
+              const sectionFacts = section.entries.filter(
+                (entry) => !proseKeys.has(entry.key),
+              );
+              return (
+                <section
+                  key={section.id}
+                  aria-labelledby={`detail-section-${section.id}`}
+                  className={cn(
+                    "grid gap-5",
+                    variant !== "page" &&
+                      sectionIndex > 0 &&
+                      "border-t border-line pt-6",
+                    variant === "page" &&
+                      sectionProse.length > 0 &&
+                      "lg:col-span-2",
+                  )}
+                >
+                  {variant === "page" ? (
+                    <div>
+                      <div className="flex items-end gap-4">
+                        <span className="eyebrow text-gold">
+                          {String(sectionIndex + 1).padStart(2, "0")}
+                        </span>
+                        <span className="workspace-rule mb-1.5 flex-1" />
+                      </div>
+                      <h3
+                        id={`detail-section-${section.id}`}
+                        className="mt-2 text-lg font-semibold tracking-tight"
+                      >
+                        {section.title}
+                      </h3>
+                      {section.description ? (
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                          {section.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="eyebrow text-coral">{noun}</p>
+                      <h3
+                        id={`detail-section-${section.id}`}
+                        className="mt-1.5 text-base font-semibold tracking-tight"
+                      >
+                        {section.title}
+                      </h3>
+                      {section.description ? (
+                        <p className="mt-2 text-sm leading-6 text-muted">
+                          {section.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                  {sectionProse.map((entry) => (
+                    <div key={entry.key} className="grid gap-2">
+                      <h4 className="text-[.68rem] font-bold tracking-[.1em] text-muted uppercase">
+                        {entry.label}
+                      </h4>
+                      <div
+                        className={cn(
+                          "text-sm leading-7 text-ink",
+                          variant === "page"
+                            ? "border-l-2 border-gold/70 pl-4"
+                            : "rounded-2xl bg-panel/70 px-4 py-4",
+                        )}
+                      >
+                        <ValueNode
+                          entry={entry}
+                          ValueDisplay={ValueDisplay}
+                          prose
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {sectionFacts.length ? (
+                    <dl
+                      className={cn(
+                        "grid sm:grid-cols-2",
+                        variant === "page" ? "gap-x-8 gap-y-5" : "gap-3",
+                      )}
+                    >
+                      {sectionFacts.map((entry) => (
+                        <div key={entry.key} className="min-w-0">
+                          <dt className="text-[.62rem] font-bold tracking-[.1em] text-muted uppercase">
+                            {entry.label}
+                          </dt>
+                          <dd className="mt-1.5 min-w-0 text-sm leading-6 font-medium text-ink">
+                            <ValueNode
+                              entry={entry}
+                              ValueDisplay={ValueDisplay}
+                            />
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                </section>
+              );
+            })
+          : null}
+
+        {!sectionGroups.length && spotlight.length ? (
           <section
             aria-label="Key details"
-            className="overflow-hidden rounded-2xl border border-line bg-panel/70"
+            className={cn(variant === "page" && "lg:col-span-2")}
           >
-            <dl className="divide-y divide-line">
+            <div className="flex items-end gap-4">
+              <span className="eyebrow text-gold">01</span>
+              <span className="workspace-rule mb-1.5 flex-1" />
+            </div>
+            <h3 className="mt-2 text-lg font-semibold tracking-tight">Key details</h3>
+            <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
               {spotlight.map((entry) => (
-                <div
-                  key={entry.key}
-                  className="grid gap-1 px-4 py-3.5 sm:grid-cols-[6.5rem_1fr] sm:items-start sm:gap-4"
-                >
-                  <dt className="text-[.68rem] font-bold tracking-[.08em] text-muted uppercase">
+                <div key={entry.key} className="min-w-0">
+                  <dt className="text-[.62rem] font-bold tracking-[.1em] text-muted uppercase">
                     {entry.label}
                   </dt>
-                  <dd className="min-w-0 text-sm leading-6 font-semibold text-ink">
+                  <dd className="mt-1.5 min-w-0 text-sm leading-6 font-medium text-ink">
                     <ValueNode entry={entry} ValueDisplay={ValueDisplay} />
                   </dd>
                 </div>
@@ -442,32 +678,46 @@ export function RecordDetailsView({
           </section>
         ) : null}
 
-        {prose.length
+        {!sectionGroups.length && prose.length
           ? prose.map((entry) => (
-              <section key={entry.key} className="grid gap-2">
+              <section
+                key={entry.key}
+                className={cn(
+                  "grid gap-2",
+                  variant === "page" && "lg:col-span-2",
+                )}
+              >
                 <h3 className="text-[.68rem] font-bold tracking-[.1em] text-muted uppercase">
                   {entry.label}
                 </h3>
-                <div className="rounded-2xl border border-line bg-panel/45 px-4 py-4 text-sm leading-7 text-ink">
+                <div className="border-l-2 border-gold/70 pl-4 text-sm leading-7 text-ink">
                   <ValueNode entry={entry} ValueDisplay={ValueDisplay} prose />
                 </div>
               </section>
             ))
           : null}
 
-        {meta.length ? (
-          <section aria-label="More details" className="grid gap-3">
-            <h3 className="text-[.68rem] font-bold tracking-[.1em] text-muted uppercase">
-              More details
-            </h3>
+        {!sectionGroups.length && meta.length ? (
+          <section
+            aria-label="Additional information"
+            className={cn("grid gap-5", variant === "page" && "lg:col-span-2")}
+          >
+            <div>
+              <div className="flex items-end gap-4">
+                <span className="eyebrow text-gold">
+                  {spotlight.length || prose.length ? "02" : "01"}
+                </span>
+                <span className="workspace-rule mb-1.5 flex-1" />
+              </div>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight">
+                Additional information
+              </h3>
+            </div>
             {facts.length ? (
-              <dl className="grid gap-2 sm:grid-cols-2">
+              <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                 {facts.map((entry) => (
-                  <div
-                    key={entry.key}
-                    className="min-w-0 rounded-xl border border-line bg-panel/55 px-3.5 py-3"
-                  >
-                    <dt className="text-[.62rem] font-bold tracking-[.08em] text-muted uppercase">
+                  <div key={entry.key} className="min-w-0">
+                    <dt className="text-[.62rem] font-bold tracking-[.1em] text-muted uppercase">
                       {entry.label}
                     </dt>
                     <dd className="mt-1.5 min-w-0 text-sm leading-6 text-ink">
@@ -478,13 +728,13 @@ export function RecordDetailsView({
               </dl>
             ) : null}
             {flags.length ? (
-              <dl className="grid gap-2 sm:grid-cols-2">
+              <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
                 {flags.map((entry) => (
                   <div
                     key={entry.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel/55 px-3.5 py-2.5"
+                    className="flex items-center justify-between gap-3"
                   >
-                    <dt className="text-[.62rem] font-bold tracking-[.08em] text-muted uppercase">
+                    <dt className="text-[.62rem] font-bold tracking-[.1em] text-muted uppercase">
                       {entry.label}
                     </dt>
                     <dd className="shrink-0">
@@ -497,8 +747,16 @@ export function RecordDetailsView({
           </section>
         ) : null}
 
-        {!spotlight.length && !prose.length && !meta.length ? (
-          <p className="rounded-2xl border border-dashed border-line bg-panel/40 px-4 py-8 text-center text-sm text-muted">
+        {!sectionGroups.length &&
+        !spotlight.length &&
+        !prose.length &&
+        !meta.length ? (
+          <p
+            className={cn(
+              "rounded-2xl bg-panel/50 px-4 py-10 text-center text-sm text-muted",
+              variant === "page" && "lg:col-span-2",
+            )}
+          >
             No additional details for this {noun.toLowerCase()}.
           </p>
         ) : null}

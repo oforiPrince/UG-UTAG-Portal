@@ -35,6 +35,7 @@ from utag_api.services.deletion import (
 )
 from utag_api.services.events import record_change
 from utag_api.services.moderation import ensure_publish_permission
+from utag_api.services.query import apply_sort
 from utag_api.services.storage import s3_client, safe_filename
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -142,6 +143,8 @@ async def list_documents(
     category: str | None = None,
     status: str | None = None,
     q: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
 ) -> Page[DocumentView]:
     statement = select(Document)
     if status:
@@ -152,7 +155,20 @@ async def list_documents(
         statement = statement.where(Document.category == category)
     if q:
         statement = statement.where(Document.title.ilike(f"%{q.strip()}%"))
-    statement = statement.order_by(Document.document_date.desc(), Document.created_at.desc())
+    statement = apply_sort(
+        statement,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        allowed={
+            "public_id": Document.public_id,
+            "title": Document.title,
+            "category": Document.category,
+            "status": Document.status,
+            "document_date": Document.document_date,
+            "version": Document.version,
+        },
+        default=(Document.document_date.desc(), Document.created_at.desc()),
+    )
     rows = list((await db.scalars(statement)).all())
     authorized = [item for item in rows if audience_allows(item, principal)]
     total = len(authorized)

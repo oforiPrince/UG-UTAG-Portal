@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { RichTextEditor } from "@/components/dashboard/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "@/lib/api";
 import { humanize } from "@/lib/utils";
 
@@ -95,7 +96,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-end bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex justify-end bg-ink/20"
       onMouseDown={close}
     >
       <section
@@ -273,6 +274,7 @@ function SendDirectAlertDialog({ close }: { close: () => void }) {
 export function NotificationsClient() {
   const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Notice>();
   const user = useQuery({
     queryKey: ["auth", "me"],
     queryFn: () => api<User>("/api/v1/auth/me"),
@@ -302,118 +304,142 @@ export function NotificationsClient() {
   });
 
   return (
-    <div className="grid gap-5">
-      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="eyebrow text-coral">Personal inbox</p>
-          <h2 className="display-type mt-3 text-4xl sm:text-5xl">
-            Notifications
-          </h2>
-          <p className="mt-3 text-sm text-muted">
-            Your personal inbox for official announcements, direct alerts and
-            system activity.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {user.data?.permissions.includes("notifications.manage") ? (
-            <Button onClick={() => setSending(true)}>
-              <Send className="size-4" /> Send direct alert
-            </Button>
-          ) : null}
-          <Button variant="outline" onClick={() => query.refetch()}>
-            <RefreshCw className="size-4" /> Refresh
+    <div className="grid gap-4">
+      <div className="flex flex-wrap justify-end gap-2">
+        {user.data?.permissions.includes("notifications.manage") ? (
+          <Button onClick={() => setSending(true)}>
+            <Send className="size-4" /> Send direct alert
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => readAll.mutate()}
-            disabled={readAll.isPending}
-          >
-            <CheckCheck className="size-4" /> Mark all read
-          </Button>
-        </div>
-      </header>
+        ) : null}
+        <Button variant="outline" onClick={() => query.refetch()}>
+          <RefreshCw className="size-4" /> Refresh
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => readAll.mutate()}
+          disabled={readAll.isPending}
+        >
+          <CheckCheck className="size-4" /> Mark all read
+        </Button>
+      </div>
       <Card className="overflow-hidden">
-        <div className="divide-y divide-line">
-          {query.data?.items.map((item) => (
-            <article
-              key={item.id}
-              className={`grid grid-cols-[auto_1fr_auto] gap-4 p-5 transition hover:bg-ink/[.025] ${item.read_at ? "opacity-70" : ""}`}
-            >
-              <button
-                onClick={() => !item.read_at && read.mutate(item.id)}
-                className={`grid size-10 place-items-center rounded-xl ${item.read_at ? "bg-ink/5" : "bg-coral/10 text-coral"}`}
-                aria-label={
-                  item.read_at
-                    ? "Notification read"
-                    : "Mark notification as read"
-                }
+        {query.isLoading ? (
+          <div className="grid gap-3 p-5" aria-label="Loading notifications">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-20 animate-pulse rounded-xl bg-ink/5"
+              />
+            ))}
+          </div>
+        ) : query.error ? (
+          <div className="grid place-items-center px-6 py-16 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink/5 text-muted">
+              <Bell className="size-5" />
+            </span>
+            <p className="mt-4 text-lg font-black">Inbox could not be loaded</p>
+            <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+              Check your connection, then try again.
+            </p>
+            <Button className="mt-5" onClick={() => query.refetch()}>
+              <RefreshCw className="size-4" /> Try again
+            </Button>
+          </div>
+        ) : (
+          <div className="divide-y divide-line">
+            {query.data?.items.map((item) => (
+              <article
+                key={item.id}
+                className={`grid grid-cols-[auto_1fr_auto] gap-4 p-5 transition hover:bg-ink/[.025] ${item.read_at ? "opacity-70" : ""}`}
               >
-                <Bell className="size-4" />
-              </button>
-              <div>
-                <span className="flex items-center gap-2">
-                  <b className="text-sm">{item.title}</b>
-                  {!item.read_at ? (
-                    <span className="size-1.5 rounded-full bg-coral" />
-                  ) : null}
-                </span>
-                <div
-                  className="mt-1 text-xs leading-6 text-muted [&_a]:font-bold [&_a]:text-coral [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-gold [&_blockquote]:pl-3 [&_li]:ml-4 [&_li]:list-disc [&_p+p]:mt-2"
-                  dangerouslySetInnerHTML={{ __html: item.body }}
-                />
-                <span className="mt-2 block text-[.58rem] font-bold text-muted">
-                  {item.category === "announcement"
-                    ? "Official announcement"
-                    : item.category === "direct"
-                      ? "Direct alert"
-                      : humanize(item.category)}{" "}
-                  · {humanize(item.priority)}
-                </span>
-                {item.deep_link?.startsWith("/") ? (
-                  <Link
-                    className="mt-2 inline-block text-xs font-bold text-coral"
-                    href={item.deep_link}
-                    onClick={() => !item.read_at && read.mutate(item.id)}
-                  >
-                    Open related item
-                  </Link>
-                ) : null}
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="whitespace-nowrap text-[.58rem] text-muted">
-                  {formatDistanceToNow(new Date(item.created_at), {
-                    addSuffix: true,
-                  })}
-                </span>
                 <button
-                  className="p-1 text-muted hover:text-red-600 dark:hover:text-red-300"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Permanently delete this notification? This cannot be undone.",
-                      )
-                    ) {
-                      deleteNotification.mutate(item.id);
-                    }
-                  }}
-                  aria-label="Delete notification"
+                  onClick={() => !item.read_at && read.mutate(item.id)}
+                  className={`grid size-10 place-items-center rounded-xl ${item.read_at ? "bg-ink/5" : "bg-coral/10 text-coral"}`}
+                  aria-label={
+                    item.read_at
+                      ? "Notification read"
+                      : "Mark notification as read"
+                  }
                 >
-                  <Trash2 className="size-3.5" />
+                  <Bell className="size-4" />
                 </button>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!query.isLoading && query.data?.items.length === 0 ? (
-          <div className="p-16 text-center">
-            <Bell className="mx-auto size-6 text-muted" />
-            <p className="mt-4 font-black">You are all caught up</p>
+                <div>
+                  <span className="flex items-center gap-2">
+                    <b className="text-sm">{item.title}</b>
+                    {!item.read_at ? (
+                      <span className="size-1.5 rounded-full bg-coral" />
+                    ) : null}
+                  </span>
+                  <div
+                    className="mt-1 text-xs leading-6 text-muted [&_a]:font-bold [&_a]:text-coral [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-gold [&_blockquote]:pl-3 [&_li]:ml-4 [&_li]:list-disc [&_p+p]:mt-2"
+                    dangerouslySetInnerHTML={{ __html: item.body }}
+                  />
+                  <span className="mt-2 block text-[.58rem] font-bold text-muted">
+                    {item.category === "announcement"
+                      ? "Official announcement"
+                      : item.category === "direct"
+                        ? "Direct alert"
+                        : humanize(item.category)}{" "}
+                    · {humanize(item.priority)}
+                  </span>
+                  {item.deep_link?.startsWith("/") ? (
+                    <Link
+                      className="mt-2 inline-block text-xs font-bold text-coral"
+                      href={item.deep_link}
+                      onClick={() => !item.read_at && read.mutate(item.id)}
+                    >
+                      Open related item
+                    </Link>
+                  ) : null}
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="whitespace-nowrap text-[.58rem] text-muted">
+                    {formatDistanceToNow(new Date(item.created_at), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                  <button
+                    className="p-1 text-muted hover:text-red-600 dark:hover:text-red-300"
+                    onClick={() => setDeleteTarget(item)}
+                    aria-label="Delete notification"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {!query.isLoading && !query.error && query.data?.items.length === 0 ? (
+          <div className="grid place-items-center px-6 py-16 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-ink/5 text-muted">
+              <Bell className="size-5" />
+            </span>
+            <p className="mt-4 text-lg font-black">You are all caught up</p>
+            <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+              New notices will appear here when they are sent to you.
+            </p>
           </div>
         ) : null}
       </Card>
       {sending ? (
         <SendDirectAlertDialog close={() => setSending(false)} />
       ) : null}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete this notification?"
+        description={`“${deleteTarget?.title ?? "Notification"}” will be permanently removed from your inbox. This cannot be undone.`}
+        confirmLabel="Delete notification"
+        danger
+        busy={deleteNotification.isPending}
+        onCancel={() => setDeleteTarget(undefined)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteNotification.mutate(deleteTarget.id, {
+            onSuccess: () => setDeleteTarget(undefined),
+          });
+        }}
+      />
     </div>
   );
 }

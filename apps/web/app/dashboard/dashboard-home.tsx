@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 
 import { PulseChart } from "@/components/dashboard/pulse-chart";
+import { PollsOverview } from "@/components/dashboard/polls-overview";
 import { WorkspaceRichTextValue } from "@/components/dashboard/workspace-rich-text-value";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
@@ -332,6 +333,8 @@ export function DashboardHome() {
           </div>
         </div>
       </section>
+
+      <PollsOverview />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {data.metrics.map((metric) => {

@@ -629,17 +629,7 @@ export function ProfileClient() {
   }
 
   return (
-    <div className="grid gap-6">
-      <header className="max-w-3xl">
-        <p className="eyebrow text-coral">Account</p>
-        <h2 className="display-type mt-3 text-4xl sm:text-5xl">Profile</h2>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          {hasLeadership
-            ? "Manage your personal details and the public leadership profile members see on the website."
-            : "Keep your association identity, campus affiliation, and sign-in security current."}
-        </p>
-      </header>
-
+    <div className="grid gap-5">
       {user.data?.must_change_password ? (
         <div
           className="flex items-start gap-4 rounded-2xl border border-gold/40 bg-gold/10 p-5"
@@ -1045,7 +1035,7 @@ export function ProfileClient() {
                 </div>
               </div>
 
-              <div className="flex justify-end border-t border-line pt-5">
+              <div className="dashboard-action-dock profile-action-dock flex justify-end">
                 <Button
                   type="submit"
                   disabled={savingProfile || savingPhoto}
@@ -1306,7 +1296,7 @@ export function ProfileClient() {
                   </div>
                 </div>
 
-                <div className="flex justify-end border-t border-line pt-5">
+                <div className="dashboard-action-dock profile-action-dock flex justify-end">
                   <Button
                     type="submit"
                     disabled={savingExecutive || savingPhoto}
@@ -1498,7 +1488,7 @@ export function ProfileClient() {
                 Use at least 8 characters with upper and lowercase letters and a
                 number.
               </p>
-              <div className="sm:col-span-2">
+              <div className="dashboard-action-dock profile-action-dock flex justify-end sm:col-span-2">
                 <Button
                   type="submit"
                   disabled={

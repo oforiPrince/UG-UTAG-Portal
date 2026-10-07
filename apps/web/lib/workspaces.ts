@@ -126,12 +126,26 @@ export type WorkspaceMutation = {
   clientOnly?: boolean;
 };
 
+export type WorkspaceColumn = {
+  key: string;
+  label: string;
+  /** Quiet secondary field under this cell. Must not also be a visible column. */
+  subtitleKey?: string;
+  /** Extra numeric fields composed into this cell after `key`. */
+  metricKeys?: string[];
+  align?: "start" | "end";
+  /** Compact list dates. `date` omits time even when the value is a datetime. */
+  dateStyle?: "date" | "datetime";
+};
+
 export type WorkspaceConfig = {
+  /** Stable key used by the presentation and routing registries. */
+  key?: string;
   title: string;
   description: string;
   endpoint: string;
   queryKey: string;
-  columns: { key: string; label: string }[];
+  columns: WorkspaceColumn[];
   /** table = data rows (default); grid = media-forward cards */
   layout?: "table" | "grid";
   /** Card preview aspect when layout is grid */
@@ -142,8 +156,14 @@ export type WorkspaceConfig = {
   serverPagination?: {
     searchParam?: string;
     filterParams?: Record<string, string>;
+    /** API-backed fields that can be sorted across the complete result set. */
+    sortFields?: string[];
   };
   detail?: WorkspaceDetailConfig;
+  /** Route used instead of the generic details dialog. */
+  detailHref?: (row: WorkspaceRow) => string;
+  /** Route used instead of the generic edit dialog. */
+  updateHref?: (row: WorkspaceRow) => string;
   create?: WorkspaceMutation;
   update?: WorkspaceMutation;
   delete?: WorkspaceMutation;
@@ -1064,6 +1084,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status", roles: "role" },
+      sortFields: ["full_name", "email", "academic_rank", "status"],
     },
     exportUrl: "/api/v1/members/exports/csv",
     exportPermission: "members.export",
@@ -1090,8 +1111,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       { key: "full_name", label: "Member" },
       { key: "email", label: "Email" },
       { key: "academic_rank", label: "Rank" },
-      { key: "status", label: "Status" },
       { key: "roles", label: "Roles" },
+      { key: "status", label: "Status" },
     ],
     create: {
       label: "Create member",
@@ -1252,6 +1273,11 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Current and past leadership terms, public biographies, portfolios, and social profiles.",
     endpoint: "/api/v1/executives",
     queryKey: "executives",
+    serverPagination: {
+      searchParam: "q",
+      filterParams: { is_active: "is_active" },
+      sortFields: ["full_name", "position", "is_active"],
+    },
     exportUrl: "/api/v1/executives/exports/csv",
     exportPermission: "members.export",
     filters: [
@@ -1260,8 +1286,6 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     columns: [
       { key: "full_name", label: "Executive" },
       { key: "position", label: "Position" },
-      { key: "portfolio", label: "Portfolio" },
-      { key: "term_number", label: "Term" },
       { key: "is_active", label: "Current" },
     ],
     create: {
@@ -1427,6 +1451,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["title", "status", "published_at", "updated_at"],
     },
     filters: [
       {
@@ -1498,6 +1523,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { priority: "priority", status: "status" },
+      sortFields: ["title", "priority", "status", "published_at", "expires_at"],
     },
     filters: [
       {
@@ -1559,6 +1585,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
         status: "status",
         publication_status: "publication_status",
       },
+      sortFields: [
+        "title",
+        "start_date",
+        "event_type",
+        "status",
+        "publication_status",
+      ],
     },
     filters: [
       {
@@ -1639,6 +1672,14 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { category: "category", status: "status" },
+      sortFields: [
+        "public_id",
+        "title",
+        "category",
+        "status",
+        "document_date",
+        "version",
+      ],
     },
     filters: [
       { key: "category", label: "Category", options: ["internal", "external"] },
@@ -1649,12 +1690,10 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       },
     ],
     columns: [
-      { key: "public_id", label: "Reference" },
-      { key: "title", label: "Document" },
+      { key: "title", label: "Document", subtitleKey: "public_id" },
       { key: "category", label: "Category" },
       { key: "status", label: "Status" },
-      { key: "document_date", label: "Date" },
-      { key: "version", label: "Version" },
+      { key: "document_date", label: "Date", dateStyle: "date" },
     ],
     create: {
       label: "New document",
@@ -1750,6 +1789,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["original_filename", "status", "content_type", "is_private"],
     },
     filters: [
       {
@@ -1827,6 +1867,8 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Curated visual stories for the public site and association record.",
     endpoint: "/api/v1/galleries",
     queryKey: "galleries",
+    detailHref: (row) => `/dashboard/galleries/${row.id}`,
+    updateHref: (row) => `/dashboard/galleries/${row.id}/edit`,
     layout: "grid",
     gridAspect: "landscape",
     filters: [
@@ -2163,14 +2205,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       },
     ],
     columns: [
-      { key: "title", label: "Campaign" },
-      { key: "placement_name", label: "Placement" },
-      { key: "fulfilment", label: "Fulfilment" },
-      { key: "advertiser_name", label: "Advertiser" },
-      { key: "status", label: "Status" },
-      { key: "starts_at", label: "Starts" },
-      { key: "impressions", label: "Impressions" },
-      { key: "clicks", label: "Clicks" },
+      { key: "title", label: "Campaign", subtitleKey: "advertiser_name" },
+      { key: "status", label: "Status", subtitleKey: "fulfilment" },
+      { key: "starts_at", label: "Schedule", dateStyle: "date" },
+      {
+        key: "impressions",
+        label: "Delivery",
+        metricKeys: ["clicks"],
+        align: "end",
+      },
     ],
     create: {
       label: "New campaign",
@@ -2216,9 +2259,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/slots",
     queryKey: "adverts",
     columns: [
-      { key: "name", label: "Placement" },
-      { key: "key", label: "Key" },
-      { key: "location", label: "Site location" },
+      { key: "name", label: "Placement", subtitleKey: "location" },
       { key: "size", label: "Size" },
       { key: "is_active", label: "Active" },
     ],
@@ -2307,10 +2348,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/plans",
     queryKey: "adverts",
     columns: [
-      { key: "name", label: "Plan" },
-      { key: "placement_name", label: "Placement" },
-      { key: "price", label: "Price (GHS)" },
-      { key: "duration_days", label: "Days" },
+      { key: "name", label: "Plan", subtitleKey: "placement_name" },
+      { key: "price", label: "Price", align: "end" },
+      { key: "duration_days", label: "Days", align: "end" },
       { key: "is_active", label: "Active" },
     ],
     create: {
@@ -2432,11 +2472,9 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     ],
     columns: [
       { key: "advertiser_name", label: "Client" },
-      { key: "plan_name", label: "Plan" },
-      { key: "campaign_name", label: "Campaign" },
-      { key: "status", label: "Status" },
-      { key: "payment_status", label: "Payment" },
-      { key: "starts_on", label: "Starts" },
+      { key: "campaign_name", label: "Campaign", subtitleKey: "plan_name" },
+      { key: "status", label: "Status", subtitleKey: "payment_status" },
+      { key: "starts_on", label: "Starts", dateStyle: "date" },
     ],
     create: {
       label: "New order",
@@ -2593,10 +2631,12 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     endpoint: "/api/v1/adverts/advertisers",
     queryKey: "adverts",
     columns: [
-      { key: "organization_name", label: "Organization" },
-      { key: "contact_name", label: "Contact" },
+      {
+        key: "organization_name",
+        label: "Client",
+        subtitleKey: "contact_name",
+      },
       { key: "email", label: "Email" },
-      { key: "phone", label: "Phone" },
       { key: "is_active", label: "Active" },
     ],
     create: {
@@ -2680,13 +2720,15 @@ export const workspaces: Record<string, WorkspaceConfig> = {
       "Immutable evidence of sensitive reads, writes, decisions, and security events.",
     endpoint: "/api/v1/admin/audit?page_size=100",
     queryKey: "audit",
-    serverPagination: { searchParam: "q" },
+    serverPagination: {
+      searchParam: "q",
+      sortFields: ["action", "resource_type", "outcome", "created_at"],
+    },
     columns: [
       { key: "actor_name", label: "Actor" },
-      { key: "action", label: "Action" },
-      { key: "resource_type", label: "Resource" },
-      { key: "outcome", label: "Outcome" },
+      { key: "action", label: "Action", subtitleKey: "resource_type" },
       { key: "created_at", label: "Time" },
+      { key: "outcome", label: "Outcome" },
     ],
   },
   settings: {
@@ -2748,7 +2790,13 @@ export const workspaces: Record<string, WorkspaceConfig> = {
           emptyValue: "",
         },
         { key: "enabled", label: "Enabled", type: "checkbox" },
-        { key: "rules", label: "Rules", type: "json", defaultValue: "{}" },
+        {
+          key: "rules",
+          label: "Rules",
+          type: "json",
+          defaultValue: "{}",
+          hidden: true,
+        },
       ],
       successMessage: "Feature flag updated",
     },
@@ -2762,6 +2810,7 @@ export const workspaces: Record<string, WorkspaceConfig> = {
     serverPagination: {
       searchParam: "q",
       filterParams: { status: "status" },
+      sortFields: ["kind", "status", "progress", "created_at", "error_message"],
     },
     filters: [
       {
@@ -2781,4 +2830,5 @@ export const workspaces: Record<string, WorkspaceConfig> = {
 };
 
 attachWorkspaceDetails(workspaces);
+for (const [key, config] of Object.entries(workspaces)) config.key = key;
 workspaces.content = workspaces.news;

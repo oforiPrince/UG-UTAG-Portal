@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { display, displayChoice } from "../../lib/workspace-display";
+import {
+  compactDateLabel,
+  display,
+  displayChoice,
+  displayTitleWithoutDuplicateSubtitle,
+} from "../../lib/workspace-display";
 import {
   workspaceDetailFields,
   workspaceRowFromMutationResult,
@@ -8,6 +13,37 @@ import {
 } from "../../lib/workspaces";
 
 describe("workspace display values", () => {
+  it("formats compact list dates without a decorative separator", () => {
+    expect(compactDateLabel("2026-08-02", "date")).toBe(
+      new Date("2026-08-02").toLocaleDateString("en-GH", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    );
+    expect(compactDateLabel("2026-08-02T15:30:00Z", "date")).not.toMatch(
+      /\d{1,2}:\d{2}/,
+    );
+    expect(compactDateLabel("2026-08-02T15:30:00Z", "datetime")).toMatch(
+      /\d{1,2}:\d{2}/,
+    );
+  });
+
+  it("drops a subtitle that is already baked into the title", () => {
+    expect(
+      displayTitleWithoutDuplicateSubtitle(
+        "Site footer · 30 days · Campus Bank Ghana",
+        "Campus Bank Ghana",
+      ),
+    ).toBe("Site footer · 30 days");
+    expect(
+      displayTitleWithoutDuplicateSubtitle(
+        "Campus Bank Ghana",
+        "Campus Bank Ghana",
+      ),
+    ).toBe("Campus Bank Ghana");
+  });
+
   it("turns controlled codes into readable labels", () => {
     expect(display("in_review", "status")).toBe("In Review");
     expect(display(["member", "administrator"], "roles")).toBe(

@@ -246,6 +246,14 @@ async def test_paid_campaign_cannot_go_live_without_paid_order(
     campaign_id = body["campaign_id"]
     order_id = body["id"]
 
+    campaign_detail = await client.get(f"/api/v1/adverts/campaigns/{campaign_id}")
+    assert campaign_detail.status_code == 200
+    assert campaign_detail.json()["title"] == body["campaign_name"]
+
+    order_detail = await client.get(f"/api/v1/adverts/orders/{order_id}")
+    assert order_detail.status_code == 200
+    assert order_detail.json()["advertiser_name"] == "Campus Bank"
+
     async with session_factory() as session:
         campaign = await session.get(AdCampaign, UUID(campaign_id))
         assert campaign is not None

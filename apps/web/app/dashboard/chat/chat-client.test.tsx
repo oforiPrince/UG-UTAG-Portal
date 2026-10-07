@@ -146,6 +146,8 @@ describe("ChatClient", () => {
     expect(await screen.findByText("I have reviewed the agenda")).toBeTruthy();
     expect(screen.getByText(/Offline — messages will sync/)).toBeTruthy();
     expect(screen.getByText("Prof. Portal Admin")).toBeTruthy();
+    expect(screen.queryByText("Private communications")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Member chat" })).toBeNull();
 
     fireEvent.click(
       screen.getAllByRole("button", { name: "Reply to message" })[1]!,
