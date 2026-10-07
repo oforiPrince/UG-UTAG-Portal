@@ -43,6 +43,7 @@ export function ActivePollPrompt({
   pathname: string;
   userId: string;
 }) {
+  const isPollWorkspace = pathname.startsWith("/dashboard/polls");
   const dialogRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(0);
   const [snoozedPollIds, setSnoozedPollIds] = useState<Set<string>>(
@@ -59,7 +60,7 @@ export function ActivePollPrompt({
       api<PollPage<Poll>>(
         "/api/v1/polls?state=open&eligible_only=true&page_size=20",
       ),
-    enabled,
+    enabled: enabled && !isPollWorkspace,
     refetchInterval: 60_000,
   });
 
@@ -73,7 +74,7 @@ export function ActivePollPrompt({
   }, []);
 
   const pendingPolls = useMemo(() => {
-    if (!hydrated || !now) return [];
+    if (!hydrated || !now || isPollWorkspace) return [];
     return (polls.data?.items ?? [])
       .filter(
         (poll) =>
@@ -82,7 +83,6 @@ export function ActivePollPrompt({
           !poll.has_voted &&
           Boolean(poll.closes_at) &&
           Date.parse(poll.closes_at ?? "") > now &&
-          !pathname.startsWith(`/dashboard/polls/${poll.id}`) &&
           !snoozedPollIds.has(poll.id) &&
           snoozedUntil(userId, poll.id) <= now,
       )
@@ -90,7 +90,7 @@ export function ActivePollPrompt({
         (left, right) =>
           Date.parse(left.closes_at ?? "") - Date.parse(right.closes_at ?? ""),
       );
-  }, [hydrated, now, pathname, polls.data?.items, snoozedPollIds, userId]);
+  }, [hydrated, isPollWorkspace, now, polls.data?.items, snoozedPollIds, userId]);
   const poll = pendingPolls[0];
 
   const snooze = useCallback(

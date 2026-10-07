@@ -115,6 +115,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           event.type === "connection.ready" ||
           event.type === "subscriptions.changed"
         ) {
+          if (event.type === "connection.ready") {
+            retryRef.current = 0;
+            setState("live");
+          }
           queryClient.invalidateQueries();
           if (event.type === "connection.ready") {
             socket?.send(JSON.stringify({ type: "resync.complete" }));

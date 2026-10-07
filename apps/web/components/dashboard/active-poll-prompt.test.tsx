@@ -119,7 +119,7 @@ describe("ActivePollPrompt", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("does not interrupt a voted member or the poll currently being viewed", async () => {
+  it("does not interrupt a voted member or any poll workspace", async () => {
     mockedApi.mockResolvedValue({
       items: [poll({ has_voted: true, can_vote: false })],
       page: 1,
@@ -140,8 +140,8 @@ describe("ActivePollPrompt", () => {
       total: 1,
       pages: 1,
     });
-    renderPrompt("/dashboard/polls/poll-1");
-    await waitFor(() => expect(mockedApi).toHaveBeenCalledOnce());
+    renderPrompt("/dashboard/polls/new");
+    await waitFor(() => expect(mockedApi).not.toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
